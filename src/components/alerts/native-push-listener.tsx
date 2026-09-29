@@ -1,21 +1,22 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { PushNotifications } from "@capacitor/push-notifications";
 import { apiRequest } from "@/lib/api-client";
 import {
   ensureSeverityChannels,
   getNativePlatform,
-  getPushMode,
-  PushNotifications,
   rememberNativeToken,
   type AlertView,
   type NativeAlertPayload,
 } from "@/lib/capacitor-types";
+import { LocalNotifications } from "@capacitor/local-notifications";
 
 export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
   useEffect(() => {
     if (!enabled) return;
-    if (getPushMode() !== "capacitor") return;
+    if (!Capacitor.isNativePlatform()) return;
 
     let cancelled = false;
     const handles: Array<{ remove: () => void }> = [];
@@ -43,7 +44,7 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
         rememberNativeToken(token.value);
         await apiRequest("/api/v1/alerts/push/token", {
           method: "POST",
-          body: JSON.stringify({ token: token.value, platform: getNativePlatform() }),
+          body: JSON.stringify({ token: token.value, platform: "android" }),
         });
       } catch {
         // Registration is retried on the next app launch.
@@ -54,6 +55,18 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       console.error("Push registration failed:", error?.error);
     };
 
+    const requestPermissions = async () => {
+      const permission = await PushNotifications.checkPermissions();
+      if (permission.receive !== "granted") {
+        const result = await PushNotifications.requestPermissions();
+        if (result.receive !== "granted") {
+          console.warn("Push notification permission not granted");
+          return false;
+        }
+      }
+      return true;
+    };
+
     const setup = async () => {
       handles.push(
         await PushNotifications.addListener("pushNotificationReceived", handlePushReceived),
@@ -62,8 +75,9 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       );
       if (cancelled) return;
 
-      const permission = await PushNotifications.checkPermissions();
-      if (permission.receive !== "granted") return;
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) return;
+
       await ensureSeverityChannels();
       await PushNotifications.register();
     };

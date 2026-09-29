@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api-client";
+import { enqueueAlerts, removeAlert } from "@/lib/alert-queue";
 import type { AlertView } from "@/components/alerts/alert-archive";
 import { X } from "lucide-react";
+import { getPushMode } from "@/lib/capacitor-types";
 
 interface ToastAlert {
   alert: AlertView;
@@ -76,6 +78,8 @@ export function AlertToast() {
   }, []);
 
   if (toasts.length === 0) return null;
+
+  const isNative = getPushMode() === "capacitor";
 
   return (
     <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-full max-w-md pointer-events-none">

@@ -4,10 +4,21 @@ const config: CapacitorConfig = {
   appId: 'com.barangayresolve.app',
   appName: 'BarangayResolve',
   webDir: 'out',
+  server: {
+    androidScheme: 'https',
+    hostname: 'barangayresolve.app',
+    url: 'https://barangayresolve.app'
+  },
   android: {
     allowMixedContent: false,
     captureInput: true,
-    webContentsDebuggingEnabled: false
+    webContentsDebuggingEnabled: false,
+    buildOptions: {
+      keystorePath: undefined,
+      keystorePassword: undefined,
+      keystoreAlias: undefined,
+      keystoreAliasPassword: undefined
+    }
   },
   plugins: {
     PushNotifications: {
@@ -22,6 +33,15 @@ const config: CapacitorConfig = {
       launchShowDuration: 2000,
       backgroundColor: '#1e3a8a',
       showSpinner: false
+    },
+    BackgroundTask: {
+      enabled: true
+    },
+    BackgroundRunner: {
+      enabled: true,
+      label: 'BarangayResolve Background Alerts',
+      text: 'Monitoring for emergency alerts...',
+      iconColor: '#1e3a8a'
     }
   }
 };
