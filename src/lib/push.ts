@@ -126,9 +126,9 @@ async function sendFcmMessage(token: string, payload: AlertPayload, account: Ser
 
   // Custom vibration patterns per severity (milliseconds)
   const vibrationPatterns: Record<string, number[]> = {
-    CRITICAL: [0, 500, 200, 500, 200, 500, 200, 500],      // Strong, repeating
-    WARNING: [0, 300, 100, 300, 100, 300],                  // Medium, repeating
-    INFO: [0, 200],                                          // Single short buzz
+    CRITICAL: [0, 1000, 500, 1000, 500, 1000, 500, 1000, 500, 1000],  // 10 seconds of strong vibration
+    WARNING: [0, 500, 200, 500, 200, 500, 200, 500],                  // Medium, repeating
+    INFO: [0, 300, 100, 300],                                          // Short buzz
   };
 
   const vibrateTimings = vibrationPatterns[payload.severity] || vibrationPatterns.INFO;
