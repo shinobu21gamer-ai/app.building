@@ -19,9 +19,9 @@ const SEVERITY_CHANNELS: Record<
   string,
   { channelId: string; sound: string; androidPriority: "PRIORITY_DEFAULT" | "PRIORITY_HIGH"; apnsInterruption: "passive" | "active" | "time-sensitive" }
 > = {
-  INFO: { channelId: "alerts_info", sound: "alert_info", androidPriority: "PRIORITY_DEFAULT", apnsInterruption: "passive" },
-  WARNING: { channelId: "alerts_warning", sound: "alert_warning", androidPriority: "PRIORITY_HIGH", apnsInterruption: "time-sensitive" },
-  CRITICAL: { channelId: "alerts_critical", sound: "alert_critical", androidPriority: "PRIORITY_HIGH", apnsInterruption: "time-sensitive" },
+  INFO: { channelId: "alerts_info", sound: "alert_info_long", androidPriority: "PRIORITY_HIGH", apnsInterruption: "time-sensitive" },
+  WARNING: { channelId: "alerts_warning", sound: "alert_warning_long", androidPriority: "PRIORITY_HIGH", apnsInterruption: "time-sensitive" },
+  CRITICAL: { channelId: "alerts_critical", sound: "alert_critical_long", androidPriority: "PRIORITY_HIGH", apnsInterruption: "time-sensitive" },
 };
 
 function severitySettings(severity: string) {
