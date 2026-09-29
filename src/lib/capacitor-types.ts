@@ -87,3 +87,15 @@ export function forgetNativeToken(): void {
     localStorage.removeItem(NATIVE_TOKEN_KEY);
   } catch {}
 }
+
+// AlertBridge interface for web-to-native communication
+export interface AlertBridge {
+  stopAlertSound(): void;
+}
+
+// Extend Window interface for AlertBridge
+declare global {
+  interface Window {
+    AlertBridge?: AlertBridge;
+  }
+}

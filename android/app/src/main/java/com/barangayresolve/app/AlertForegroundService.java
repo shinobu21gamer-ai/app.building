@@ -5,7 +5,10 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
@@ -15,18 +18,23 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 public class AlertForegroundService extends Service {
 
     private static final String CHANNEL_ID = "alert_foreground_service";
     private static final int NOTIFICATION_ID = 1001;
+    public static final String ACTION_STOP_ALERT = "com.barangayresolve.app.STOP_ALERT";
+
     private MediaPlayer mediaPlayer;
     private boolean isLooping = false;
+    private BroadcastReceiver stopAlertReceiver;
 
     @Override
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
+        registerStopAlertReceiver();
     }
 
     @Override
@@ -42,6 +50,46 @@ public class AlertForegroundService extends Service {
         playAlertSound();
 
         return START_STICKY;
+    }
+
+    private void registerStopAlertReceiver() {
+        stopAlertReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (ACTION_STOP_ALERT.equals(intent.getAction())) {
+                    stopAlertSound();
+                    stopForeground(true);
+                    stopSelf();
+                }
+            }
+        };
+        IntentFilter filter = new IntentFilter(ACTION_STOP_ALERT);
+        LocalBroadcastManager.getInstance(this).registerReceiver(stopAlertReceiver, filter);
+    }
+
+    private void unregisterStopAlertReceiver() {
+        if (stopAlertReceiver != null) {
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(stopAlertReceiver);
+            stopAlertReceiver = null;
+        }
+    }
+
+    private void stopAlertSound() {
+        if (mediaPlayer != null) {
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.stop();
+            }
+            mediaPlayer.release();
+            mediaPlayer = null;
+            isLooping = false;
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        unregisterStopAlertReceiver();
+        stopAlertSound();
     }
 
     private void createNotificationChannel() {
@@ -100,20 +148,14 @@ public class AlertForegroundService extends Service {
         }
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        if (mediaPlayer != null) {
-            mediaPlayer.stop();
-            mediaPlayer.release();
-            mediaPlayer = null;
-            isLooping = false;
-        }
-    }
-
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    public static void stopAlert(Context context) {
+        Intent intent = new Intent(ACTION_STOP_ALERT);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
     }
 }

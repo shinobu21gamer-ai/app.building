@@ -73,6 +73,11 @@ export function AlertToast() {
         apiRequest(`/api/v1/alerts/${toast.alert.id}/acknowledge`, { method: "POST" });
       }
       
+      // Stop the native alert sound if running on Capacitor
+      if (typeof window !== 'undefined' && (window as any).AlertBridge?.stopAlertSound) {
+        (window as any).AlertBridge.stopAlertSound();
+      }
+      
       return prev.filter((t) => t.id !== toastId);
     });
   }, []);

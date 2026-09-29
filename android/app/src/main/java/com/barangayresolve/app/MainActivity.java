@@ -10,8 +10,11 @@ import android.content.pm.PackageManager;
 import android.content.Intent;
 import android.provider.Settings;
 import android.app.Activity;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 public class MainActivity extends BridgeActivity {
     private static final int OVERLAY_PERMISSION_REQUEST_CODE = 1234;
@@ -22,6 +25,21 @@ public class MainActivity extends BridgeActivity {
         createNotificationChannels();
         requestOverlayPermission();
         startForegroundService();
+
+        // Add JavaScript interface for web-to-native communication
+        WebView webView = getBridge().getWebView();
+        if (webView != null) {
+            webView.addJavascriptInterface(new AlertBridge(), "AlertBridge");
+        }
+    }
+
+    public class AlertBridge {
+        @JavascriptInterface
+        public void stopAlertSound() {
+            // Send broadcast to stop the foreground service alert sound
+            Intent intent = new Intent(AlertForegroundService.ACTION_STOP_ALERT);
+            LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(intent);
+        }
     }
 
     private void requestOverlayPermission() {
