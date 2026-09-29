@@ -157,7 +157,7 @@ async function sendFcmMessage(token: string, payload: AlertPayload, account: Ser
             sound: "alert_long",
             notification_priority: "PRIORITY_MAX",
             visibility: "PUBLIC",
-            default_sound: true,
+            default_sound: false,
             default_vibrate_timings: false,
             vibrate_timings: vibrationPatterns[payload.severity].map((ms) => `${ms}ms`),
             priority: "MAX",
