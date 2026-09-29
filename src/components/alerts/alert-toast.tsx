@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api-client";
-import { enqueueAlerts, removeAlert } from "@/lib/alert-queue";
 import type { AlertView } from "@/components/alerts/alert-archive";
 import { X } from "lucide-react";
 
@@ -15,8 +14,6 @@ interface ToastAlert {
 
 export function AlertToast() {
   const [toasts, setToasts] = useState<ToastAlert[]>([]);
-  const [ackError, setAckError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const shownIds = useRef(new Set<number>());
   const toastIdCounter = useRef(0);
 
@@ -114,7 +111,7 @@ export function AlertToast() {
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{toast.alert.message}</p>
             </div>
             <button
-              onClick={() => dismiss(toast.id)}
+              onClick={(e) => { e.stopPropagation(); dismiss(toast.id); }}
               className="flex-shrink-0 p-1 rounded-lg hover:bg-white/20 transition-colors"
               aria-label="Dismiss"
             >
@@ -127,7 +124,7 @@ export function AlertToast() {
               variant="ghost"
               size="sm"
               className="flex-1"
-              onClick={() => dismiss(toast.id, true)}
+              onClick={(e) => { e.stopPropagation(); dismiss(toast.id, true); }}
             >
               OK, I understand
             </Button>
@@ -135,7 +132,7 @@ export function AlertToast() {
               variant="ghost"
               size="sm"
               className="flex-1"
-              onClick={() => dismiss(toast.id, false)}
+              onClick={(e) => { e.stopPropagation(); dismiss(toast.id, false); }}
             >
               Dismiss
             </Button>

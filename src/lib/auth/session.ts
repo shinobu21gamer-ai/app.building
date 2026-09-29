@@ -76,24 +76,28 @@ async function isTokenRevoked(token: string): Promise<boolean> {
 }
 
 /**
- * Whether the session cookie carries the `Secure` flag.
- * Defaults to true in production, but can be overridden with
- * SESSION_COOKIE_SECURE (useful when running `next start` over plain HTTP
- * on a local machine). Never disable this in a real HTTPS deployment.
- */
-function isSecureCookie(): boolean {
-  const explicit = process.env.SESSION_COOKIE_SECURE;
-  if (explicit !== undefined) return explicit.toLowerCase() === "true";
-  return process.env.NODE_ENV === "production";
-}
+   * Whether the session cookie carries the `Secure` flag.
+   * Defaults to true in production, but can be overridden with
+   * SESSION_COOKIE_SECURE (useful when running `next start` over plain HTTP
+   * on a local machine). Never disable this in a real HTTPS deployment.
+   */
+  function isSecureCookie(): boolean {
+    const explicit = process.env.SESSION_COOKIE_SECURE;
+    if (explicit !== undefined) return explicit.toLowerCase() === "true";
+    return process.env.NODE_ENV === "production";
+  }
 
-export const sessionCookieOptions = {
-  httpOnly: true,
-  sameSite: "lax" as const,
-  secure: isSecureCookie(),
-  path: "/",
-  maxAge: SESSION_MAX_AGE_SECONDS,
-};
+  function isCapacitor(): boolean {
+    return process.env.NEXT_PUBLIC_CAPACITOR_APP === "true";
+  }
+
+  export const sessionCookieOptions = {
+    httpOnly: true,
+    sameSite: isCapacitor() ? ("none" as const) : ("lax" as const),
+    secure: true,
+    path: "/",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  };
 
 export async function getSessionToken(): Promise<string | null> {
   const store = await cookies();
