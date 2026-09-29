@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BarangayResolve</string>
+    <string name="title_activity_main">BarangayResolve</string>
+    <string name="package_name">com.barangayresolve.app</string>
+    <string name="custom_url_scheme">com.barangayresolve.app</string>
+</resources>

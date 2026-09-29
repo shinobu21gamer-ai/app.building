@@ -1,0 +1,26 @@
+# Only the Next.js server is deployed to Vercel. Everything below is either
+# build output that Vercel regenerates, local-only state, or a secret.
+
+# Capacitor / Android project: built and installed on a phone, never served.
+android/
+out/
+uploads/
+
+# Local build output (Vercel runs `next build` itself).
+.next/
+
+# Never ship credentials to the platform.
+secrets/
+.env
+.env.local
+.env*.local
+dev-url.txt
+*.pem
+*.p8
+*service-account*.json
+google-services.json
+
+# Tooling / OS noise
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,6 @@
+{
+    "sound":  true,
+    "title":  "EMERGENCY TEST - LOUD ALARM",
+    "message":  "This should play a loud, looping siren sound until you click OK",
+    "severity":  "CRITICAL"
+}

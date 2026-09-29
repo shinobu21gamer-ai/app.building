@@ -1,0 +1,6 @@
+{
+    "sound":  true,
+    "title":  "Warning Test",
+    "message":  "This is a warning alert with urgent dual-tone",
+    "severity":  "WARNING"
+}

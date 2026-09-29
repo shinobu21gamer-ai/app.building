@@ -1,0 +1,509 @@
+// ================================================================
+// BarangayResolve - Database Schema
+// ------------------------------------------------------------------
+// PostgreSQL via Prisma ORM. Enum-like fields are stored as String with
+// allowed values documented in comments so the value sets stay
+// application-defined (Zod + domain services) rather than DB-enforced.
+// No raw SQL is used anywhere, so the schema is provider-agnostic.
+// ================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------
+// Roles & Organization
+// ----------------------------------------------------------------
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique // RESIDENT | OFFICIAL | ADMIN
+  name        String
+  description String?
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Office {
+  id           Int              @id @default(autoincrement())
+  name         String
+  code         String           @unique
+  description  String?
+  headOfficer  String?
+  contact      String?
+  isActive     Boolean          @default(true)
+  users        User[]
+  concerns     Concern[]        @relation("OfficeConcerns")
+  assignments  CaseAssignment[]
+  routingRules RoutingRule[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model ConcernCategory {
+  id           Int           @id @default(autoincrement())
+  name         String
+  code         String        @unique
+  description  String?
+  isActive     Boolean       @default(true)
+  concerns     Concern[]
+  routingRules RoutingRule[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+// ----------------------------------------------------------------
+// Users
+// ----------------------------------------------------------------
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  phone        String?
+  address      String?
+  roleId       Int
+  role         Role     @relation(fields: [roleId], references: [id])
+  officeId     Int?
+  office       Office?  @relation(fields: [officeId], references: [id])
+  isActive     Boolean  @default(true)
+  // Incremented whenever the user's password changes (self-change, admin
+  // reset) so every previously-issued session JWT becomes invalid.
+  tokenVersion Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  submittedConcerns     Concern[]            @relation("ConcernReporter")
+  assignedOfficialFor   Concern[]            @relation("ConcernAssignedOfficial")
+  assignmentOfficial    CaseAssignment[]     @relation("AssignmentOfficial")
+  assignmentsAssigned   CaseAssignment[]     @relation("AssignmentAssigner")
+  assessmentsMade       PriorityAssessment[] @relation("AssessmentAssessedBy")
+  assessmentsOverridden PriorityAssessment[] @relation("AssessmentOverriddenBy")
+  historyEntries        CaseStatusHistory[]  @relation("HistoryActor")
+  resolutionsRecorded   ResolutionRecord[]   @relation("ResolutionOfficial")
+  notifications         Notification[]
+  feedback              Feedback[]
+  auditEntries          Audit[]
+  passwordResetCodes    PasswordResetCode[]
+  uploadRecords         UploadRecord[]
+  alertAcknowledgements SystemAlertAcknowledgement[]
+  alertReactions        SystemAlertReaction[]
+  systemAlertsCreated   SystemAlert[] @relation("SystemAlertCreator")
+  pushSubscriptions     PushSubscription[]
+  nativePushTokens       NativePushToken[]
+}
+
+// ----------------------------------------------------------------
+// Concerns & Workflow
+// ----------------------------------------------------------------
+
+model Concern {
+  id                 Int             @id @default(autoincrement())
+  caseNumber         String          @unique // e.g. BR-20260918-0001
+  userId             Int
+  user               User            @relation("ConcernReporter", fields: [userId], references: [id])
+  categoryId         Int
+  category           ConcernCategory @relation(fields: [categoryId], references: [id])
+  title              String
+  description        String
+  locationAddress    String
+  locationLat        Float?
+  locationLng        Float?
+  imageUrl           String?
+  // SUBMITTED => ASSIGNED => IN_PROGRESS => RESOLVED => CLOSED
+  status             String          @default("SUBMITTED")
+  // LOW | MEDIUM | HIGH | CRITICAL
+  priorityLevel      String?
+  priorityScore      Int?
+  assignedOfficeId   Int?
+  assignedOffice     Office?         @relation("OfficeConcerns", fields: [assignedOfficeId], references: [id])
+  assignedOfficialId Int?
+  assignedOfficial   User?           @relation("ConcernAssignedOfficial", fields: [assignedOfficialId], references: [id])
+  submittedAt        DateTime        @default(now())
+  resolvedAt         DateTime?
+  closedAt           DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  slaDueAt           DateTime?
+  slaBreachedAt      DateTime?
+  duplicateOfId      Int?
+  duplicateOf        Concern?        @relation("ConcernDuplicates", fields: [duplicateOfId], references: [id])
+
+  assessments     PriorityAssessment[]
+  history         CaseStatusHistory[]
+  assignments     CaseAssignment[]
+  resolutions     ResolutionRecord[]
+  notifications   Notification[]
+  feedback        Feedback[]
+  duplicates      Concern[]            @relation("ConcernDuplicates")
+  emailDeliveries EmailDelivery[]
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([assignedOfficeId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([slaDueAt, status])
+  @@index([duplicateOfId])
+  // Officials' main filtered list: office + status then newest first.
+  @@index([assignedOfficeId, status, createdAt])
+}
+
+// Immutable assessment snapshots. The automated rule-based assessment is
+// stored with isOverride=false and no human assessor (assessedById null).
+// An official override is appended as a separate isOverride=true row, so the
+// original automated result is always preserved for auditability.
+model PriorityAssessment {
+  id                      Int      @id @default(autoincrement())
+  concernId               Int
+  concern                 Concern  @relation(fields: [concernId], references: [id])
+  urgencyScore            Int // raw factor score, within the configured range
+  impactScore             Int // raw factor score, within the configured range
+  affectedPopulationScore Int // raw factor score, within the configured range
+  safetyScore             Int // raw factor score, within the configured range
+  totalScore              Int // sum of (score x weight) over active factors
+  level                   String // LOW | MEDIUM | HIGH | CRITICAL (configurable)
+  // Full transparent calculation snapshot (weights, thresholds, explanation)
+  // captured when the assessment was produced.
+  calculationJson         String?
+  isOverride              Boolean  @default(false)
+  overriddenById          Int?
+  overriddenBy            User?    @relation("AssessmentOverriddenBy", fields: [overriddenById], references: [id])
+  overrideReason          String?
+  assessedById            Int? // null for the automated system assessment
+  assessedBy              User?    @relation("AssessmentAssessedBy", fields: [assessedById], references: [id])
+  createdAt               DateTime @default(now())
+
+  @@index([concernId])
+}
+
+model CaseAssignment {
+  id               Int              @id @default(autoincrement())
+  concernId        Int
+  concern          Concern          @relation(fields: [concernId], references: [id])
+  officeId         Int
+  office           Office           @relation(fields: [officeId], references: [id])
+  officialId       Int? // null while a case is assigned to an office but not yet picked up
+  official         User?            @relation("AssignmentOfficial", fields: [officialId], references: [id])
+  // null when the assignment was produced automatically by the routing engine
+  // (no human assigner); set to the acting official/admin on manual reassignment.
+  assignedById     Int?
+  assignedBy       User?            @relation("AssignmentAssigner", fields: [assignedById], references: [id])
+  prevAssignmentId Int?             @unique
+  prevAssignment   CaseAssignment?  @relation("AssignmentChain", fields: [prevAssignmentId], references: [id])
+  nextAssignments  CaseAssignment[] @relation("AssignmentChain")
+  reason           String?
+  isCurrent        Boolean          @default(true)
+  assignedAt       DateTime         @default(now())
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([concernId])
+  @@index([officeId])
+  @@index([officialId])
+}
+
+// Append-only journal. Rows are never updated or deleted.
+model CaseStatusHistory {
+  id         Int      @id @default(autoincrement())
+  concernId  Int
+  concern    Concern  @relation(fields: [concernId], references: [id])
+  // STATUS_CHANGE | REMARK | ACTION | ASSIGNMENT | PRIORITY_OVERRIDE | RESOLUTION | CLOSE | SLA_BREACH
+  entryType  String
+  fromStatus String?
+  toStatus   String?
+  remarks    String?
+  actorId    Int?
+  actor      User?    @relation("HistoryActor", fields: [actorId], references: [id])
+  // RESIDENT | OFFICIAL | ADMIN | SYSTEM
+  actorRole  String?
+  createdAt  DateTime @default(now())
+
+  @@index([concernId])
+  @@index([createdAt])
+}
+
+model ResolutionRecord {
+  id             Int      @id @default(autoincrement())
+  concernId      Int      @unique
+  concern        Concern  @relation(fields: [concernId], references: [id])
+  officialId     Int
+  official       User     @relation("ResolutionOfficial", fields: [officialId], references: [id])
+  summary        String
+  actionsTaken   String
+  // FIXED | PARTIALLY_FIXED | REFERRED | NO_ACTION | OTHER
+  resolutionType String
+  // Date the issue was actually resolved (may differ from resolvedAt, which is
+  // the system record timestamp). Set by the official; defaults to now.
+  resolvedOn     DateTime @default(now())
+  // Optional supporting image attachment (JPEG/PNG/WebP, served via the
+  // authenticated uploads endpoint, same rules as concern images).
+  attachmentUrl  String?
+  resolvedAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+}
+
+// ----------------------------------------------------------------
+// Routing & Prioritization Configuration
+// ----------------------------------------------------------------
+
+model RoutingRule {
+  id            Int             @id @default(autoincrement())
+  categoryId    Int
+  category      ConcernCategory @relation(fields: [categoryId], references: [id])
+  officeId      Int
+  office        Office          @relation(fields: [officeId], references: [id])
+  priorityOrder Int             @default(1)
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([categoryId, officeId])
+  @@index([officeId])
+}
+
+// Runtime-configurable thresholds (do not hard-code levels in app code).
+model PriorityConfig {
+  id        Int      @id @default(autoincrement())
+  level     String   @unique // LOW | MEDIUM | HIGH | CRITICAL
+  minScore  Int
+  maxScore  Int      @default(20)
+  label     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Runtime-configurable scoring factors for the rule-based priority engine.
+// `weight` and the score range are administrator-configurable; the engine
+// multiplies each raw score by its weight before summing.
+model PriorityFactorConfig {
+  id           Int      @id @default(autoincrement())
+  key          String   @unique // URGENCY | IMPACT | AFFECTED_POPULATION | SAFETY
+  label        String
+  description  String?
+  weight       Int      @default(1)
+  minScore     Int      @default(1)
+  maxScore     Int      @default(5)
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ----------------------------------------------------------------
+// Notifications, Feedback, Audit
+// ----------------------------------------------------------------
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+  concernId Int?
+  concern   Concern?  @relation(fields: [concernId], references: [id])
+  // CONCERN_SUBMITTED | CONCERN_ASSIGNED | CONCERN_REASSIGNED | CONCERN_UNROUTED | STATUS_CHANGED | CONCERN_RESOLVED | FEEDBACK_REQUESTED | CASE_CLOSED | PRIORITY_CHANGED | SLA_BREACHED
+  type      String
+  title     String
+  message   String
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@index([concernId])
+}
+
+model SystemAlert {
+  id            Int      @id @default(autoincrement())
+  title         String
+  message       String
+  severity      String   @default("INFO") // INFO | WARNING | CRITICAL
+  sound         Boolean  @default(true)
+  createdById   Int
+  createdBy     User     @relation("SystemAlertCreator", fields: [createdById], references: [id])
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime?
+  acknowledgements SystemAlertAcknowledgement[]
+  reactions     SystemAlertReaction[]
+
+  @@index([createdAt])
+  @@index([expiresAt])
+}
+
+model SystemAlertAcknowledgement {
+  id        Int        @id @default(autoincrement())
+  alertId   Int
+  alert     SystemAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  acknowledgedAt DateTime @default(now())
+
+  @@unique([alertId, userId])
+  @@index([userId, acknowledgedAt])
+}
+
+model SystemAlertReaction {
+  id        Int        @id @default(autoincrement())
+  alertId   Int
+  alert     SystemAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reaction  String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([alertId, userId])
+  @@index([alertId, reaction])
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model NativePushToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String
+  deviceId  String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([platform, active])
+}
+
+model Feedback {
+  id           Int      @id @default(autoincrement())
+  concernId    Int      @unique
+  concern      Concern  @relation(fields: [concernId], references: [id])
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
+  rating       Int // 1-5
+  // SATISFIED | NEUTRAL | DISSATISFIED (derived from rating on submit)
+  satisfaction String?
+  // "Was the concern resolved?" as judged by the resident.
+  wasResolved  Boolean  @default(false)
+  comment      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Runtime key/value application settings (e.g. whether residents may
+// re-submit feedback). Values are validated at the API layer.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// Durable brute-force bucket for credential endpoints (see src/lib/rate-limit.ts).
+model LoginAttemptBucket {
+  key         String   @id // "email:<address>" | "ip:<address>"
+  failures    Int      @default(0)
+  windowStart DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Revoked JWT tokens (for server-side logout invalidation).
+model RevokedToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// One-time admin-generated password reset codes. The code itself is only ever
+// returned to the administrator who generates it and is stored hashed; it
+// expires after a short window and can be redeemed exactly once.
+model PasswordResetCode {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @unique
+  user      User      @relation(fields: [userId], references: [id])
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([expiresAt])
+}
+
+// Byte accounting for uploaded concern images / resolution attachments.
+// Enables the per-user daily upload quota (see src/lib/uploads.ts).
+model UploadRecord {
+  id       Int      @id @default(autoincrement())
+  userId   Int
+  user     User     @relation(fields: [userId], references: [id])
+  filename String   @unique
+  bytes    Int
+  // Image bytes are stored in the database when the runtime filesystem is not
+  // writable (serverless). On a normal host `data` stays null and the file is
+  // read from disk instead.
+  data     Bytes?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Audit {
+  id           Int      @id @default(autoincrement())
+  userId       Int?
+  user         User?    @relation(fields: [userId], references: [id])
+  action       String
+  resourceType String
+  resourceId   String?
+  description  String?
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+}
+
+model EmailDelivery {
+  id            Int       @id @default(autoincrement())
+  concernId     Int?
+  concern       Concern?  @relation(fields: [concernId], references: [id])
+  recipient     String
+  subject       String
+  textBody      String
+  htmlBody      String?
+  eventType     String
+  status        String    @default("PENDING")
+  attempts      Int       @default(0)
+  lastError     String?
+  nextAttemptAt DateTime?
+  sentAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([concernId, createdAt])
+}

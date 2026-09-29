@@ -1,0 +1,6 @@
+{
+    "sound":  true,
+    "title":  "Info Test",
+    "message":  "This is an info alert with gentle chime",
+    "severity":  "INFO"
+}

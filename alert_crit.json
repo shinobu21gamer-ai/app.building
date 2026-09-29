@@ -1,0 +1,6 @@
+{
+    "sound":  true,
+    "title":  "Critical Test",
+    "message":  "This is a critical alert with piercing siren",
+    "severity":  "CRITICAL"
+}

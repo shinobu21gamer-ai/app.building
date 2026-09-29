@@ -1,0 +1,10 @@
+{
+    "impactScore":  2,
+    "urgencyScore":  3,
+    "title":  "Test concern for resolution photo",
+    "affectedPopulationScore":  1,
+    "categoryId":  8,
+    "description":  "This is a test concern to verify resolution photo upload",
+    "safetyScore":  2,
+    "locationAddress":  "Test location"
+}
