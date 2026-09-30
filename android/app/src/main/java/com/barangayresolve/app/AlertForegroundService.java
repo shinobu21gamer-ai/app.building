@@ -86,8 +86,14 @@ public class AlertForegroundService extends Service {
       startAlarm(intent);
     } else if (ACTION_STOP_ALERT.equals(action)) {
       endAlarm();
+    } else {
+      // START_STICKY: if the system kills the service (app swiped away), restart
+      // it so the alarm keeps ringing. Re-deliver the last intent if we have one.
+      if (intent != null) {
+        startAlarm(intent);
+      }
     }
-    return START_NOT_STICKY;
+    return START_STICKY;
   }
 
   private void registerStopReceiver() {
@@ -118,6 +124,11 @@ public class AlertForegroundService extends Service {
     currentAlertId = intent.getIntExtra(EXTRA_ALERT_ID, -1);
     currentSeverity = severity != null ? severity : "INFO";
     String safeTitle = title != null ? title : "BarangayResolve Alert";
+
+    // Persist so the alarm can be restarted if the app process is killed.
+    if (currentAlertId != -1) {
+      AlertRestartReceiver.saveActiveAlert(this, currentAlertId, safeTitle, body != null ? body : "", currentSeverity);
+    }
 
     playAlertSound(currentSeverity);
     startVibration(currentSeverity);
@@ -272,6 +283,7 @@ public class AlertForegroundService extends Service {
   /** Full stop: silence and take the foreground service down with it. */
   private void endAlarm() {
     stopAlarm();
+    AlertRestartReceiver.clearActiveAlert(this);
     stopForeground(true);
     stopSelf();
   }

@@ -67,6 +67,18 @@
             android:name="com.capacitorjs.plugins.pushnotifications.MessagingService"
             tools:node="remove" />
 
+        <!-- Restarts the alarm after the app is killed or the device reboots. -->
+        <receiver
+            android:name=".AlertRestartReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="com.barangayresolve.app.RESTART_ALARM" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
