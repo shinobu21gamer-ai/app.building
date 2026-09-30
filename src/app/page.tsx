@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getAuthUser, roleHome } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "Home",
@@ -40,7 +41,9 @@ const workflow = [
   "Track",
 ];
 
-export default function Home() {
+export default async function Home() {
+  const user = await getAuthUser();
+
   return (
     <>
       {/* Hero */}
@@ -60,10 +63,16 @@ export default function Home() {
               and officials process them — all in one transparent workflow.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Button href="/register">Create an account</Button>
-              <Button href="/login" variant="outline">
-                Sign in
-              </Button>
+              {user ? (
+                <Button href={roleHome(user.role.key)}>Go to your dashboard</Button>
+              ) : (
+                <>
+                  <Button href="/register">Create an account</Button>
+                  <Button href="/login" variant="outline">
+                    Sign in
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </Container>
