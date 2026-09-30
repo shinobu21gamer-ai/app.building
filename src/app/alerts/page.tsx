@@ -5,7 +5,6 @@ import { requireUser, roleHome } from "@/lib/auth/session";
 import { getAlertsForUser } from "@/lib/alerts";
 import { AlertArchive } from "@/components/alerts/alert-archive";
 import { PushSetup } from "@/components/alerts/push-setup";
-import { NativePushListener } from "@/components/alerts/native-push-listener";
 
 export const metadata: Metadata = { title: "Alerts" };
 
@@ -15,7 +14,6 @@ export default async function AlertsPage() {
 
   return (
     <Container className="py-8">
-      <NativePushListener />
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Community alerts</h1>
