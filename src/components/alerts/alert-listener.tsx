@@ -226,7 +226,20 @@ export function AlertListener() {
       void (async () => {
         silenceEveryAlarm();
         const result = await apiRequest(`/api/v1/alerts/${id}/acknowledge`, { method: "POST" });
-        if (result.success) setPending((currentPending) => removeAlert(currentPending, id));
+        if (result.success) {
+          setPending((currentPending) => removeAlert(currentPending, id));
+          const isNative = getPushMode() === "capacitor";
+          if (isNative) {
+            const bridge = (window as Window & { AlertBridge?: { openAlertsPage?: () => void } }).AlertBridge;
+            if (typeof bridge?.openAlertsPage === "function") {
+              try {
+                bridge.openAlertsPage();
+              } catch {
+                // ignore
+              }
+            }
+          }
+        }
       })();
     };
     window.addEventListener("native-ack-requested", handler as EventListener);
