@@ -302,7 +302,12 @@ export function isValidPushEndpoint(endpoint: string): boolean {
 }
 
 async function deliverWebPush(payload: AlertPayload): Promise<void> {
-  if (!configure()) return;
+  if (!configure()) {
+    console.warn(
+      "[push] VAPID keys not configured (VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT); skipping web push."
+    );
+    return;
+  }
   const subscriptions = await db.pushSubscription.findMany({
     where: { user: { isActive: true } },
   });
@@ -348,7 +353,14 @@ async function deliverNativePush(payload: AlertPayload): Promise<void> {
     ? await loadServiceAccount()
     : null;
   if (!account && tokens.some((t) => t.platform !== "ios")) {
-    console.warn("[push] Firebase service account not configured; skipping FCM delivery");
+    // On serverless hosts (Vercel) a file path like FIREBASE_SERVICE_ACCOUNT_PATH
+    // will not exist; the service account must be supplied inline via
+    // FIREBASE_SERVICE_ACCOUNT (a JSON string) for FCM to work at all.
+    console.error(
+      "[push] Firebase service account not configured (set FIREBASE_SERVICE_ACCOUNT to the service-account JSON on Vercel); skipping Android FCM delivery for " +
+        tokens.filter((t) => t.platform !== "ios").length +
+        " device(s)."
+    );
   }
   const apnsBundleId = process.env.APNS_BUNDLE_ID;
   const apnsEnvironment = process.env.APNS_ENVIRONMENT === "sandbox" ? "sandbox" : "production";

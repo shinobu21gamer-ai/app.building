@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/api-client";
 import {
   ensureSeverityChannels,
   getNativePlatform,
+  readNativeToken,
   rememberNativeToken,
   type AlertView,
   type NativeAlertPayload,
@@ -68,15 +69,17 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
     };
 
     const requestPermissions = async () => {
-      const permission = await PushNotifications.checkPermissions();
+      // POST_NOTIFICATIONS only controls whether the OS shows the channel
+      // notification. FCM *data* delivery, the full-screen popup, and the
+      // alarm sound/vibration do NOT need it, so a denial must never block
+      // registration or the app goes permanently deaf.
+      let permission = await PushNotifications.checkPermissions();
       if (permission.receive !== "granted") {
-        const result = await PushNotifications.requestPermissions();
-        if (result.receive !== "granted") {
-          console.warn("Push notification permission not granted");
-          return false;
-        }
+        permission = await PushNotifications.requestPermissions();
       }
-      return true;
+      if (permission.receive !== "granted") {
+        console.warn("Notification permission not granted; alarms will still run via FCM data + overlay.");
+      }
     };
 
     const setup = async () => {
@@ -87,10 +90,15 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       );
       if (cancelled) return;
 
-      const hasPermission = await requestPermissions();
-      if (!hasPermission) return;
-
+      await requestPermissions();
       await ensureSeverityChannels();
+
+      // Always register: a launch may have happened before the user signed in,
+      // so the earlier registration POST 401'd (it needs the session). Re-sync
+      // the previously remembered token now that the webview is mounted, and
+      // request a fresh token from FCM.
+      const remembered = readNativeToken();
+      if (remembered) void persistToken(remembered);
       await PushNotifications.register();
     };
 
