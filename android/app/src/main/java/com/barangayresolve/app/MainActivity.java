@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.content.IntentFilter;
@@ -29,6 +30,10 @@ public class MainActivity extends BridgeActivity {
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    // Ensure the WebView persists cookies to disk so the session survives restarts.
+    CookieManager cookies = CookieManager.getInstance();
+    cookies.setAcceptCookie(true);
+    cookies.setAcceptThirdPartyCookies(getBridge() == null ? null : getBridge().getWebView(), true);
     NotificationChannels.ensure(this);
     requestOverlayPermission();
     requestPostNotificationsPermission();
@@ -55,6 +60,13 @@ public class MainActivity extends BridgeActivity {
   public void onPause() {
     super.onPause();
     sResumed = false;
+    // Force cookies to disk so the session survives the app being killed.
+    // Without this, the WebView keeps cookies only in memory and a force-stop
+    // logs the user out.
+    try {
+      CookieManager.getInstance().flush();
+    } catch (Exception ignored) {
+    }
   }
 
   @Override
