@@ -59,9 +59,9 @@ export const DELETE = withErrorBoundary(async (req: Request) => {
   const endpoint = new URL(req.url).searchParams.get("endpoint");
 
   if (!endpoint) {
-    // No endpoint supplied: remove every subscription for this user.
-    await db.pushSubscription.deleteMany({ where: { userId: user.id } });
-    return ok({ unsubscribed: true });
+    // Refuse a blanket wipe: a client that drops the endpoint argument must
+    // never silently unsubscribe every device at once.
+    return ok({ unsubscribed: false });
   }
 
   const deleted = await db.pushSubscription.deleteMany({
