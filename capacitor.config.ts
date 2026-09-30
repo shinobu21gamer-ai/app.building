@@ -9,9 +9,8 @@ const config: CapacitorConfig = {
     url: 'https://barangayresolve.vercel.app',
     hostname: 'barangayresolve.vercel.app'
   },
-  android: {
+android: {
     allowMixedContent: false,
-    captureInput: true,
     webContentsDebuggingEnabled: false,
     buildOptions: {
       keystorePath: undefined,
