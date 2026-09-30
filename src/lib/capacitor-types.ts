@@ -38,9 +38,9 @@ export interface AlertView {
 }
 
 export const SEVERITY_CHANNELS = {
-  INFO: { id: "alerts_info", name: "Alerts (Info)", importance: 3, sound: "alert_info" },
-  WARNING: { id: "alerts_warning", name: "Alerts (Warning)", importance: 4, sound: "alert_warning" },
-  CRITICAL: { id: "alerts_critical", name: "Alerts (Critical)", importance: 5, sound: "alert_critical" },
+  INFO: { id: "alerts_info", name: "Alerts (Info)", importance: 3, sound: "alert_info_long" },
+  WARNING: { id: "alerts_warning", name: "Alerts (Warning)", importance: 4, sound: "alert_warning_long" },
+  CRITICAL: { id: "alerts_critical", name: "Alerts (Critical)", importance: 5, sound: "alert_critical_long" },
 } as const;
 
 export async function ensureSeverityChannels(): Promise<void> {
@@ -91,6 +91,7 @@ export function forgetNativeToken(): void {
 // AlertBridge interface for web-to-native communication
 export interface AlertBridge {
   stopAlertSound(): void;
+  stopAlertFor(alertId: number): void;
 }
 
 // Extend Window interface for AlertBridge

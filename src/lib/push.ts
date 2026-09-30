@@ -121,18 +121,9 @@ async function getFcmAccessToken(account: ServiceAccount): Promise<string> {
 async function sendFcmMessage(token: string, payload: AlertPayload, account: ServiceAccount): Promise<string | null> {
   const accessToken = await getFcmAccessToken(account);
   const settings = severitySettings(payload.severity);
-  const isCritical = payload.severity === "CRITICAL";
-  const isWarning = payload.severity === "WARNING";
 
-  // Custom vibration patterns per severity (milliseconds)
-  const vibrationPatterns: Record<string, number[]> = {
-    CRITICAL: [0, 1000, 500, 1000, 500, 1000, 500, 1000, 500, 1000],  // 10 seconds of strong vibration
-    WARNING: [0, 500, 200, 500, 200, 500, 200, 500],                  // Medium, repeating
-    INFO: [0, 300, 100, 300],                                          // Short buzz
-  };
-
-  const vibrateTimings = vibrationPatterns[payload.severity] || vibrationPatterns.INFO;
-
+  // Data-only message: the native app's AlertMessagingService receives every alert even
+  // when the app is backgrounded, and builds the notification / alarm / popup itself.
   const response = await fetch(`${FCM_ENDPOINT}/${account.project_id}/messages:send`, {
     method: "POST",
     headers: {
@@ -142,34 +133,29 @@ async function sendFcmMessage(token: string, payload: AlertPayload, account: Ser
     body: JSON.stringify({
       message: {
         token,
-        notification: { title: payload.title, body: payload.message },
         data: {
           alertId: String(payload.alertId),
           title: payload.title,
           body: payload.message,
           severity: payload.severity,
+          channelId: settings.channelId,
           url: "/alerts",
         },
         android: {
           priority: "HIGH",
-          notification: {
-            channel_id: settings.channelId,
-            sound: "alert_long",
-            notification_priority: "PRIORITY_MAX",
-            visibility: "PUBLIC",
-            default_sound: false,
-            default_vibrate_timings: false,
-            vibrate_timings: vibrationPatterns[payload.severity].map((ms) => `${ms}ms`),
-            priority: "MAX",
-          },
+          ttl: "43200s",
         },
         apns: {
+          headers: { "apns-priority": "10" },
           payload: {
             aps: {
               alert: { title: payload.title, body: payload.message },
               sound: "default",
               "interruption-level": "time-sensitive",
+              "thread-id": "barangayresolve-alerts",
             },
+            alertId: String(payload.alertId),
+            url: "/alerts",
           },
         },
       },

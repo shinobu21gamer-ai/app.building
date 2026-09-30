@@ -21,6 +21,28 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
     let cancelled = false;
     const handles: Array<{ remove: () => void }> = [];
 
+    const persistToken = async (token: string) => {
+      try {
+        await ensureSeverityChannels();
+        rememberNativeToken(token);
+        await apiRequest("/api/v1/alerts/push/token", {
+          method: "POST",
+          body: JSON.stringify({ token, platform: "android" }),
+        });
+      } catch {
+        // Registration is retried on the next app launch.
+      }
+    };
+
+    let lastRefreshedToken: string | null = null;
+    const handleTokenRefreshed = (event: Event) => {
+      const token = (event as CustomEvent<{ token?: string }>).detail?.token;
+      if (!token || token === lastRefreshedToken) return;
+      lastRefreshedToken = token;
+      void persistToken(token);
+    };
+    window.addEventListener("native-token-refreshed", handleTokenRefreshed as EventListener);
+
     const toAlertView = (data: NativeAlertPayload): AlertView => ({
       id: data.alertId || Date.now(),
       title: data.title || "BarangayResolve Alert",
@@ -39,16 +61,7 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
     };
 
     const handleRegistration = async (token: { value: string }) => {
-      try {
-        await ensureSeverityChannels();
-        rememberNativeToken(token.value);
-        await apiRequest("/api/v1/alerts/push/token", {
-          method: "POST",
-          body: JSON.stringify({ token: token.value, platform: "android" }),
-        });
-      } catch {
-        // Registration is retried on the next app launch.
-      }
+      await persistToken(token.value);
     };
 
     const handleRegistrationError = (error: { error: string }) => {
@@ -86,6 +99,7 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
 
     return () => {
       cancelled = true;
+      window.removeEventListener("native-token-refreshed", handleTokenRefreshed as EventListener);
       for (const handle of handles) handle.remove();
     };
   }, [enabled]);

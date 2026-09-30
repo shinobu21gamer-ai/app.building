@@ -74,8 +74,21 @@ export function AlertToast() {
       }
       
       // Stop the native alert sound if running on Capacitor
-      if (typeof window !== 'undefined' && (window as any).AlertBridge?.stopAlertSound) {
-        (window as any).AlertBridge.stopAlertSound();
+      const bridge = (
+        window as Window & {
+          AlertBridge?: { stopAlertSound?: () => void; stopAlertFor?: (id: number) => void };
+        }
+      ).AlertBridge;
+      if (bridge) {
+        try {
+          if (typeof bridge.stopAlertFor === "function") {
+            bridge.stopAlertFor(toast.alert.id);
+          } else if (typeof bridge.stopAlertSound === "function") {
+            bridge.stopAlertSound();
+          }
+        } catch {
+          // not native
+        }
       }
       
       return prev.filter((t) => t.id !== toastId);

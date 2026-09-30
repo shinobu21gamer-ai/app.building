@@ -32,6 +32,31 @@ function silenceEveryAlarm() {
   for (const stop of Array.from(liveAlarms)) stop();
 }
 
+/** Tells the native layer (Capacitor) to stop the ringing alarm for a specific alert. */
+function stopNativeAlarm(alertId: number) {
+  const bridge = (
+    window as Window & {
+      AlertBridge?: { stopAlertSound?: () => void; stopAlertFor?: (id: number) => void };
+    }
+  ).AlertBridge;
+  if (!bridge) return;
+  if (typeof bridge.stopAlertFor === "function") {
+    try {
+      bridge.stopAlertFor(alertId);
+      return;
+    } catch {
+      /* fall through to the legacy no-arg method */
+    }
+  }
+  if (typeof bridge.stopAlertSound === "function") {
+    try {
+      bridge.stopAlertSound();
+    } catch {
+      /* not native */
+    }
+  }
+}
+
 interface ToneOptions {
   frequency: number;
   type: OscillatorType;
@@ -190,6 +215,22 @@ export function AlertListener() {
     return () => window.removeEventListener("native-push-received", handler as EventListener);
   }, [offer]);
 
+  // Native lock-screen popup ack ("OK, I understand" pressed while the app was not open).
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ id?: number }>).detail;
+      const id = detail?.id;
+      if (!id) return;
+      void (async () => {
+        silenceEveryAlarm();
+        const result = await apiRequest(`/api/v1/alerts/${id}/acknowledge`, { method: "POST" });
+        if (result.success) setPending((currentPending) => removeAlert(currentPending, id));
+      })();
+    };
+    window.addEventListener("native-ack-requested", handler as EventListener);
+    return () => window.removeEventListener("native-ack-requested", handler as EventListener);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     async function poll() {
@@ -217,11 +258,13 @@ export function AlertListener() {
       return;
     }
     silenceEveryAlarm();
+    stopNativeAlarm(current.id);
     setPending((currentPending) => removeAlert(currentPending, current.id));
   }
 
   function silence() {
     silenceEveryAlarm();
+    if (current) stopNativeAlarm(current.id);
     setMuted(true);
   }
 
