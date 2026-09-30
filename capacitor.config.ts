@@ -6,7 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     androidScheme: 'https',
-    hostname: 'barangayresolve.app'
+    url: 'https://barangayresolve.vercel.app',
+    hostname: 'barangayresolve.vercel.app'
   },
   android: {
     allowMixedContent: false,
