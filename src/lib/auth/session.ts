@@ -5,7 +5,6 @@ import { Prisma } from "@prisma/client";
 import { cache } from "react";
 import { db } from "@/lib/db";
 import { createApiError } from "@/lib/api";
-import { createHash } from "node:crypto";
 
 export const SESSION_COOKIE = "br_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
@@ -67,12 +66,14 @@ export async function verifySessionToken(
   }
 }
 
-function hashToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
+/** SHA-256 hex digest via Web Crypto, so this module loads in Edge too. */
+export async function hashToken(token: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function isTokenRevoked(token: string): Promise<boolean> {
-  const tokenHash = hashToken(token);
+  const tokenHash = await hashToken(token);
   const revoked = await db.revokedToken.findUnique({
     where: { tokenHash },
     select: { id: true },

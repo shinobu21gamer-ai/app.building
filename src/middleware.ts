@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import {
   SESSION_COOKIE,
+  hashToken,
   verifySessionToken,
 } from "@/lib/auth/session";
 
@@ -68,7 +68,7 @@ function addNoStoreHeaders(res: NextResponse): NextResponse {
 
 /** Whether the given session token has been revoked server-side (logout). */
 async function isTokenRevoked(token: string): Promise<boolean> {
-  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const tokenHash = await hashToken(token);
   const revoked = await db.revokedToken.findUnique({
     where: { tokenHash },
     select: { id: true },
