@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-import { after } from "next/server";
 import { assertSameOrigin, ok, parseBody, withErrorBoundary } from "@/lib/api";
 import { requireApiRole, requireApiUser } from "@/lib/auth/session";
 import { getAlertsForUser } from "@/lib/alerts";
@@ -29,24 +28,23 @@ export const POST = withErrorBoundary(async (req: Request) => {
       expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
     },
   });
-  // `after` keeps these deliveries alive past the response. A bare `void`
-  // promise is unsafe on serverless hosts, where the function can be frozen
-  // the moment the response is sent and the push would silently never go out.
-  after(async () => {
-    await Promise.allSettled([
-      sendSystemAlertEmails({
-        title: alert.title,
-        message: alert.message,
-        severity: alert.severity,
-      }),
-      sendSystemAlertPush({
-        alertId: alert.id,
-        title: alert.title,
-        message: alert.message,
-        severity: alert.severity,
-      }),
-    ]);
-  });
+
+  // Send push synchronously. On serverless (Vercel) the `after()` hook can
+  // freeze before the push goes out, so the alert would never reach phones.
+  // Awaiting here guarantees delivery before the response is returned.
+  await Promise.allSettled([
+    sendSystemAlertEmails({
+      title: alert.title,
+      message: alert.message,
+      severity: alert.severity,
+    }),
+    sendSystemAlertPush({
+      alertId: alert.id,
+      title: alert.title,
+      message: alert.message,
+      severity: alert.severity,
+    }),
+  ]);
 
   return ok({ alert: { id: alert.id, title: alert.title } });
 });
