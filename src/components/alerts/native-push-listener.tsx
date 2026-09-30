@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { apiRequest } from "@/lib/api-client";
@@ -13,7 +13,22 @@ import {
   type NativeAlertPayload,
 } from "@/lib/capacitor-types";
 
+type PushStatus = "idle" | "registering" | "registered" | "failed";
+
+/**
+ * Registers the device's FCM token with the server so alerts can wake the phone
+ * even when the app is closed. Mounted globally in the root layout.
+ *
+ * Every step is isolated so a single failure (channel creation, permission
+ * dialog, token fetch) can never block the others — the app must always end up
+ * registered. A small diagnostic banner reports the outcome on-device.
+ */
 export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
+  const [status, setStatus] = useState<PushStatus>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+  const isNative = typeof window !== "undefined" && Capacitor.isNativePlatform();
+
   useEffect(() => {
     if (!enabled) return;
     if (!Capacitor.isNativePlatform()) return;
@@ -29,8 +44,13 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
           method: "POST",
           body: JSON.stringify({ token, platform: getNativePlatform() }),
         });
-      } catch {
-        // Registration is retried on the next app launch.
+        if (!cancelled) setStatus("registered");
+      } catch (e) {
+        console.error("[push] token registration failed:", e);
+        if (!cancelled) {
+          setStatus("failed");
+          setError(e instanceof Error ? e.message : "registration failed");
+        }
       }
     };
 
@@ -65,44 +85,75 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
     };
 
     const handleRegistrationError = (error: { error: string }) => {
-      console.error("Push registration failed:", error?.error);
+      console.error("[push] registration error:", error?.error);
+      if (!cancelled) {
+        setStatus("failed");
+        setError(error?.error ?? "registration error");
+      }
     };
 
     const requestPermissions = async () => {
-      // POST_NOTIFICATIONS only controls whether the OS shows the channel
-      // notification. FCM *data* delivery, the full-screen popup, and the
-      // alarm sound/vibration do NOT need it, so a denial must never block
-      // registration or the app goes permanently deaf.
-      let permission = await PushNotifications.checkPermissions();
-      if (permission.receive !== "granted") {
-        permission = await PushNotifications.requestPermissions();
-      }
-      if (permission.receive !== "granted") {
-        console.warn("Notification permission not granted; alarms will still run via FCM data + overlay.");
+      try {
+        let permission = await PushNotifications.checkPermissions();
+        if (permission.receive !== "granted") {
+          permission = await PushNotifications.requestPermissions();
+        }
+        if (permission.receive !== "granted") {
+          console.warn("[push] notification permission not granted; FCM data + overlay still work.");
+        }
+      } catch (e) {
+        console.warn("[push] permission request failed:", e);
       }
     };
 
     const setup = async () => {
-      handles.push(
-        await PushNotifications.addListener("pushNotificationReceived", handlePushReceived),
-        await PushNotifications.addListener("registration", handleRegistration),
-        await PushNotifications.addListener("registrationError", handleRegistrationError),
-      );
+      if (cancelled) return;
+      setStatus("registering");
+
+      try {
+        handles.push(
+          await PushNotifications.addListener("pushNotificationReceived", handlePushReceived),
+          await PushNotifications.addListener("registration", handleRegistration),
+          await PushNotifications.addListener("registrationError", handleRegistrationError),
+        );
+      } catch (e) {
+        console.error("[push] failed to attach listeners:", e);
+      }
       if (cancelled) return;
 
       await requestPermissions();
-      await ensureSeverityChannels();
 
-      // Always register: a launch may have happened before the user signed in,
-      // so the earlier registration POST 401'd (it needs the session). Re-sync
-      // the previously remembered token now that the webview is mounted, and
-      // request a fresh token from FCM.
-      const remembered = readNativeToken();
-      if (remembered) void persistToken(remembered);
-      await PushNotifications.register();
+      try {
+        await ensureSeverityChannels();
+      } catch (e) {
+        console.warn("[push] channel creation failed:", e);
+      }
+
+      try {
+        const remembered = readNativeToken();
+        if (remembered) await persistToken(remembered);
+      } catch (e) {
+        console.warn("[push] remembered-token sync failed:", e);
+      }
+
+      try {
+        await PushNotifications.register();
+      } catch (e) {
+        console.error("[push] register() failed:", e);
+        if (!cancelled) {
+          setStatus("failed");
+          setError(e instanceof Error ? e.message : "register failed");
+        }
+      }
     };
 
-    setup().catch(() => {});
+    setup().catch((e) => {
+      console.error("[push] setup failed:", e);
+      if (!cancelled) {
+        setStatus("failed");
+        setError(e instanceof Error ? e.message : "setup failed");
+      }
+    });
 
     return () => {
       cancelled = true;
@@ -111,5 +162,42 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
     };
   }, [enabled]);
 
-  return null;
+  // Auto-dismiss the banner after a while so it doesn't linger.
+  useEffect(() => {
+    if (status === "idle" || dismissed) return;
+    const ms = status === "failed" ? 30000 : 12000;
+    const t = window.setTimeout(() => setDismissed(true), ms);
+    return () => window.clearTimeout(t);
+  }, [status, dismissed]);
+
+  if (!isNative || dismissed || status === "idle") return null;
+
+  const styles: Record<PushStatus, string> = {
+    registering: "bg-blue-600",
+    registered: "bg-green-600",
+    failed: "bg-red-600",
+    idle: "bg-slate-600",
+  };
+
+  return (
+    <div
+      className={`fixed bottom-4 left-4 right-4 z-[200] rounded-lg px-4 py-3 text-sm text-white shadow-lg ${styles[status]}`}
+      role="status"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span>
+          {status === "registering" && "Registering push notifications…"}
+          {status === "registered" && "Push registered — alerts will wake your phone"}
+          {status === "failed" && `Push failed: ${error ?? "unknown error"}`}
+        </span>
+        <button
+          onClick={() => setDismissed(true)}
+          className="shrink-0 text-white/80 hover:text-white"
+          aria-label="Dismiss"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
 }

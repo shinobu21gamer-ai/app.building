@@ -46,17 +46,23 @@ export const SEVERITY_CHANNELS = {
 export async function ensureSeverityChannels(): Promise<void> {
   if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") return;
   for (const channel of Object.values(SEVERITY_CHANNELS)) {
-    await PushNotifications.createChannel({
-      id: channel.id,
-      name: channel.name,
-      description: "BarangayResolve alert severity channel",
-      importance: channel.importance,
-      visibility: 1,
-      vibration: true,
-      lights: true,
-      lightColor: channel.id === "alerts_critical" ? "#DC2626FF" : channel.id === "alerts_warning" ? "#D97706FF" : "#2563EBFF",
-      sound: channel.sound,
-    });
+    try {
+      await PushNotifications.createChannel({
+        id: channel.id,
+        name: channel.name,
+        description: "BarangayResolve alert severity channel",
+        importance: channel.importance,
+        visibility: 1,
+        vibration: true,
+        lights: true,
+        lightColor: channel.id === "alerts_critical" ? "#DC2626FF" : channel.id === "alerts_warning" ? "#D97706FF" : "#2563EBFF",
+        sound: channel.sound,
+      });
+    } catch (error) {
+      // A channel that already exists (or a transient error) must never block
+      // FCM registration — the alarm sound/vibration do not depend on it.
+      console.warn("[push] could not create channel", channel.id, error);
+    }
   }
 }
 
