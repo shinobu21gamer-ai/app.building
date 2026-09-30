@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api-client";
 import { enqueueAlerts, removeAlert } from "@/lib/alert-queue";
 import type { AlertView } from "@/components/alerts/alert-archive";
+import { getPushMode } from "@/lib/capacitor-types";
 
 interface AlarmSound {
   context: AudioContext;
@@ -197,7 +198,8 @@ export function AlertListener() {
     silenceEveryAlarm();
     setMuted(false);
     setAckError(null);
-    if (current.sound) createAlarmSound(current.severity)?.resume().catch(() => undefined);
+    const isNative = getPushMode() === "capacitor";
+    if (!isNative && current.sound) createAlarmSound(current.severity)?.resume().catch(() => undefined);
     focusDialog();
   }, [current, focusDialog]);
 
@@ -259,6 +261,17 @@ export function AlertListener() {
     }
     silenceEveryAlarm();
     stopNativeAlarm(current.id);
+    const isNative = getPushMode() === "capacitor";
+    if (isNative) {
+      const bridge = (window as Window & { AlertBridge?: { openAlertsPage?: () => void } }).AlertBridge;
+      if (typeof bridge?.openAlertsPage === "function") {
+        try {
+          bridge.openAlertsPage();
+        } catch {
+          // ignore
+        }
+      }
+    }
     setPending((currentPending) => removeAlert(currentPending, current.id));
   }
 

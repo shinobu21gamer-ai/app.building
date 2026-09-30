@@ -87,6 +87,12 @@ public class MainActivity extends BridgeActivity {
       // Web acknowledge — stop the alarm and clear this alert's notification.
       AlertForegroundService.stop(MainActivity.this, alertId, true);
     }
+
+    @JavascriptInterface
+    public void openAlertsPage() {
+      // Navigate to alerts page in the web app.
+      dispatchToWeb("try{window.location.href='/alerts'}catch(e){}");
+    }
   }
 
   /** Thin indirection so the JS bridge cannot accidentally reference this activity after death. */

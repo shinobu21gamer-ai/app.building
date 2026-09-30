@@ -98,6 +98,7 @@ export function forgetNativeToken(): void {
 export interface AlertBridge {
   stopAlertSound(): void;
   stopAlertFor(alertId: number): void;
+  openAlertsPage(): void;
 }
 
 // Extend Window interface for AlertBridge
