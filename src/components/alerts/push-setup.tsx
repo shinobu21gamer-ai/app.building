@@ -153,7 +153,10 @@ export function PushSetup() {
         const sub = await reg.pushManager.getSubscription();
         if (sub) {
           await sub.unsubscribe();
-          await apiRequest("/api/v1/alerts/push", { method: "DELETE", body: JSON.stringify({ endpoint: sub.endpoint }) });
+          await apiRequest(
+            `/api/v1/alerts/push?endpoint=${encodeURIComponent(sub.endpoint)}`,
+            { method: "DELETE" }
+          );
         }
       }
       setStatus("disabled");

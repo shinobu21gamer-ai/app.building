@@ -25,19 +25,23 @@ export function AlertArchive({ initialAlerts }: { initialAlerts: AlertView[] }) 
   async function react(alertId: number, reaction: string) {
     setBusy(alertId);
     setError(null);
-    const result = await apiRequest<{ reaction: string }>(`/api/v1/alerts/${alertId}/react`, {
-      method: "POST",
-      body: JSON.stringify({ reaction }),
-    });
+    const result = await apiRequest<{ reaction: string; counts: Record<string, number> }>(
+      `/api/v1/alerts/${alertId}/react`,
+      {
+        method: "POST",
+        body: JSON.stringify({ reaction }),
+      }
+    );
     setBusy(null);
     if (!result.success) {
       setError(result.error.message);
       return;
     }
-    setAlerts((current) => current.map((alert) => ({
-      ...alert,
-      reactions: { ...alert.reactions, [reaction]: (alert.reactions[reaction] ?? 0) + 1 },
-    })));
+    // Replace with the server's authoritative tally (one vote per user, so
+    // switching a reaction must decrease the previous one).
+    setAlerts((current) => current.map((alert) =>
+      alert.id === alertId ? { ...alert, reactions: result.data.counts } : alert
+    ));
   }
 
   return (

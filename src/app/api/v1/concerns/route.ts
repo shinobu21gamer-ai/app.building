@@ -41,6 +41,13 @@ function isCaseNumberConflict(error: unknown): boolean {
   return false;
 }
 
+/** Sanitized SLA window in hours; falls back to 72h (3 days) for bad input. */
+function slaHours(): number {
+  const raw = Number(process.env.CASE_SLA_HOURS ?? 72);
+  if (!Number.isFinite(raw)) return 72;
+  return Math.min(Math.max(Math.round(raw), 1), 24 * 30);
+}
+
 async function createConcern(
   input: CreateConcernInput,
   userId: number,
@@ -67,7 +74,7 @@ async function createConcern(
             status: "SUBMITTED",
             priorityLevel: evaluation.level,
             priorityScore: evaluation.totalScore,
-            slaDueAt: new Date(Date.now() + Number(process.env.CASE_SLA_HOURS ?? 72) * 60 * 60 * 1000),
+            slaDueAt: new Date(Date.now() + slaHours() * 60 * 60 * 1000),
             duplicateOfId,
           },
         });

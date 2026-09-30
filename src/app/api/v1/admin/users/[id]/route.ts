@@ -192,7 +192,22 @@ export const DELETE = withErrorBoundary<[Request, RouteContext]>(
       );
     }
 
-    await db.user.delete({ where: { id: userId } });
+    try {
+      // countsForUser only covers the known relations; a referential catch-all
+      // keeps any foreign key not yet counted (e.g. PasswordResetCode rows from
+      // an admin password reset) from surfacing as a raw 500.
+      await db.user.delete({ where: { id: userId } });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2003"
+      ) {
+        throw createApiError.conflict(
+          "This account is still referenced by other records and cannot be deleted. Deactivate it instead."
+        );
+      }
+      throw error;
+    }
 
     const meta = requestMeta(req);
     await recordAudit({

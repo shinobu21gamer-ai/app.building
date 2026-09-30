@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { z } from "zod";
-import { assertSameOrigin, ok, parseBody, withErrorBoundary } from "@/lib/api";
+import { assertSameOrigin, createApiError, ok, parseBody, withErrorBoundary } from "@/lib/api";
 import { requireApiUser } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
@@ -25,6 +25,19 @@ export const POST = withErrorBoundary(async (req: Request) => {
     return ok({ registered: false, removed: true });
   }
 
+  // Defend against cross-account token takeover: a token row is keyed by the
+  // device token itself, so without this check a second account registering the
+  // same token would silently retarget the first account's push channel.
+  const existing = await db.nativePushToken.findUnique({
+    where: { token: input.token },
+    select: { userId: true },
+  });
+  if (existing && existing.userId !== user.id) {
+    throw createApiError.conflict(
+      "This device token is already registered to another account."
+    );
+  }
+
   await db.nativePushToken.upsert({
     where: { token: input.token },
     create: {
@@ -36,17 +49,23 @@ export const POST = withErrorBoundary(async (req: Request) => {
     update: { active: true, platform: input.platform, deviceId: input.deviceId ?? null },
   });
 
-  // One active device row per user+platform+device; retire stale rows for that device slot.
-  await db.nativePushToken.updateMany({
-    where: {
-      userId: user.id,
-      platform: input.platform,
-      active: true,
-      token: { not: input.token },
-      ...(input.deviceId ? { deviceId: input.deviceId } : {}),
-    },
-    data: { active: false },
-  });
+  // Replace a stale token only for the same device slot (same user, same
+  // platform, same deviceId). Without a deviceId we must not retire anything:
+  // the token may have been re-registered from an entirely different device,
+  // and old tokens are pruned automatically when FCM/APNs reject them as
+  // unregistered on the next broadcast.
+  if (input.deviceId) {
+    await db.nativePushToken.updateMany({
+      where: {
+        userId: user.id,
+        platform: input.platform,
+        deviceId: input.deviceId,
+        active: true,
+        token: { not: input.token },
+      },
+      data: { active: false },
+    });
+  }
 
   return ok({ registered: true });
 });

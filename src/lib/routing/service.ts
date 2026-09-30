@@ -178,8 +178,8 @@ export async function reassignConcern(
     );
   }
 
-  // Officials may only act on cases their own office already owns (or that are
-  // still unrouted); administrators may reassign anything.
+  // Officials may only reassign within the office that already owns the case
+  // (or an unrouted case); administrators may reassign anything.
   if (
     input.actor.roleKey === "OFFICIAL" &&
     (concern.assignedOfficeId === null ||
@@ -187,6 +187,11 @@ export async function reassignConcern(
   ) {
     throw createApiError.forbidden(
       "This concern is assigned to another office."
+    );
+  }
+  if (input.actor.roleKey === "OFFICIAL" && input.officeId !== input.actor.officeId) {
+    throw createApiError.forbidden(
+      "Officials can only reassign cases within their own office."
     );
   }
 

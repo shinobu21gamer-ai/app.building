@@ -9,12 +9,21 @@ import { ActiveNavLink } from "@/components/ui/active-nav-link";
 import { getAuthUser, roleHome } from "@/lib/auth/session";
 import { countUnreadNotifications } from "@/lib/notifications/query";
 import { AlertListener } from "@/components/alerts/alert-listener";
-import { AlertToast } from "@/components/alerts/alert-toast";
+
+function appBaseUrl(): URL {
+  const candidate = process.env.NEXT_PUBLIC_APP_URL;
+  if (candidate) {
+    try {
+      return new URL(candidate);
+    } catch {
+      /* malformed env var: fall back below rather than crash every route */
+    }
+  }
+  return new URL("http://localhost:3000");
+}
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
-  ),
+  metadataBase: appBaseUrl(),
   title: {
     default: "BarangayResolve",
     template: "%s | BarangayResolve",
@@ -80,7 +89,6 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased flex min-h-screen flex-col">
         <AlertListener />
-        <AlertToast />
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-brand-700 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"

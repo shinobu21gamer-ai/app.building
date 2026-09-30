@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import {
   assertSameOrigin,
@@ -75,15 +76,27 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
     const concernId = await concernIdFrom(ctx.params);
     const body = await parseBody(req, feedbackSchema);
 
-    const outcome = await db.$transaction((tx) =>
-      submitFeedback(tx, {
-        concernId,
-        actor: { id: user.id },
-        wasResolved: body.wasResolved,
-        rating: body.rating,
-        comment: body.comment,
-      })
-    );
+    let outcome;
+    try {
+      outcome = await db.$transaction((tx) =>
+        submitFeedback(tx, {
+          concernId,
+          actor: { id: user.id },
+          wasResolved: body.wasResolved,
+          rating: body.rating,
+          comment: body.comment,
+        })
+      );
+    } catch (error) {
+      // Two rapid submissions can race the unique concernId constraint before
+      // either transaction sees the other's row.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        throw createApiError.conflict(
+          "You have already submitted feedback for this case."
+        );
+      }
+      throw error;
+    }
 
     const meta = requestMeta(req);
     await recordAudit({

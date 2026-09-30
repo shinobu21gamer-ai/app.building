@@ -358,10 +358,9 @@ async function deliverNativePush(payload: AlertPayload): Promise<void> {
       try {
         if (row.platform === "ios") {
           if (!apnsBundleId) return;
-          const status = await sendApnsMessage(row.token, payload, apnsBundleId, apnsEnvironment);
-          if (status && INVALID_APNS_CODES.has(status)) {
-            await db.nativePushToken.update({ where: { id: row.id }, data: { active: false } });
-          }
+          // sendApnsMessage rejects with apnsStatus on any non-200 response;
+          // dead-token pruning happens in the shared catch below.
+          await sendApnsMessage(row.token, payload, apnsBundleId, apnsEnvironment);
           return;
         }
         if (!account) return;
@@ -371,7 +370,11 @@ async function deliverNativePush(payload: AlertPayload): Promise<void> {
         }
       } catch (error) {
         const fcmCode = (error as { fcmCode?: string | null }).fcmCode;
-        if (fcmCode && INVALID_FCM_CODES.has(fcmCode)) {
+        const apnsStatus = (error as { apnsStatus?: number }).apnsStatus;
+        if (
+          (fcmCode && INVALID_FCM_CODES.has(fcmCode)) ||
+          (apnsStatus && INVALID_APNS_CODES.has(apnsStatus))
+        ) {
           await db.nativePushToken.update({ where: { id: row.id }, data: { active: false } });
           return;
         }

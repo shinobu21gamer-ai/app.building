@@ -7,7 +7,11 @@ import { parseConcernFilters, buildConcernWhere } from "@/lib/cases/query";
 export const runtime = "nodejs";
 
 function csvCell(value: unknown): string {
-  const text = value instanceof Date ? value.toISOString() : String(value ?? "");
+  let text = value instanceof Date ? value.toISOString() : String(value ?? "");
+  // Formula injection: a value beginning with = + - @ (or a tab/line feed)
+  // is interpreted as a spreadsheet formula when the export is opened in
+  // Excel/Sheets. Neutralize the leading character so the cell renders as text.
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   return `"${text.replaceAll('"', '""')}"`;
 }
 

@@ -12,6 +12,12 @@ export const POST = withErrorBoundary<[Request, Context]>(async (req, ctx) => {
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id) || id <= 0) throw createApiError.notFound("Alert not found.");
 
+  const existing = await db.systemAlert.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  if (!existing) throw createApiError.notFound("Alert not found.");
+
   await db.systemAlertAcknowledgement.upsert({
     where: { alertId_userId: { alertId: id, userId: user.id } },
     create: { alertId: id, userId: user.id },

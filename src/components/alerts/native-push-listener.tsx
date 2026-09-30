@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { apiRequest } from "@/lib/api-client";
@@ -11,7 +11,6 @@ import {
   type AlertView,
   type NativeAlertPayload,
 } from "@/lib/capacitor-types";
-import { LocalNotifications } from "@capacitor/local-notifications";
 
 export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
   useEffect(() => {
@@ -27,7 +26,7 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
         rememberNativeToken(token);
         await apiRequest("/api/v1/alerts/push/token", {
           method: "POST",
-          body: JSON.stringify({ token, platform: "android" }),
+          body: JSON.stringify({ token, platform: getNativePlatform() }),
         });
       } catch {
         // Registration is retried on the next app launch.

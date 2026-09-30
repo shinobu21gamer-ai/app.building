@@ -72,7 +72,9 @@ export const POST = withErrorBoundary(async (req: Request) => {
   }
 
   if (!user.isActive) {
-    await recordLoginFailure(data.email, ip);
+    // Not a wrong-password failure: the password was correct. Recording it here
+    // would let every login attempt throttle the throttling bucket for what is
+    // really an admin action (reactivating the account).
     await recordAudit({
       action: "LOGIN_BLOCKED",
       resourceType: "user",

@@ -50,6 +50,11 @@ export async function verifySessionToken(
   try {
     const { payload } = await jwtVerify(token, getSecret());
     if (typeof payload.sub !== "string") return null;
+    const subNumber = Number(payload.sub);
+    // Reject non-symmetric garbage like "null" / "1.5". Otherwise these
+    // would be passed to Prisma as NaN and surface as a 500 instead of a
+    // clean authentication failure.
+    if (!Number.isInteger(subNumber) || subNumber <= 0) return null;
     return {
       sub: payload.sub,
       role: typeof payload.role === "string" ? payload.role : "",
@@ -94,7 +99,7 @@ async function isTokenRevoked(token: string): Promise<boolean> {
   export const sessionCookieOptions = {
     httpOnly: true,
     sameSite: isCapacitor() ? ("none" as const) : ("lax" as const),
-    secure: true,
+    secure: isSecureCookie(),
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,
   };

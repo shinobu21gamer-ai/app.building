@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { FormMessage } from "@/components/ui/field";
 import { formatDateTime } from "@/lib/format";
 import { FeedbackForm } from "./feedback-form";
 
@@ -22,29 +23,34 @@ export function FeedbackCard({
   resubmissionAllowed: boolean;
 }) {
   const [showForm, setShowForm] = useState(!existing);
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (existing && !resubmissionAllowed) {
     return (
-      <div className="space-y-1 text-sm text-slate-600">
-        <p>
-          You rated this case <span className="font-semibold">{existing.rating}/5</span>
-          {" · "}Resolved:{" "}
-          <span className="font-semibold">
-            {existing.wasResolved ? "Yes" : "No"}
-          </span>
-        </p>
-        {existing.comment && (
-          <p className="text-slate-500">“{existing.comment}”</p>
-        )}
-        <p className="text-xs text-slate-400">
-          Submitted {formatDateTime(existing.updatedAt)}
-        </p>
+      <div className="space-y-3">
+        {notice && <FormMessage tone="success">{notice}</FormMessage>}
+        <div className="space-y-1 text-sm text-slate-600">
+          <p>
+            You rated this case <span className="font-semibold">{existing.rating}/5</span>
+            {" · "}Resolved:{" "}
+            <span className="font-semibold">
+              {existing.wasResolved ? "Yes" : "No"}
+            </span>
+          </p>
+          {existing.comment && (
+            <p className="text-slate-500">“{existing.comment}”</p>
+          )}
+          <p className="text-xs text-slate-400">
+            Submitted {formatDateTime(existing.updatedAt)}
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
+      {notice && <FormMessage tone="success">{notice}</FormMessage>}
       {existing && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-slate-600">
@@ -66,7 +72,10 @@ export function FeedbackCard({
         <FeedbackForm
           concernId={concernId}
           existing={existing}
-          onDone={() => setShowForm(false)}
+          onDone={(message) => {
+            setNotice(message);
+            setShowForm(false);
+          }}
         />
       )}
       {existing && showForm && (

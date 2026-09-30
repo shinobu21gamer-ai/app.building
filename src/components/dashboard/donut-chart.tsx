@@ -36,6 +36,9 @@ export function DonutChart({
   const visible = segments.filter((segment) => segment.value > 0);
 
   let offset = 0;
+  const originalIndex = new Map(
+    segments.map((segment, index) => [segment, index])
+  );
 
   return (
     <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center">
@@ -54,7 +57,8 @@ export function DonutChart({
           stroke="#e2e8f0"
           strokeWidth={STROKE}
         />
-        {visible.map((segment, index) => {
+        {visible.map((segment) => {
+          const index = originalIndex.get(segment) ?? 0;
           const length = (segment.value / total) * CIRCUMFERENCE;
           const circle = (
             <circle

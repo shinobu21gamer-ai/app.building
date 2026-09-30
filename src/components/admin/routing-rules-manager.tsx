@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,25 @@ export function RoutingRulesManager({
   );
   const [priorityOrder, setPriorityOrder] = useState("1");
   const [isActive, setIsActive] = useState(true);
+
+  // A rule may reference a category/office that has since been deactivated.
+  // The picker still needs that option so the rule can be edited instead of
+  // silently rendering a blank select (and then failing validation).
+  const allCategories = useMemo(() => {
+    const known = new Set(categories.map((option) => option.id));
+    const extras = rules
+      .filter((rule) => !known.has(rule.categoryId))
+      .map((rule) => rule.category);
+    return [...categories, ...extras];
+  }, [categories, rules]);
+
+  const allOffices = useMemo(() => {
+    const known = new Set(offices.map((option) => option.id));
+    const extras = rules
+      .filter((rule) => !known.has(rule.officeId))
+      .map((rule) => rule.office);
+    return [...offices, ...extras];
+  }, [offices, rules]);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -192,7 +211,7 @@ export function RoutingRulesManager({
               onChange={(e) => setCategoryId(e.target.value)}
               className={selectStyles}
             >
-              {categories.map((category) => (
+              {allCategories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
                 </option>
@@ -207,7 +226,7 @@ export function RoutingRulesManager({
               onChange={(e) => setOfficeId(e.target.value)}
               className={selectStyles}
             >
-              {offices.map((office) => (
+              {allOffices.map((office) => (
                 <option key={office.id} value={office.id}>
                   {office.name}
                 </option>

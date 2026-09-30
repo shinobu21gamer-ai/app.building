@@ -42,6 +42,7 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
 
     let payload: unknown;
     let attachmentFilename: string | null = null;
+    let body: ReturnType<typeof statusChangeSchema.parse>;
 
     if (isMultipart) {
       const form = await readCappedFormData(req);
@@ -60,15 +61,18 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
         payload = { status: form.get("status"), remarks: form.get("remarks") };
       }
 
+      // Validate before persisting anything so a rejected payload cannot leave
+      // an orphaned image file behind.
+      body = statusChangeSchema.parse(payload);
+
       const attachment = form.get("attachment");
       if (attachment instanceof File && attachment.size > 0) {
         attachmentFilename = await saveConcernImage(attachment, user.id);
       }
     } else {
-      payload = await parseBody(req, statusChangeSchema);
+      body = await parseBody(req, statusChangeSchema);
     }
 
-    const body = statusChangeSchema.parse(payload);
     const attachmentUrl = attachmentFilename ? imageUrlForFile(attachmentFilename) : null;
 
     const resolveOnDate = body.resolution?.resolvedOn

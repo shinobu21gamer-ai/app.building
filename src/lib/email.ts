@@ -114,14 +114,18 @@ export async function sendConcernProgressEmail(
     });
   } catch (error) {
     console.error("[email] failed to send concern progress update:", error);
-    await db.emailDelivery.update({
-      where: { id: delivery.id },
-      data: {
-        status: "FAILED",
-        lastError: error instanceof Error ? error.message : "Unknown email error",
-        nextAttemptAt: new Date(Date.now() + 15 * 60 * 1000),
-      },
-    });
+    try {
+      await db.emailDelivery.update({
+        where: { id: delivery.id },
+        data: {
+          status: "FAILED",
+          lastError: error instanceof Error ? error.message : "Unknown email error",
+          nextAttemptAt: new Date(Date.now() + 15 * 60 * 1000),
+        },
+      });
+    } catch (dbError) {
+      console.error("[email] failed to record delivery failure:", dbError);
+    }
   }
 }
 

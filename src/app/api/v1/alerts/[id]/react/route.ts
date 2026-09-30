@@ -14,10 +14,27 @@ export const POST = withErrorBoundary<[Request, Context]>(async (req, ctx) => {
   if (!Number.isInteger(id) || id <= 0) throw createApiError.notFound("Alert not found.");
   const { reaction } = await parseBody(req, alertReactionSchema);
 
-  const saved = await db.systemAlertReaction.upsert({
+  const existingAlert = await db.systemAlert.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  if (!existingAlert) throw createApiError.notFound("Alert not found.");
+
+  await db.systemAlertReaction.upsert({
     where: { alertId_userId: { alertId: id, userId: user.id } },
     create: { alertId: id, userId: user.id, reaction },
     update: { reaction },
   });
-  return ok({ reaction: saved.reaction });
+
+  // One reaction per user (upsert above); return the authoritative totals so
+  // the client replaces its local counts instead of incrementing in place,
+  // which would drift when a user changes their reaction.
+  const rows = await db.systemAlertReaction.findMany({
+    where: { alertId: id },
+    select: { reaction: true },
+  });
+  const counts: Record<string, number> = { ACKNOWLEDGED: 0, HELPFUL: 0, NEED_HELP: 0 };
+  for (const row of rows) counts[row.reaction] = (counts[row.reaction] ?? 0) + 1;
+
+  return ok({ reaction, counts });
 });

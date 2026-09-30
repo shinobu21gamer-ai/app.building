@@ -14,13 +14,25 @@ const MESSAGE_MIN = 5;
 const MESSAGE_MAX = 2000;
 
 function zodFieldErrors(details: unknown): Record<string, string> {
-  if (!Array.isArray(details)) return {};
   const out: Record<string, string> = {};
-  for (const item of details) {
-    if (typeof item !== "object" || item === null) continue;
-    const entry = item as { path?: unknown; message?: unknown };
-    if (typeof entry.path === "string" && typeof entry.message === "string") {
-      out[entry.path] = entry.message;
+  if (Array.isArray(details)) {
+    // Server VALIDATION_ERROR details: an array of Zod issues.
+    for (const item of details) {
+      if (typeof item !== "object" || item === null) continue;
+      const entry = item as { path?: unknown; message?: unknown };
+      const field = Array.isArray(entry.path) ? entry.path.join(".") : entry.path;
+      if (typeof field === "string" && field && typeof entry.message === "string") {
+        out[field] = entry.message;
+      }
+    }
+    return out;
+  }
+  if (typeof details === "object" && details !== null) {
+    // Zod flatten().fieldErrors: Record<field, string[]>. Keep the first message.
+    for (const [field, messages] of Object.entries(details as Record<string, unknown>)) {
+      if (Array.isArray(messages) && typeof messages[0] === "string") {
+        out[field] = messages[0];
+      }
     }
   }
   return out;

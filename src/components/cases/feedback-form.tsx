@@ -26,7 +26,7 @@ export function FeedbackForm({
 }: {
   concernId: number;
   existing?: FeedbackDraft | null;
-  onDone?: () => void;
+  onDone?: (message: string) => void;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -68,13 +68,12 @@ export function FeedbackForm({
       return;
     }
 
-    setSuccess(
-      result.data.created
-        ? "Thank you for your feedback."
-        : "Your feedback has been updated."
-    );
+    const message = result.data.created
+      ? "Thank you for your feedback."
+      : "Your feedback has been updated.";
+    setSuccess(message);
     router.refresh();
-    onDone?.();
+    onDone?.(message);
   }
 
   return (
