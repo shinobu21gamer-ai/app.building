@@ -1,0 +1,42 @@
+{
+	"appId": "com.barangayresolve.app",
+	"appName": "BarangayResolve",
+	"webDir": "out",
+	"server": {
+		"androidScheme": "https",
+		"url": "https://barangayresolve.vercel.app",
+		"hostname": "barangayresolve.vercel.app"
+	},
+	"android": {
+		"allowMixedContent": false,
+		"webContentsDebuggingEnabled": false
+	},
+	"plugins": {
+		"PushNotifications": {
+			"presentationOptions": [
+				"badge",
+				"sound",
+				"alert"
+			]
+		},
+		"LocalNotifications": {
+			"smallIcon": "ic_stat_icon_config_sample",
+			"iconColor": "#4880FF",
+			"sound": "default"
+		},
+		"SplashScreen": {
+			"launchShowDuration": 2000,
+			"backgroundColor": "#1e3a8a",
+			"showSpinner": false
+		},
+		"BackgroundTask": {
+			"enabled": true
+		},
+		"BackgroundRunner": {
+			"enabled": true,
+			"label": "BarangayResolve Background Alerts",
+			"text": "Monitoring for emergency alerts...",
+			"iconColor": "#1e3a8a"
+		}
+	}
+}

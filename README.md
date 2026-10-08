@@ -63,6 +63,79 @@ npm run dev               # http://localhost:3000
 | `npm run db:studio` | Open Prisma Studio (browse the database) |
 | `npm run db:validate` | Validate `prisma/schema.prisma` |
 | `npm run email:retry` | Process due failed/pending SMTP deliveries once |
+| `npm run android:sync` | Re-generate the Capacitor Android assets (config + plugin list) |
+| `npm run android:apk` | Build a sideloadable **debug** APK (syncs Capacitor first) |
+| `npm run android:apk:release` | Build a **release** APK (requires `android/keystore.properties`) |
+
+## Building the Android APK
+
+The APK is a thin Capacitor WebView: it does not bundle the site, it loads
+`server.url` from `capacitor.config.ts` (currently
+`https://barangayresolve.vercel.app`). Everything the APK needs to know lives in
+`android/app/src/main/assets/capacitor.config.json`, which Capacitor only writes
+when `npx cap sync android` runs — **so always build through the scripts below**,
+never by running Gradle on its own:
+
+```bash
+npm run android:apk             # debug APK  -> android/app/build/outputs/apk/debug/app-debug.apk
+npm run android:apk:release     # release APK -> android/app/build/outputs/apk/release/app-release.apk
+```
+
+Both scripts run `npx cap sync android` first and abort if the generated config
+is missing. Copy the APK to the phone and open it (allow *Install unknown apps*
+for your file manager/browser).
+
+### Release signing (recommended for updates you install over each other)
+
+`android/app/build.gradle` signs release builds when `android/keystore.properties`
+exists (gitignored). Create the keystore once:
+
+```bash
+keytool -genkeypair -v -keystore android/barangayresolve-release.jks \
+  -alias barangayresolve -keyalg RSA -keysize 2048 -validity 10000
+```
+
+then create `android/keystore.properties`:
+
+```properties
+storeFile=barangayresolve-release.jks   # path relative to android/
+storePassword=...
+keyAlias=barangayresolve
+keyPassword=...
+```
+
+Without that file, `assembleRelease` produces an *unsigned* APK that Android
+refuses to install — use the debug APK instead.
+
+### Bumping the version before you hand out an APK
+
+Raise `versionCode` (and `versionName`) in `android/app/build.gradle` for every
+APK you distribute. Android rejects an update whose `versionCode` is not higher
+than the installed one.
+
+### If the app opens to a blank/white screen
+
+That means the APK was built without `capacitor.config.json` (Capacitor fell
+back to the empty local bundle instead of the deployed site). Rebuild with
+`npm run android:apk` — the script guarantees the config is packaged.
+
+### If the app closes immediately (or shows a "could not start" screen)
+
+The native shell reports startup failures on screen instead of closing silently,
+so the message you see names the cause (for example a missing Capacitor config
+or an exception during WebView setup). If it still closes with no message at
+all, the crash happens before the activity is created — capture it with Logcat
+over USB and look for `FATAL EXCEPTION`:
+
+```bash
+adb logcat -c && adb logcat -d > crash.txt   # clear, open the app, then dump
+```
+
+### If Android says "App not installed"
+
+The APK is signed with a different key than the app already on the phone (or the
+`versionCode` is too low). Uninstall the old app first, then install the new
+APK; from then on keep using the same keystore so updates install in place.
 
 ## Environment Variables
 

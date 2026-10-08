@@ -18,7 +18,10 @@
     "db:check": "tsx scripts/db-check.ts",
     "db:studio": "prisma studio",
     "db:validate": "prisma validate",
-    "email:retry": "tsx scripts/retry-email-deliveries.ts"
+    "email:retry": "tsx scripts/retry-email-deliveries.ts",
+    "android:sync": "node scripts/build-android.mjs --sync-only",
+    "android:apk": "node scripts/build-android.mjs",
+    "android:apk:release": "node scripts/build-android.mjs --release"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
