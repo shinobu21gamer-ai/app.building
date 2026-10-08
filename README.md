@@ -119,6 +119,18 @@ That means the APK was built without `capacitor.config.json` (Capacitor fell
 back to the empty local bundle instead of the deployed site). Rebuild with
 `npm run android:apk` — the script guarantees the config is packaged.
 
+### If the app closes immediately (or shows a "could not start" screen)
+
+The native shell reports startup failures on screen instead of closing silently,
+so the message you see names the cause (for example a missing Capacitor config
+or an exception during WebView setup). If it still closes with no message at
+all, the crash happens before the activity is created — capture it with Logcat
+over USB and look for `FATAL EXCEPTION`:
+
+```bash
+adb logcat -c && adb logcat -d > crash.txt   # clear, open the app, then dump
+```
+
 ### If Android says "App not installed"
 
 The APK is signed with a different key than the app already on the phone (or the

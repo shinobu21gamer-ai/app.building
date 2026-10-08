@@ -9,17 +9,33 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.provider.Settings;
+import android.util.Log;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import com.getcapacitor.BridgeActivity;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.ref.WeakReference;
 
 public class MainActivity extends BridgeActivity {
 
   public static final String EXTRA_OPEN_ALERTS = "openAlerts";
+
+  private static final String TAG = "MainActivity";
+
+  /**
+   * Written by `npx cap sync android` into the APK's assets. It carries
+   * server.url - the deployed origin this WebView shell loads. When it is
+   * missing the bridge falls back to the (empty) local bundle and the app would
+   * show a blank screen, so we surface that instead.
+   */
+  private static final String CAPACITOR_CONFIG_ASSET = "capacitor.config.json";
 
   private static final int OVERLAY_PERMISSION_REQUEST_CODE = 1234;
   private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 1235;
@@ -32,37 +48,66 @@ public class MainActivity extends BridgeActivity {
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    // Ensure the WebView persists cookies to disk so the session survives restarts.
-    CookieManager cookies = CookieManager.getInstance();
-    cookies.setAcceptCookie(true);
-    cookies.setAcceptThirdPartyCookies(getBridge() == null ? null : getBridge().getWebView(), true);
-    NotificationChannels.ensure(this);
-    boolean prompted = getSharedPreferences(ALERT_PERMISSION_PREFS, MODE_PRIVATE)
-        .getBoolean(KEY_PERMISSION_FLOW_PROMPTED, false);
-    if (!prompted) {
-      getSharedPreferences(ALERT_PERMISSION_PREFS, MODE_PRIVATE)
-          .edit()
-          .putBoolean(KEY_PERMISSION_FLOW_PROMPTED, true)
-          .apply();
-      requestAlertDisplayPermissions();
+    try {
+      super.onCreate(savedInstanceState);
+    } catch (Throwable error) {
+      // A failure inside the Capacitor bridge would otherwise close the app
+      // with no explanation. Show what happened instead.
+      reportStartupFailure("The app could not start", error);
+      return;
+    }
+
+    try {
+      if (!hasCapacitorConfig()) {
+        reportStartupFailure(
+            "This build is incomplete",
+            "The APK is missing capacitor.config.json, so it has no address to load.\n\n"
+                + "Rebuild it with `npm run android:apk` (which runs `npx cap sync android` first).",
+            null);
+        return;
+      }
+
+      // Ensure the WebView persists cookies to disk so the session survives restarts.
+      CookieManager cookies = CookieManager.getInstance();
+      cookies.setAcceptCookie(true);
+      WebView webView = getBridge() == null ? null : getBridge().getWebView();
+      if (webView != null) {
+        cookies.setAcceptThirdPartyCookies(webView, true);
+      }
+
+      NotificationChannels.ensure(this);
+      boolean prompted = getSharedPreferences(ALERT_PERMISSION_PREFS, MODE_PRIVATE)
+          .getBoolean(KEY_PERMISSION_FLOW_PROMPTED, false);
+      if (!prompted) {
+        getSharedPreferences(ALERT_PERMISSION_PREFS, MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_PERMISSION_FLOW_PROMPTED, true)
+            .apply();
+        requestAlertDisplayPermissions();
+      }
+    } catch (Throwable error) {
+      reportStartupFailure("The app could not finish starting", error);
     }
   }
 
   @Override
   public void onResume() {
-    super.onResume();
-    sCurrent = new WeakReference<>(this);
-    sResumed = true;
+    try {
+      super.onResume();
+      sCurrent = new WeakReference<>(this);
+      sResumed = true;
 
-    WebView webView = getBridge() == null ? null : getBridge().getWebView();
-    if (webView != null) {
-      webView.addJavascriptInterface(new AlertBridge(), "AlertBridge");
-    }
+      WebView webView = getBridge() == null ? null : getBridge().getWebView();
+      if (webView != null) {
+        webView.addJavascriptInterface(new AlertBridge(), "AlertBridge");
+      }
 
-    if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_OPEN_ALERTS, false)) {
-      getIntent().removeExtra(EXTRA_OPEN_ALERTS);
-      // The web layer polls on mount and surfaces whatever is still active.
+      if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_OPEN_ALERTS, false)) {
+        getIntent().removeExtra(EXTRA_OPEN_ALERTS);
+        // The web layer polls on mount and surfaces whatever is still active.
+      }
+    } catch (Throwable error) {
+      reportStartupFailure("The app could not resume", error);
     }
   }
 
@@ -76,6 +121,68 @@ public class MainActivity extends BridgeActivity {
     try {
       CookieManager.getInstance().flush();
     } catch (Exception ignored) {
+    }
+  }
+
+  /** True when the packaged capacitor.config.json exists in this APK. */
+  private boolean hasCapacitorConfig() {
+    try (InputStream ignored = getAssets().open(CAPACITOR_CONFIG_ASSET)) {
+      return true;
+    } catch (IOException error) {
+      Log.e(TAG, "packaged " + CAPACITOR_CONFIG_ASSET + " is missing", error);
+      return false;
+    }
+  }
+
+  /**
+   * Replaces the WebView with a readable message when startup fails, so a broken
+   * build can never look like "the app opens and immediately closes" with no clue.
+   */
+  private void reportStartupFailure(String headline, Throwable error) {
+    reportStartupFailure(headline, null, error);
+  }
+
+  private void reportStartupFailure(String headline, String detail, Throwable error) {
+    if (error != null) {
+      Log.e(TAG, headline, error);
+    } else {
+      Log.e(TAG, headline + ": " + detail);
+    }
+
+    String message = detail;
+    if (message == null) {
+      message = String.valueOf(error);
+    }
+
+    try {
+      int pad = (int) (24 * getResources().getDisplayMetrics().density);
+
+      LinearLayout root = new LinearLayout(this);
+      root.setOrientation(LinearLayout.VERTICAL);
+      root.setPadding(pad, pad, pad, pad);
+      root.setBackgroundColor(0xFF0F172A);
+
+      TextView title = new TextView(this);
+      title.setTextColor(0xFFFFFFFF);
+      title.setTextSize(20f);
+      title.setText(headline);
+      root.addView(title);
+
+      TextView body = new TextView(this);
+      body.setTextColor(0xFFE2E8F0);
+      body.setTextSize(13f);
+      body.setPadding(0, pad / 2, 0, pad / 2);
+      body.setText(message);
+      root.addView(body);
+
+      Button retry = new Button(this);
+      retry.setText("Try again");
+      retry.setOnClickListener(view -> recreate());
+      root.addView(retry);
+
+      setContentView(root);
+    } catch (Throwable ignored) {
+      // Nothing else we can do - the log line above is the record.
     }
   }
 
