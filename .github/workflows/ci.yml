@@ -110,9 +110,17 @@ jobs:
           }
           JSON
 
-      - name: Sync Capacitor assets
-        run: npx cap sync android
-
+      # Builds through the same script users run: it syncs Capacitor first,
+      # repairs the gradlew executable bit and refuses to hand out an APK with no
+      # Firebase configuration. The output is captured so a failure is readable
+      # in the run summary instead of only behind a log download.
       - name: Assemble the debug APK
-        run: ./gradlew assembleDebug --no-daemon
-        working-directory: android
+        run: |
+          set -o pipefail
+          if npm run android:apk > android-build.log 2>&1; then
+            tail -20 android-build.log
+          else
+            echo "::error::$(tail -c 900 android-build.log | tr '\n' ' ')"
+            tail -80 android-build.log
+            exit 1
+          fi
