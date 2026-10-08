@@ -83,8 +83,22 @@ npm run android:apk:release     # release APK -> android/app/build/outputs/apk/r
 ```
 
 Both scripts run `npx cap sync android` first and abort if the generated config
-is missing. Copy the APK to the phone and open it (allow *Install unknown apps*
-for your file manager/browser).
+is missing. They also require `android/app/google-services.json` (see
+[Push alerts on the phone](#push-alerts-on-the-phone)): an APK built without it
+can never receive alerts, so that configuration is now a build failure rather
+than a surprise on the phone. Keep the file out of the repository (it is
+gitignored) and either drop it into `android/app/` or point the build at it:
+
+```bash
+npm run android:apk -- --push-config ../secrets/google-services.json
+```
+
+Building an alerts-less APK on purpose is possible with
+`npm run android:apk -- --allow-missing-push`; the app then says on the Alerts
+screen that this build cannot register, instead of failing silently.
+
+Copy the APK to the phone and open it (allow *Install unknown apps* for your
+file manager/browser).
 
 ### Release signing (recommended for updates you install over each other)
 
@@ -124,13 +138,46 @@ back to the empty local bundle instead of the deployed site). Rebuild with
 
 The native shell reports startup failures on screen instead of closing silently,
 so the message you see names the cause (for example a missing Capacitor config
-or an exception during WebView setup). If it still closes with no message at
-all, the crash happens before the activity is created — capture it with Logcat
-over USB and look for `FATAL EXCEPTION`:
+or an exception during WebView setup).
+
+The next launch also explains the previous one. Two records are shown when they
+exist:
+
+- a banner at the top of the app ("The app closed last time…") with the report,
+  and
+- **Alerts → Alert diagnostics**, which keeps the details and has a copy button.
+
+Those cover the closes that never reach the app's own error handler: an
+uncaught exception on a background thread, a WebView renderer failure (the shell
+now reloads itself instead of letting Android kill the process), and Android's
+own record of the last exit — a native crash, an ANR ("app not responding") or a
+low-memory kill, which is read back from `ApplicationExitInfo`.
+
+If nothing is recorded at all, capture Logcat over USB and look for
+`FATAL EXCEPTION`:
 
 ```bash
 adb logcat -c && adb logcat -d > crash.txt   # clear, open the app, then dump
 ```
+
+### If the app shows "Push failed" (and/or closes right after opening)
+
+The red banner at the bottom prints the reason this phone could not register for
+push alerts. Open **Alerts → Alert diagnostics** and press *Copy diagnostics* to
+get the full text; it reports three independent things:
+
+| Report | Meaning | Fix |
+| --- | --- | --- |
+| `google-services.json packaged: no` | The APK has no Firebase project | Rebuild with `android/app/google-services.json` in place (the build script now refuses to skip this) |
+| `Firebase started: no` | The file's package name does not match `com.barangayresolve.app` | Re-download it from the Firebase console for that package |
+| `Last push error: …SERVICE_NOT_AVAILABLE…` | The phone could not reach Firebase (no connection, no/outdated Google Play services, or a Google-account restriction) | Fix the phone's network/Play services, then press *Refresh* |
+| `Server has FCM credentials: no` | The phone is fine, but the **server** is missing `FIREBASE_SERVICE_ACCOUNT` (`FIREBASE_SERVICE_ACCOUNT_PATH`), so it cannot send anything | Set the variable on the deployment and redeploy |
+| `…already registered to another account` | Another account on this phone owned the token | Sign out of that account and register again |
+
+An APK whose build has no Firebase project will not kill the app any more: it
+reports the problem instead. The Capacitor `PushNotifications.register()` call,
+which throws an unhandled exception on such a build, is only used as a fallback
+for APKs older than this one.
 
 ### If Android says "App not installed"
 
@@ -153,10 +200,15 @@ still controls delivery when the browser is closed.
 
 The APK uses high-priority, data-only FCM messages and a native foreground
 service for the alert tone, vibration, and popup. Configure
-`android/app/google-services.json` for package `com.barangayresolve.app`, and
-configure the server with `FIREBASE_SERVICE_ACCOUNT` (the service-account JSON
-string; use this for serverless deployments) or `FIREBASE_SERVICE_ACCOUNT_PATH`
-on a server that can read that file. Users must sign in, enable phone alerts,
+`android/app/google-services.json` for package `com.barangayresolve.app` (the
+build script refuses to produce a push-less APK without
+`--allow-missing-push`, and `--push-config <path>` copies the file in from
+wherever you keep it), and configure the server with
+`FIREBASE_SERVICE_ACCOUNT` (the service-account JSON string; use this for
+serverless deployments) or `FIREBASE_SERVICE_ACCOUNT_PATH` on a server that can
+read that file. Registration happens inside the app's own code
+(`AlertBridge.requestPushToken()`), which catches every failure; the Capacitor
+plugin is only a fallback for older APKs. Users must sign in, enable phone alerts,
 and allow Android notification and alert-display permissions. Android 14+
 full-screen lock-screen popups require the corresponding special access.
 

@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 import { assertSameOrigin, createApiError, ok, parseBody, withErrorBoundary } from "@/lib/api";
 import { requireApiUser } from "@/lib/auth/session";
+import { isNativePushConfigured } from "@/lib/push";
 
 export const runtime = "nodejs";
 
@@ -26,7 +27,13 @@ export const GET = withErrorBoundary(async (req: Request) => {
     where: { userId: user.id, platform: parsedPlatform.data, active: true },
     select: { id: true },
   });
-  return ok({ registered: Boolean(registration) });
+
+  // Registration and delivery fail independently, so the phone reports both:
+  // "this device is registered" and "this server can actually send".
+  return ok({
+    registered: Boolean(registration),
+    serverConfigured: await isNativePushConfigured(),
+  });
 });
 
 export const POST = withErrorBoundary(async (req: Request) => {

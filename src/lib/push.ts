@@ -308,6 +308,24 @@ export function getPushPublicKey(): string | null {
   }
 }
 
+/**
+ * Whether this server holds the Firebase service-account credentials it needs to
+ * reach phones at all.
+ *
+ * Registering a phone and *delivering* to it fail independently: a device can be
+ * registered successfully while the server has no credentials, in which case
+ * nothing is ever sent and the phone looks broken. The alert-diagnostics screen
+ * reports this so the two halves are never confused.
+ */
+export async function isNativePushConfigured(): Promise<boolean> {
+  try {
+    return (await loadServiceAccount()) !== null;
+  } catch (error) {
+    console.error("[push] could not read the Firebase service account:", error);
+    return false;
+  }
+}
+
 const LOOPBACK_HOST = /^localhost(\.[a-z]+)?$/i;
 
 /**

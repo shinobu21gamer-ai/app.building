@@ -12,6 +12,11 @@ import {
   toNativeAlertView,
   type NativeAlertPayload,
 } from "@/lib/capacitor-types";
+import {
+  readPushDiagnostics,
+  requestNativePushToken,
+  waitForAlertBridge,
+} from "@/lib/native-diagnostics";
 
 type PushStatus = "idle" | "registering" | "registered" | "failed";
 
@@ -19,8 +24,17 @@ type PushStatus = "idle" | "registering" | "registered" | "failed";
  * Registers the device's FCM token with the server so Android can receive alerts
  * while the app is backgrounded. Mounted globally in the root layout.
  *
- * Every step is isolated so a transient failure is visible and can be retried.
- * A small diagnostic banner reports the server registration outcome on-device.
+ * Two registration paths exist on purpose:
+ *
+ * 1. `AlertBridge.requestPushToken()` (current APKs) registers inside the app's
+ *    own code, which catches every failure. The Capacitor plugin's
+ *    `register()` throws on a background thread when a build has no Firebase
+ *    configuration, and Capacitor turns that into an uncaught RuntimeException
+ *    that closes the whole app with no warning — so it is never the first choice.
+ * 2. The plugin call is the fallback for APKs built before that bridge existed.
+ *
+ * A build whose diagnostics say push cannot work is not asked to register at
+ * all; it reports the reason instead.
  */
 export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
   const [status, setStatus] = useState<PushStatus>("idle");
@@ -33,7 +47,30 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
     if (!Capacitor.isNativePlatform()) return;
 
     let cancelled = false;
+    let settled = false;
+    let timeoutId: number | null = null;
     const handles: Array<{ remove: () => void }> = [];
+
+    const clearTimer = () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    };
+
+    /** Reports a failure once, and answers any UI waiting on the token event. */
+    const fail = (message: string) => {
+      if (cancelled) return;
+      settled = true;
+      clearTimer();
+      setStatus("failed");
+      setError(message);
+      window.dispatchEvent(
+        new CustomEvent("native-token-registration", {
+          detail: { registered: false, message },
+        })
+      );
+    };
 
     const persistToken = async (token: string) => {
       try {
@@ -54,6 +91,8 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
           );
           throw new Error(message);
         }
+        settled = true;
+        clearTimer();
         window.dispatchEvent(
           new CustomEvent("native-token-registration", {
             detail: { token, registered: true },
@@ -62,10 +101,7 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
         if (!cancelled) setStatus("registered");
       } catch (e) {
         console.error("[push] token registration failed:", e);
-        if (!cancelled) {
-          setStatus("failed");
-          setError(e instanceof Error ? e.message : "registration failed");
-        }
+        fail(e instanceof Error ? e.message : "registration failed");
       }
     };
 
@@ -76,21 +112,13 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       lastRefreshedToken = token;
       void persistToken(token);
     };
-    window.addEventListener("native-token-refreshed", handleTokenRefreshed as EventListener);
-    const handleAuthReady = () => {
-      const remembered = readNativeToken();
-      if (remembered) {
-        void persistToken(remembered);
-      } else {
-        void PushNotifications.register().catch((e) => {
-          if (!cancelled) {
-            setStatus("failed");
-            setError(e instanceof Error ? e.message : "register failed");
-          }
-        });
-      }
+
+    const handleNativePushError = (event: Event) => {
+      const message = (event as CustomEvent<{ message?: string }>).detail?.message;
+      if (!message) return;
+      console.error("[push] native registration error:", message);
+      fail(message);
     };
-    window.addEventListener("native-auth-ready", handleAuthReady);
 
     const handlePushReceived = (notification: { data?: unknown }) => {
       const data = (notification?.data ?? {}) as NativeAlertPayload;
@@ -103,10 +131,7 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
 
     const handleRegistrationError = (error: { error: string }) => {
       console.error("[push] registration error:", error?.error);
-      if (!cancelled) {
-        setStatus("failed");
-        setError(error?.error ?? "registration error");
-      }
+      fail(error?.error ?? "registration error");
     };
 
     const requestPermissions = async () => {
@@ -123,9 +148,54 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       }
     };
 
+    /** Registers on whichever path this APK supports. */
+    const registerDevice = async () => {
+      if (cancelled || settled) return;
+      setStatus("registering");
+      clearTimer();
+
+      // Preferred: the app's own registration, which cannot kill the process and
+      // reports failures through the events handled above.
+      if (requestNativePushToken()) {
+        // The timer is the "no answer at all" net for the native call.
+        timeoutId = window.setTimeout(
+          () => fail("Android did not return a push token. Check the phone's connection and try again."),
+          25000
+        );
+        return;
+      }
+
+      // Older APKs only have the Capacitor plugin.
+      try {
+        await PushNotifications.register();
+      } catch (e) {
+        fail(e instanceof Error ? e.message : "register failed");
+      }
+    };
+
+    const handleAuthReady = () => {
+      const remembered = readNativeToken();
+      if (remembered) {
+        void persistToken(remembered);
+      } else {
+        void registerDevice();
+      }
+    };
+
     const setup = async () => {
       if (cancelled) return;
       setStatus("registering");
+
+      // Give the native bridge a moment to appear before deciding anything: it
+      // carries whether this build can register at all.
+      await waitForAlertBridge(3000);
+      if (cancelled) return;
+
+      const diagnostics = readPushDiagnostics();
+      if (diagnostics && !diagnostics.available) {
+        fail(diagnostics.reason ?? "Push alerts are unavailable in this build.");
+        return;
+      }
 
       try {
         handles.push(
@@ -148,33 +218,32 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
 
       try {
         const remembered = readNativeToken();
-        if (remembered) await persistToken(remembered);
+        if (remembered) {
+          await persistToken(remembered);
+          if (settled) return;
+        }
       } catch (e) {
         console.warn("[push] remembered-token sync failed:", e);
       }
 
-      try {
-        await PushNotifications.register();
-      } catch (e) {
-        console.error("[push] register() failed:", e);
-        if (!cancelled) {
-          setStatus("failed");
-          setError(e instanceof Error ? e.message : "register failed");
-        }
-      }
+      if (cancelled) return;
+      await registerDevice();
     };
+
+    window.addEventListener("native-token-refreshed", handleTokenRefreshed as EventListener);
+    window.addEventListener("native-push-error", handleNativePushError as EventListener);
+    window.addEventListener("native-auth-ready", handleAuthReady);
 
     setup().catch((e) => {
       console.error("[push] setup failed:", e);
-      if (!cancelled) {
-        setStatus("failed");
-        setError(e instanceof Error ? e.message : "setup failed");
-      }
+      fail(e instanceof Error ? e.message : "setup failed");
     });
 
     return () => {
       cancelled = true;
+      clearTimer();
       window.removeEventListener("native-token-refreshed", handleTokenRefreshed as EventListener);
+      window.removeEventListener("native-push-error", handleNativePushError as EventListener);
       window.removeEventListener("native-auth-ready", handleAuthReady);
       for (const handle of handles) handle.remove();
     };
@@ -183,7 +252,7 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
   // Auto-dismiss the banner after a while so it doesn't linger.
   useEffect(() => {
     if (status === "idle" || dismissed) return;
-    const ms = status === "failed" ? 30000 : 12000;
+    const ms = status === "failed" ? 45000 : 12000;
     const t = window.setTimeout(() => setDismissed(true), ms);
     return () => window.clearTimeout(t);
   }, [status, dismissed]);
@@ -202,11 +271,20 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       className={`fixed bottom-4 left-4 right-4 z-[200] rounded-lg px-4 py-3 text-sm text-white shadow-lg ${styles[status]}`}
       role="status"
     >
-      <div className="flex items-center justify-between gap-3">
-        <span>
-          {status === "registering" && "Registering push notifications…"}
-          {status === "registered" && "Phone alerts are registered. The phone must be powered on and connected."}
-          {status === "failed" && `Push failed: ${error ?? "unknown error"}`}
+      <div className="flex items-start justify-between gap-3">
+        <span className="max-h-32 overflow-y-auto">
+          {status === "registering" &&
+            "Registering push notifications… if this stays here, the app is waiting for the phone to answer."}
+          {status === "registered" &&
+            "Phone alerts are registered. The phone must be powered on and connected."}
+          {status === "failed" && (
+            <>
+              Push failed: {error ?? "unknown error"}
+              <span className="mt-1 block text-xs text-white/80">
+                Open Alerts → Alert diagnostics to copy this message, or see what the app last crashed on.
+              </span>
+            </>
+          )}
         </span>
         <button
           onClick={() => setDismissed(true)}

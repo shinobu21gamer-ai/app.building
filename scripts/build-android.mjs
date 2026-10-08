@@ -14,8 +14,20 @@
  *   node scripts/build-android.mjs                 # debug APK (self-signed, sideloadable)
  *   node scripts/build-android.mjs --release       # release APK (needs android/keystore.properties)
  *   node scripts/build-android.mjs --sync-only     # just re-sync the Capacitor assets
+ *   node scripts/build-android.mjs --push-config <path>
+ *                                                  # install a google-services.json (kept
+ *                                                  # outside the repo) before building
+ *   node scripts/build-android.mjs --allow-missing-push
+ *                                                  # build anyway, accepting that this APK
+ *                                                  # cannot receive push alerts
+ *
+ * android/app/google-services.json is deliberately gitignored, so a fresh
+ * checkout (or a build on another machine) silently produced an APK with no
+ * Firebase project: push alerts could never register, and asking the plugin to
+ * try ended in an unhandled native exception that closed the app. Missing
+ * configuration is now a build failure unless it is explicitly accepted.
  */
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
@@ -29,7 +41,15 @@ const PLUGINS_JSON = path.join(ASSETS_DIR, "capacitor.plugins.json");
 const args = process.argv.slice(2);
 const wantsRelease = args.includes("--release");
 const syncOnly = args.includes("--sync-only");
+const allowMissingPush = args.includes("--allow-missing-push");
+const pushConfigFlag = args.indexOf("--push-config");
+const pushConfigSource = pushConfigFlag === -1 ? null : args[pushConfigFlag + 1] ?? null;
 const isWindows = process.platform === "win32";
+
+if (pushConfigFlag !== -1 && !pushConfigSource) {
+  console.error("\n--push-config needs the path to a google-services.json file.");
+  process.exit(1);
+}
 
 function run(command, commandArgs, options = {}) {
   const result = spawnSync(command, commandArgs, {
@@ -85,19 +105,55 @@ if (syncOnly) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Gradle build
+// 2. Pre-flight checks
 // ---------------------------------------------------------------------------
 if (!existsSync(path.join(ASSETS_DIR, "capacitor.plugins.json"))) {
   console.error("\ncapacitor.plugins.json missing - aborting before Gradle.");
   process.exit(1);
 }
 
-if (!existsSync(path.join(ANDROID_DIR, "app", "google-services.json"))) {
-  console.warn(
-    "\n    NOTE: android/app/google-services.json is missing, so the Google\n" +
-      "    Services plugin is skipped and push alerts stay disabled in this APK.\n" +
-      "    Download it for package com.barangayresolve.app if you need them.\n"
-  );
+// ---------------------------------------------------------------------------
+// 3. Firebase configuration
+//
+// The APK cannot register for push alerts without it, and the app now says so
+// instead of dying. Copy the file in first when one was passed, then decide
+// whether building without it is acceptable.
+// ---------------------------------------------------------------------------
+const googleServices = path.join(ANDROID_DIR, "app", "google-services.json");
+
+if (pushConfigSource) {
+  const source = path.resolve(ROOT, pushConfigSource);
+  if (!existsSync(source)) {
+    console.error(`\n--push-config file not found: ${source}`);
+    process.exit(1);
+  }
+  copyFileSync(source, googleServices);
+  console.log(`==> Installed google-services.json from ${source}`);
+}
+
+if (!existsSync(googleServices)) {
+  const guidance =
+    "\n    android/app/google-services.json is missing.\n" +
+    "\n" +
+    "    Without it this APK has no Firebase project: it cannot receive push\n" +
+    "    alerts, and Android will show \"Push failed\" on the Alerts screen.\n" +
+    "\n" +
+    "    Fix it one of these ways:\n" +
+    "      1. Firebase console > Project settings > Your apps > Android app\n" +
+    "         (package com.barangayresolve.app) > Download google-services.json,\n" +
+    "         then save it as android/app/google-services.json.\n" +
+    "      2. Keep the file outside the repo (it is gitignored) and pass\n" +
+    "         --push-config C:\\path\\to\\google-services.json\n" +
+    "      3. Build an alerts-less APK on purpose with --allow-missing-push.\n";
+
+  if (!allowMissingPush) {
+    console.error(guidance);
+    process.exit(1);
+  }
+  console.warn(guidance);
+  console.warn("    --allow-missing-push was passed: building without push alerts.\n");
+} else {
+  console.log("==> Firebase configuration found (google-services.json)");
 }
 
 const keystoreProperties = path.join(ANDROID_DIR, "keystore.properties");
@@ -110,8 +166,21 @@ if (wantsRelease && !keystoreProperties) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// 4. Gradle build
+// ---------------------------------------------------------------------------
 const gradleTask = wantsRelease ? "assembleRelease" : "assembleDebug";
 const gradleWrapper = isWindows ? "gradlew.bat" : "./gradlew";
+
+// checkouts that lost the executable bit (or archives that dropped it) would
+// otherwise fail with EACCES before Gradle is ever reached.
+if (!isWindows) {
+  try {
+    chmodSync(path.join(ANDROID_DIR, "gradlew"), 0o755);
+  } catch (error) {
+    console.warn(`    (could not make gradlew executable: ${error.message})`);
+  }
+}
 
 console.log(`\n==> Running ${gradleWrapper} ${gradleTask}`);
 run(gradleWrapper, [gradleTask], { cwd: ANDROID_DIR });
