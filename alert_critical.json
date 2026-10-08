@@ -1,6 +1,0 @@
-{
-    "sound":  true,
-    "title":  "Emergency Alert Test",
-    "message":  "This is a test of the new looping alarm sound.",
-    "severity":  "CRITICAL"
-}
