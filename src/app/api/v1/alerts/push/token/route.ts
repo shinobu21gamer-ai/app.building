@@ -45,11 +45,16 @@ export const POST = withErrorBoundary(async (req: Request) => {
   // Defend against cross-account token takeover: a token row is keyed by the
   // device token itself, so without this check a second account registering the
   // same token would silently retarget the first account's push channel.
+  //
+  // Only a *live* registration on another account blocks this device. A row
+  // deactivated by a sign-out belongs to a device nobody is signed in to, so
+  // the account signing in now may claim it — otherwise signing out on a shared
+  // phone would pin push to the previous account forever.
   const existing = await db.nativePushToken.findUnique({
     where: { token: input.token },
-    select: { userId: true },
+    select: { userId: true, active: true },
   });
-  if (existing && existing.userId !== user.id) {
+  if (existing && existing.active && existing.userId !== user.id) {
     throw createApiError.conflict(
       "This device token is already registered to another account."
     );
@@ -63,7 +68,12 @@ export const POST = withErrorBoundary(async (req: Request) => {
       platform: input.platform,
       deviceId: input.deviceId ?? null,
     },
-    update: { active: true, platform: input.platform, deviceId: input.deviceId ?? null },
+    update: {
+      userId: user.id,
+      active: true,
+      platform: input.platform,
+      deviceId: input.deviceId ?? null,
+    },
   });
 
   // Replace a stale token only for the same device slot (same user, same

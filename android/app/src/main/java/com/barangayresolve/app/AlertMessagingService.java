@@ -52,6 +52,15 @@ public class AlertMessagingService extends FirebaseMessagingService {
 
     int id = parseId(alertId);
 
+    // Nobody is signed in on this device. The server drops this device from the
+    // broadcast as soon as it signs out, but a message already in flight (or one
+    // queued by FCM while offline) still lands here — an unattended phone must
+    // not raise an alarm the user cannot acknowledge.
+    if (!SessionState.deliveryAllowed(this)) {
+      Log.i(TAG, "Dropping alert " + id + ": no signed-in session on this device.");
+      return;
+    }
+
     boolean handleInWeb = MainActivity.canHandleAlertInWeb(this);
     if (!handleInWeb) {
       boolean alarmAlreadyActive =
