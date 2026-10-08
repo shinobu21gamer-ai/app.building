@@ -40,6 +40,11 @@ yarn-error.log*
 *service-account*.json
 firebase-adminsdk*.json
 
+# Android release signing material (never commit)
+*.jks
+*.keystore
+/android/keystore.properties
+
 # Firebase Android app config (contains an API key; not for version control)
 google-services.json
 android/app/google-services.json

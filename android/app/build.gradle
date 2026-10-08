@@ -1,5 +1,28 @@
 apply plugin: 'com.android.application'
 
+// ------------------------------------------------------------------
+// Optional local release signing.
+//
+// Create android/keystore.properties (gitignored) with:
+//
+//   storeFile=barangayresolve-release.jks   # path relative to android/
+//   storePassword=...
+//   keyAlias=barangayresolve
+//   keyPassword=...
+//
+// When the file exists, `assembleRelease` produces a signed, installable APK
+// that keeps the same signature across builds - which is what lets a new APK
+// install over the app already on the phone. Without it the release build stays
+// unsigned (Android refuses to install those), so use the debug build or add
+// the file.
+// ------------------------------------------------------------------
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+def hasReleaseKeystore = keystorePropertiesFile.exists()
+if (hasReleaseKeystore) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.barangayresolve.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +30,11 @@ android {
         applicationId "com.barangayresolve.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Every APK that is handed out must use a HIGHER versionCode than the
+        // one already installed, otherwise Android rejects the update
+        // (INSTALL_FAILED_VERSION_DOWNGRADE). Bump this with every build.
+        versionCode 2
+        versionName "1.0.11"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +42,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            release {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseKeystore) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
