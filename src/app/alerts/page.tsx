@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { requireUser, roleHome } from "@/lib/auth/session";
 import { getAlertsForUser } from "@/lib/alerts";
 import { AlertArchive } from "@/components/alerts/alert-archive";
+import { NativeDiagnosticsCard } from "@/components/alerts/native-diagnostics-card";
 import { PushSetup } from "@/components/alerts/push-setup";
 
 export const metadata: Metadata = { title: "Alerts" };
@@ -28,6 +29,7 @@ export default async function AlertsPage() {
           </Button>
         </div>
       </div>
+      <NativeDiagnosticsCard />
       <AlertArchive initialAlerts={alerts} />
     </Container>
   );

@@ -12,12 +12,15 @@ import android.provider.Settings;
 import android.util.Log;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.WebViewListener;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -76,6 +79,7 @@ public class MainActivity extends BridgeActivity {
       }
 
       NotificationChannels.ensure(this);
+      attachWebViewGuards();
       boolean prompted = getSharedPreferences(ALERT_PERMISSION_PREFS, MODE_PRIVATE)
           .getBoolean(KEY_PERMISSION_FLOW_PROMPTED, false);
       if (!prompted) {
@@ -97,10 +101,7 @@ public class MainActivity extends BridgeActivity {
       sCurrent = new WeakReference<>(this);
       sResumed = true;
 
-      WebView webView = getBridge() == null ? null : getBridge().getWebView();
-      if (webView != null) {
-        webView.addJavascriptInterface(new AlertBridge(), "AlertBridge");
-      }
+      attachAlertBridge();
 
       if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_OPEN_ALERTS, false)) {
         getIntent().removeExtra(EXTRA_OPEN_ALERTS);
@@ -121,6 +122,66 @@ public class MainActivity extends BridgeActivity {
     try {
       CookieManager.getInstance().flush();
     } catch (Exception ignored) {
+    }
+  }
+
+  /**
+   * Installs the guards that keep the shell alive when something underneath it
+   * fails, and exposes the bridge object to the web layer.
+   *
+   * The renderer callback matters most: when the WebView's renderer process dies
+   * (a crash inside Chromium, or Android reclaiming memory) nothing handles the
+   * event by default, so Android kills the whole app - one of the ways this app
+   * used to "close without any warning". Handling it means the report is saved
+   * and the activity rebuilds itself instead.
+   */
+  private void attachWebViewGuards() {
+    Bridge bridge = getBridge();
+    if (bridge == null) return;
+
+    try {
+      bridge.addWebViewListener(
+          new WebViewListener() {
+            @Override
+            public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+              boolean crashed = detail != null && detail.didCrash();
+              CrashLog.record(
+                  MainActivity.this,
+                  "webview",
+                  "The web view stopped "
+                      + (crashed
+                          ? "(renderer crash)"
+                          : "(closed by the system, usually low memory)")
+                      + ". The app reloaded itself instead of closing.");
+              if (view != null) {
+                view.post(
+                    () -> {
+                      try {
+                        if (!isFinishing() && !isDestroyed()) recreate();
+                      } catch (Throwable ignored) {
+                        // Nothing else to do - the report on disk is the record.
+                      }
+                    });
+              }
+              return true;
+            }
+          });
+    } catch (Throwable error) {
+      Log.e(TAG, "could not install the web view guard", error);
+    }
+
+    attachAlertBridge();
+  }
+
+  /** Publishes the {@code window.AlertBridge} object to the current page. */
+  private void attachAlertBridge() {
+    Bridge bridge = getBridge();
+    WebView webView = bridge == null ? null : bridge.getWebView();
+    if (webView == null) return;
+    try {
+      webView.addJavascriptInterface(new AlertBridge(), "AlertBridge");
+    } catch (Throwable error) {
+      Log.e(TAG, "could not attach the alert bridge", error);
     }
   }
 
@@ -282,6 +343,61 @@ public class MainActivity extends BridgeActivity {
     public void openAlertsPage() {
       // Navigate to alerts page in the web app.
       dispatchToWeb("try{window.location.href='/alerts'}catch(e){}");
+    }
+
+    /**
+     * Push-alert status of this build: whether Firebase is configured, the last
+     * registration error, and the last token. Returned as JSON so the web layer
+     * can show (and copy) exactly what went wrong.
+     */
+    @JavascriptInterface
+    public String pushDiagnostics() {
+      try {
+        return PushSupport.diagnostics(MainActivity.this);
+      } catch (Throwable error) {
+        CrashLog.record(MainActivity.this, "push-diagnostics", error);
+        return "{\"available\":false,\"reason\":\"The app could not read its push state.\"}";
+      }
+    }
+
+    /**
+     * Registers this device for FCM inside the app's own try/catch. Preferred
+     * over the Capacitor plugin, whose unhandled exception on a misconfigured
+     * build closes the app.
+     */
+    @JavascriptInterface
+    public void requestPushToken() {
+      PushSupport.requestToken(MainActivity.this);
+    }
+
+    /** The last fatal problem (crash or explained failure), or null when clean. */
+    @JavascriptInterface
+    public String crashReport() {
+      try {
+        return CrashLog.read(MainActivity.this);
+      } catch (Throwable error) {
+        return null;
+      }
+    }
+
+    /** Called once the user has seen the report. */
+    @JavascriptInterface
+    public void clearCrashReport() {
+      CrashLog.clear(MainActivity.this);
+    }
+
+    /**
+     * Why Android says the previous run of this app ended (crash, ANR, memory
+     * kill, user swipe), as JSON, or null when that information is unavailable.
+     * This is what explains the closes that never reach a crash handler.
+     */
+    @JavascriptInterface
+    public String lastExitReport() {
+      try {
+        return ExitReason.lastExitJson(MainActivity.this);
+      } catch (Throwable error) {
+        return null;
+      }
     }
   }
 
