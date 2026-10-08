@@ -61,3 +61,23 @@ android/app/google-services.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# session cookies / auth artifacts (may contain live JWTs — never commit)
+*cookies*.txt
+*cookie*.json
+cookies*.json
+
+# plaintext credentials / API test payloads (never commit)
+login*.json
+alert_*.json
+status*.json
+close.json
+resolve.json
+new_concern.json
+
+# local logs and build artifacts
+build.log
+*.log
+
+# stale generated docs
+llms.txt

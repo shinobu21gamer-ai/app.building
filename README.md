@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # BarangayResolve
 
 Development of a web-based **Smart Community Concern Prioritization, Routing, and Resolution Management System** for barangays.
@@ -765,6 +764,3 @@ src/
 - `CaseAssignment.assignedById` is nullable: `null` marks a system-generated
   assignment from the automatic routing engine, while a value identifies the
   official/admin who performed a manual reassignment.
-=======
-# app.building
->>>>>>> 0b6dc7d0b1f80122cfc5896cc864a894527334e4
