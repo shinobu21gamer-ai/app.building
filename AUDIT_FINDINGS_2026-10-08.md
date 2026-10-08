@@ -172,7 +172,7 @@ Full review of `src/lib/**` (auth/session, password, db, api envelope, rate-limi
 
 1. **Rotate `JWT_SECRET`** — the committed session tokens are burned; rotation invalidates them all.
 2. **Purge git history** of the removed files (`git filter-repo` or BFG) if the repo was pushed/shared: `cookies*.txt`, `login*.json`, `prisma/dev.db`, `uploads/*`, `android/app/google-services.json`, and the credential JSONs remain in history until rewritten.
-3. **Rotate the Firebase API key** in Google Cloud console.
+3. **Rotate the Firebase API key** in Google Cloud console. Note the credential split in this project: the committed `google-services.json` holds the **Android client** API key (package `com.barangayresolve.app`); the Vercel deployment's Firebase connection is separate — FCM sending uses a **service account** (`FIREBASE_SERVICE_ACCOUNT` / `FIREBASE_SERVICE_ACCOUNT_PATH`, verified **not** committed — it lives in Vercel env vars / `secrets/`, both gitignored), and browser push uses **VAPID** keys, not Firebase. Restricting or rotating the Android client key therefore has **no effect on the Vercel web deployment or FCM sending**; it only affects the Android app (see §7.8 for the APK nuance).
 4. **Delete the local `prisma/dev.db`** (burned) and treat its demo passwords as compromised; change the seeded demo password if shared.
 5. **Delete local cookie/login JSON files** (burned).
 6. Fix the README's SQLite instructions to match the PostgreSQL schema (or add a real SQLite dev path — note the `skipDuplicates` blocker), refresh `AUDIT_REPORT.md`, rename the package from `integ2`, dedupe `.env.example`.
