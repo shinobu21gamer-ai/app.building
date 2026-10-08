@@ -2,21 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ExternalLink,
-  MapPin,
-  Pencil,
-  Plus,
-  Power,
-  Save,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Pencil, Plus, Power, Save, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormMessage, Input, Label, Textarea } from "@/components/ui/field";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
-import { OfficeLocationPicker } from "@/components/admin/office-location-picker";
 import { apiRequest } from "@/lib/api-client";
 import { extractApiError } from "@/lib/utils";
 
@@ -26,10 +16,7 @@ export type AdminOfficeItem = {
   code: string;
   description: string | null;
   headOfficer: string | null;
-  contact: string;
-  location: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  contact: string | null;
   isActive: boolean;
   references: {
     concerns: number;
@@ -39,10 +26,6 @@ export type AdminOfficeItem = {
     total: number;
   };
 };
-
-function officeMapUrl(latitude: number, longitude: number): string {
-  return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`;
-}
 
 function contactHref(contact: string): string | null {
   const trimmed = contact.trim();
@@ -76,9 +59,6 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
   const [description, setDescription] = useState("");
   const [headOfficer, setHeadOfficer] = useState("");
   const [contact, setContact] = useState("");
-  const [location, setLocation] = useState("");
-  const [latitude, setLatitude] = useState<number | null>(null);
-  const [longitude, setLongitude] = useState<number | null>(null);
   const [isActive, setIsActive] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
@@ -92,9 +72,6 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
     setDescription("");
     setHeadOfficer("");
     setContact("");
-    setLocation("");
-    setLatitude(null);
-    setLongitude(null);
     setIsActive(true);
   }
 
@@ -105,9 +82,6 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
     setDescription(office.description ?? "");
     setHeadOfficer(office.headOfficer ?? "");
     setContact(office.contact ?? "");
-    setLocation(office.location ?? "");
-    setLatitude(office.latitude);
-    setLongitude(office.longitude);
     setIsActive(office.isActive);
     setError(null);
     setSuccess(null);
@@ -122,20 +96,12 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
       setError("Contact details are required for every office.");
       return;
     }
-    if (!location.trim() && (latitude === null || longitude === null)) {
-      setError("Enter an office address or choose its location on the map.");
-      return;
-    }
-
     const payload = {
       name,
       code,
       description,
       headOfficer,
       contact,
-      location,
-      latitude,
-      longitude,
       isActive,
     };
 
@@ -197,14 +163,11 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <div className="flex items-center gap-2">
-            <MapPin size={19} className="text-brand-700" aria-hidden="true" />
-            <h2 className="text-lg font-semibold text-slate-900">
-              {editingId ? "Edit office" : "Add an office"}
-            </h2>
-          </div>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {editingId ? "Edit office" : "Add an office"}
+          </h2>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            Contact details and a location are required so residents can find and reach each office.
+            Manage office names, services, and contact details for routing.
           </p>
         </div>
 
@@ -255,19 +218,6 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
             />
           </div>
           <div className="sm:col-span-2">
-            <Label htmlFor="office-location">Office address or location</Label>
-            <Input
-              id="office-location"
-              value={location}
-              onChange={(event) => setLocation(event.target.value)}
-              placeholder="Barangay Hall, street, barangay, city"
-              maxLength={255}
-            />
-            <p className="mt-1.5 text-sm leading-5 text-slate-600">
-              Add a written address, drop a pin on the map below, or provide both.
-            </p>
-          </div>
-          <div className="sm:col-span-2">
             <Label htmlFor="office-description">Description</Label>
             <Textarea
               id="office-description"
@@ -279,20 +229,6 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
             />
           </div>
         </div>
-
-        <OfficeLocationPicker
-          key={editingId ?? "new-office-location"}
-          latitude={latitude}
-          longitude={longitude}
-          onChange={(nextLatitude, nextLongitude) => {
-            setLatitude(nextLatitude);
-            setLongitude(nextLongitude);
-          }}
-          onClear={() => {
-            setLatitude(null);
-            setLongitude(null);
-          }}
-        />
 
         <label className="flex min-h-11 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-800">
           <input
@@ -323,7 +259,7 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
           <h2 id="offices-heading" className="text-lg font-semibold text-slate-900">
             Offices <span className="text-base font-medium text-slate-500">({offices.length})</span>
           </h2>
-          <p className="text-sm text-slate-600">Contact and location details are shown on every office card.</p>
+          <p className="text-sm text-slate-600">Contact details are shown on every office card.</p>
         </div>
 
         {offices.length === 0 ? (
@@ -332,119 +268,86 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
           </p>
         ) : (
           <div className="mt-4 grid gap-4 xl:grid-cols-2">
-            {offices.map((office) => {
-              const hasCoordinates = office.latitude !== null && office.longitude !== null;
-              const locationText = office.location || (hasCoordinates
-                ? `${office.latitude!.toFixed(5)}, ${office.longitude!.toFixed(5)}`
-                : null);
-              const mapUrl = hasCoordinates
-                ? officeMapUrl(office.latitude!, office.longitude!)
-                : office.location
-                  ? `https://www.openstreetmap.org/search?query=${encodeURIComponent(office.location)}`
-                  : null;
-
-              return (
-                <article
-                  key={office.id}
-                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="break-words text-base font-semibold text-slate-900">{office.name}</h3>
-                        {office.isActive ? (
-                          <Badge tone="green">Active</Badge>
-                        ) : (
-                          <Badge tone="gray">Disabled</Badge>
-                        )}
-                      </div>
-                      <p className="mt-1 text-sm font-medium text-slate-600">
-                        {office.code}
-                        <span className="px-2 text-slate-300" aria-hidden="true">·</span>
-                        {office.references.total} linked record{office.references.total === 1 ? "" : "s"}
-                      </p>
-                    </div>
+            {offices.map((office) => (
+              <article
+                key={office.id}
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => startEdit(office)}
-                        aria-label={`Edit ${office.name}`}
-                      >
-                        <Pencil size={14} aria-hidden="true" />
-                        Edit
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => toggleActive(office)}
-                        aria-label={`${office.isActive ? "Disable" : "Enable"} ${office.name}`}
-                      >
-                        <Power size={14} aria-hidden="true" />
-                        {office.isActive ? "Disable" : "Enable"}
-                      </Button>
-                      <ConfirmActionButton
-                        label="Delete"
-                        icon={<Trash2 size={14} aria-hidden="true" />}
-                        title={`Delete ${office.name}?`}
-                        description={
-                          office.references.total > 0
-                            ? `This office is referenced by ${office.references.total} record(s). Deletion will be refused to preserve routing and case history — deactivate it instead.`
-                            : "This office has no linked records and will be permanently removed."
-                        }
-                        confirmLabel="Delete office"
-                        tone="danger"
-                        disabled={busy}
-                        className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:opacity-40"
-                        onConfirm={() => deleteOffice(office)}
-                      />
+                      <h3 className="break-words text-base font-semibold text-slate-900">{office.name}</h3>
+                      {office.isActive ? (
+                        <Badge tone="green">Active</Badge>
+                      ) : (
+                        <Badge tone="gray">Disabled</Badge>
+                      )}
                     </div>
+                    <p className="mt-1 text-sm font-medium text-slate-600">
+                      {office.code}
+                      <span className="px-2 text-slate-300" aria-hidden="true">·</span>
+                      {office.references.total} linked record{office.references.total === 1 ? "" : "s"}
+                    </p>
                   </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => startEdit(office)}
+                      aria-label={`Edit ${office.name}`}
+                    >
+                      <Pencil size={14} aria-hidden="true" />
+                      Edit
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => toggleActive(office)}
+                      aria-label={`${office.isActive ? "Disable" : "Enable"} ${office.name}`}
+                    >
+                      <Power size={14} aria-hidden="true" />
+                      {office.isActive ? "Disable" : "Enable"}
+                    </Button>
+                    <ConfirmActionButton
+                      label="Delete"
+                      icon={<Trash2 size={14} aria-hidden="true" />}
+                      title={`Delete ${office.name}?`}
+                      description={
+                        office.references.total > 0
+                          ? `This office is referenced by ${office.references.total} record(s). Deletion will be refused to preserve routing and case history — deactivate it instead.`
+                          : "This office has no linked records and will be permanently removed."
+                      }
+                      confirmLabel="Delete office"
+                      tone="danger"
+                      disabled={busy}
+                      className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:opacity-40"
+                      onConfirm={() => deleteOffice(office)}
+                    />
+                  </div>
+                </div>
 
-                  <dl className="mt-4 grid gap-x-4 gap-y-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
-                    <div className="min-w-0">
-                      <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Contact</dt>
-                      <dd className="mt-1 text-sm leading-6"><OfficeContact contact={office.contact} /></dd>
+                <dl className="mt-4 grid gap-x-4 gap-y-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
+                  <div className="min-w-0">
+                    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Contact</dt>
+                    <dd className="mt-1 text-sm leading-6"><OfficeContact contact={office.contact} /></dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Head officer</dt>
+                    <dd className="mt-1 break-words text-sm leading-6 text-slate-800">{office.headOfficer || "Not assigned"}</dd>
+                  </div>
+                  {office.description && (
+                    <div className="sm:col-span-2">
+                      <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Services</dt>
+                      <dd className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">{office.description}</dd>
                     </div>
-                    <div className="min-w-0">
-                      <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Head officer</dt>
-                      <dd className="mt-1 break-words text-sm leading-6 text-slate-800">{office.headOfficer || "Not assigned"}</dd>
-                    </div>
-                    <div className="min-w-0 sm:col-span-2">
-                      <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Office location</dt>
-                      <dd className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm leading-6">
-                        <span className={locationText ? "break-words text-slate-800" : "font-medium text-amber-700"}>
-                          {locationText ?? "Location not added yet"}
-                        </span>
-                        {mapUrl && (
-                          <a
-                            href={mapUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            aria-label={`View map for ${office.name} (opens in a new tab)`}
-                            className="inline-flex items-center gap-1 font-semibold text-brand-800 underline decoration-brand-300 underline-offset-2 hover:text-brand-950"
-                          >
-                            <MapPin size={14} aria-hidden="true" />
-                            View map
-                            <ExternalLink size={12} aria-hidden="true" />
-                          </a>
-                        )}
-                      </dd>
-                    </div>
-                    {office.description && (
-                      <div className="sm:col-span-2">
-                        <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Services</dt>
-                        <dd className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">{office.description}</dd>
-                      </div>
-                    )}
-                  </dl>
-                </article>
-              );
-            })}
+                  )}
+                </dl>
+              </article>
+            ))}
           </div>
         )}
       </section>

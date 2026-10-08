@@ -30,7 +30,7 @@ export default async function AlertsPage() {
         </div>
       </div>
       <NativeDiagnosticsCard />
-      <AlertArchive initialAlerts={alerts} />
+      <AlertArchive initialAlerts={alerts} canRemoveAlerts={user.role.key === "ADMIN"} />
     </Container>
   );
 }

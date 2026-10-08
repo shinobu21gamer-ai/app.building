@@ -51,7 +51,8 @@ npm run dev               # http://localhost:3000
 | Script | Description |
 |---|---|
 | `npm run dev` | Start the Next.js development server |
-| `npm run build` | Production build |
+| `npm run build` | Production build (does not apply database migrations) |
+| `npm run vercel-build` | Vercel build; production deploys apply pending migrations first |
 | `npm run start` | Run the production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript type-check (`tsc --noEmit`) |
@@ -219,10 +220,17 @@ alert. A provider accepting a push request is not proof that the phone received
 it. The admin composer reports provider acceptance/failure counts for this
 reason.
 
-Before deploying the office contact/location schema change, back up the database
-and apply the migration with `npx prisma migrate deploy`. Existing null contacts
-are normalized to empty strings and must be filled in by an administrator; old
-office locations remain blank until staff enter an address or pin them on the map.
+Back up the production database before a schema-change release. Production
+Vercel builds run `prisma migrate deploy` before building the app, so new schema
+changes are applied before code that depends on them is published.
+Set `DATABASE_URL` in Vercel, and set `DIRECT_URL` too if the provider requires a
+non-pooled connection for migrations. Preview deployments intentionally skip
+migrations so they cannot change a shared production database. For a non-Vercel
+deployment, back up the database and run `npx prisma migrate deploy` as a
+release step before deploying the new code. The office migration normalizes
+existing null contacts to empty strings. Office map and address fields have been
+removed from the admin workflow; a follow-up migration removes the unused map
+columns while preserving migration history.
 
 When several system alerts are queued, users can acknowledge them one at a time
 or record acknowledgment for all queued alerts in one action.
@@ -692,9 +700,7 @@ action is confirmed and written to the `Audit` log.
 - **Officials** (`/admin/officials`): a focused view for OFFICIAL accounts, where
   each official is linked to an active office.
 - **Offices** (`/admin/offices`): create and maintain the offices that receive
-  routed concerns (name, code, description, head, required contact, and address
-  or Leaflet map pin). Map pins use OpenStreetMap tiles and can be opened as a
-  map link from each office card.
+  routed concerns (name, code, description, head officer, and contact details).
 - **Concern categories** (`/admin/categories`): create and maintain the
   categories residents choose when submitting, and that routing rules map.
 - **Routing rules** (`/admin/routing`): map category → office with a priority

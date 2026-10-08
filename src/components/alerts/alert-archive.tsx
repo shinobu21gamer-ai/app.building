@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Check, LifeBuoy, ThumbsUp } from "lucide-react";
+import { Check, LifeBuoy, ThumbsUp, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
 
 export type AlertView = {
   id: number;
@@ -30,7 +31,13 @@ function severityStyle(severity: string): string {
   return "bg-brand-100 text-brand-900";
 }
 
-export function AlertArchive({ initialAlerts }: { initialAlerts: AlertView[] }) {
+export function AlertArchive({
+  initialAlerts,
+  canRemoveAlerts = false,
+}: {
+  initialAlerts: AlertView[];
+  canRemoveAlerts?: boolean;
+}) {
   const [alerts, setAlerts] = useState(initialAlerts);
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +64,22 @@ export function AlertArchive({ initialAlerts }: { initialAlerts: AlertView[] }) 
     ));
   }
 
+  async function removeAlert(alertId: number): Promise<string | null> {
+    setBusy(alertId);
+    setError(null);
+    const result = await apiRequest<{ deleted: boolean }>(`/api/v1/alerts/${alertId}`, {
+      method: "DELETE",
+    });
+    setBusy(null);
+    if (!result.success && result.error.code !== "NOT_FOUND") {
+      return result.error.message;
+    }
+
+    // Another admin may have removed the same alert in a different session.
+    setAlerts((current) => current.filter((alert) => alert.id !== alertId));
+    return null;
+  }
+
   return (
     <div className="space-y-4">
       {error && (
@@ -78,7 +101,21 @@ export function AlertArchive({ initialAlerts }: { initialAlerts: AlertView[] }) 
               </span>
               <h2 className="mt-2 break-words text-lg font-bold text-slate-950">{alert.title}</h2>
             </div>
-            <time className="shrink-0 text-sm font-medium text-slate-600">{formatDateTime(alert.createdAt)}</time>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <time className="text-sm font-medium text-slate-600">{formatDateTime(alert.createdAt)}</time>
+              {canRemoveAlerts && (
+                <ConfirmActionButton
+                  label="Remove"
+                  icon={<Trash2 size={14} aria-hidden="true" />}
+                  title="Remove this alert?"
+                  description={`This permanently removes “${alert.title}” from the alert archive for everyone. Push notifications and emails already sent cannot be recalled, and anyone currently viewing the alert may need to dismiss it.`}
+                  confirmLabel="Remove alert"
+                  tone="danger"
+                  disabled={busy === alert.id}
+                  onConfirm={() => removeAlert(alert.id)}
+                />
+              )}
+            </div>
           </div>
           <p className="mt-4 whitespace-pre-wrap break-words text-base leading-7 text-slate-800">
             {alert.message}

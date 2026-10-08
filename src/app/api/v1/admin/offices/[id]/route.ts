@@ -44,12 +44,6 @@ export const PATCH = withErrorBoundary<[Request, RouteContext]>(
 
     const existing = await db.office.findUnique({ where: { id: officeId } });
     if (!existing) throw createApiError.notFound("Office not found.");
-    if (!(body.contact ?? existing.contact).trim()) {
-      throw createApiError.badRequest(
-        "Contact details are required before this office can be updated."
-      );
-    }
-
     let office;
     try {
       office = await db.office.update({
@@ -64,9 +58,6 @@ export const PATCH = withErrorBoundary<[Request, RouteContext]>(
             ? { headOfficer: body.headOfficer }
             : {}),
           ...(body.contact !== undefined ? { contact: body.contact } : {}),
-          ...(body.location !== undefined ? { location: body.location } : {}),
-          ...(body.latitude !== undefined ? { latitude: body.latitude } : {}),
-          ...(body.longitude !== undefined ? { longitude: body.longitude } : {}),
           ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
         },
         include: { _count: { select: OFFICE_COUNT_SELECT } },
