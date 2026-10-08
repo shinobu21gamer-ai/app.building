@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const NOTIFICATIONS_CHANGED = "notifications:changed";
@@ -33,6 +34,7 @@ export function NotificationNavLink({ initialUnread }: { initialUnread: number }
         unread > 0 ? `Notifications, ${unread} unread` : "Notifications"
       }
     >
+      <BellRing size={15} aria-hidden="true" />
       Notifications
       {unread > 0 && (
         <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">

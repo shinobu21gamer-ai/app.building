@@ -45,7 +45,9 @@ export async function getAlertsForUser(userId: number, activeOnly = false) {
       reactions: { select: { reaction: true } },
       acknowledgements: { where: { userId }, select: { userId: true } },
     },
-    orderBy: { createdAt: "desc" },
+    // Present active alerts oldest-first. Taking the newest 100 would
+    // permanently hide older unacknowledged alerts when a user has a backlog.
+    orderBy: { createdAt: activeOnly ? "asc" : "desc" },
     take: 100,
   });
   return alerts.map((alert) => alertView(alert, userId));

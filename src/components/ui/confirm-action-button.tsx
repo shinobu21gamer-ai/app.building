@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 export function ConfirmActionButton({
   label,
+  icon,
   title,
   description,
   confirmLabel = "Confirm",
@@ -14,6 +15,7 @@ export function ConfirmActionButton({
   onConfirm,
 }: {
   label: string;
+  icon?: ReactNode;
   title: string;
   description: string;
   confirmLabel?: string;
@@ -93,7 +95,10 @@ export function ConfirmActionButton({
           "rounded-md px-2 py-1 text-sm font-semibold text-red-600 transition-[background-color,color,box-shadow] duration-150 hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:opacity-50"
         }
       >
-        {label}
+        <span className="inline-flex items-center gap-1.5">
+          {icon}
+          {label}
+        </span>
       </button>
 
       {open && (

@@ -15,12 +15,14 @@ export function getNativePlatform(): PushPlatform {
 }
 
 export interface NativeAlertPayload {
-  alertId?: number;
+  alertId?: number | string;
+  /** Legacy native payload key, accepted during APK upgrades. */
+  id?: number | string;
   title?: string;
   body?: string;
   message?: string;
   severity?: "INFO" | "WARNING" | "CRITICAL";
-  sound?: boolean;
+  sound?: boolean | string;
   createdAt?: string;
   expiresAt?: string | null;
 }
@@ -35,6 +37,22 @@ export interface AlertView {
   expiresAt: string | null;
   acknowledged: boolean;
   reactions: Record<string, number>;
+}
+
+export function toNativeAlertView(data: NativeAlertPayload): AlertView {
+  const rawId = data.alertId ?? data.id;
+  const parsedId = typeof rawId === "number" ? rawId : Number(rawId);
+  return {
+    id: Number.isSafeInteger(parsedId) && parsedId > 0 ? parsedId : Date.now(),
+    title: data.title || "BarangayResolve Alert",
+    message: data.body || data.message || "You have a new alert",
+    severity: data.severity || "INFO",
+    sound: data.sound !== false && data.sound !== "false",
+    createdAt: data.createdAt || new Date().toISOString(),
+    expiresAt: data.expiresAt || null,
+    acknowledged: false,
+    reactions: {},
+  };
 }
 
 export const SEVERITY_CHANNELS = {
@@ -97,8 +115,11 @@ export function forgetNativeToken(): void {
 // AlertBridge interface for web-to-native communication
 export interface AlertBridge {
   stopAlertSound(): void;
+  stopAlertSoundFor(alertId: number): void;
   stopAlertFor(alertId: number): void;
+  startAlertFor(alertId: number, title: string, message: string, severity: string, sound: boolean): void;
   openAlertsPage(): void;
+  openAlertPermissions(): void;
 }
 
 // Extend Window interface for AlertBridge

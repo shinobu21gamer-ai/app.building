@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Building2, Download, GitBranch, Settings2, SlidersHorizontal, Tags, UserRound, Users } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,27 +55,35 @@ export default async function AdminPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button href="/admin/users" variant="outline" size="sm">
+            <Users size={14} aria-hidden="true" />
             Users
           </Button>
           <Button href="/admin/officials" variant="outline" size="sm">
+            <UserRound size={14} aria-hidden="true" />
             Officials
           </Button>
           <Button href="/admin/offices" variant="outline" size="sm">
+            <Building2 size={14} aria-hidden="true" />
             Offices
           </Button>
           <Button href="/admin/categories" variant="outline" size="sm">
+            <Tags size={14} aria-hidden="true" />
             Categories
           </Button>
           <Button href="/admin/priority" variant="outline" size="sm">
+            <SlidersHorizontal size={14} aria-hidden="true" />
             Priority rules
           </Button>
           <Button href="/admin/routing" variant="outline" size="sm">
+            <GitBranch size={14} aria-hidden="true" />
             Routing rules
           </Button>
           <Button href="/admin/settings" variant="outline" size="sm">
+            <Settings2 size={14} aria-hidden="true" />
             Settings
           </Button>
           <Button href="/api/v1/admin/reports/concerns" variant="secondary" size="sm">
+            <Download size={14} aria-hidden="true" />
             Export cases CSV
           </Button>
           <MaintenanceActions />

@@ -6,9 +6,8 @@ import android.util.Log;
 
 /**
  * Shared action handler for the native alert popups (overlay + full-screen activity).
- * "OK, I understand" tries to acknowledge through the live WebView first (async API
- * call via the web layer) and falls back to just opening the app so the user can
- * acknowledge there.
+ * "OK, I understand" asks the WebView to acknowledge on the server. The alarm is
+ * stopped only after the server confirms; otherwise it remains active and retryable.
  */
 public final class AlertActions {
 
@@ -23,7 +22,7 @@ public final class AlertActions {
             + "}}))}catch(e){}";
     boolean delivered = MainActivity.dispatchToWeb(js);
     Log.d(TAG, "acknowledge(" + alertId + ") delivered to web=" + delivered);
-    if (!delivered) {
+    if (!delivered || !MainActivity.isForeground()) {
       Intent open = new Intent(context, MainActivity.class);
       open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
       open.putExtra(MainActivity.EXTRA_OPEN_ALERTS, true);
@@ -33,7 +32,7 @@ public final class AlertActions {
         Log.w(TAG, "Could not reopen app after ack", e);
       }
     }
-    AlertForegroundService.stop(context, alertId, true);
+    // Do not stop/cancel before the WebView confirms the server-side acknowledgement.
   }
 
   public static void silence(Context context, int alertId) {

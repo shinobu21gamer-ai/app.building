@@ -1,9 +1,11 @@
 package com.barangayresolve.app;
 
+import android.app.KeyguardManager;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.PowerManager;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -18,9 +20,9 @@ import java.util.Map;
 
 /**
  * Single entry point for FCM data-only alert messages. The app deliberately does NOT
- * ship an FCM "notification" payload: a data-only high-priority message starts this
- * process even when the app is force-backgrounded, which is what lets the native layer
- * show the full alarm experience (looping sound, vibration, popup) instead of a plain
+ * ship an FCM "notification" payload: a data-only high-priority message can start this
+ * process while the app is backgrounded, which lets the native layer
+ * show the native alarm experience (severity sound, vibration, popup) instead of a plain
  * system notification (see push.ts).
  */
 public class AlertMessagingService extends FirebaseMessagingService {
@@ -38,6 +40,9 @@ public class AlertMessagingService extends FirebaseMessagingService {
     String body = firstNonEmpty(data.get("body"), data.get("message"), message.getNotification() == null ? null : message.getNotification().getBody(), "");
     String severity = firstNonEmpty(data.get("severity"), "INFO").toUpperCase(Locale.US);
     String url = firstNonEmpty(data.get("url"), "/alerts");
+    String createdAt = firstNonEmpty(data.get("createdAt"), currentTimestamp());
+    String expiresAt = data.get("expiresAt");
+    boolean sound = !"false".equalsIgnoreCase(data.get("sound"));
 
     if (alertId == null) {
       // Not one of ours; let the OS show it as a plain notification.
@@ -47,12 +52,26 @@ public class AlertMessagingService extends FirebaseMessagingService {
 
     int id = parseId(alertId);
 
-    if (!MainActivity.isForeground()) {
-      postAlertNotification(id, title, body, severity, url, NotificationChannels.severityChannelId(severity));
-      startAlarm(title, body, severity, id);
+    boolean handleInWeb = MainActivity.canHandleAlertInWeb(this);
+    if (!handleInWeb) {
+      boolean alarmAlreadyActive =
+          AlertForegroundService.hasActiveAlert() || AlertRestartReceiver.hasActiveAlert(this);
+      boolean fullScreen = !alarmAlreadyActive && shouldUseFullScreenIntent();
+      boolean showOverlay = !alarmAlreadyActive && !fullScreen && isInteractiveAndUnlocked();
+      postAlertNotification(
+          id,
+          title,
+          body,
+          severity,
+          url,
+          NotificationChannels.severityChannelId(severity),
+          fullScreen,
+          !alarmAlreadyActive);
+      startAlarm(title, body, severity, id, sound, showOverlay);
+    } else {
+      MainActivity.dispatchToNativePush(
+          toAlertJson(id, title, body, severity, url, sound, createdAt, expiresAt));
     }
-
-    MainActivity.dispatchToNativePush(toAlertJson(id, title, body, severity, url));
   }
 
   @Override
@@ -92,11 +111,17 @@ public class AlertMessagingService extends FirebaseMessagingService {
     }
   }
 
-  private void postAlertNotification(int id, String title, String body, String severity, String url, String channelId) {
-    boolean canFullScreen = canUseFullScreenIntent();
-
+  private void postAlertNotification(
+      int id,
+      String title,
+      String body,
+      String severity,
+      String url,
+      String channelId,
+      boolean useFullScreenIntent,
+      boolean silent) {
     PendingIntent fullScreen = null;
-    if (canFullScreen) {
+    if (useFullScreenIntent) {
       Intent fs = new Intent(this, FullScreenAlertActivity.class);
       fs.putExtra(FullScreenAlertActivity.EXTRA_ALERT_ID, id);
       fs.putExtra(FullScreenAlertActivity.EXTRA_TITLE, title);
@@ -122,11 +147,11 @@ public class AlertMessagingService extends FirebaseMessagingService {
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
-            .setSilent(true)
             .setWhen(System.currentTimeMillis())
             .setShowWhen(true)
             .setContentIntent(content);
 
+    if (silent) builder.setSilent(true);
     if (fullScreen != null) builder.setFullScreenIntent(fullScreen, true);
 
     try {
@@ -137,20 +162,36 @@ public class AlertMessagingService extends FirebaseMessagingService {
   }
 
   private boolean canUseFullScreenIntent() {
-    // On Android 14+ full-screen intents are only granted to sideloaded apps that
-    // declare the permission and the user has not revoked it.
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true;
-    return checkSelfPermission(android.Manifest.permission.USE_FULL_SCREEN_INTENT)
-        == PackageManager.PERMISSION_GRANTED;
+    NotificationManager manager = getSystemService(NotificationManager.class);
+    return manager != null && manager.canUseFullScreenIntent();
   }
 
-  private void startAlarm(String title, String body, String severity, int id) {
+  private boolean shouldUseFullScreenIntent() {
+    if (!canUseFullScreenIntent()) return false;
+    PowerManager powerManager = getSystemService(PowerManager.class);
+    boolean interactive = powerManager != null && powerManager.isInteractive();
+    KeyguardManager keyguardManager = getSystemService(KeyguardManager.class);
+    boolean locked = keyguardManager != null && keyguardManager.isKeyguardLocked();
+    return !interactive || locked;
+  }
+
+  private boolean isInteractiveAndUnlocked() {
+    PowerManager powerManager = getSystemService(PowerManager.class);
+    if (powerManager == null || !powerManager.isInteractive()) return false;
+    KeyguardManager keyguardManager = getSystemService(KeyguardManager.class);
+    return keyguardManager == null || !keyguardManager.isKeyguardLocked();
+  }
+
+  private void startAlarm(String title, String body, String severity, int id, boolean sound, boolean showOverlay) {
     Intent alarm = new Intent(this, AlertForegroundService.class);
     alarm.setAction(AlertForegroundService.ACTION_START_ALERT);
     alarm.putExtra(AlertForegroundService.EXTRA_TITLE, title);
     alarm.putExtra(AlertForegroundService.EXTRA_BODY, body);
     alarm.putExtra(AlertForegroundService.EXTRA_SEVERITY, severity);
     alarm.putExtra(AlertForegroundService.EXTRA_ALERT_ID, id);
+    alarm.putExtra(AlertForegroundService.EXTRA_SOUND, sound);
+    alarm.putExtra(AlertForegroundService.EXTRA_SHOW_OVERLAY, showOverlay);
     try {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         startForegroundService(alarm);
@@ -159,9 +200,17 @@ public class AlertMessagingService extends FirebaseMessagingService {
       }
     } catch (Exception e) {
       Log.e(TAG, "Could not start alert foreground service", e);
-      // Last resort: re-post the alert on a channel that DOES play a sound.
+      // Last resort: re-post on the fallback channel, which itself plays a sound.
       NotificationManagerCompat.from(this).cancel(NOTIFICATION_TAG, id);
-      postAlertNotification(id + 1000000, title, body, severity, "/alerts", NotificationChannels.FALLBACK_CHANNEL_ID);
+      postAlertNotification(
+          id,
+          title,
+          body,
+          severity,
+          "/alerts",
+          NotificationChannels.FALLBACK_CHANNEL_ID,
+          false,
+          !sound);
     }
   }
 
@@ -173,16 +222,30 @@ public class AlertMessagingService extends FirebaseMessagingService {
     }
   }
 
-  private static String toAlertJson(int id, String title, String body, String severity, String url) {
-    StringBuilder sb = new StringBuilder("{\"id\":");
+  private static String toAlertJson(
+      int id,
+      String title,
+      String body,
+      String severity,
+      String url,
+      boolean sound,
+      String createdAt,
+      String expiresAt) {
+    StringBuilder sb = new StringBuilder("{\"alertId\":");
     sb.append(id);
     sb.append(",\"title\":").append(jsonEscape(title));
     sb.append(",\"message\":").append(jsonEscape(body));
     sb.append(",\"severity\":").append(jsonEscape(severity));
     sb.append(",\"url\":").append(jsonEscape(url));
-    sb.append(",\"createdAt\":").append(jsonEscape(new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US).format(new java.util.Date())));
-    sb.append(",\"sound\":true}");
+    sb.append(",\"createdAt\":").append(jsonEscape(createdAt));
+    sb.append(",\"expiresAt\":").append(expiresAt == null ? "null" : jsonEscape(expiresAt));
+    sb.append(",\"sound\":").append(sound).append("}");
     return sb.toString();
+  }
+
+  private static String currentTimestamp() {
+    return new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US)
+        .format(new java.util.Date());
   }
 
   private static String jsonEscape(String value) {

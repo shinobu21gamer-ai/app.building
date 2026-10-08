@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LogIn, UserPlus } from "lucide-react";
 import "./globals.css";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
@@ -69,9 +70,11 @@ async function HeaderNav() {
         ) : (
           <>
             <Button href="/login" variant="ghost" size="sm">
+              <LogIn size={15} aria-hidden="true" />
               Sign in
             </Button>
             <Button href="/register" size="sm">
+              <UserPlus size={15} aria-hidden="true" />
               Create account
             </Button>
           </>

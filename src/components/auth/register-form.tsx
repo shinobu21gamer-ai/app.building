@@ -130,6 +130,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
       return;
     }
 
+    window.dispatchEvent(new Event("native-auth-ready"));
     router.push(result.data.redirect, { scroll: false });
     router.refresh();
   }

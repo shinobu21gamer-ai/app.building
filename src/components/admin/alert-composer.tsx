@@ -1,12 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FormMessage, Input, Label, Textarea } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
 import { createAlertSchema } from "@/lib/validations/alert";
+import type { SystemAlertPushReport } from "@/lib/push-types";
 
 type Severity = "INFO" | "WARNING" | "CRITICAL";
+type CreateAlertResponse = {
+  alert: { id: number; title: string };
+  push: SystemAlertPushReport;
+};
 
 const TITLE_MIN = 3;
 const TITLE_MAX = 120;
@@ -44,6 +50,7 @@ export function AlertComposer() {
   const [severity, setSeverity] = useState<Severity>("INFO");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [deliveryWarning, setDeliveryWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -51,6 +58,7 @@ export function AlertComposer() {
     event.preventDefault();
     setBusy(true);
     setFeedback(null);
+    setDeliveryWarning(null);
     setError(null);
     setFieldErrors({});
 
@@ -69,7 +77,7 @@ export function AlertComposer() {
       return;
     }
 
-    const result = await apiRequest<{ alert: { id: number } }>("/api/v1/alerts", {
+    const result = await apiRequest<CreateAlertResponse>("/api/v1/alerts", {
       method: "POST",
       body: JSON.stringify(parsed.data),
     });
@@ -88,7 +96,27 @@ export function AlertComposer() {
     setTitle("");
     setMessage("");
     setSeverity("INFO");
-    setFeedback("Alert published to all active users.");
+
+    const channels = Object.values(result.data.push);
+    const registered = channels.reduce((total, channel) => total + channel.registered, 0);
+    const accepted = channels.reduce((total, channel) => total + channel.accepted, 0);
+    const failed = channels.reduce((total, channel) => total + channel.failed, 0);
+    const skipped = channels.reduce((total, channel) => total + channel.skipped, 0);
+    const statusUnknown = channels.some((channel) =>
+      channel.reason === "Push delivery could not be evaluated; check server logs."
+    );
+    setFeedback(
+      accepted > 0
+        ? `Alert saved. Push providers accepted ${accepted} of ${registered} registered delivery request${registered === 1 ? "" : "s"}. Acceptance does not guarantee that a phone received it.`
+        : "Alert saved. No push provider accepted a delivery request."
+    );
+    if (statusUnknown) {
+      setDeliveryWarning("Push delivery status could not be evaluated. Check the server logs; the alert itself was saved.");
+    } else if (registered === 0) {
+      setDeliveryWarning("No active phone or browser push registrations were found. Users can still see this alert when they open the app.");
+    } else if (failed > 0 || skipped > 0) {
+      setDeliveryWarning(`${failed} push request${failed === 1 ? "" : "s"} failed and ${skipped} were skipped. Check Firebase/APNs/VAPID configuration and server logs.`);
+    }
   }
 
   const titleError = fieldErrors.title;
@@ -104,7 +132,8 @@ export function AlertComposer() {
         <p className="mt-1 text-xs text-slate-600">Users must acknowledge the alert before it closes.</p>
       </div>
 
-      {feedback && <FormMessage tone="success">{feedback}</FormMessage>}
+      {feedback && <FormMessage tone={deliveryWarning ? "error" : "success"}>{feedback}</FormMessage>}
+      {deliveryWarning && <FormMessage tone="error">{deliveryWarning}</FormMessage>}
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
       <div>
@@ -178,15 +207,16 @@ export function AlertComposer() {
         {severityError && <p className="mt-1 text-xs font-medium text-red-600">{severityError}</p>}
         <p className="mt-1 text-xs text-slate-500">
           {severity === "CRITICAL"
-            ? "Loud looping alarm on the phone and lockscreen."
+            ? "Looping tone and vibration on Android; lock-screen popup requires Android permissions."
             : severity === "WARNING"
-              ? "Repeating alert tone on the phone and lockscreen."
-              : "Single short chime."}
+              ? "Repeating tone and vibration on Android; lock-screen popup requires Android permissions."
+              : "One non-looping tone and vibration pattern on Android."}
         </p>
       </div>
 
       <Button type="submit" disabled={busy}>
-        {busy ? "Publishing..." : "Alert all users"}
+        <Send size={16} aria-hidden="true" />
+        {busy ? "Publishing…" : "Alert all users"}
       </Button>
     </form>
   );

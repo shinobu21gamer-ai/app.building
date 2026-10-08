@@ -5,8 +5,15 @@ import { getAlertsForUser } from "@/lib/alerts";
 import { createAlertSchema } from "@/lib/validations/alert";
 import { sendSystemAlertEmails } from "@/lib/email";
 import { sendSystemAlertPush } from "@/lib/push";
+import type { SystemAlertPushReport } from "@/lib/push-types";
 
 export const runtime = "nodejs";
+
+const PUSH_DELIVERY_UNAVAILABLE: SystemAlertPushReport = {
+  web: { registered: 0, accepted: 0, failed: 0, skipped: 0, configured: false },
+  android: { registered: 0, accepted: 0, failed: 0, skipped: 0, configured: false },
+  ios: { registered: 0, accepted: 0, failed: 0, skipped: 0, configured: false },
+};
 
 export const GET = withErrorBoundary(async (req: Request) => {
   const user = await requireApiUser();
@@ -32,7 +39,7 @@ export const POST = withErrorBoundary(async (req: Request) => {
   // Send push synchronously. On serverless (Vercel) the `after()` hook can
   // freeze before the push goes out, so the alert would never reach phones.
   // Awaiting here guarantees delivery before the response is returned.
-  await Promise.allSettled([
+  const [, pushResult] = await Promise.allSettled([
     sendSystemAlertEmails({
       title: alert.title,
       message: alert.message,
@@ -43,8 +50,31 @@ export const POST = withErrorBoundary(async (req: Request) => {
       title: alert.title,
       message: alert.message,
       severity: alert.severity,
+      sound: alert.sound,
+      createdAt: alert.createdAt.toISOString(),
+      expiresAt: alert.expiresAt?.toISOString() ?? null,
     }),
   ]);
 
-  return ok({ alert: { id: alert.id, title: alert.title } });
+  return ok({
+    alert: { id: alert.id, title: alert.title },
+    push:
+      pushResult.status === "fulfilled"
+        ? pushResult.value
+        : {
+            ...PUSH_DELIVERY_UNAVAILABLE,
+            web: {
+              ...PUSH_DELIVERY_UNAVAILABLE.web,
+              reason: "Push delivery could not be evaluated; check server logs.",
+            },
+            android: {
+              ...PUSH_DELIVERY_UNAVAILABLE.android,
+              reason: "Push delivery could not be evaluated; check server logs.",
+            },
+            ios: {
+              ...PUSH_DELIVERY_UNAVAILABLE.ios,
+              reason: "Push delivery could not be evaluated; check server logs.",
+            },
+          },
+  });
 });

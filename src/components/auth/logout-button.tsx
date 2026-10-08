@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LogOut } from "lucide-react";
 import { apiRequest } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 
@@ -33,6 +34,7 @@ export function LogoutButton({
       disabled={submitting}
       className={className}
     >
+      <LogOut size={15} aria-hidden="true" />
       {submitting ? "Signing out…" : "Sign out"}
     </Button>
   );

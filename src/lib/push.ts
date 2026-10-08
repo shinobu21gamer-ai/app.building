@@ -3,6 +3,9 @@ import { createSign } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { db } from "@/lib/db";
 import { isIP } from "node:net";
+import type { PushPlatformReport, SystemAlertPushReport } from "@/lib/push-types";
+
+export type { PushPlatformReport, SystemAlertPushReport } from "@/lib/push-types";
 
 const FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
 const FCM_ENDPOINT = "https://fcm.googleapis.com/v1/projects";
@@ -13,6 +16,24 @@ interface AlertPayload {
   message: string;
   severity: string;
   alertId: number;
+  sound: boolean;
+  createdAt: string;
+  expiresAt: string | null;
+}
+
+function emptyPlatformReport(
+  registered = 0,
+  configured = false,
+  reason?: string
+): PushPlatformReport {
+  return {
+    registered,
+    accepted: 0,
+    failed: 0,
+    skipped: registered,
+    configured,
+    ...(reason ? { reason } : {}),
+  };
 }
 
 const SEVERITY_CHANNELS: Record<
@@ -118,7 +139,7 @@ async function getFcmAccessToken(account: ServiceAccount): Promise<string> {
   return cachedAccessToken.value;
 }
 
-async function sendFcmMessage(token: string, payload: AlertPayload, account: ServiceAccount): Promise<string | null> {
+async function sendFcmMessage(token: string, payload: AlertPayload, account: ServiceAccount): Promise<void> {
   const accessToken = await getFcmAccessToken(account);
   const settings = severitySettings(payload.severity);
 
@@ -138,7 +159,10 @@ async function sendFcmMessage(token: string, payload: AlertPayload, account: Ser
           title: payload.title,
           body: payload.message,
           severity: payload.severity,
+          sound: String(payload.sound),
           channelId: settings.channelId,
+          createdAt: payload.createdAt,
+          ...(payload.expiresAt ? { expiresAt: payload.expiresAt } : {}),
           url: "/alerts",
         },
         android: {
@@ -150,11 +174,13 @@ async function sendFcmMessage(token: string, payload: AlertPayload, account: Ser
           payload: {
             aps: {
               alert: { title: payload.title, body: payload.message },
-              sound: "default",
+              ...(payload.sound ? { sound: "default" } : {}),
               "interruption-level": "time-sensitive",
               "thread-id": "barangayresolve-alerts",
             },
             alertId: String(payload.alertId),
+            createdAt: payload.createdAt,
+            ...(payload.expiresAt ? { expiresAt: payload.expiresAt } : {}),
             url: "/alerts",
           },
         },
@@ -162,7 +188,7 @@ async function sendFcmMessage(token: string, payload: AlertPayload, account: Ser
     }),
   });
 
-  if (response.ok) return null;
+  if (response.ok) return;
 
   const text = await response.text();
   let code: string | null = null;
@@ -179,14 +205,11 @@ async function sendFcmMessage(token: string, payload: AlertPayload, account: Ser
   throw error;
 }
 
-const INVALID_FCM_CODES = new Set([
-  "UNREGISTERED",
-  "INVALID_ARGUMENT",
-  "SENDER_ID_MISMATCH",
-  "THIRD_PARTY_AUTH_ERROR",
-]);
-
-const INVALID_APNS_CODES = new Set([410, 400]);
+// Only provider responses that unambiguously mean the installation token is
+// no longer registered should deactivate a device. Other errors can indicate
+// project credentials or a malformed payload and must not prune valid devices.
+const INVALID_FCM_CODES = new Set(["UNREGISTERED"]);
+const INVALID_APNS_CODES = new Set([410]);
 
 async function sendApnsMessage(
   token: string,
@@ -252,11 +275,15 @@ async function sendApnsMessage(
       JSON.stringify({
         aps: {
           alert: { title: payload.title, body: payload.message },
-          sound: `${settings.sound}.wav`,
+          ...(payload.sound ? { sound: `${settings.sound}.wav` } : {}),
           "interruption-level": settings.apnsInterruption,
           "thread-id": "barangayresolve-alerts",
         },
         alertId: String(payload.alertId),
+        severity: payload.severity,
+        sound: String(payload.sound),
+        createdAt: payload.createdAt,
+        ...(payload.expiresAt ? { expiresAt: payload.expiresAt } : {}),
         url: "/alerts",
       })
     );
@@ -273,7 +300,12 @@ function configure() {
 }
 
 export function getPushPublicKey(): string | null {
-  return configure()?.publicKey ?? null;
+  try {
+    return configure()?.publicKey ?? null;
+  } catch (error) {
+    console.error("[push] invalid VAPID configuration:", error);
+    return null;
+  }
 }
 
 const LOOPBACK_HOST = /^localhost(\.[a-z]+)?$/i;
@@ -301,25 +333,37 @@ export function isValidPushEndpoint(endpoint: string): boolean {
   return true;
 }
 
-async function deliverWebPush(payload: AlertPayload): Promise<void> {
-  if (!configure()) {
-    console.warn(
-      "[push] VAPID keys not configured (VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT); skipping web push."
-    );
-    return;
-  }
+async function deliverWebPush(payload: AlertPayload): Promise<PushPlatformReport> {
   const subscriptions = await db.pushSubscription.findMany({
     where: { user: { isActive: true } },
   });
+
+  let configured = false;
+  try {
+    configured = Boolean(configure());
+  } catch (error) {
+    console.error("[push] invalid VAPID configuration:", error);
+  }
+  if (!configured) {
+    console.warn(
+      "[push] VAPID keys not configured (VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT); skipping web push."
+    );
+    return emptyPlatformReport(subscriptions.length, false, "Web push is not configured.");
+  }
 
   const body = JSON.stringify({
     title: payload.title,
     body: payload.message,
     severity: payload.severity,
     alertId: payload.alertId,
+    sound: payload.sound,
+    createdAt: payload.createdAt,
+    expiresAt: payload.expiresAt,
     url: "/alerts",
   });
 
+  let accepted = 0;
+  let failed = 0;
   await Promise.all(
     subscriptions.map(async (subscription) => {
       try {
@@ -330,7 +374,9 @@ async function deliverWebPush(payload: AlertPayload): Promise<void> {
           },
           body
         );
+        accepted += 1;
       } catch (error) {
+        failed += 1;
         const statusCode =
           error && typeof error === "object" && "statusCode" in error ? error.statusCode : null;
         if (statusCode === 404 || statusCode === 410) {
@@ -341,61 +387,142 @@ async function deliverWebPush(payload: AlertPayload): Promise<void> {
       }
     })
   );
+
+  return {
+    registered: subscriptions.length,
+    accepted,
+    failed,
+    skipped: 0,
+    configured: true,
+  };
 }
 
-async function deliverNativePush(payload: AlertPayload): Promise<void> {
+async function deliverNativePush(
+  payload: AlertPayload
+): Promise<Pick<SystemAlertPushReport, "android" | "ios">> {
   const tokens = await db.nativePushToken.findMany({
     where: { active: true, user: { isActive: true } },
   });
-  if (tokens.length === 0) return;
+  const androidTokens = tokens.filter((token) => token.platform !== "ios");
+  const iosTokens = tokens.filter((token) => token.platform === "ios");
 
-  const account = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || process.env.FIREBASE_SERVICE_ACCOUNT
-    ? await loadServiceAccount()
-    : null;
-  if (!account && tokens.some((t) => t.platform !== "ios")) {
+  let account: ServiceAccount | null = null;
+  const firebaseCredentialsConfigured = Boolean(
+    process.env.FIREBASE_SERVICE_ACCOUNT_PATH || process.env.FIREBASE_SERVICE_ACCOUNT
+  );
+  if (androidTokens.length > 0 && firebaseCredentialsConfigured) {
+    account = await loadServiceAccount();
+  }
+  const androidReport = emptyPlatformReport(
+    androidTokens.length,
+    Boolean(account),
+    account ? undefined : androidTokens.length > 0 ? "Firebase service-account credentials are not configured or could not be loaded." : undefined
+  );
+  if (!account && androidTokens.length > 0) {
     // On serverless hosts (Vercel) a file path like FIREBASE_SERVICE_ACCOUNT_PATH
     // will not exist; the service account must be supplied inline via
     // FIREBASE_SERVICE_ACCOUNT (a JSON string) for FCM to work at all.
     console.error(
       "[push] Firebase service account not configured (set FIREBASE_SERVICE_ACCOUNT to the service-account JSON on Vercel); skipping Android FCM delivery for " +
-        tokens.filter((t) => t.platform !== "ios").length +
+        androidTokens.length +
         " device(s)."
     );
   }
-  const apnsBundleId = process.env.APNS_BUNDLE_ID;
-  const apnsEnvironment = process.env.APNS_ENVIRONMENT === "sandbox" ? "sandbox" : "production";
 
-  await Promise.all(
-    tokens.map(async (row) => {
-      try {
-        if (row.platform === "ios") {
-          if (!apnsBundleId) return;
-          // sendApnsMessage rejects with apnsStatus on any non-200 response;
-          // dead-token pruning happens in the shared catch below.
-          await sendApnsMessage(row.token, payload, apnsBundleId, apnsEnvironment);
-          return;
-        }
-        if (!account) return;
-        const code = await sendFcmMessage(row.token, payload, account);
-        if (code && INVALID_FCM_CODES.has(code)) {
-          await db.nativePushToken.update({ where: { id: row.id }, data: { active: false } });
-        }
-      } catch (error) {
-        const fcmCode = (error as { fcmCode?: string | null }).fcmCode;
-        const apnsStatus = (error as { apnsStatus?: number }).apnsStatus;
-        if (
-          (fcmCode && INVALID_FCM_CODES.has(fcmCode)) ||
-          (apnsStatus && INVALID_APNS_CODES.has(apnsStatus))
-        ) {
-          await db.nativePushToken.update({ where: { id: row.id }, data: { active: false } });
-          return;
-        }
-        console.error("[push] failed to deliver native alert:", error);
-      }
-    })
+  const apnsBundleId = process.env.APNS_BUNDLE_ID;
+  const apnsConfigured = Boolean(
+    apnsBundleId && process.env.APNS_KEY_PATH && process.env.APNS_KEY_ID && process.env.APNS_TEAM_ID
   );
+  const iosReport = emptyPlatformReport(
+    iosTokens.length,
+    apnsConfigured,
+    apnsConfigured ? undefined : iosTokens.length > 0 ? "APNs credentials are not configured." : undefined
+  );
+
+  let androidAccepted = 0;
+  let androidFailed = 0;
+  const firebaseAccount = account;
+  if (firebaseAccount) {
+    await Promise.all(
+      androidTokens.map(async (row) => {
+        try {
+          await sendFcmMessage(row.token, payload, firebaseAccount);
+          androidAccepted += 1;
+        } catch (error) {
+          androidFailed += 1;
+          const fcmCode = (error as { fcmCode?: string | null }).fcmCode;
+          if (fcmCode && INVALID_FCM_CODES.has(fcmCode)) {
+            await db.nativePushToken.update({ where: { id: row.id }, data: { active: false } });
+            return;
+          }
+          console.error("[push] failed to deliver native alert:", error);
+        }
+      })
+    );
+  }
+
+  let iosAccepted = 0;
+  let iosFailed = 0;
+  if (apnsConfigured && apnsBundleId) {
+    const apnsEnvironment = process.env.APNS_ENVIRONMENT === "sandbox" ? "sandbox" : "production";
+    await Promise.all(
+      iosTokens.map(async (row) => {
+        try {
+          await sendApnsMessage(row.token, payload, apnsBundleId, apnsEnvironment);
+          iosAccepted += 1;
+        } catch (error) {
+          iosFailed += 1;
+          const apnsStatus = (error as { apnsStatus?: number }).apnsStatus;
+          if (apnsStatus && INVALID_APNS_CODES.has(apnsStatus)) {
+            await db.nativePushToken.update({ where: { id: row.id }, data: { active: false } });
+            return;
+          }
+          console.error("[push] failed to deliver native alert:", error);
+        }
+      })
+    );
+  }
+
+  return {
+    android: {
+      ...androidReport,
+      accepted: androidAccepted,
+      failed: androidFailed,
+      skipped: account ? 0 : androidTokens.length,
+    },
+    ios: {
+      ...iosReport,
+      accepted: iosAccepted,
+      failed: iosFailed,
+      skipped: apnsConfigured ? 0 : iosTokens.length,
+    },
+  };
 }
 
-export async function sendSystemAlertPush(input: AlertPayload): Promise<void> {
-  await Promise.allSettled([deliverWebPush(input), deliverNativePush(input)]);
+export async function sendSystemAlertPush(input: AlertPayload): Promise<SystemAlertPushReport> {
+  const [web, native] = await Promise.allSettled([
+    deliverWebPush(input),
+    deliverNativePush(input),
+  ]);
+  const failureReport = (reason: unknown): PushPlatformReport => {
+    console.error("[push] could not evaluate alert delivery:", reason);
+    return {
+      registered: 0,
+      accepted: 0,
+      failed: 0,
+      skipped: 0,
+      configured: false,
+      reason: "Push delivery could not be evaluated; check server logs.",
+    };
+  };
+
+  return {
+    web: web.status === "fulfilled" ? web.value : failureReport(web.reason),
+    android:
+      native.status === "fulfilled"
+        ? native.value.android
+        : failureReport(native.reason),
+    ios:
+      native.status === "fulfilled" ? native.value.ios : failureReport(native.reason),
+  };
 }

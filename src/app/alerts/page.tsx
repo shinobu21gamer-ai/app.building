@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ArrowLeft } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { requireUser, roleHome } from "@/lib/auth/session";
@@ -21,7 +22,10 @@ export default async function AlertsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <PushSetup />
-          <Button href={roleHome(user.role.key)} variant="outline" size="sm">Back to dashboard</Button>
+          <Button href={roleHome(user.role.key)} variant="outline" size="sm">
+            <ArrowLeft size={15} aria-hidden="true" />
+            Back to dashboard
+          </Button>
         </div>
       </div>
       <AlertArchive initialAlerts={alerts} />
