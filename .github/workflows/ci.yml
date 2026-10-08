@@ -40,3 +40,87 @@ jobs:
           mkdir -p android/app/src/main/assets
           npx cap sync android
           git diff --exit-code -- android
+
+  # The Android shell cannot be tested from the web build, and a mistake in it
+  # only shows up as a phone app that closes without a message. Compiling the
+  # real APK on every change is the only cheap way to catch that before it is
+  # handed to a user.
+  android:
+    runs-on: ubuntu-latest
+    env:
+      # `npm ci` runs prisma generate (postinstall), which only needs this to be set.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # android/app/google-services.json is gitignored (it carries an API key),
+      # so CI supplies a structurally valid placeholder: enough for the Google
+      # Services Gradle plugin to run and for the whole shell to compile. CI
+      # artifacts are never shipped, and the real file is used for release APKs.
+      - name: Provide a placeholder Firebase configuration
+        run: |
+          cat > android/app/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "barangayresolve-ci",
+              "storage_bucket": "barangayresolve-ci.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+                  "android_client_info": {
+                    "package_name": "com.barangayresolve.app"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          JSON
+
+      # Builds through the same script users run: it syncs Capacitor first,
+      # repairs the gradlew executable bit and refuses to hand out an APK with no
+      # Firebase configuration. The output is captured so a failure is readable
+      # in the run summary instead of only behind a log download.
+      - name: Assemble the debug APK
+        run: |
+          set -o pipefail
+          if npm run android:apk > android-build.log 2>&1; then
+            tail -20 android-build.log
+          else
+            echo "::error::$(tail -c 900 android-build.log | tr '\n' ' ')"
+            tail -80 android-build.log
+            exit 1
+          fi

@@ -5,6 +5,7 @@ import { Bell, BellOff, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api-client";
 import { forgetNativeToken, getNativePlatform, getPushMode, readNativeToken, ensureSeverityChannels, PushNotifications } from "@/lib/capacitor-types";
+import { readPushDiagnostics, requestNativePushToken, waitForAlertBridge } from "@/lib/native-diagnostics";
 
 function decodeKey(value: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (value.length % 4)) % 4);
@@ -56,9 +57,18 @@ export function PushSetup() {
   async function checkSubscription(currentMode: PushMode) {
     try {
       if (currentMode === "capacitor") {
+        // A build that cannot talk to Firebase says so up front; asking the
+        // Capacitor plugin to register anyway is what used to close the app.
+        const diagnostics = readPushDiagnostics();
+        if (diagnostics && !diagnostics.available) {
+          setStatus("error");
+          setMessage(diagnostics.reason ?? "Push alerts are unavailable in this build.");
+          return;
+        }
+
         const perm = await PushNotifications.checkPermissions();
         if (perm.receive === "granted") {
-          const result = await apiRequest<{ registered: boolean }>(
+          const result = await apiRequest<{ registered: boolean; serverConfigured?: boolean }>(
             `/api/v1/alerts/push/token?platform=${getNativePlatform()}`
           );
           if (!result.success) {
@@ -66,14 +76,26 @@ export function PushSetup() {
             setMessage(result.error.message);
           } else if (result.data.registered) {
             setStatus("enabled");
+            if (result.data.serverConfigured === false) {
+              setMessage(
+                "This phone is registered, but the server has no Firebase service-account credentials yet, so nothing can be delivered from here."
+              );
+            } else if (diagnostics?.lastError) {
+              setMessage(diagnostics.lastError);
+            }
           } else {
             setStatus("disabled");
-            setMessage("Notifications are allowed, but this device is not registered with the server yet.");
+            setMessage(
+              diagnostics?.lastError ??
+                "Notifications are allowed, but this device is not registered with the server yet."
+            );
           }
         } else if (perm.receive === "denied") {
           setStatus("error");
+          setMessage("Notifications are blocked for this app in Android settings.");
         } else {
           setStatus("prompt");
+          if (diagnostics?.lastError) setMessage(diagnostics.lastError);
         }
         return;
       }
@@ -115,6 +137,16 @@ export function PushSetup() {
     setMessage(null);
     try {
       if (mode === "capacitor") {
+        // The bridge object arrives with the first resume; give it a moment so a
+        // current APK is never mistaken for an old one that still needs the
+        // Capacitor plugin (whose failure closes the app).
+        if (!readPushDiagnostics()) await waitForAlertBridge(2000);
+        const diagnostics = readPushDiagnostics();
+        if (diagnostics && !diagnostics.available) {
+          setMessage(diagnostics.reason ?? "Push alerts are unavailable in this build.");
+          setStatus("error");
+          return;
+        }
         const perm = await PushNotifications.requestPermissions();
         if (perm.receive !== "granted") {
           setMessage("Allow notifications in system settings to receive phone alerts.");
@@ -123,7 +155,11 @@ export function PushSetup() {
         }
         await ensureSeverityChannels();
         const registrationResult = waitForNativeRegistration();
-        await PushNotifications.register();
+        // The app's own registration (current APKs) reports every failure; the
+        // plugin call stays as the fallback for APKs built without it.
+        if (!requestNativePushToken()) {
+          await PushNotifications.register();
+        }
         const registration = await registrationResult;
         if (!registration.registered) {
           setStatus("error");
@@ -198,7 +234,16 @@ export function PushSetup() {
           }
           forgetNativeToken();
         }
-        await PushNotifications.unregister();
+        // Unregistering touches Firebase; skip it when the build cannot talk to
+        // Firebase at all (the server-side deactivation above is what matters).
+        const diagnostics = readPushDiagnostics();
+        if (!diagnostics || diagnostics.available) {
+          try {
+            await PushNotifications.unregister();
+          } catch {
+            // Older/broken builds: the server-side deactivation already ran.
+          }
+        }
         setStatus("disabled");
         setMessage("Phone alerts disabled.");
         return;
@@ -251,6 +296,9 @@ export function PushSetup() {
         <>
           <p className="max-w-xl text-xs leading-5 text-slate-600">
             For lock-screen popups, allow notifications and Android alert-display permissions. Delivery still requires a powered-on phone with a network connection; Android battery settings and force-stop can delay or prevent alerts.
+          </p>
+          <p className="max-w-xl text-xs leading-5 text-slate-600">
+            If it fails, open “Alert diagnostics” below: it shows the exact error this phone reported and lets you copy it.
           </p>
           <Button
             type="button"

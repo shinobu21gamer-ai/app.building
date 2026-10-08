@@ -127,6 +127,25 @@ export interface AlertBridge {
    * anyone is signed in.
    */
   setSessionActive(active: boolean): void;
+  /**
+   * Push-alert state of this build as JSON. Optional: APKs built before this
+   * method existed do not have it, so every caller must check.
+   */
+  pushDiagnostics?(): string;
+  /**
+   * Registers this device for FCM from native code, where every failure is
+   * caught and reported. Preferred over the Capacitor plugin, whose unhandled
+   * exception closes the app when the build has no Firebase configuration.
+   */
+  requestPushToken?(): void;
+  /** The last fatal native problem, or null when the last launch was clean. */
+  crashReport?(): string | null;
+  clearCrashReport?(): void;
+  /**
+   * Why Android says the previous run ended (crash, ANR, memory kill, user
+   * swipe) as JSON. Optional: older APKs do not have it.
+   */
+  lastExitReport?(): string | null;
 }
 
 // Extend Window interface for AlertBridge
