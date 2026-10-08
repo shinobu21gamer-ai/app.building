@@ -26,6 +26,13 @@ public class AlertRestartReceiver extends BroadcastReceiver {
 
   @Override
   public void onReceive(Context context, Intent intent) {
+    // A reboot must not resurrect an alarm for a device nobody is signed in to.
+    if (!SessionState.deliveryAllowed(context)) {
+      clearActiveAlert(context);
+      Log.i(TAG, "Not restoring alarm: no signed-in session on this device.");
+      return;
+    }
+
     Intent alarm = restoreActiveAlertIntent(context);
     if (alarm == null) return;
 

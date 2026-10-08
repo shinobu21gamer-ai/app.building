@@ -127,6 +127,13 @@ public class MainActivity extends BridgeActivity {
     }
 
     @JavascriptInterface
+    public void setSessionActive(boolean active) {
+      // The web layer owns the truth about the session; the native alarm layer
+      // can only read it through this mirror.
+      SessionState.setSignedIn(MainActivity.this, active);
+    }
+
+    @JavascriptInterface
     public void openAlertPermissions() {
       runOnUiThread(() -> {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU

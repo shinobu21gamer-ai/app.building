@@ -120,6 +120,13 @@ export interface AlertBridge {
   startAlertFor(alertId: number, title: string, message: string, severity: string, sound: boolean): void;
   openAlertsPage(): void;
   openAlertPermissions(): void;
+  /**
+   * Mirrors the web session into the native layer. The alarm runs in a
+   * foreground service Android can start while the app is backgrounded, so it
+   * cannot read the WebView session itself — this is how it learns whether
+   * anyone is signed in.
+   */
+  setSessionActive(active: boolean): void;
 }
 
 // Extend Window interface for AlertBridge

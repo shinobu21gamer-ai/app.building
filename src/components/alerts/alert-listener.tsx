@@ -213,7 +213,7 @@ function createAlarmSound(severity: string): AlarmSound | null {
   }
 }
 
-export function AlertListener() {
+export function AlertListener({ enabled = true }: { enabled?: boolean }) {
   const [pending, setPending] = useState<AlertView[]>([]);
   const [ackError, setAckError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -295,7 +295,11 @@ export function AlertListener() {
     return () => window.removeEventListener("native-ack-requested", handler as EventListener);
   }, []);
 
+  // Polling is for signed-in sessions only. The listener is mounted in the root
+  // layout, so without this a signed-out visitor would poll an endpoint that can
+  // only ever answer 401 — every 20 seconds, on every page.
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     async function poll() {
       const result = await apiRequest<{ alerts: AlertView[] }>("/api/v1/alerts?active=true");
@@ -309,7 +313,7 @@ export function AlertListener() {
       window.clearInterval(timer);
       silenceEveryAlarm();
     };
-  }, [offer]);
+  }, [offer, enabled]);
 
   async function acknowledge() {
     if (!current || busy || batchBusy) return;

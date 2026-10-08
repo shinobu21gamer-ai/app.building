@@ -27,3 +27,17 @@ export const pushSubscriptionSchema = z.object({
     auth: z.string().min(8).max(500),
   }),
 });
+
+/**
+ * Optional device hint sent with a sign-out so the server can unregister
+ * *this* device only, instead of every device signed in to the account.
+ * Every field is optional: a client that knows nothing about its push
+ * registration can still sign out.
+ */
+export const logoutDeviceSchema = z.object({
+  /** Web-push endpoint (a capability URL unique to this browser profile). */
+  endpoint: z.string().url().max(2000).optional(),
+  /** FCM/APNs device token from the native shell. */
+  token: z.string().min(10).max(500).optional(),
+  platform: z.enum(["android", "ios"]).optional(),
+});

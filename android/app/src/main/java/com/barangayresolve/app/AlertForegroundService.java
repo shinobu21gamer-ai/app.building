@@ -94,6 +94,18 @@ public class AlertForegroundService extends Service {
     Intent alertIntent = intent;
     boolean shouldStartAlarm = false;
 
+    // Defence in depth. AlertMessagingService already gates delivery on the
+    // session; this catches the paths that bypass it — a sticky restart with a
+    // null intent, a reboot restore, or a stale broadcast. A stop request is
+    // always honoured so a signed-out device can still be silenced.
+    if (!ACTION_STOP_ALERT.equals(action) && !SessionState.deliveryAllowed(this)) {
+      Log.i(TAG, "Ignoring alert start: no signed-in session on this device.");
+      AlertRestartReceiver.clearActiveAlert(this);
+      stopForeground(true);
+      stopSelf();
+      return START_NOT_STICKY;
+    }
+
     if (intent == null) {
       // START_STICKY restarts a killed service with a null intent. Rebuild the
       // last alert from durable state instead of leaving a silent FGS behind.
