@@ -32,11 +32,21 @@ export function enqueueAlerts<T extends QueuedAlert>(
 
   if (added.length === 0) return pending as T[];
 
-  added.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
-  return [...pending, ...added];
+  return [...pending, ...added].sort(
+    (a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)
+  );
 }
 
 /** Drop an alert from the queue by id. */
 export function removeAlert<T extends QueuedAlert>(pending: readonly T[], id: number): T[] {
   return pending.filter((alert) => alert.id !== id);
+}
+
+/** Drop a group of acknowledged alerts while preserving all other queue order. */
+export function removeAlerts<T extends QueuedAlert>(
+  pending: readonly T[],
+  ids: readonly number[]
+): T[] {
+  const removedIds = new Set(ids);
+  return pending.filter((alert) => !removedIds.has(alert.id));
 }

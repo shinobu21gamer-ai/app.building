@@ -27,7 +27,9 @@ public final class AlertUi {
     String label = severity + " alert";
 
     FrameLayout root = new FrameLayout(context);
-    root.setBackgroundColor(0xEE0B1220);
+    // Dim behind a compact, centered message card rather than covering the
+    // display with an almost-opaque full-screen panel.
+    root.setBackgroundColor(0x990B1220);
     root.setClickable(true);
     root.setFocusable(true);
 
@@ -88,7 +90,7 @@ public final class AlertUi {
     scroll.addView(messageView, new ScrollView.LayoutParams(
         ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
     card.addView(scroll, new LinearLayout.LayoutParams(
-        LinearLayout.LayoutParams.MATCH_PARENT, dp(context, 220)));
+        LinearLayout.LayoutParams.MATCH_PARENT, dp(context, 180)));
     ((LinearLayout.LayoutParams) scroll.getLayoutParams()).setMargins(0, dp(context, 10), 0, dp(context, 18));
 
     // Actions: Silence + OK, I understand.
@@ -113,12 +115,14 @@ public final class AlertUi {
     buttons.addView(acknowledge, ackLp);
     card.addView(buttons);
 
+    int maxCardWidth = dp(context, 440);
+    int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
+    int sideMargin = dp(context, 24);
+    int cardWidth = Math.min(maxCardWidth, screenWidth - (sideMargin * 2));
     FrameLayout.LayoutParams cardParams =
-        new FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+        new FrameLayout.LayoutParams(cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT);
     cardParams.gravity = Gravity.CENTER;
-    int margin = dp(context, 24);
-    cardParams.setMargins(margin, margin, margin, margin);
+    cardParams.setMargins(sideMargin, dp(context, 16), sideMargin, dp(context, 16));
     root.addView(card, cardParams);
 
     return root;

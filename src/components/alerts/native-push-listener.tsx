@@ -9,19 +9,18 @@ import {
   getNativePlatform,
   readNativeToken,
   rememberNativeToken,
-  type AlertView,
+  toNativeAlertView,
   type NativeAlertPayload,
 } from "@/lib/capacitor-types";
 
 type PushStatus = "idle" | "registering" | "registered" | "failed";
 
 /**
- * Registers the device's FCM token with the server so alerts can wake the phone
- * even when the app is closed. Mounted globally in the root layout.
+ * Registers the device's FCM token with the server so Android can receive alerts
+ * while the app is backgrounded. Mounted globally in the root layout.
  *
- * Every step is isolated so a single failure (channel creation, permission
- * dialog, token fetch) can never block the others — the app must always end up
- * registered. A small diagnostic banner reports the outcome on-device.
+ * Every step is isolated so a transient failure is visible and can be retried.
+ * A small diagnostic banner reports the server registration outcome on-device.
  */
 export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
   const [status, setStatus] = useState<PushStatus>("idle");
@@ -40,10 +39,26 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       try {
         await ensureSeverityChannels();
         rememberNativeToken(token);
-        await apiRequest("/api/v1/alerts/push/token", {
+        const result = await apiRequest<{ registered: boolean }>("/api/v1/alerts/push/token", {
           method: "POST",
           body: JSON.stringify({ token, platform: getNativePlatform() }),
         });
+        if (!result.success || !result.data.registered) {
+          const message = result.success
+            ? "The server did not confirm this device registration."
+            : result.error.message;
+          window.dispatchEvent(
+            new CustomEvent("native-token-registration", {
+              detail: { token, registered: false, message },
+            })
+          );
+          throw new Error(message);
+        }
+        window.dispatchEvent(
+          new CustomEvent("native-token-registration", {
+            detail: { token, registered: true },
+          })
+        );
         if (!cancelled) setStatus("registered");
       } catch (e) {
         console.error("[push] token registration failed:", e);
@@ -62,22 +77,24 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       void persistToken(token);
     };
     window.addEventListener("native-token-refreshed", handleTokenRefreshed as EventListener);
-
-    const toAlertView = (data: NativeAlertPayload): AlertView => ({
-      id: data.alertId || Date.now(),
-      title: data.title || "BarangayResolve Alert",
-      message: data.body || data.message || "You have a new alert",
-      severity: data.severity || "INFO",
-      sound: data.sound !== false,
-      createdAt: data.createdAt || new Date().toISOString(),
-      expiresAt: data.expiresAt || null,
-      acknowledged: false,
-      reactions: {},
-    });
+    const handleAuthReady = () => {
+      const remembered = readNativeToken();
+      if (remembered) {
+        void persistToken(remembered);
+      } else {
+        void PushNotifications.register().catch((e) => {
+          if (!cancelled) {
+            setStatus("failed");
+            setError(e instanceof Error ? e.message : "register failed");
+          }
+        });
+      }
+    };
+    window.addEventListener("native-auth-ready", handleAuthReady);
 
     const handlePushReceived = (notification: { data?: unknown }) => {
       const data = (notification?.data ?? {}) as NativeAlertPayload;
-      window.dispatchEvent(new CustomEvent("native-push-received", { detail: toAlertView(data) }));
+      window.dispatchEvent(new CustomEvent("native-push-received", { detail: toNativeAlertView(data) }));
     };
 
     const handleRegistration = async (token: { value: string }) => {
@@ -158,6 +175,7 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
     return () => {
       cancelled = true;
       window.removeEventListener("native-token-refreshed", handleTokenRefreshed as EventListener);
+      window.removeEventListener("native-auth-ready", handleAuthReady);
       for (const handle of handles) handle.remove();
     };
   }, [enabled]);
@@ -187,7 +205,7 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       <div className="flex items-center justify-between gap-3">
         <span>
           {status === "registering" && "Registering push notifications…"}
-          {status === "registered" && "Push registered — alerts will wake your phone"}
+          {status === "registered" && "Phone alerts are registered. The phone must be powered on and connected."}
           {status === "failed" && `Push failed: ${error ?? "unknown error"}`}
         </span>
         <button

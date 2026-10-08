@@ -1,17 +1,17 @@
 package com.barangayresolve.app;
 
 import android.Manifest;
-import android.app.Activity;
+import android.app.KeyguardManager;
+import android.app.NotificationManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
-import android.content.IntentFilter;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -23,6 +23,9 @@ public class MainActivity extends BridgeActivity {
 
   private static final int OVERLAY_PERMISSION_REQUEST_CODE = 1234;
   private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 1235;
+  private static final int FULL_SCREEN_INTENT_PERMISSION_REQUEST_CODE = 1236;
+  private static final String ALERT_PERMISSION_PREFS = "barangayresolve.alert.permissions";
+  private static final String KEY_PERMISSION_FLOW_PROMPTED = "permission_flow_prompted";
 
   private static WeakReference<MainActivity> sCurrent = new WeakReference<>(null);
   private static volatile boolean sResumed = false;
@@ -35,8 +38,15 @@ public class MainActivity extends BridgeActivity {
     cookies.setAcceptCookie(true);
     cookies.setAcceptThirdPartyCookies(getBridge() == null ? null : getBridge().getWebView(), true);
     NotificationChannels.ensure(this);
-    requestOverlayPermission();
-    requestPostNotificationsPermission();
+    boolean prompted = getSharedPreferences(ALERT_PERMISSION_PREFS, MODE_PRIVATE)
+        .getBoolean(KEY_PERMISSION_FLOW_PROMPTED, false);
+    if (!prompted) {
+      getSharedPreferences(ALERT_PERMISSION_PREFS, MODE_PRIVATE)
+          .edit()
+          .putBoolean(KEY_PERMISSION_FLOW_PROMPTED, true)
+          .apply();
+      requestAlertDisplayPermissions();
+    }
   }
 
   @Override
@@ -78,14 +88,80 @@ public class MainActivity extends BridgeActivity {
   public class AlertBridge {
     @JavascriptInterface
     public void stopAlertSound() {
-      // Web "silence" — stop the alarm but keep the alert unacknowledged.
-      IntentReceiver.sendStop();
+      // Legacy web silence — stop the current alarm but keep its notification.
+      AlertForegroundService.stop(MainActivity.this, -1, false);
+    }
+
+    @JavascriptInterface
+    public void stopAlertSoundFor(int alertId) {
+      // Silence only this alert; leave its notification available for later ack.
+      AlertForegroundService.stop(MainActivity.this, alertId, false);
     }
 
     @JavascriptInterface
     public void stopAlertFor(int alertId) {
-      // Web acknowledge — stop the alarm and clear this alert's notification.
+      // Server-confirmed acknowledgement — stop this alarm and clear its notification.
       AlertForegroundService.stop(MainActivity.this, alertId, true);
+    }
+
+    @JavascriptInterface
+    public void startAlertFor(int alertId, String title, String body, String severity, boolean sound) {
+      Intent alarm = new Intent(MainActivity.this, AlertForegroundService.class);
+      alarm.setAction(AlertForegroundService.ACTION_START_ALERT);
+      alarm.putExtra(AlertForegroundService.EXTRA_ALERT_ID, alertId);
+      alarm.putExtra(AlertForegroundService.EXTRA_TITLE, title);
+      alarm.putExtra(AlertForegroundService.EXTRA_BODY, body);
+      alarm.putExtra(AlertForegroundService.EXTRA_SEVERITY, severity);
+      alarm.putExtra(AlertForegroundService.EXTRA_SOUND, sound);
+      // The web alert dialog is already visible while the app is foreground.
+      alarm.putExtra(AlertForegroundService.EXTRA_SHOW_OVERLAY, false);
+      try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          startForegroundService(alarm);
+        } else {
+          startService(alarm);
+        }
+      } catch (Exception ignored) {
+        // The web alert remains visible if Android blocks starting the service.
+      }
+    }
+
+    @JavascriptInterface
+    public void openAlertPermissions() {
+      runOnUiThread(() -> {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+            && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+          requestPermissions(
+              new String[] {Manifest.permission.POST_NOTIFICATIONS},
+              NOTIFICATION_PERMISSION_REQUEST_CODE);
+          return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(MainActivity.this)) {
+          requestOverlayPermission();
+          return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+          NotificationManager manager = getSystemService(NotificationManager.class);
+          if (manager != null && !manager.canUseFullScreenIntent()) {
+            requestFullScreenIntentAccess();
+            return;
+          }
+        }
+        Intent intent;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+          intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+        } else {
+          intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+          intent.setData(android.net.Uri.parse("package:" + getPackageName()));
+        }
+        try {
+          startActivity(intent);
+        } catch (Exception ignored) {
+          // The Android settings panel is device-specific.
+        }
+      });
     }
 
     @JavascriptInterface
@@ -95,15 +171,16 @@ public class MainActivity extends BridgeActivity {
     }
   }
 
-  /** Thin indirection so the JS bridge cannot accidentally reference this activity after death. */
-  private static final class IntentReceiver {
-    static void sendStop() {
-      MainActivity activity = sCurrent.get();
-      if (activity == null) return;
-      if (AlertForegroundService.isRunning()) {
-        LocalBroadcastManager.getInstance(activity).sendBroadcast(new Intent(AlertForegroundService.ACTION_STOP_ALERT));
-      }
+  private void requestAlertDisplayPermissions() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED) {
+      requestPermissions(
+          new String[] {Manifest.permission.POST_NOTIFICATIONS},
+          NOTIFICATION_PERMISSION_REQUEST_CODE);
+      return;
     }
+    requestOverlayPermission();
   }
 
   private void requestOverlayPermission() {
@@ -112,22 +189,47 @@ public class MainActivity extends BridgeActivity {
           new Intent(
               Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
               android.net.Uri.parse("package:" + getPackageName()));
-      startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE);
+      try {
+        startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE);
+      } catch (Exception ignored) {
+        // Device-specific settings panel is unavailable; normal notifications remain usable.
+      }
+      return;
+    }
+    requestFullScreenIntentAccess();
+  }
+
+  private void requestFullScreenIntentAccess() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return;
+    NotificationManager manager = getSystemService(NotificationManager.class);
+    if (manager == null || manager.canUseFullScreenIntent()) return;
+
+    Intent intent = new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT);
+    intent.setData(android.net.Uri.parse("package:" + getPackageName()));
+    try {
+      startActivityForResult(intent, FULL_SCREEN_INTENT_PERMISSION_REQUEST_CODE);
+    } catch (Exception ignored) {
+      // Full-screen access remains optional; lock-screen notifications still work.
     }
   }
 
-  private void requestPostNotificationsPermission() {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return;
-    if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-      requestPermissions(
-          new String[] {Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_REQUEST_CODE);
+  @Override
+  public void onRequestPermissionsResult(
+      int requestCode, String[] permissions, int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
+      // Continue the guided setup even if notifications were declined: overlay
+      // access can still provide a popup while the app is in the background.
+      requestOverlayPermission();
     }
   }
 
   @Override
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     super.onActivityResult(requestCode, resultCode, data);
-    // Set in onResume already; nothing extra to do.
+    if (requestCode == OVERLAY_PERMISSION_REQUEST_CODE) {
+      requestFullScreenIntentAccess();
+    }
   }
 
   // ---- Web bridge helpers used by native services ----
@@ -135,6 +237,15 @@ public class MainActivity extends BridgeActivity {
   public static boolean isForeground() {
     MainActivity activity = sCurrent.get();
     return sResumed && activity != null;
+  }
+
+  /** Only route an alert to the WebView when it is actually visible and unlocked. */
+  public static boolean canHandleAlertInWeb(android.content.Context context) {
+    if (!isForeground()) return false;
+    PowerManager powerManager = context.getSystemService(PowerManager.class);
+    if (powerManager == null || !powerManager.isInteractive()) return false;
+    KeyguardManager keyguardManager = context.getSystemService(KeyguardManager.class);
+    return keyguardManager == null || !keyguardManager.isKeyguardLocked();
   }
 
   /** Evaluates JS on the WebView if one exists; returns false otherwise. */

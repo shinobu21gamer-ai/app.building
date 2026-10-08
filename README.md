@@ -69,11 +69,39 @@ npm run dev               # http://localhost:3000
 
 See `.env.example`. The only required variable is `DATABASE_URL` (defaults to the SQLite file `prisma/dev.db`).
 
-For phone-style offline alerts, generate VAPID keys once with
-`npx web-push generate-vapid-keys`, then set `VAPID_SUBJECT`,
-`VAPID_PUBLIC_KEY`, and `VAPID_PRIVATE_KEY` in `.env`. Users must open the
-Alerts page once and choose **Enable phone alerts**; after that, subscribed
-devices can receive critical announcements even when the website is closed.
+### Web Push
+
+For browser push, generate VAPID keys with `npx web-push generate-vapid-keys`,
+then set `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY`, and `VAPID_PRIVATE_KEY`. Users
+must open the Alerts page and choose **Enable phone alerts**. Browser/OS policy
+still controls delivery when the browser is closed.
+
+### Native Android APK Alerts
+
+The APK uses high-priority, data-only FCM messages and a native foreground
+service for the alert tone, vibration, and popup. Configure
+`android/app/google-services.json` for package `com.barangayresolve.app`, and
+configure the server with `FIREBASE_SERVICE_ACCOUNT` (the service-account JSON
+string; use this for serverless deployments) or `FIREBASE_SERVICE_ACCOUNT_PATH`
+on a server that can read that file. Users must sign in, enable phone alerts,
+and allow Android notification and alert-display permissions. Android 14+
+full-screen lock-screen popups require the corresponding special access.
+
+This works only while the phone is powered on and connected. An APK cannot
+receive FCM or turn on a phone that is completely powered off. Android battery
+policies, a force-stop, notification/channel settings, Do Not Disturb, and
+manufacturer-specific background restrictions can also delay or suppress an
+alert. A provider accepting a push request is not proof that the phone received
+it. The admin composer reports provider acceptance/failure counts for this
+reason.
+
+Before deploying the office contact/location schema change, back up the database
+and apply the migration with `npx prisma migrate deploy`. Existing null contacts
+are normalized to empty strings and must be filled in by an administrator; old
+office locations remain blank until staff enter an address or pin them on the map.
+
+When several system alerts are queued, users can acknowledge them one at a time
+or record acknowledgment for all queued alerts in one action.
 
 ### Email Retry Scheduling
 
@@ -540,7 +568,9 @@ action is confirmed and written to the `Audit` log.
 - **Officials** (`/admin/officials`): a focused view for OFFICIAL accounts, where
   each official is linked to an active office.
 - **Offices** (`/admin/offices`): create and maintain the offices that receive
-  routed concerns (name, code, description, head, contact).
+  routed concerns (name, code, description, head, required contact, and address
+  or Leaflet map pin). Map pins use OpenStreetMap tiles and can be opened as a
+  map link from each office card.
 - **Concern categories** (`/admin/categories`): create and maintain the
   categories residents choose when submitting, and that routing rules map.
 - **Routing rules** (`/admin/routing`): map category → office with a priority

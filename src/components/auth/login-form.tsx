@@ -87,6 +87,7 @@ export function LoginForm({ nextPath }: { nextPath?: string | null }) {
       return;
     }
 
+    window.dispatchEvent(new Event("native-auth-ready"));
     router.push(nextPath ?? result.data.redirect, { scroll: false });
     router.refresh();
   }

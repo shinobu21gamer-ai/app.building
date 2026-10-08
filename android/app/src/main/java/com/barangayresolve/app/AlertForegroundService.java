@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.PixelFormat;
 import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.IBinder;
@@ -29,11 +30,11 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 /**
- * Native alarm host. Started by {@link AlertMessagingService} whenever a push arrives
- * while the app is not in the foreground. Owns the whole native alert experience:
+ * Native alarm host. Started by {@link AlertMessagingService} for background pushes
+ * and by the WebView queue bridge for the active alert. Owns the native experience:
  * <ul>
- *   <li>looping severity sound on the alarm stream,</li>
- *   <li>repeating severity vibration,</li>
+ *   <li>a severity sound (one-shot for INFO, looping for WARNING/CRITICAL),</li>
+ *   <li>a severity-pattern vibration (repeating for warnings and critical alerts),</li>
  *   <li>a {@link WindowManager} overlay popup (when SYSTEM_ALERT_WINDOW is granted),</li>
  *   <li>a wakelock so the alarm cannot be interrupted mid-play.</li>
  * </ul>
@@ -49,15 +50,22 @@ public class AlertForegroundService extends Service {
   public static final String EXTRA_BODY = "alert_body";
   public static final String EXTRA_SEVERITY = "severity";
   public static final String EXTRA_ALERT_ID = "alert_id";
+  public static final String EXTRA_SOUND = "sound";
+  public static final String EXTRA_SHOW_OVERLAY = "show_overlay";
 
   private static final String CHANNEL_ID = NotificationChannels.SERVICE_CHANNEL_ID;
   private static final int NOTIFICATION_ID = 1001;
   private static final String TAG = "AlertForegroundService";
 
   private static volatile boolean sRunning = false;
+  private static volatile int sCurrentAlertId = -1;
 
   public static boolean isRunning() {
     return sRunning;
+  }
+
+  public static boolean hasActiveAlert() {
+    return sRunning && sCurrentAlertId != -1;
   }
 
   private MediaPlayer mediaPlayer;
@@ -66,7 +74,10 @@ public class AlertForegroundService extends Service {
   private WindowManager windowManager;
   private View overlayView;
   private int currentAlertId = -1;
+  private String currentTitle = "BarangayResolve Alert";
+  private String currentBody = "";
   private String currentSeverity = "INFO";
+  private boolean currentSound = true;
   private BroadcastReceiver stopReceiver;
 
   @Override
@@ -80,18 +91,43 @@ public class AlertForegroundService extends Service {
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
     String action = intent == null ? null : intent.getAction();
-    startForeground(NOTIFICATION_ID, buildNotification(intent));
+    Intent alertIntent = intent;
+    boolean shouldStartAlarm = false;
 
-    if (ACTION_START_ALERT.equals(action) && intent != null) {
-      startAlarm(intent);
-    } else if (ACTION_STOP_ALERT.equals(action)) {
-      endAlarm();
-    } else {
-      // START_STICKY: if the system kills the service (app swiped away), restart
-      // it so the alarm keeps ringing. Re-deliver the last intent if we have one.
-      if (intent != null) {
-        startAlarm(intent);
+    if (intent == null) {
+      // START_STICKY restarts a killed service with a null intent. Rebuild the
+      // last alert from durable state instead of leaving a silent FGS behind.
+      alertIntent = AlertRestartReceiver.restoreActiveAlertIntent(this);
+      shouldStartAlarm = alertIntent != null;
+    } else if (ACTION_START_ALERT.equals(action)) {
+      if (currentAlertId != -1) {
+        // Keep the alert already ringing. Every later alert has its own system
+        // notification and will be queued by the web alert feed when opened.
+        alertIntent = currentAlertIntent();
+      } else {
+        Intent savedAlert = AlertRestartReceiver.restoreActiveAlertIntent(this);
+        int incomingId = intent.getIntExtra(EXTRA_ALERT_ID, -1);
+        int savedId = savedAlert == null ? -1 : savedAlert.getIntExtra(EXTRA_ALERT_ID, -1);
+        if (savedAlert != null && savedId != incomingId) {
+          // If Android reclaimed the service, resume the saved alert before a
+          // newer FCM message can replace it.
+          alertIntent = savedAlert;
+        }
+        shouldStartAlarm = alertIntent != null;
       }
+    }
+
+    startForeground(NOTIFICATION_ID, buildNotification(alertIntent));
+
+    if (ACTION_STOP_ALERT.equals(action) && intent != null) {
+      int requestedId = intent.getIntExtra(EXTRA_ALERT_ID, -1);
+      if (requestedId == -1 || requestedId == currentAlertId) endAlarm();
+    } else if (shouldStartAlarm && alertIntent != null) {
+      startAlarm(alertIntent);
+    } else if (alertIntent == null) {
+      stopForeground(true);
+      stopSelf(startId);
+      return START_NOT_STICKY;
     }
     return START_STICKY;
   }
@@ -101,7 +137,8 @@ public class AlertForegroundService extends Service {
         new BroadcastReceiver() {
           @Override
           public void onReceive(Context context, Intent intent) {
-            endAlarm();
+            int requestedId = intent.getIntExtra(EXTRA_ALERT_ID, -1);
+            if (requestedId == -1 || requestedId == currentAlertId) endAlarm();
           }
         };
     IntentFilter filter = new IntentFilter(ACTION_STOP_ALERT);
@@ -115,6 +152,18 @@ public class AlertForegroundService extends Service {
     }
   }
 
+  private Intent currentAlertIntent() {
+    Intent current = new Intent(this, AlertForegroundService.class);
+    current.setAction(ACTION_START_ALERT);
+    current.putExtra(EXTRA_ALERT_ID, currentAlertId);
+    current.putExtra(EXTRA_TITLE, currentTitle);
+    current.putExtra(EXTRA_BODY, currentBody);
+    current.putExtra(EXTRA_SEVERITY, currentSeverity);
+    current.putExtra(EXTRA_SOUND, currentSound);
+    current.putExtra(EXTRA_SHOW_OVERLAY, false);
+    return current;
+  }
+
   private void startAlarm(Intent intent) {
     stopAlarm();
 
@@ -124,16 +173,31 @@ public class AlertForegroundService extends Service {
     currentAlertId = intent.getIntExtra(EXTRA_ALERT_ID, -1);
     currentSeverity = severity != null ? severity : "INFO";
     String safeTitle = title != null ? title : "BarangayResolve Alert";
+    currentTitle = safeTitle;
+    currentBody = body != null ? body : "";
+    currentSound = intent.getBooleanExtra(EXTRA_SOUND, true);
+    sCurrentAlertId = currentAlertId;
+    boolean sound = currentSound;
+    boolean showOverlay = intent.getBooleanExtra(EXTRA_SHOW_OVERLAY, true);
 
-    // Persist so the alarm can be restarted if the app process is killed.
+    // Persist so the alarm can be restarted if the Android process is reclaimed.
     if (currentAlertId != -1) {
-      AlertRestartReceiver.saveActiveAlert(this, currentAlertId, safeTitle, body != null ? body : "", currentSeverity);
+      AlertRestartReceiver.saveActiveAlert(
+          this,
+          currentAlertId,
+          safeTitle,
+          body != null ? body : "",
+          currentSeverity,
+          sound,
+          showOverlay);
     }
 
-    playAlertSound(currentSeverity);
+    if (sound) playAlertSound(currentSeverity);
     startVibration(currentSeverity);
     acquireWakeLock();
-    showOverlay(safeTitle, body != null ? body : "", currentSeverity, currentAlertId);
+    if (showOverlay && isInteractiveAndUnlocked()) {
+      showOverlay(safeTitle, body != null ? body : "", currentSeverity, currentAlertId);
+    }
   }
 
   private void playAlertSound(String severity) {
@@ -142,14 +206,19 @@ public class AlertForegroundService extends Service {
         mediaPlayer.release();
         mediaPlayer = null;
       }
-      mediaPlayer = MediaPlayer.create(this, NotificationChannels.rawSound(severity));
+      AudioAttributes alarmAttributes =
+          new AudioAttributes.Builder()
+              .setUsage(AudioAttributes.USAGE_ALARM)
+              .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+              .build();
+      mediaPlayer =
+          MediaPlayer.create(
+              this,
+              NotificationChannels.rawSound(severity),
+              alarmAttributes,
+              AudioManager.AUDIO_SESSION_ID_GENERATE);
       if (mediaPlayer != null) {
-        mediaPlayer.setLooping(true);
-        mediaPlayer.setAudioAttributes(
-            new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build());
+        mediaPlayer.setLooping(!"INFO".equalsIgnoreCase(severity));
         mediaPlayer.start();
       }
     } catch (Exception e) {
@@ -162,10 +231,11 @@ public class AlertForegroundService extends Service {
     try {
       Vibrator vibrator = getVibrator();
       if (vibrator == null || !vibrator.hasVibrator()) return;
+      int repeatIndex = "INFO".equalsIgnoreCase(severity) ? -1 : 0;
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        vibrator.vibrate(VibrationEffect.createWaveform(pattern, 0));
+        vibrator.vibrate(VibrationEffect.createWaveform(pattern, repeatIndex));
       } else {
-        vibrator.vibrate(pattern, 0);
+        vibrator.vibrate(pattern, repeatIndex);
       }
     } catch (Exception e) {
       Log.e(TAG, "Could not start vibration", e);
@@ -209,6 +279,13 @@ public class AlertForegroundService extends Service {
     }
   }
 
+  private boolean isInteractiveAndUnlocked() {
+    PowerManager powerManager = getSystemService(PowerManager.class);
+    if (powerManager == null || !powerManager.isInteractive()) return false;
+    android.app.KeyguardManager keyguardManager = getSystemService(android.app.KeyguardManager.class);
+    return keyguardManager == null || !keyguardManager.isKeyguardLocked();
+  }
+
   private void showOverlay(String title, String body, String severity, int alertId) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
       return;
@@ -219,11 +296,9 @@ public class AlertForegroundService extends Service {
           Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
               ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
               : WindowManager.LayoutParams.TYPE_PHONE;
-      int flags =
-          WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-              | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
-              | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-              | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD;
+      // This is only used on an interactive, unlocked screen. The lock-screen
+      // path is handled by FullScreenAlertActivity via a full-screen notification.
+      int flags = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
       WindowManager.LayoutParams params =
           new WindowManager.LayoutParams(
               WindowManager.LayoutParams.MATCH_PARENT,
@@ -284,6 +359,11 @@ public class AlertForegroundService extends Service {
   private void endAlarm() {
     stopAlarm();
     AlertRestartReceiver.clearActiveAlert(this);
+    currentAlertId = -1;
+    currentTitle = "BarangayResolve Alert";
+    currentBody = "";
+    currentSound = true;
+    sCurrentAlertId = -1;
     stopForeground(true);
     stopSelf();
   }
@@ -335,9 +415,17 @@ public class AlertForegroundService extends Service {
   /** Stops the alarm and, when acknowledged, also clears the alert notification. */
   public static void stop(Context context, int alertId, boolean cancelNotification) {
     if (sRunning) {
-      LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ACTION_STOP_ALERT));
+      Intent stop = new Intent(ACTION_STOP_ALERT);
+      stop.putExtra(EXTRA_ALERT_ID, alertId);
+      LocalBroadcastManager.getInstance(context).sendBroadcast(stop);
+    } else if (
+        alertId == -1 || AlertRestartReceiver.getActiveAlertId(context) == alertId) {
+      // The service may have been reclaimed before the web UI acknowledges it.
+      // Clear durable state too, or a reboot would revive an already-acknowledged alert.
+      AlertRestartReceiver.clearActiveAlert(context);
+      sCurrentAlertId = -1;
     }
-    if (cancelNotification) {
+    if (cancelNotification && alertId >= 0) {
       try {
         NotificationManagerCompat.from(context).cancel("barangayalert", alertId);
       } catch (Exception ignored) {

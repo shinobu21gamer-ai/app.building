@@ -12,6 +12,23 @@ const tokenSchema = z.object({
   active: z.boolean().default(true),
 });
 
+
+export const GET = withErrorBoundary(async (req: Request) => {
+  const user = await requireApiUser();
+  const parsedPlatform = z.enum(["android", "ios"]).safeParse(
+    new URL(req.url).searchParams.get("platform") ?? "android"
+  );
+  if (!parsedPlatform.success) {
+    throw createApiError.badRequest("Unsupported push platform.");
+  }
+
+  const registration = await db.nativePushToken.findFirst({
+    where: { userId: user.id, platform: parsedPlatform.data, active: true },
+    select: { id: true },
+  });
+  return ok({ registered: Boolean(registration) });
+});
+
 export const POST = withErrorBoundary(async (req: Request) => {
   assertSameOrigin(req);
   const user = await requireApiUser();

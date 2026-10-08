@@ -36,7 +36,10 @@ model Office {
   code         String           @unique
   description  String?
   headOfficer  String?
-  contact      String?
+  contact      String
+  location     String?
+  latitude     Float?
+  longitude    Float?
   isActive     Boolean          @default(true)
   users        User[]
   concerns     Concern[]        @relation("OfficeConcerns")
