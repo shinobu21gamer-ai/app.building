@@ -101,86 +101,14 @@ const requiredOfficeContact = z
   .min(3, "Enter a phone number, email, or other contact detail.")
   .max(120, "Contact details are too long.");
 
-const latitudeField = z
-  .preprocess(
-    (value) => (value === null || (typeof value === "string" && value.trim() === "") ? null : value),
-    z.union([
-      z.null(),
-      z.coerce.number().finite().min(-90, "Latitude must be between -90 and 90.").max(90, "Latitude must be between -90 and 90."),
-    ])
-  )
-  .optional();
-
-const longitudeField = z
-  .preprocess(
-    (value) => (value === null || (typeof value === "string" && value.trim() === "") ? null : value),
-    z.union([
-      z.null(),
-      z.coerce.number().finite().min(-180, "Longitude must be between -180 and 180.").max(180, "Longitude must be between -180 and 180."),
-    ])
-  )
-  .optional();
-
-type OfficeLocationFields = {
-  location?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-};
-
-function validateOfficeCoordinates(
-  value: OfficeLocationFields,
-  context: z.RefinementCtx
-) {
-  const hasLatitude = value.latitude !== undefined;
-  const hasLongitude = value.longitude !== undefined;
-  if (hasLatitude !== hasLongitude) {
-    context.addIssue({
-      code: "custom",
-      path: [hasLatitude ? "longitude" : "latitude"],
-      message: "Choose both map coordinates, or clear the map pin.",
-    });
-    return;
-  }
-  if (
-    hasLatitude &&
-    hasLongitude &&
-    (value.latitude === null) !== (value.longitude === null)
-  ) {
-    context.addIssue({
-      code: "custom",
-      path: [value.latitude === null ? "latitude" : "longitude"],
-      message: "Choose both map coordinates, or clear the map pin.",
-    });
-  }
-}
-
-function hasOfficeLocation(value: OfficeLocationFields): boolean {
-  return Boolean(value.location?.trim()) ||
-    (typeof value.latitude === "number" && typeof value.longitude === "number");
-}
-
-export const officeCreateSchema = z
-  .object({
-    name: z.string().trim().min(2, "Name is too short.").max(120, "Name is too long."),
-    code: codeSchema,
-    description: optionalText(500),
-    headOfficer: optionalText(120),
-    contact: requiredOfficeContact,
-    location: optionalText(255),
-    latitude: latitudeField,
-    longitude: longitudeField,
-    isActive: booleanFlag.optional(),
-  })
-  .superRefine((value, context) => {
-    validateOfficeCoordinates(value, context);
-    if (!hasOfficeLocation(value)) {
-      context.addIssue({
-        code: "custom",
-        path: ["location"],
-        message: "Enter an office address or choose its location on the map.",
-      });
-    }
-  });
+export const officeCreateSchema = z.object({
+  name: z.string().trim().min(2, "Name is too short.").max(120, "Name is too long."),
+  code: codeSchema,
+  description: optionalText(500),
+  headOfficer: optionalText(120),
+  contact: requiredOfficeContact,
+  isActive: booleanFlag.optional(),
+});
 
 export const officeUpdateSchema = z
   .object({
@@ -189,24 +117,7 @@ export const officeUpdateSchema = z
     description: optionalText(500),
     headOfficer: optionalText(120),
     contact: requiredOfficeContact.optional(),
-    location: optionalText(255),
-    latitude: latitudeField,
-    longitude: longitudeField,
     isActive: booleanFlag.optional(),
-  })
-  .superRefine((value, context) => {
-    validateOfficeCoordinates(value, context);
-    const locationChanged =
-      value.location !== undefined ||
-      value.latitude !== undefined ||
-      value.longitude !== undefined;
-    if (locationChanged && !hasOfficeLocation(value)) {
-      context.addIssue({
-        code: "custom",
-        path: ["location"],
-        message: "Enter an office address or choose its location on the map.",
-      });
-    }
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "Provide at least one field to update.",

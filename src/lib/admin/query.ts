@@ -253,9 +253,6 @@ export function adminOfficeView(office: AdminOfficeRow) {
     description: office.description,
     headOfficer: office.headOfficer,
     contact: office.contact,
-    location: office.location,
-    latitude: office.latitude,
-    longitude: office.longitude,
     isActive: office.isActive,
     references: {
       concerns: c.concerns,

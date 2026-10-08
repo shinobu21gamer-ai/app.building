@@ -272,7 +272,7 @@ export function AlertListener({ enabled = true }: { enabled?: boolean }) {
       void (async () => {
         silenceEveryAlarm();
         const result = await apiRequest(`/api/v1/alerts/${id}/acknowledge`, { method: "POST" });
-        if (result.success) {
+        if (result.success || result.error.code === "NOT_FOUND") {
           stopNativeAlarm(id);
           setPending((currentPending) => removeAlert(currentPending, id));
           const isNative = getPushMode() === "capacitor";
@@ -321,10 +321,12 @@ export function AlertListener({ enabled = true }: { enabled?: boolean }) {
     setAckError(null);
     const result = await apiRequest(`/api/v1/alerts/${current.id}/acknowledge`, { method: "POST" });
     setBusy(false);
-    if (!result.success) {
+    if (!result.success && result.error.code !== "NOT_FOUND") {
       setAckError(result.error.message);
       return;
     }
+    // The alert may have been removed by an administrator while this client
+    // still had it queued. A 404 is then equivalent to a completed dismissal.
     silenceEveryAlarm();
     stopNativeAlarm(current.id);
     const isNative = getPushMode() === "capacitor";

@@ -28,7 +28,7 @@ export default async function AlertsPage() {
           </Button>
         </div>
       </div>
-      <AlertArchive initialAlerts={alerts} />
+      <AlertArchive initialAlerts={alerts} canRemoveAlerts={user.role.key === "ADMIN"} />
     </Container>
   );
 }
