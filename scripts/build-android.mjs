@@ -27,7 +27,7 @@
  * try ended in an unhandled native exception that closed the app. Missing
  * configuration is now a build failure unless it is explicitly accepted.
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
@@ -171,6 +171,16 @@ if (wantsRelease && !keystoreProperties) {
 // ---------------------------------------------------------------------------
 const gradleTask = wantsRelease ? "assembleRelease" : "assembleDebug";
 const gradleWrapper = isWindows ? "gradlew.bat" : "./gradlew";
+
+// checkouts that lost the executable bit (or archives that dropped it) would
+// otherwise fail with EACCES before Gradle is ever reached.
+if (!isWindows) {
+  try {
+    chmodSync(path.join(ANDROID_DIR, "gradlew"), 0o755);
+  } catch (error) {
+    console.warn(`    (could not make gradlew executable: ${error.message})`);
+  }
+}
 
 console.log(`\n==> Running ${gradleWrapper} ${gradleTask}`);
 run(gradleWrapper, [gradleTask], { cwd: ANDROID_DIR });
