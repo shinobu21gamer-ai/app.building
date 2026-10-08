@@ -47,6 +47,9 @@ jobs:
   # handed to a user.
   android:
     runs-on: ubuntu-latest
+    env:
+      # `npm ci` runs prisma generate (postinstall), which only needs this to be set.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
     steps:
       - name: Checkout
         uses: actions/checkout@v4
