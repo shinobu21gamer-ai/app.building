@@ -2,6 +2,17 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Send,
+  ArrowLeft,
+  AlertCircle,
+  CheckCircle2,
+  Tag,
+  MapPin,
+  FileText,
+  ImageIcon,
+  AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   FieldError,
@@ -10,8 +21,10 @@ import {
   Label,
   Textarea,
 } from "@/components/ui/field";
+import { useToast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api-client";
 import { createConcernSchema } from "@/lib/validations/concern";
+import { cn } from "@/lib/utils";
 
 type CategoryOption = { id: number; name: string };
 
@@ -61,8 +74,17 @@ const FACTOR_FIELD: Record<string, FieldKey> = {
   SAFETY: "safetyScore",
 };
 
-const selectStyles =
-  "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
+const selectBaseStyles =
+  "h-10 w-full rounded-lg border bg-white px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
+
+function selectStyles(invalid: boolean) {
+  return cn(
+    selectBaseStyles,
+    invalid
+      ? "border-red-500 focus:border-red-500"
+      : "border-slate-300 focus:border-brand-600"
+  );
+}
 
 export function SubmitConcernForm({
   categories,
@@ -72,11 +94,17 @@ export function SubmitConcernForm({
   factors: FactorOption[];
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({});
+
+  function handleBlur(field: FieldKey) {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  }
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
@@ -155,6 +183,13 @@ export function SubmitConcernForm({
 
     if (Object.keys(nextErrors).length > 0) {
       setFieldErrors(nextErrors);
+      // Mark all fields with errors as touched
+      const allTouched: Partial<Record<FieldKey, boolean>> = {};
+      for (const key of Object.keys(nextErrors)) {
+        allTouched[key as FieldKey] = true;
+      }
+      setTouched((prev) => ({ ...prev, ...allTouched }));
+      showToast("error", "Please fix the errors in the form before submitting.");
       return;
     }
 
@@ -194,9 +229,11 @@ export function SubmitConcernForm({
         if (Object.keys(serverErrors).length > 0) setFieldErrors(serverErrors);
       }
       setFormError(result.error.message);
+      showToast("error", result.error.message || "Failed to submit concern.");
       return;
     }
 
+    showToast("success", "Concern submitted successfully! Redirecting...");
     router.push(`${result.data.redirect}?created=1`);
     router.refresh();
   }
@@ -206,24 +243,53 @@ export function SubmitConcernForm({
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
 
       <div>
-        <Label htmlFor="title">Concern title</Label>
-        <Input
-          id="title"
-          name="title"
-          placeholder="e.g. Broken street light on Mabini Street"
-          maxLength={150}
-          invalid={Boolean(fieldErrors.title)}
-        />
-        {fieldErrors.title && <FieldError>{fieldErrors.title}</FieldError>}
+        <Label htmlFor="title">
+          <span className="inline-flex items-center gap-1.5">
+            <FileText size={14} className="text-slate-500" />
+            Concern title
+          </span>
+        </Label>
+        <div className="relative">
+          <Input
+            id="title"
+            name="title"
+            placeholder="e.g. Broken street light on Mabini Street"
+            maxLength={150}
+            invalid={Boolean(fieldErrors.title)}
+            onBlur={() => handleBlur("title")}
+            className={cn(
+              "pr-9",
+              fieldErrors.title && touched.title && "border-red-500"
+            )}
+          />
+          {touched.title && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2">
+              {fieldErrors.title ? (
+                <AlertCircle size={16} className="text-red-500" />
+              ) : (
+                <CheckCircle2 size={16} className="text-emerald-500" />
+              )}
+            </span>
+          )}
+        </div>
+        {fieldErrors.title && touched.title && (
+          <FieldError>{fieldErrors.title}</FieldError>
+        )}
       </div>
 
       <div>
-        <Label htmlFor="categoryId">Category</Label>
+        <Label htmlFor="categoryId">
+          <span className="inline-flex items-center gap-1.5">
+            <Tag size={14} className="text-slate-500" />
+            Category
+          </span>
+        </Label>
         <select
           id="categoryId"
           name="categoryId"
           defaultValue=""
-          className={selectStyles}
+          className={cn(selectStyles(Boolean(fieldErrors.categoryId)), "pr-9")}
+          onBlur={() => handleBlur("categoryId")}
         >
           <option value="" disabled>
             Select a category
@@ -240,7 +306,12 @@ export function SubmitConcernForm({
       </div>
 
       <div>
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="description">
+          <span className="inline-flex items-center gap-1.5">
+            <FileText size={14} className="text-slate-500" />
+            Description
+          </span>
+        </Label>
         <Textarea
           id="description"
           name="description"
@@ -248,19 +319,26 @@ export function SubmitConcernForm({
           placeholder="Describe the problem, how long it has been occurring, and who it affects."
           maxLength={2000}
           invalid={Boolean(fieldErrors.description)}
+          onBlur={() => handleBlur("description")}
         />
-        {fieldErrors.description && (
+        {fieldErrors.description && touched.description && (
           <FieldError>{fieldErrors.description}</FieldError>
         )}
       </div>
 
       <div>
-        <Label htmlFor="locationArea">Barangay area</Label>
+        <Label htmlFor="locationArea">
+          <span className="inline-flex items-center gap-1.5">
+            <MapPin size={14} className="text-slate-500" />
+            Barangay area
+          </span>
+        </Label>
         <select
           id="locationArea"
           name="locationArea"
           defaultValue=""
-          className={selectStyles}
+          className={cn(selectStyles(Boolean(fieldErrors.locationArea)), "pr-9")}
+          onBlur={() => handleBlur("locationArea")}
         >
           <option value="" disabled>
             Select the barangay area
@@ -271,27 +349,46 @@ export function SubmitConcernForm({
             </option>
           ))}
         </select>
-        {fieldErrors.locationArea && (
+        {fieldErrors.locationArea && touched.locationArea && (
           <FieldError>{fieldErrors.locationArea}</FieldError>
         )}
       </div>
 
       <div>
-        <Label htmlFor="locationAddress">Exact location</Label>
-        <Input
-          id="locationAddress"
-          name="locationAddress"
-          placeholder="e.g. beside the covered court, house number 12"
-          maxLength={220}
-          invalid={Boolean(fieldErrors.locationAddress)}
-        />
-        {fieldErrors.locationAddress && (
+        <Label htmlFor="locationAddress">
+          <span className="inline-flex items-center gap-1.5">
+            <MapPin size={14} className="text-slate-500" />
+            Exact location
+          </span>
+        </Label>
+        <div className="relative">
+          <Input
+            id="locationAddress"
+            name="locationAddress"
+            placeholder="e.g. beside the covered court, house number 12"
+            maxLength={220}
+            invalid={Boolean(fieldErrors.locationAddress)}
+            onBlur={() => handleBlur("locationAddress")}
+            className={cn("pr-9")}
+          />
+          {touched.locationAddress && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2">
+              {fieldErrors.locationAddress ? (
+                <AlertCircle size={16} className="text-red-500" />
+              ) : (
+                <CheckCircle2 size={16} className="text-emerald-500" />
+              )}
+            </span>
+          )}
+        </div>
+        {fieldErrors.locationAddress && touched.locationAddress && (
           <FieldError>{fieldErrors.locationAddress}</FieldError>
         )}
       </div>
 
       <fieldset className="rounded-lg border border-slate-200 p-4">
-        <legend className="px-1 text-sm font-semibold text-slate-700">
+        <legend className="inline-flex items-center gap-1.5 px-1 text-sm font-semibold text-slate-700">
+          <AlertTriangle size={14} className="text-slate-500" />
           Priority assessment
         </legend>
         <p className="mb-3 text-xs text-slate-500">
@@ -318,7 +415,8 @@ export function SubmitConcernForm({
                   id={fieldKey}
                   name={fieldKey}
                   defaultValue=""
-                  className={selectStyles}
+                  className={selectStyles(Boolean(fieldErrors[fieldKey]))}
+                  onBlur={() => handleBlur(fieldKey)}
                 >
                   <option value="" disabled>
                     Select a rating
@@ -329,7 +427,7 @@ export function SubmitConcernForm({
                     </option>
                   ))}
                 </select>
-                {fieldErrors[fieldKey] && (
+                {fieldErrors[fieldKey] && touched[fieldKey] && (
                   <FieldError>{fieldErrors[fieldKey]}</FieldError>
                 )}
               </div>
@@ -339,7 +437,12 @@ export function SubmitConcernForm({
       </fieldset>
 
       <div>
-        <Label htmlFor="image">Proof image</Label>
+        <Label htmlFor="image">
+          <span className="inline-flex items-center gap-1.5">
+            <ImageIcon size={14} className="text-slate-500" />
+            Proof image
+          </span>
+        </Label>
         <input
           ref={fileInputRef}
           id="image"
@@ -348,25 +451,45 @@ export function SubmitConcernForm({
           accept="image/jpeg,image/png,image/webp"
           required
           onChange={handleFileChange}
-          className="block w-full cursor-pointer rounded-lg border border-slate-300 bg-white text-sm text-slate-600 file:mr-3 file:rounded-l-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+          onBlur={() => handleBlur("image")}
+          className={cn(
+            "block w-full cursor-pointer rounded-lg border bg-white text-sm text-slate-600 file:mr-3 file:rounded-l-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200",
+            fieldErrors.image && !selectedFile
+              ? "border-red-500"
+              : "border-slate-300"
+          )}
         />
         <p className="mt-1 text-xs text-slate-500">
           Required proof image. JPEG, PNG, or WebP. Maximum 5 MB.
         </p>
         {selectedFile && (
-          <p className="mt-1 text-xs text-slate-600">
+          <p className="mt-1 inline-flex items-center gap-1 text-xs text-emerald-600">
+            <CheckCircle2 size={12} />
             Selected: {selectedFile.name} (
             {Math.ceil(selectedFile.size / 1024)} KB)
           </p>
         )}
-        {fieldErrors.image && <FieldError>{fieldErrors.image}</FieldError>}
+        {fieldErrors.image && touched.image && (
+          <FieldError>{fieldErrors.image}</FieldError>
+        )}
       </div>
 
       <div className="flex items-center gap-3 pt-1">
         <Button type="submit" disabled={submitting}>
-          {submitting ? "Submitting..." : "Submit concern"}
+          {submitting ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              Submitting...
+            </>
+          ) : (
+            <>
+              <Send size={16} />
+              Submit concern
+            </>
+          )}
         </Button>
         <Button href="/resident/concerns" variant="outline">
+          <ArrowLeft size={16} />
           Cancel
         </Button>
       </div>
