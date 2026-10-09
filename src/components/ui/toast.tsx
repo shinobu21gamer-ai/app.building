@@ -18,6 +18,15 @@ type ToastContextValue = {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
+/** How long a toast stays on screen before it dismisses itself. */
+const AUTO_DISMISS_MS = 4500;
+
+const countdownTone: Record<ToastTone, string> = {
+  success: "bg-emerald-500",
+  error: "bg-red-500",
+  warning: "bg-amber-500",
+};
+
 let nextId = 0;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -59,7 +68,7 @@ function ToastItem({
     const timer = setTimeout(() => {
       setVisible(false);
       setTimeout(() => onDismiss(toast.id), 200);
-    }, 4500);
+    }, AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
   }, [toast.id, onDismiss]);
 
@@ -73,8 +82,8 @@ function ToastItem({
     <div
       role={toast.tone === "error" ? "alert" : "status"}
       className={cn(
-        "flex items-start gap-3 rounded-xl border px-4 py-3 shadow-lg transition-all duration-200",
-        visible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
+        "relative flex items-start gap-3 overflow-hidden rounded-xl border px-4 py-3 shadow-lg transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:translate-x-0 motion-reduce:transition-opacity",
+        visible ? "translate-x-0 opacity-100" : "translate-x-6 opacity-0",
         toast.tone === "success" &&
           "border-emerald-200 bg-white text-slate-800",
         toast.tone === "error" && "border-red-200 bg-white text-slate-800",
@@ -93,6 +102,15 @@ function ToastItem({
       >
         <X className="h-4 w-4" />
       </button>
+      {/* Shows how long the toast has left; it matches the auto-dismiss timer. */}
+      <span
+        aria-hidden="true"
+        style={{ animationDuration: `${AUTO_DISMISS_MS}ms` }}
+        className={cn(
+          "toast-countdown absolute inset-x-0 bottom-0 h-[3px]",
+          countdownTone[toast.tone]
+        )}
+      />
     </div>
   );
 }

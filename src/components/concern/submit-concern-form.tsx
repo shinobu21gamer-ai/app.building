@@ -583,12 +583,9 @@ export function SubmitConcernForm({
       </div>
 
       <div className="flex items-center gap-3 pt-1">
-        <Button type="submit" disabled={submitting}>
+        <Button type="submit" disabled={submitting} loading={submitting}>
           {submitting ? (
-            <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              {t.sending}
-            </>
+            t.sending
           ) : (
             <>
               <Send size={16} />

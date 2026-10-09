@@ -14,12 +14,16 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "rounded-xl border bg-white p-5 shadow-sm",
-        tone === "brand" ? "border-brand-200" : "border-slate-200"
+        "rounded-xl border p-5 shadow-sm",
+        tone === "brand"
+          ? "border-brand-200 bg-gradient-to-br from-white to-brand-50"
+          : "border-slate-200 bg-white"
       )}
     >
       <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 text-3xl font-bold text-slate-900">{value}</p>
+      <p className="mt-1 text-3xl font-bold tabular-nums text-slate-900">
+        {value}
+      </p>
       {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
     </div>
   );

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { LoaderCircle } from "lucide-react";
 import { copy, type Locale } from "@/lib/i18n";
 
 export type FilterField = {
@@ -29,6 +30,7 @@ export function AdminFilterBar({
   const t = copy[locale].filters;
   const router = useRouter();
   const pathname = usePathname();
+  const [pending, startTransition] = useTransition();
   const [q, setQ] = useState(initialQ);
   const [values, setValues] = useState<Record<string, string>>(() => {
     const seed: Record<string, string> = {};
@@ -45,7 +47,9 @@ export function AdminFilterBar({
       if (value) next.set(field.name, value);
     }
     const query = next.toString();
-    router.push(query ? `${pathname}?${query}` : pathname);
+    startTransition(() => {
+      router.push(query ? `${pathname}?${query}` : pathname);
+    });
   }
 
   function clear() {
@@ -53,7 +57,9 @@ export function AdminFilterBar({
     const reset: Record<string, string> = {};
     for (const field of fields) reset[field.name] = "";
     setValues(reset);
-    router.push(pathname);
+    startTransition(() => {
+      router.push(pathname);
+    });
   }
 
   return (
@@ -108,14 +114,20 @@ export function AdminFilterBar({
 
       <button
         type="submit"
-        className="inline-flex h-10 items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800"
+        disabled={pending}
+        aria-busy={pending || undefined}
+        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800 disabled:cursor-progress disabled:opacity-70"
       >
-        {t.apply}
+        {pending ? (
+          <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />
+        ) : null}
+        {pending ? t.applying : t.apply}
       </button>
       <button
         type="button"
         onClick={clear}
-        className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        disabled={pending}
+        className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-70"
       >
         {t.clear}
       </button>

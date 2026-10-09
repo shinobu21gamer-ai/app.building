@@ -481,6 +481,30 @@ response header and the log entry, enabling end-to-end traceability:
 Health checks (`/api/v1/health`) are intentionally omitted from the request log
 to reduce noise.
 
+## Loading States & Motion
+
+- **Navigation feedback** (`src/components/loading/navigation-progress.tsx`): a
+  click on an in-app link shows a thin bar at the top of the page straight away.
+  If the navigation takes longer than about 160 ms, a skeleton also covers the
+  content below the header. The component never calls `preventDefault`, and it
+  sits outside `<main>` so it does not wrap the pages.
+- **Route fallbacks** (`loading.tsx`): add one only to a segment whose pages
+  never call `notFound()` and never redirect from inside the page. A `loading`
+  boundary streams the response with HTTP 200, which would break the 404 status
+  of `notFound()`. The resident and official case routes, and the notifications,
+  alerts and profile pages, therefore have no `loading.tsx`. Admin, the concern
+  form, and the public help, privacy, track and sign-in pages do.
+- **Skeleton shapes**: `routeSkeletonVariant()` in
+  `src/lib/loading/route-skeleton.ts` maps a path to a shape, and
+  `src/components/loading/page-skeleton.tsx` draws it. Add new routes there.
+- **Motion** is defined in the "Motion system" block of `src/app/globals.css`.
+  Under `prefers-reduced-motion: reduce`, every decorative animation is turned
+  off. The spinner keeps turning, and the navigation bar becomes a static
+  segment, so people can still see that something is loading.
+- Charts animate in once on mount. Scroll reveals use CSS scroll-driven
+  animations where the browser supports them, and content is fully visible
+  everywhere else.
+
 ## Accessibility (WCAG 2.1 AA)
 
 - All form controls have associated `<label>` elements or `aria-label` (fixed

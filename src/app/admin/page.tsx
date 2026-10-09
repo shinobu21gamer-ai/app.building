@@ -92,7 +92,7 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label={t.totalCases} value={totals.total} />
         <StatCard label={t.resolvedClosed} value={totals.resolved} />
         <StatCard label={t.unresolved} value={totals.unresolved} />
@@ -112,7 +112,7 @@ export default async function AdminPage() {
 
       <AlertComposer locale={locale} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="stagger grid gap-6 lg:grid-cols-2">
         <Card title={t.byStatusChart} description={t.byStatusChartDesc}>
           <DonutChart
             centerLabel={t.casesLabel}
@@ -163,7 +163,7 @@ export default async function AdminPage() {
             {t.noTimestamps}
           </p>
         ) : (
-          <dl className="grid gap-4 sm:grid-cols-3">
+          <dl className="stagger grid gap-4 sm:grid-cols-3">
             <div>
               <dt className="text-sm text-slate-500">{t.average}</dt>
               <dd className="mt-1 text-2xl font-bold text-slate-900">

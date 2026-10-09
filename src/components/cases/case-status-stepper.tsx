@@ -43,18 +43,27 @@ export function CaseStatusStepper({
             {index < CASE_STATUSES.length - 1 && (
               <span
                 aria-hidden
+                style={{ animationDelay: `${index * 120}ms` }}
                 className={`absolute left-[9px] top-5 h-full w-0.5 ${
-                  done ? "bg-brand-500" : "bg-slate-200"
+                  done ? "grow-y bg-brand-500" : "bg-slate-200"
                 }`}
               />
             )}
             <span
+              style={{ animationDelay: `${index * 120}ms` }}
               className={`relative z-10 mt-1 flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full border-2 ${
                 done
-                  ? "border-brand-600 bg-brand-600 text-white"
+                  ? "animate-scale-in border-brand-600 bg-brand-600 text-white"
                   : "border-slate-300 bg-white"
               } ${isCurrent ? "ring-4 ring-brand-100" : ""}`}
             >
+              {isCurrent && (
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-0 animate-ping rounded-full bg-brand-400/60"
+                  style={{ animationIterationCount: 3 }}
+                />
+              )}
               {done && (
                 <svg
                   viewBox="0 0 12 12"

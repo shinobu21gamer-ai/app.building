@@ -51,7 +51,7 @@ export function SiteHeader({
   }, [open]);
 
   return (
-    <header className="no-print border-b border-slate-200 bg-white">
+    <header id="site-header" className="no-print border-b border-slate-200 bg-white">
       <Container className="flex min-h-16 items-center justify-between gap-3 py-2">
         <Link href="/" className="flex shrink-0 items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-700 text-sm font-bold text-white">
@@ -92,7 +92,7 @@ export function SiteHeader({
       {open ? (
         <div
           id="mobile-nav"
-          className="border-t border-slate-200 bg-white md:hidden"
+          className="animate-drop-in border-t border-slate-200 bg-white md:hidden"
         >
           <Container className="flex flex-col gap-2 py-3" aria-label="Mobile">
             {user ? (

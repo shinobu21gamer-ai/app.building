@@ -11,6 +11,9 @@ const en = {
   openMenu: "Open menu",
   closeMenu: "Close menu",
   language: "Language",
+  loading: {
+    label: "Loading…",
+  },
   header: {
     track: "Track a case",
     help: "Help",
@@ -1037,6 +1040,9 @@ const fil: typeof en = {
   openMenu: "Buksan ang menu",
   closeMenu: "Isara ang menu",
   language: "Wika",
+  loading: {
+    label: "Naglo-load…",
+  },
   header: {
     track: "Subaybayan ang kaso",
     help: "Tulong",

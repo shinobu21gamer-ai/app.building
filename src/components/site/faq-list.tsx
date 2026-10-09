@@ -22,7 +22,7 @@ export function FaqList({
               </span>
             </span>
           </summary>
-          <p className="pb-4 text-sm leading-relaxed text-slate-600">
+          <p className="pb-4 text-sm leading-relaxed text-slate-600 group-open:animate-fade-in">
             {item.answer}
           </p>
         </details>

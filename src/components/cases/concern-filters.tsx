@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/field";
@@ -39,7 +39,9 @@ export function ConcernFilters({
 }) {
   const t = copy[locale].filters;
   const router = useRouter();
-  const [submitting, setSubmitting] = useState(false);
+  // Pending state follows the real navigation, so the button reads "Applying…"
+  // until the filtered results have arrived.
+  const [pending, startTransition] = useTransition();
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,11 +59,11 @@ export function ConcernFilters({
       const value = String(data.get(key) ?? "").trim();
       if (value) params.set(key, value);
     }
-    setSubmitting(true);
     const query = params.toString();
-    router.push(query ? `${action}?${query}` : action);
-    setSubmitting(false);
-    router.refresh();
+    startTransition(() => {
+      router.push(query ? `${action}?${query}` : action);
+      router.refresh();
+    });
   }
 
   return (
@@ -173,14 +175,15 @@ export function ConcernFilters({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="submit" size="sm" disabled={submitting}>
-          {submitting ? t.applying : t.apply}
+        <Button type="submit" size="sm" disabled={pending} loading={pending}>
+          {pending ? t.applying : t.apply}
         </Button>
         <Button
           type="button"
           size="sm"
           variant="outline"
-          onClick={() => router.push(action)}
+          disabled={pending}
+          onClick={() => startTransition(() => router.push(action))}
         >
           {t.clear}
         </Button>
