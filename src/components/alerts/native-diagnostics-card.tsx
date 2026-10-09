@@ -5,14 +5,17 @@ import { Copy, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api-client";
-import { getNativePlatform } from "@/lib/capacitor-types";
+import { getNativePlatform, readNativeToken } from "@/lib/capacitor-types";
 import {
   clearNativeCrashReport,
   isNativeShell,
+  readAlertBridgeState,
   readLastExitReport,
   readNativeCrashReport,
   readPushDiagnostics,
+  staleBridgeExplanation,
   waitForAlertBridge,
+  type AlertBridgeState,
   type NativeExitReport,
   type NativePushDiagnostics,
 } from "@/lib/native-diagnostics";
@@ -39,6 +42,10 @@ function maskToken(token: string | null): string {
  */
 export function NativeDiagnosticsCard() {
   const [native, setNative] = useState(false);
+  // Read lazily: on a current APK the bridge is already attached by the time the
+  // page runs, so the first paint is correct; refresh() re-reads it after the
+  // wait in case it lands later.
+  const [bridgeState, setBridgeState] = useState<AlertBridgeState>(() => readAlertBridgeState());
   const [diagnostics, setDiagnostics] = useState<NativePushDiagnostics | null>(null);
   const [crash, setCrash] = useState<string | null>(null);
   const [exit, setExit] = useState<NativeExitReport | null>(null);
@@ -51,6 +58,7 @@ export function NativeDiagnosticsCard() {
     setBusy(true);
     try {
       await waitForAlertBridge(2000);
+      setBridgeState(readAlertBridgeState());
       setDiagnostics(readPushDiagnostics());
       setCrash(readNativeCrashReport());
       setExit(readLastExitReport());
@@ -80,17 +88,44 @@ export function NativeDiagnosticsCard() {
 
   if (!native) return null;
 
+  // When the APK predates the bridge, the native rows are not "unknown" — they
+  // are unreadable, and the card says which it is so the fix is obvious.
+  const unreadable = bridgeState === "current" ? "unknown" : "not reported (old APK)";
+
+  /** Value for a native-only row: the real answer, "old APK", or "unknown". */
+  const nativeRow = (read: (d: NativePushDiagnostics) => string): string => {
+    if (diagnostics) return read(diagnostics);
+    return bridgeState === "current" ? "unknown" : "old APK";
+  };
+
+  // The native layer keeps its last token in SharedPreferences, which only a
+  // current APK can report. The web layer remembers the same token in
+  // localStorage when it registers it, so an older APK can still show the token
+  // this phone last registered with (that is also what "Registered on the
+  // server: yes" refers to).
+  const rememberedToken = readNativeToken();
+  const tokenDisplay = diagnostics?.lastToken
+    ? maskToken(diagnostics.lastToken)
+    : rememberedToken
+      ? `${maskToken(rememberedToken)} (remembered by the app)`
+      : diagnostics
+        ? "—" // readable diagnostics with no token: definitively none
+        : bridgeState === "current"
+          ? "unknown"
+          : "none";
+
   const report = [
     "BarangayResolve native push diagnostics",
     `Generated: ${new Date().toISOString()}`,
     `Platform: ${getNativePlatform()}`,
-    `Push available: ${diagnostics ? diagnostics.available : "unknown"}`,
+    `Native bridge: ${bridgeState}`,
+    `Push available: ${diagnostics ? diagnostics.available : unreadable}`,
     `Reason: ${diagnostics?.reason ?? "—"}`,
-    `google-services.json packaged: ${diagnostics ? diagnostics.configPresent : "unknown"}`,
-    `Firebase initialized: ${diagnostics ? diagnostics.firebaseInitialized : "unknown"}`,
-    `Last registration error: ${diagnostics?.lastError ?? "—"}`,
+    `google-services.json packaged: ${diagnostics ? diagnostics.configPresent : unreadable}`,
+    `Firebase initialized: ${diagnostics ? diagnostics.firebaseInitialized : unreadable}`,
+    `Last registration error: ${diagnostics?.lastError ?? unreadable}`,
     `Last error at: ${diagnostics?.lastErrorAt ?? "—"}`,
-    `Token: ${diagnostics?.lastToken ?? "—"}`,
+    `Token: ${diagnostics?.lastToken ?? rememberedToken ?? (diagnostics ? "none" : unreadable)}`,
     `Server registered: ${server ? server.registered : serverError ? `error: ${serverError}` : "unknown"}`,
     `Server has FCM credentials: ${server?.serverConfigured ?? "unknown"}`,
     crash ? `Last crash:\n${crash}` : "Last crash: none",
@@ -109,7 +144,12 @@ export function NativeDiagnosticsCard() {
     }
   };
 
-  const healthy = diagnostics?.available === true && server?.serverConfigured !== false;
+  const healthy =
+    bridgeState === "current" &&
+    diagnostics?.available === true &&
+    server?.serverConfigured !== false;
+
+  const staleExplanation = staleBridgeExplanation(bridgeState);
 
   return (
     <Card
@@ -126,13 +166,15 @@ export function NativeDiagnosticsCard() {
           }`}
           role="status"
         >
-          {diagnostics?.available === false
-            ? `This build cannot register for push: ${diagnostics.reason}`
-            : server?.serverConfigured === false
-              ? "This phone is registered, but the server has no Firebase service-account credentials, so alerts cannot be delivered."
-              : diagnostics?.available
-                ? "This build can register for push alerts."
-                : "Push state could not be read yet. Press “Refresh”."}
+          {staleExplanation
+            ? staleExplanation
+            : diagnostics?.available === false
+              ? `This build cannot register for push: ${diagnostics.reason}`
+              : server?.serverConfigured === false
+                ? "This phone is registered, but the server has no Firebase service-account credentials, so alerts cannot be delivered."
+                : diagnostics?.available
+                  ? "This build can register for push alerts."
+                  : "Push state could not be read yet. Press “Refresh”."}
         </p>
 
         <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
@@ -140,21 +182,21 @@ export function NativeDiagnosticsCard() {
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               google-services.json packaged
             </dt>
-            <dd className="text-slate-800">{diagnostics ? (diagnostics.configPresent ? "yes" : "no") : "unknown"}</dd>
+            <dd className="text-slate-800">{nativeRow((d) => (d.configPresent ? "yes" : "no"))}</dd>
           </div>
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Firebase started
             </dt>
             <dd className="text-slate-800">
-              {diagnostics ? (diagnostics.firebaseInitialized ? "yes" : "no") : "unknown"}
+              {nativeRow((d) => (d.firebaseInitialized ? "yes" : "no"))}
             </dd>
           </div>
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Device token
             </dt>
-            <dd className="text-slate-800">{maskToken(diagnostics?.lastToken ?? null)}</dd>
+            <dd className="text-slate-800">{tokenDisplay}</dd>
           </div>
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -169,7 +211,11 @@ export function NativeDiagnosticsCard() {
               Last push error
             </dt>
             <dd className="text-slate-800">
-              {diagnostics?.lastError ?? "none"}
+              {diagnostics
+                ? (diagnostics.lastError ?? "none")
+                : bridgeState === "current"
+                  ? "unknown"
+                  : "old APK"}
               {diagnostics?.lastErrorAt ? (
                 <span className="ml-1 text-xs text-slate-500">({diagnostics.lastErrorAt})</span>
               ) : null}

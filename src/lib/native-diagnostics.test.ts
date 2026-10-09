@@ -2,10 +2,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   clearNativeCrashReport,
   isNativeShell,
+  readAlertBridgeState,
   readLastExitReport,
   readNativeCrashReport,
   readPushDiagnostics,
   requestNativePushToken,
+  staleBridgeExplanation,
 } from "./native-diagnostics";
 
 /**
@@ -72,6 +74,25 @@ describe("requestNativePushToken", () => {
     fakeBridge({ requestPushToken: () => void (called += 1) });
     expect(requestNativePushToken()).toBe(true);
     expect(called).toBe(1);
+  });
+});
+
+describe("readAlertBridgeState", () => {
+  it("reports missing when there is no bridge (plain browser)", () => {
+    expect(readAlertBridgeState()).toBe("missing");
+    expect(staleBridgeExplanation("missing")).toContain("older than the current app");
+  });
+
+  it("reports legacy when the bridge predates push diagnostics", () => {
+    fakeBridge({ setSessionActive: () => {} });
+    expect(readAlertBridgeState()).toBe("legacy");
+    expect(staleBridgeExplanation("legacy")).toContain("Reinstall the latest APK");
+  });
+
+  it("reports current when the bridge can report push diagnostics", () => {
+    fakeBridge({ pushDiagnostics: () => "{}" });
+    expect(readAlertBridgeState()).toBe("current");
+    expect(staleBridgeExplanation("current")).toBeNull();
   });
 });
 
