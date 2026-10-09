@@ -13,6 +13,7 @@ import { AlertListener } from "@/components/alerts/alert-listener";
 import { NativePushListener } from "@/components/alerts/native-push-listener";
 import { NativeCrashNotice } from "@/components/alerts/native-crash-notice";
 import { PushSessionSync } from "@/components/alerts/push-session-sync";
+import { ToastProvider } from "@/components/ui/toast";
 
 function appBaseUrl(): URL {
   const candidate = process.env.NEXT_PUBLIC_APP_URL;
@@ -97,30 +98,32 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased flex min-h-screen flex-col">
-        <AlertListener enabled={Boolean(user)} />
-        <NativePushListener />
-        <PushSessionSync signedIn={Boolean(user)} />
-        <NativeCrashNotice />
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-brand-700 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
-        >
-          Skip to content
-        </a>
-        <header className="border-b border-slate-200 bg-white">
-          <HeaderNav />
-        </header>
+        <ToastProvider>
+          <AlertListener enabled={Boolean(user)} />
+          <NativePushListener />
+          <PushSessionSync signedIn={Boolean(user)} />
+          <NativeCrashNotice />
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-brand-700 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+          >
+            Skip to content
+          </a>
+          <header className="border-b border-slate-200 bg-white">
+            <HeaderNav />
+          </header>
 
-        <main id="main-content" className="flex-1">
-          {children}
-        </main>
+          <main id="main-content" className="flex-1">
+            {children}
+          </main>
 
-        <footer className="border-t border-slate-200 bg-white">
-          <Container className="flex flex-col items-center justify-between gap-2 py-6 text-sm text-slate-500 sm:flex-row">
-            <span>BarangayResolve — Smart Community Concern Management</span>
-            <span>Barangay Resolve System · Capstone Project</span>
-          </Container>
-        </footer>
+          <footer className="border-t border-slate-200 bg-white">
+            <Container className="flex flex-col items-center justify-between gap-2 py-6 text-sm text-slate-500 sm:flex-row">
+              <span>BarangayResolve — Smart Community Concern Management</span>
+              <span>Barangay Resolve System · Capstone Project</span>
+            </Container>
+          </footer>
+        </ToastProvider>
       </body>
     </html>
   );
