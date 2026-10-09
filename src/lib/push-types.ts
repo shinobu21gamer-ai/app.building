@@ -4,6 +4,8 @@ export interface PushPlatformReport {
   registered: number;
   accepted: number;
   failed: number;
+  /** Stale subscriptions/tokens the provider rejected as no longer valid; they were removed, not a delivery failure. */
+  pruned: number;
   skipped: number;
   configured: boolean;
   reason?: string;
