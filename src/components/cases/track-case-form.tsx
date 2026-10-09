@@ -120,7 +120,12 @@ export function TrackCaseForm({
           )}
         </div>
 
-        <Button type="submit" disabled={submitting} className="w-full">
+        <Button
+          type="submit"
+          disabled={submitting}
+          loading={submitting}
+          className="w-full"
+        >
           {submitting ? t.submitting : t.submit}
         </Button>
       </form>

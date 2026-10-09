@@ -57,7 +57,7 @@ export function DonutChart({
           stroke="#e2e8f0"
           strokeWidth={STROKE}
         />
-        {visible.map((segment) => {
+        {visible.map((segment, drawIndex) => {
           const index = originalIndex.get(segment) ?? 0;
           const length = (segment.value / total) * CIRCUMFERENCE;
           const circle = (
@@ -72,6 +72,14 @@ export function DonutChart({
               strokeDasharray={`${length} ${CIRCUMFERENCE - length}`}
               strokeDashoffset={-offset}
               transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+              className="donut-segment"
+              style={
+                {
+                  "--len": `${length}px`,
+                  "--circ": `${CIRCUMFERENCE}px`,
+                  animationDelay: `${drawIndex * 140}ms`,
+                } as React.CSSProperties
+              }
             />
           );
           offset += length;

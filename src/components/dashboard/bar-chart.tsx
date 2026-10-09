@@ -45,19 +45,24 @@ export function BarChart({
 
   return (
     <ul className="space-y-3">
-      {items.map((item) => (
+      {items.map((item, index) => (
         <li key={item.label}>
           <div className="flex items-baseline justify-between gap-3 text-sm">
             <span className="truncate text-slate-700">{item.label}</span>
-            <span className="font-semibold text-slate-900">{item.value}</span>
+            <span className="font-semibold tabular-nums text-slate-900">
+              {item.value}
+            </span>
           </div>
           <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
             <div
               className={cn(
-                "h-full rounded-full transition-[width]",
+                "bar-fill h-full rounded-full transition-[width]",
                 TONE_FILL[item.tone ?? "brand"]
               )}
-              style={{ width: `${(item.value / max) * 100}%` }}
+              style={{
+                width: `${(item.value / max) * 100}%`,
+                animationDelay: `${index * 90}ms`,
+              }}
             />
           </div>
         </li>

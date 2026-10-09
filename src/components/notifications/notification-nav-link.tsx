@@ -43,8 +43,13 @@ export function NotificationNavLink({
       <BellRing size={15} aria-hidden="true" />
       {label}
       {unread > 0 && (
-        <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">
-          {unread > 99 ? "99+" : unread}
+        <span className="relative ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 animate-ping rounded-full bg-red-500/60"
+            style={{ animationIterationCount: 3 }}
+          />
+          <span className="relative">{unread > 99 ? "99+" : unread}</span>
         </span>
       )}
     </Button>

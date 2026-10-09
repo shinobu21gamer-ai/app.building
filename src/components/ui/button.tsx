@@ -1,8 +1,15 @@
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from "react";
 import Link from "next/link";
+import { LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Variant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
+type Variant =
+  | "primary"
+  | "secondary"
+  | "outline"
+  | "ghost"
+  | "destructive"
+  | "inverse";
 type Size = "sm" | "md" | "lg";
 
 const baseStyles =
@@ -18,6 +25,9 @@ const variantStyles: Record<Variant, string> = {
   ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
   destructive:
     "bg-red-600 text-white hover:bg-red-700 focus-visible:outline-red-600",
+  // For dark surfaces: a translucent outline that reads on brand-800 and similar.
+  inverse:
+    "border border-white/30 bg-transparent text-white hover:bg-white/10 focus-visible:outline-white",
 };
 
 const sizeStyles: Record<Size, string> = {
@@ -40,28 +50,51 @@ type LinkProps = CommonProps &
   AnchorHTMLAttributes<HTMLAnchorElement> & { href: string };
 
 export function Button(props: ButtonProps | LinkProps) {
-  const { variant = "primary", size = "md", className, loading, ...rest } = props;
+  const { variant = "primary", size = "md", className, loading = false, ...rest } = props;
   const classes = cn(
     baseStyles,
     variantStyles[variant],
     sizeStyles[size],
-    loading && "btn-loading relative",
+    loading && "cursor-progress",
     className
   );
+  // While loading, the label stays visible and a spinner appears before it,
+  // so the action keeps its name for screen readers and layout does not shift.
+  const content = (
+    <>
+      {loading ? (
+        <LoaderCircle
+          aria-hidden="true"
+          className="h-4 w-4 shrink-0 animate-spin"
+        />
+      ) : null}
+      {rest.children}
+    </>
+  );
 
-  if ("href" in props && props.href !== undefined) {
-    const { href, ...anchorProps } = props as LinkProps;
+  if ("href" in rest && rest.href !== undefined) {
+    // `rest` already excludes variant, size, className and loading, so the
+    // computed classes (which include any className) reach the anchor intact.
+    const { href, ...anchorProps } = rest as Omit<
+      LinkProps,
+      "variant" | "size" | "className" | "loading"
+    >;
     return (
       <Link href={href} className={classes} {...anchorProps}>
-        {anchorProps.children}
+        {content}
       </Link>
     );
   }
 
   const { type = "button", ...buttonProps } = rest as ButtonProps;
   return (
-    <button type={type} className={classes} {...buttonProps}>
-      {buttonProps.children}
+    <button
+      type={type}
+      className={classes}
+      aria-busy={loading || undefined}
+      {...buttonProps}
+    >
+      {content}
     </button>
   );
 }

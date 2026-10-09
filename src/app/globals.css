@@ -72,27 +72,6 @@ body {
   animation: spin 1s linear infinite;
 }
 
-/* Button loading state */
-.btn-loading {
-  position: relative;
-  color: transparent !important;
-}
-
-.btn-loading::after {
-  content: "";
-  position: absolute;
-  width: 1rem;
-  height: 1rem;
-  top: 50%;
-  left: 50%;
-  margin-top: -0.5rem;
-  margin-left: -0.5rem;
-  border: 2px solid rgb(148 163 184);
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
 /* Form validation animations */
 .field-error {
   animation: slideDown 0.2s ease-out;
@@ -171,6 +150,327 @@ body {
 
 .animate-pulse-glow {
   animation: pulseGlow 2s infinite;
+}
+
+/* ------------------------------------------------------------------
+   Motion system
+   Decorative motion is grouped here so it can be switched off in one
+   place. Every rule is disabled by the prefers-reduced-motion block at
+   the end of this section; spinners and the navigation bar keep a
+   static or slower form so people still see that something is loading.
+   ------------------------------------------------------------------ */
+
+@theme {
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --animate-fade-up: fade-up 0.6s var(--ease-smooth) both;
+  --animate-fade-in: fade-in 0.35s ease-out both;
+  --animate-fade-out: fade-out 0.26s ease-in both;
+  --animate-scale-in: scale-in 0.6s var(--ease-smooth) both;
+  --animate-drop-in: drop-in 0.22s ease-out both;
+  --animate-float: float 8s ease-in-out infinite;
+  --animate-float-slow: float-slow 12s ease-in-out infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -16px, 0);
+  }
+}
+
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-12px, 14px, 0);
+  }
+}
+
+@keyframes route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes donut-draw {
+  from {
+    stroke-dasharray: 0 var(--circ);
+  }
+  to {
+    stroke-dasharray: var(--len) calc(var(--circ) - var(--len));
+  }
+}
+
+@keyframes countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes nav-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+/* Page enter: replayed by <RouteEnter/> on every pathname change. */
+.route-enter {
+  animation: route-enter 0.45s var(--ease-smooth) both;
+}
+
+/* Staggered entrance for grids and lists that render above the fold. */
+.stagger > * {
+  animation: fade-up 0.6s var(--ease-smooth) both;
+}
+.stagger > :nth-child(2) {
+  animation-delay: 70ms;
+}
+.stagger > :nth-child(3) {
+  animation-delay: 140ms;
+}
+.stagger > :nth-child(4) {
+  animation-delay: 210ms;
+}
+.stagger > :nth-child(5) {
+  animation-delay: 280ms;
+}
+.stagger > :nth-child(6) {
+  animation-delay: 350ms;
+}
+.stagger > :nth-child(n + 7) {
+  animation-delay: 420ms;
+}
+
+/* Scroll-linked reveal for content below the fold. Browsers without
+   scroll-driven animations keep the content visible, so nothing is hidden. */
+@supports (animation-timeline: view()) {
+  .reveal,
+  .reveal-stagger > * {
+    animation: reveal-up linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 40%;
+  }
+  .reveal-stagger > :nth-child(2) {
+    animation-range: entry 6% entry 46%;
+  }
+  .reveal-stagger > :nth-child(3) {
+    animation-range: entry 12% entry 52%;
+  }
+  .reveal-stagger > :nth-child(4) {
+    animation-range: entry 18% entry 58%;
+  }
+  .reveal-stagger > :nth-child(5) {
+    animation-range: entry 24% entry 64%;
+  }
+  .reveal-stagger > :nth-child(6) {
+    animation-range: entry 30% entry 70%;
+  }
+}
+
+/* Charts draw themselves in when they first render. */
+.bar-fill {
+  transform-origin: left center;
+  animation: bar-grow 0.9s var(--ease-smooth) both;
+}
+
+.donut-segment {
+  animation: donut-draw 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.grow-y {
+  transform-origin: top center;
+  animation: grow-y 0.7s ease-out both;
+}
+
+/* Toast auto-dismiss countdown (duration is set inline to match the timer). */
+.toast-countdown {
+  transform-origin: left center;
+  animation: countdown linear both;
+}
+
+/* Loading skeletons: a soft shimmer that never changes layout. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: #e2e8f0;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 0.7),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* Indeterminate navigation bar shown at the top of the viewport. */
+.nav-bar-sweep {
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #4ba0dd,
+    #13548d,
+    transparent
+  );
+  box-shadow: 0 0 12px rgb(36 130 204 / 0.7);
+  animation: nav-sweep 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-enter,
+  .stagger > *,
+  .reveal,
+  .reveal-stagger > *,
+  .bar-fill,
+  .donut-segment,
+  .grow-y,
+  .toast-countdown,
+  .skeleton::after,
+  .nav-bar-sweep,
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-fade-out,
+  .animate-scale-in,
+  .animate-drop-in,
+  .animate-float,
+  .animate-float-slow {
+    animation: none !important;
+  }
+
+  /* Decorative rings and countdowns are hidden rather than frozen. */
+  .animate-ping,
+  .toast-countdown {
+    opacity: 0 !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+@media print {
+  .route-enter,
+  .stagger > *,
+  .reveal,
+  .reveal-stagger > * {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
 @media print {

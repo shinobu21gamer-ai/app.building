@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
@@ -11,6 +12,8 @@ import { NativePushListener } from "@/components/alerts/native-push-listener";
 import { NativeCrashNotice } from "@/components/alerts/native-crash-notice";
 import { PushSessionSync } from "@/components/alerts/push-session-sync";
 import { ToastProvider } from "@/components/ui/toast";
+import { NavigationProgress } from "@/components/loading/navigation-progress";
+import { RouteEnter } from "@/components/loading/route-enter";
 
 function appBaseUrl(): URL {
   const candidate = process.env.NEXT_PUBLIC_APP_URL;
@@ -88,8 +91,15 @@ export default async function RootLayout({
             }
           />
 
+          {/* Fixed-position feedback for in-app navigation. It sits outside
+              <main> and does not wrap {children}, so notFound() still returns
+              404 before the response is streamed. */}
+          <Suspense fallback={null}>
+            <NavigationProgress label={t.loading.label} />
+          </Suspense>
+
           <main id="main-content" className="flex-1">
-            {children}
+            <RouteEnter>{children}</RouteEnter>
           </main>
 
           <SiteFooter locale={locale} />
