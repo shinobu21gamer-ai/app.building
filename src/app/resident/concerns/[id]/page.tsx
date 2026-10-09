@@ -12,8 +12,17 @@ import {
   CaseTimeline,
   type ResolutionInfo,
 } from "@/components/concern/case-timeline";
-import { CaseStatusStepper } from "@/components/cases/case-status-stepper";
-import { CASE_STATUSES, canSubmitFeedback } from "@/lib/cases/workflow";
+import {
+  CaseStatusStepper,
+  type ReachedAt,
+} from "@/components/cases/case-status-stepper";
+import {
+  canSubmitFeedback,
+  isCaseStatus,
+  type CaseStatus,
+} from "@/lib/cases/workflow";
+import { isStatusTransition } from "@/lib/cases/action-date";
+import { journalReachedAt, sortJournal } from "@/lib/cases/journal";
 import {
   PriorityBreakdown,
   parseEvaluation,
@@ -103,28 +112,28 @@ export default async function ConcernDetailPage({
   const feedbackResubmissionAllowed =
     await isFeedbackResubmissionAllowed(db);
 
-  const reachedAt = {
-    SUBMITTED: concern.submittedAt,
-    ASSIGNED: null as Date | null,
-    IN_PROGRESS: null as Date | null,
-    RESOLVED: concern.resolvedAt ?? null,
-    CLOSED: concern.closedAt ?? null,
+  // A step is dated by the first journal entry that moved the case into it,
+  // using the action date when the official recorded one (shown as a day).
+  // Only real status transitions count, so a remark never marks a step.
+  const reachedAt: Partial<Record<CaseStatus, ReachedAt | null>> = {
+    SUBMITTED: { at: concern.submittedAt, dateOnly: false },
   };
-  for (const entry of concern.history) {
-    if (
-      entry.toStatus &&
-      (CASE_STATUSES as readonly string[]).includes(entry.toStatus)
-    ) {
-      if (entry.toStatus === "ASSIGNED" && !reachedAt.ASSIGNED) {
-        reachedAt.ASSIGNED = entry.createdAt;
-      }
-      if (entry.toStatus === "IN_PROGRESS" && !reachedAt.IN_PROGRESS) {
-        reachedAt.IN_PROGRESS = entry.createdAt;
-      }
-    }
+  for (const entry of sortJournal(concern.history)) {
+    if (!isStatusTransition(entry) || !entry.toStatus) continue;
+    if (!isCaseStatus(entry.toStatus) || reachedAt[entry.toStatus]) continue;
+    reachedAt[entry.toStatus] = journalReachedAt(entry);
   }
   if (!reachedAt.ASSIGNED && currentAssignment) {
-    reachedAt.ASSIGNED = currentAssignment.assignedAt;
+    reachedAt.ASSIGNED = {
+      at: currentAssignment.assignedAt,
+      dateOnly: false,
+    };
+  }
+  if (!reachedAt.RESOLVED && concern.resolvedAt) {
+    reachedAt.RESOLVED = { at: concern.resolvedAt, dateOnly: false };
+  }
+  if (!reachedAt.CLOSED && concern.closedAt) {
+    reachedAt.CLOSED = { at: concern.closedAt, dateOnly: false };
   }
 
   const resolutionInfo: ResolutionInfo | null = resolution
@@ -313,11 +322,11 @@ export default async function ConcernDetailPage({
                 </div>
                 {resolution.attachmentUrl && (
                   <div>
-                    <dt className="text-slate-500">Attachment</dt>
+                    <dt className="text-slate-500">Proof photo</dt>
                     <dd className="mt-2">
                       <Image
                         src={resolution.attachmentUrl}
-                        alt={`Resolution attachment for ${concern.caseNumber}`}
+                        alt={`Proof photo of the resolution for ${concern.caseNumber}`}
                         width={800}
                         height={600}
                         unoptimized
@@ -356,6 +365,8 @@ export default async function ConcernDetailPage({
               remarks: entry.remarks,
               actorRole: entry.actorRole,
               createdAt: entry.createdAt,
+              occurredOn: entry.occurredOn,
+              attachmentUrl: entry.attachmentUrl,
             }))}
             resolution={resolutionInfo}
           />

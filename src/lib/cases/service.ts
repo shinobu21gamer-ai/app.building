@@ -1,6 +1,14 @@
 import { Prisma } from "@prisma/client";
 import { createApiError } from "@/lib/api";
 import {
+  actionDateForDay,
+  actionDateProblem,
+  lastStatusChangeDay,
+  manilaDay,
+  todayManila,
+  type ActionDateBounds,
+} from "@/lib/cases/action-date";
+import {
   notifyCaseClosed,
   notifyFeedbackRequested,
   notifyResolutionRecorded,
@@ -10,8 +18,10 @@ import {
   allowedTransitions,
   canManageConcern,
   canTransition,
+  PROOF_REQUIRED_MESSAGE,
   type ResolutionType,
   type WorkflowActor,
+  type WorkflowTargetStatus,
 } from "@/lib/cases/workflow";
 
 type Tx = Prisma.TransactionClient;
@@ -22,6 +32,7 @@ type ConcernForWorkflow = {
   userId: number;
   status: string;
   assignedOfficeId: number | null;
+  submittedAt: Date;
   resolutionId: number | null;
 };
 
@@ -38,6 +49,7 @@ async function loadConcernForWorkflow(
       userId: true,
       status: true,
       assignedOfficeId: true,
+      submittedAt: true,
       resolutions: { select: { id: true }, take: 1 },
     },
   });
@@ -55,25 +67,80 @@ async function loadConcernForWorkflow(
     userId: concern.userId,
     status: concern.status,
     assignedOfficeId: concern.assignedOfficeId,
+    submittedAt: concern.submittedAt,
     resolutionId: concern.resolutions[0]?.id ?? null,
   };
+}
+
+/**
+ * The calendar bounds for a new journal entry on this case: the day it was
+ * submitted and the last day its status changed. Read inside the transaction so
+ * the checks see the same timeline the entry is written into.
+ */
+async function timelineBounds(
+  tx: Tx,
+  concern: Pick<ConcernForWorkflow, "id" | "submittedAt">
+): Promise<Omit<ActionDateBounds, "today">> {
+  const entries = await tx.caseStatusHistory.findMany({
+    where: { concernId: concern.id },
+    select: {
+      fromStatus: true,
+      toStatus: true,
+      occurredOn: true,
+      createdAt: true,
+    },
+  });
+  return {
+    submittedDay: manilaDay(concern.submittedAt),
+    lastStatusDay: lastStatusChangeDay(entries),
+  };
+}
+
+/**
+ * Checks a requested calendar day against the case timeline and returns the day
+ * to record. A missing request means today (Asia/Manila).
+ */
+function resolveActionDay(
+  requested: string | undefined,
+  bounds: Omit<ActionDateBounds, "today">,
+  options: { statusChange: boolean; label: "action date" | "resolution date" }
+): string {
+  const day = requested ?? todayManila();
+  const problem = actionDateProblem(day, { ...bounds, today: todayManila() }, options);
+  if (problem === "future") {
+    throw createApiError.badRequest(`The ${options.label} cannot be in the future.`);
+  }
+  if (problem === "before-submission") {
+    throw createApiError.badRequest(
+      `The ${options.label} cannot be before the case was submitted (${bounds.submittedDay}).`
+    );
+  }
+  if (problem === "before-last-status") {
+    throw createApiError.badRequest(
+      `The ${options.label} cannot be earlier than the last status change (${bounds.lastStatusDay}).`
+    );
+  }
+  return day;
 }
 
 export type ResolutionInput = {
   summary: string;
   actionsTaken: string;
   resolutionType: ResolutionType;
-  // Calendar date the issue was actually resolved; defaults to the record time.
-  resolvedOn?: Date;
-  // Optional supporting image attachment (authenticated uploads path).
-  attachmentUrl?: string | null;
+  // Calendar day (YYYY-MM-DD) the issue was actually resolved. Defaults to today.
+  resolvedOn?: string;
 };
 
 export type StatusChangeInput = {
   concernId: number;
   actor: WorkflowActor;
-  status: string;
+  status: WorkflowTargetStatus;
   remarks: string;
+  // Calendar day (YYYY-MM-DD) the status change actually happened. Defaults to
+  // today. Ignored for RESOLVED, which uses resolution.resolvedOn.
+  occurredOn?: string;
+  // Proof photo for this change (authenticated uploads path). Mandatory.
+  proofUrl: string | null;
   resolution?: ResolutionInput;
 };
 
@@ -82,13 +149,39 @@ export type StatusChangeOutcome = {
   caseNumber: string;
   fromStatus: string;
   status: string;
+  // Calendar day (YYYY-MM-DD) recorded for the change.
+  actionDate: string;
   notifiedResident: boolean;
 };
 
 /**
+ * RESOLVED takes its date from the resolution's "date resolved". If the caller
+ * sends a separate action date as well, both must name the same day.
+ */
+function requestedStatusDay(input: StatusChangeInput): {
+  day: string | undefined;
+  label: "action date" | "resolution date";
+} {
+  if (input.status !== "RESOLVED") {
+    return { day: input.occurredOn, label: "action date" };
+  }
+  const resolvedOn = input.resolution?.resolvedOn;
+  if (resolvedOn && input.occurredOn && resolvedOn !== input.occurredOn) {
+    throw createApiError.badRequest(
+      "The resolution date and the action date must be the same day."
+    );
+  }
+  return { day: resolvedOn ?? input.occurredOn, label: "resolution date" };
+}
+
+/**
  * Advances a concern through the lifecycle. Every change appends an immutable
  * `CaseStatusHistory` row capturing the previous status, new status, acting
- * user, remarks and timestamp. Resolving also records the `ResolutionRecord`.
+ * user, remarks, proof photo, action date and record time. Resolving also
+ * records the `ResolutionRecord`.
+ *
+ * Nothing is written unless every check passes, so a missing proof photo or an
+ * invalid date leaves the case exactly as it was.
  */
 export async function changeConcernStatus(
   tx: Tx,
@@ -127,6 +220,20 @@ export async function changeConcernStatus(
     }
   }
 
+  // Every status change needs a proof photo. The routes check this before the
+  // upload is saved; the service repeats the rule so no caller can skip it.
+  if (!input.proofUrl) {
+    throw createApiError.badRequest(PROOF_REQUIRED_MESSAGE);
+  }
+
+  const requested = requestedStatusDay(input);
+  const bounds = await timelineBounds(tx, concern);
+  const actionDay = resolveActionDay(requested.day, bounds, {
+    statusChange: true,
+    label: requested.label,
+  });
+  const actionDate = actionDateForDay(actionDay);
+
   const now = new Date();
   const data: Prisma.ConcernUpdateInput = { status: input.status };
   if (input.status === "RESOLVED") data.resolvedAt = now;
@@ -148,21 +255,23 @@ export async function changeConcernStatus(
       fromStatus: concern.status,
       toStatus: input.status,
       remarks: input.remarks,
+      occurredOn: actionDate,
+      attachmentUrl: input.proofUrl,
       actorId: input.actor.id,
       actorRole: input.actor.roleKey,
     },
   });
 
-  if (input.status === "RESOLVED") {
+  if (input.status === "RESOLVED" && input.resolution) {
     await tx.resolutionRecord.create({
       data: {
         concernId: concern.id,
         officialId: input.actor.id,
-        summary: input.resolution!.summary,
-        actionsTaken: input.resolution!.actionsTaken,
-        resolutionType: input.resolution!.resolutionType,
-        resolvedOn: input.resolution!.resolvedOn ?? now,
-        attachmentUrl: input.resolution!.attachmentUrl ?? null,
+        summary: input.resolution.summary,
+        actionsTaken: input.resolution.actionsTaken,
+        resolutionType: input.resolution.resolutionType,
+        resolvedOn: actionDate,
+        attachmentUrl: input.proofUrl,
         resolvedAt: now,
       },
     });
@@ -199,6 +308,7 @@ export async function changeConcernStatus(
     caseNumber: concern.caseNumber,
     fromStatus: concern.status,
     status: input.status,
+    actionDate: actionDay,
     notifiedResident: true,
   };
 }
@@ -208,6 +318,8 @@ export type NoteInput = {
   actor: WorkflowActor;
   kind: "REMARK" | "ACTION";
   remarks: string;
+  // Calendar day (YYYY-MM-DD) the remark or action happened. Defaults to today.
+  occurredOn?: string;
 };
 
 export type NoteOutcome = {
@@ -215,6 +327,7 @@ export type NoteOutcome = {
   caseNumber: string;
   historyId: number;
   kind: string;
+  actionDate: string;
 };
 
 /**
@@ -231,6 +344,12 @@ export async function addConcernNote(
     throw createApiError.conflict("Closed cases cannot be modified.");
   }
 
+  const bounds = await timelineBounds(tx, concern);
+  const actionDay = resolveActionDay(input.occurredOn, bounds, {
+    statusChange: false,
+    label: "action date",
+  });
+
   const entry = await tx.caseStatusHistory.create({
     data: {
       concernId: concern.id,
@@ -238,6 +357,7 @@ export async function addConcernNote(
       fromStatus: concern.status,
       toStatus: concern.status,
       remarks: input.remarks,
+      occurredOn: actionDateForDay(actionDay),
       actorId: input.actor.id,
       actorRole: input.actor.roleKey,
     },
@@ -248,5 +368,6 @@ export async function addConcernNote(
     caseNumber: concern.caseNumber,
     historyId: entry.id,
     kind: input.kind,
+    actionDate: actionDay,
   };
 }

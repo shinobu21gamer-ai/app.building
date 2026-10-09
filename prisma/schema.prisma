@@ -226,6 +226,13 @@ model CaseStatusHistory {
   fromStatus String?
   toStatus   String?
   remarks    String?
+  // Calendar day (Asia/Manila, stored at midday) on which the recorded action
+  // actually happened. Set on every official entry; null for automated entries,
+  // which are dated by createdAt alone. createdAt itself is never backdated.
+  occurredOn DateTime?
+  // Proof photo for a status change (JPEG/PNG/WebP, served through the
+  // authenticated uploads endpoint with the same ownership rules).
+  attachmentUrl String?
   actorId    Int?
   actor      User?    @relation("HistoryActor", fields: [actorId], references: [id])
   // RESIDENT | OFFICIAL | ADMIN | SYSTEM

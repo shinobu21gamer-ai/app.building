@@ -4,15 +4,19 @@ import {
   assertSameOrigin,
   createApiError,
   ok,
-  parseBody,
   withErrorBoundary,
 } from "@/lib/api";
 import { requireApiRole } from "@/lib/auth/session";
 import { recordAudit, requestMeta } from "@/lib/audit";
 import { statusChangeSchema } from "@/lib/validations/case";
-import { resolveResolutionDate } from "@/lib/cases/resolution-date";
 import { changeConcernStatus } from "@/lib/cases/service";
-import { readCappedFormData, saveConcernImage, imageUrlForFile } from "@/lib/uploads";
+import { PROOF_REQUIRED_MESSAGE } from "@/lib/cases/workflow";
+import {
+  deleteConcernImage,
+  imageUrlForFile,
+  readCappedFormData,
+  saveConcernImage,
+} from "@/lib/uploads";
 import { sendConcernProgressEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
@@ -26,6 +30,21 @@ function isUniqueConflict(error: unknown): boolean {
   );
 }
 
+/** The uploaded file when it is a non-empty part of the form, otherwise null. */
+function attachedFile(value: FormDataEntryValue | null): File | null {
+  return value instanceof File && value.size > 0 ? value : null;
+}
+
+/**
+ * POST /api/v1/concerns/[id]/status
+ *
+ * Moves a case to IN_PROGRESS, RESOLVED or CLOSED. Every status change must
+ * carry a proof photo, so it is accepted only as multipart form data with the
+ * image attached. JSON cannot carry a file and is refused.
+ *
+ * Optional `occurredOn` (YYYY-MM-DD) records the day the change happened; it
+ * defaults to today (Asia/Manila). RESOLVED takes its date from `resolution`.
+ */
 export const POST = withErrorBoundary<[Request, RouteContext]>(
   async (req, ctx) => {
     assertSameOrigin(req);
@@ -38,46 +57,40 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
     }
 
     const contentType = req.headers.get("content-type") || "";
-    const isMultipart = contentType.includes("multipart/form-data");
-
-    let payload: unknown;
-    let attachmentFilename: string | null = null;
-    let body: ReturnType<typeof statusChangeSchema.parse>;
-
-    if (isMultipart) {
-      const form = await readCappedFormData(req);
-      const resolutionRaw = form.get("resolution");
-      if (typeof resolutionRaw === "string" && resolutionRaw.trim() !== "") {
-        try {
-          payload = {
-            status: form.get("status"),
-            remarks: form.get("remarks"),
-            resolution: JSON.parse(resolutionRaw),
-          };
-        } catch {
-          throw createApiError.badRequest("Resolution details are not valid JSON.");
-        }
-      } else {
-        payload = { status: form.get("status"), remarks: form.get("remarks") };
-      }
-
-      // Validate before persisting anything so a rejected payload cannot leave
-      // an orphaned image file behind.
-      body = statusChangeSchema.parse(payload);
-
-      const attachment = form.get("attachment");
-      if (attachment instanceof File && attachment.size > 0) {
-        attachmentFilename = await saveConcernImage(attachment, user.id);
-      }
-    } else {
-      body = await parseBody(req, statusChangeSchema);
+    if (!contentType.includes("multipart/form-data")) {
+      throw createApiError.badRequest(
+        "Status updates must be sent as multipart form data with a proof photo attached."
+      );
     }
 
-    const attachmentUrl = attachmentFilename ? imageUrlForFile(attachmentFilename) : null;
+    const form = await readCappedFormData(req);
 
-    const resolveOnDate = body.resolution?.resolvedOn
-      ? resolveResolutionDate(body.resolution.resolvedOn)
-      : undefined;
+    const resolutionRaw = form.get("resolution");
+    let resolution: unknown;
+    if (typeof resolutionRaw === "string" && resolutionRaw.trim() !== "") {
+      try {
+        resolution = JSON.parse(resolutionRaw);
+      } catch {
+        throw createApiError.badRequest("Resolution details are not valid JSON.");
+      }
+    }
+
+    // Validate every field before anything is written, so a rejected request
+    // cannot leave an orphaned image file behind.
+    const body = statusChangeSchema.parse({
+      status: form.get("status"),
+      remarks: form.get("remarks"),
+      occurredOn: form.get("occurredOn") ?? undefined,
+      resolution,
+    });
+
+    const proof = attachedFile(form.get("attachment"));
+    if (!proof) {
+      throw createApiError.badRequest(PROOF_REQUIRED_MESSAGE);
+    }
+
+    const proofFilename = await saveConcernImage(proof, user.id);
+    const proofUrl = imageUrlForFile(proofFilename);
 
     let outcome;
     try {
@@ -91,26 +104,24 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
           },
           status: body.status,
           remarks: body.remarks,
+          occurredOn: body.occurredOn,
+          proofUrl,
           resolution: body.resolution
             ? {
                 summary: body.resolution.summary,
                 actionsTaken: body.resolution.actionsTaken,
                 resolutionType: body.resolution.resolutionType,
-                resolvedOn: resolveOnDate,
-                attachmentUrl,
+                resolvedOn: body.resolution.resolvedOn,
               }
             : undefined,
         })
       );
     } catch (error) {
+      await deleteConcernImage(proofFilename);
       if (isUniqueConflict(error)) {
         throw createApiError.conflict(
           "A resolution is already recorded for this case."
         );
-      }
-      if (attachmentFilename) {
-        const { deleteConcernImage } = await import("@/lib/uploads");
-        await deleteConcernImage(attachmentFilename);
       }
       throw error;
     }
@@ -127,7 +138,7 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
       action,
       resourceType: "concern",
       resourceId: String(concernId),
-      description: `${outcome.caseNumber}: status ${outcome.fromStatus} → ${outcome.status}. ${body.remarks}`,
+      description: `${outcome.caseNumber}: status ${outcome.fromStatus} → ${outcome.status}, action date ${outcome.actionDate}, proof photo attached. ${body.remarks}`,
       userId: user.id,
       ...meta,
     });
@@ -144,6 +155,8 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
       caseNumber: outcome.caseNumber,
       fromStatus: outcome.fromStatus,
       status: outcome.status,
+      actionDate: outcome.actionDate,
+      proofUrl,
       redirect: `/official/concerns/${concernId}`,
     });
   }

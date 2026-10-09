@@ -12,6 +12,29 @@ export const runtime = "nodejs";
 
 type UploadContext = { params: Promise<{ filename: string }> };
 
+/**
+ * Proof photos are attached to a case in two places: the resolution record and
+ * the status-change journal entry. Both resolve to the owning concern, so one
+ * authorization rule covers every kind of case image.
+ */
+async function proofOwner(imageUrl: string) {
+  const resolution = await db.resolutionRecord.findFirst({
+    where: { attachmentUrl: imageUrl },
+    select: {
+      concern: { select: { userId: true, assignedOfficeId: true } },
+    },
+  });
+  if (resolution) return resolution.concern;
+
+  const journalEntry = await db.caseStatusHistory.findFirst({
+    where: { attachmentUrl: imageUrl },
+    select: {
+      concern: { select: { userId: true, assignedOfficeId: true } },
+    },
+  });
+  return journalEntry?.concern ?? null;
+}
+
 export const GET = withErrorBoundary<[Request, UploadContext]>(
   async (_req, ctx) => {
     const user = await requireApiUser();
@@ -28,22 +51,7 @@ export const GET = withErrorBoundary<[Request, UploadContext]>(
       select: { userId: true, assignedOfficeId: true },
     });
 
-    // Resolution attachments live on ResolutionRecord.attachmentUrl; resolve
-    // to the same ownership shape so one authorization rule covers both.
-    const attachmentOwner = concern
-      ? null
-      : await db.resolutionRecord
-          .findFirst({
-            where: { attachmentUrl: imageUrl },
-            select: {
-              concern: {
-                select: { userId: true, assignedOfficeId: true },
-              },
-            },
-          })
-          .then((record) => record?.concern ?? null);
-
-    const owner = concern ?? attachmentOwner;
+    const owner = concern ?? (await proofOwner(imageUrl));
     if (!owner) {
       throw createApiError.notFound("Image not found.");
     }

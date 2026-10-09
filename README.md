@@ -15,7 +15,7 @@ Residents submit community concerns online; the system categorizes them, compute
 | UI | Tailwind CSS v4 + custom design system + dependency-free SVG charts |
 | Tests | Vitest unit suite + `tsx` live API/flow scripts |
 
-> Authentication, roles, sessions, protected routes, **resident concern submission**, the **rule-based priority assessment engine** (auto-scoring, official override, admin-configurable rules), the **automatic routing engine** (category → office assignment, admin-configurable rules, office-scoped reassignment), the **official case-management workflow** (search/filter, status lifecycle, progress remarks, actions taken, resolution with date + attachment), **resident case tracking** (My Concerns list, detailed case page with lifecycle stepper, server-side ownership checks), **resident feedback** (resolved check, 1-5 rating, comment, duplicate protection), **role-based dashboards** (live database-driven figures and charts for residents, officials, and administrators), the **administrator management system** (accounts, officials, offices, concern categories, routing rules, priority rules, and key/value system settings — with historical-integrity guards), and the **in-app notification system** (event-driven notifications, unread/read state, related case links, mark-one/mark-all-as-read) are **implemented**. Reports are **not implemented yet** — they are built in the next development stage.
+> Authentication, roles, sessions, protected routes, **resident concern submission**, the **rule-based priority assessment engine** (auto-scoring, official override, admin-configurable rules), the **automatic routing engine** (category → office assignment, admin-configurable rules, office-scoped reassignment), the **official case-management workflow** (search/filter, status lifecycle, progress remarks, actions taken, resolution with date and a proof photo, every status change backed by a proof photo and an action date), **resident case tracking** (My Concerns list, detailed case page with lifecycle stepper, server-side ownership checks), **resident feedback** (resolved check, 1-5 rating, comment, duplicate protection), **role-based dashboards** (live database-driven figures and charts for residents, officials, and administrators), the **administrator management system** (accounts, officials, offices, concern categories, routing rules, priority rules, and key/value system settings — with historical-integrity guards), and the **in-app notification system** (event-driven notifications, unread/read state, related case links, mark-one/mark-all-as-read) are **implemented**. Reports are **not implemented yet** — they are built in the next development stage.
 
 ## Prerequisites
 
@@ -277,7 +277,7 @@ All seeded passwords: `BarangayResolve123!`
 - `Concern` — the case record (case number, status, priority, assignments)
 - `PriorityAssessment` — factor scores + total + level for every (re-)assessment
 - `CaseAssignment` — full assignment/reassignment history (self-referencing chain)
-- `CaseStatusHistory` — append-only journal of every status change, remark, resolution, and override
+- `CaseStatusHistory` — append-only journal of every status change, remark, action, resolution, and override. Official entries carry their **action date** (`occurredOn`, the Asia/Manila calendar day it happened) next to the immutable record time (`createdAt`); status changes also carry their **proof photo** (`attachmentUrl`). Added by migration `20261009090000_case_status_proof_and_action_date`.
 - `ResolutionRecord` — final resolution information (one per concern)
 - `PriorityConfig` — runtime-configurable priority score thresholds
 - `PriorityFactorConfig` — runtime-configurable scoring factors (label, weight, score range)
@@ -305,9 +305,9 @@ REST endpoints live under `src/app/api/v1/`. All routes return a consistent
 | POST | `/concerns/[id]/priority` | OFFICIAL / ADMIN | Override a concern's priority (re-rate factors and/or set a level) |
 | GET | `/concerns/[id]/assignments` | Assigned office / ADMIN | Read a concern's assignment history |
 | POST | `/concerns/[id]/assignments` | Assigned office / ADMIN | Assign or reassign a concern to an office (and optional official) |
-| POST | `/concerns/[id]/status` | Assigned office / ADMIN | Advance the case status (in progress / resolved / closed) |
-| POST | `/concerns/[id]/resolutions` | Assigned office / ADMIN | Record a resolution (summary, action taken, type, resolution date, optional attachment) and mark the case resolved |
-| POST | `/concerns/[id]/notes` | Assigned office / ADMIN | Append a progress remark or an action-taken entry |
+| POST | `/concerns/[id]/status` | Assigned office / ADMIN | Advance the case status (in progress / resolved / closed). Multipart form only, with a **required proof photo** (JPEG/PNG/WebP, ≤5 MB) and an optional action date `occurredOn` (`YYYY-MM-DD`, defaults to today). JSON is refused with `400`. |
+| POST | `/concerns/[id]/resolutions` | Assigned office / ADMIN | Record a resolution (summary, action taken, type, resolution date, **required proof photo**) and mark the case resolved |
+| POST | `/concerns/[id]/notes` | Assigned office / ADMIN | Append a progress remark or an action-taken entry (JSON, optional action date `occurredOn`, no photo) |
 | GET | `/concerns/[id]/feedback` | RESIDENT (owner) | Read the resident's own feedback for a case |
 | POST | `/concerns/[id]/feedback` | RESIDENT (owner) | Rate a resolved/closed case (resolved check, 1-5 rating, optional comment) |
 | GET | `/admin/users` | ADMIN | List accounts (`?q=`, `?role=`, `?status=active\|disabled`) |
@@ -440,8 +440,8 @@ A configurable daily upload limit protects disk space. The setting
 `saveConcernImage()` before writing the file — it sums the resident's
 `UploadRecord` bytes for the current calendar day and rejects the upload with
 `413 Payload Too Large` when the limit would be exceeded. The same logic
-applies to resolution attachments. `UploadRecord` rows are cleaned up when
-images are deleted.
+applies to every proof photo: concern images, status-change proofs and resolution
+proofs. `UploadRecord` rows are cleaned up when images are deleted.
 
 ## Security Headers (Production)
 
@@ -517,10 +517,12 @@ to reduce noise.
 
 ## Tests
 
-- **Unit tests (Vitest):** 41 tests across 6 files covering the priority engine,
-  workflow transitions + permissions, case validations (real calendar date
-  validation), auth schemas (password policy, reset code bounds), and the query
-  parsers for concerns and notifications. Run with `npm run test`.
+- **Unit tests (Vitest):** cover the priority engine, workflow transitions and
+  permissions, case validations (real calendar dates, optional action dates,
+  blank-value handling), the action-date rules (Asia/Manila days, future,
+  submission and last-status bounds), journal ordering, auth schemas (password
+  policy, reset code bounds), and the query parsers for concerns and notifications.
+  Run with `npm run test`.
 - **Live HTTP smoke scripts (`tsx`):** `scripts/smoke/run.ts` exercises the
   full credential lifecycle against a running production server — health,
   security headers, login throttling (5×401→429), the admin reset cycle (code
@@ -630,13 +632,38 @@ Administrators can view and act on any office's cases.
   `SUBMITTED → ASSIGNED` performed by the routing/assignment services). A single
   transition map validates every move, so steps cannot be skipped, repeated,
   reversed, or applied to a closed case.
+- **Proof photo for every status change:** moving a case to in progress, resolved
+  or closed requires a proof photo (JPEG, PNG or WebP, up to 5 MB, checked by its
+  content and not just its file name). Without one the request is refused with
+  `400` and nothing is written: no status change, journal row, notification or
+  stored file. The status form and the resolve form both require the photo.
+  Remarks and actions are text entries and do not need one.
+- **Action dates ("Date of action"):** every official entry (status change,
+  remark, action taken, resolution) records the calendar day the work actually
+  happened, in Asia/Manila time. It defaults to today. An earlier day is allowed,
+  but:
+  - it cannot be in the future;
+  - it cannot be before the day the case was submitted;
+  - a status change (including a resolution) cannot be dated before the previous
+    status change, so the stepper stays in order. Remarks and actions are not held
+    to this rule.
+
+  The record time (`createdAt`) is the moment the entry was made and is never
+  changed. The journal is append-only: a backdated entry is added as a new row, and
+  no existing row is rewritten.
 - **Journaling:** every status change writes a `CaseStatusHistory` row with the
-  previous status, new status, acting user and role, remarks and timestamp.
-  Resolving also creates the unique `ResolutionRecord` (summary, actions taken,
-  resolution type) and sets `resolvedAt`; closing sets `closedAt`.
+  previous status, new status, acting user and role, remarks, action date, proof
+  photo and record time. Resolving also creates the unique `ResolutionRecord`
+  (summary, actions taken, resolution type, resolution date and proof photo) and
+  sets `resolvedAt`; closing sets `closedAt`.
 - **Progress remarks and actions taken:** additive journal entries (`REMARK` and
-  `ACTION`) that record work without changing the status. Closed cases reject
-  further changes.
+  `ACTION`) that record work without changing the status. They take an optional
+  action date. Closed cases reject further changes.
+- **Timeline and printouts:** the case timeline is ordered by action date, and each
+  entry shows its action date and when it was recorded. Proof photos appear as
+  thumbnails on the official and resident case pages, in the timeline, and on both
+  printouts. The official case sheet prints the full journal, and the resident
+  receipt lists the case progress.
 - **Resident notifications:** the in-progress, resolved and closed transitions
   each notify the resident.
 
@@ -650,8 +677,12 @@ and `/resident/concerns/[id]` (case details).
   resident submitted.
 - **Case details:** the case file plus a **lifecycle stepper** showing the
   `SUBMITTED → ASSIGNED → IN PROGRESS → RESOLVED → CLOSED` stages and the date
-  each one was reached, and a **journal timeline** with every status change,
-  progress remark, action taken and the resolution details with dates.
+  each one was reached (the action date when the official recorded one), and a
+  **journal timeline** with every status change, progress remark, action taken and
+  the resolution details. Each timeline entry shows its action date, when it was
+  recorded, and any proof photo.
+- **Printable receipt:** `/resident/concerns/[id]/print` also lists the case
+  progress with action dates and proof photos.
 - **Authorization:** the detail page is fetched with the logged-in resident's
   id, so a resident can never open another resident's case — even by changing
   the URL or case id it returns `404`, leaking nothing. Anonymous visitors are
@@ -665,14 +696,16 @@ and `/resident/concerns/[id]` (case details).
 Officials resolve cases from the case-management card with a dedicated
 multipart form (`/concerns/[id]/resolutions`) that records the **action taken**,
 **resolution description**, **resolution type**, **resolution date** (defaults
-to today, cannot be in the future) and an optional **supporting attachment**
-(JPEG/PNG/WebP, ≤5 MB). Resolving is one atomic transaction that:
+to today, with the same action-date rules as above) and a required **proof
+photo** of the fix (JPEG/PNG/WebP, ≤5 MB). Resolving is one atomic transaction
+that:
 
 1. advances the status to `RESOLVED` (and sets `resolvedAt`),
-2. writes a `RESOLUTION` history entry with the actor, remarks and timestamp,
+2. writes a `RESOLUTION` history entry with the actor, remarks, action date, proof
+   photo and timestamp,
 3. records the `ResolutionRecord` (unique per case),
 4. notifies the resident, and
-5. renders the resolution — summary, actions, date and attachment — on the
+5. renders the resolution — summary, actions, date and proof photo — on the
    resident's case page (and on the official's page).
 
 The attachment is served through the authenticated uploads endpoint with the

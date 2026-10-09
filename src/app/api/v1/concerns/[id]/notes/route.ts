@@ -16,6 +16,13 @@ export const runtime = "nodejs";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+/**
+ * POST /api/v1/concerns/[id]/notes (JSON)
+ *
+ * Adds a progress remark or a record of actions taken. Optional `occurredOn`
+ * (YYYY-MM-DD) records the day it happened; it defaults to today (Asia/Manila).
+ * Notes are text only and do not change the case status.
+ */
 export const POST = withErrorBoundary<[Request, RouteContext]>(
   async (req, ctx) => {
     assertSameOrigin(req);
@@ -39,6 +46,7 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
         },
         kind: body.kind,
         remarks: body.remarks,
+        occurredOn: body.occurredOn,
       })
     );
 
@@ -47,7 +55,7 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
       action: body.kind === "ACTION" ? "CONCERN_ACTION_RECORDED" : "CONCERN_REMARK_ADDED",
       resourceType: "concern",
       resourceId: String(concernId),
-      description: `${outcome.caseNumber}: ${body.kind.toLowerCase()} recorded.`,
+      description: `${outcome.caseNumber}: ${body.kind.toLowerCase()} recorded (action date ${outcome.actionDate}).`,
       userId: user.id,
       ...meta,
     });
@@ -64,6 +72,7 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
       caseNumber: outcome.caseNumber,
       historyId: outcome.historyId,
       kind: outcome.kind,
+      actionDate: outcome.actionDate,
       redirect: `/official/concerns/${concernId}`,
     });
   }

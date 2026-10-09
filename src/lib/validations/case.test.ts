@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  caseNoteSchema,
   feedbackSchema,
   resolutionSchema,
   statusChangeSchema,
@@ -86,5 +87,81 @@ describe("statusChangeSchema", () => {
       remarks: "Starting investigation.",
     });
     expect(moving.success).toBe(true);
+  });
+});
+
+const VALID_STATUS_CHANGE = {
+  status: "IN_PROGRESS",
+  remarks: "Crew dispatched and the pothole is being repaired.",
+};
+
+describe("action date on status changes", () => {
+  it("accepts a real calendar day", () => {
+    const result = statusChangeSchema.safeParse({
+      ...VALID_STATUS_CHANGE,
+      occurredOn: "2026-09-24",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.occurredOn).toBe("2026-09-24");
+  });
+
+  it("treats a blank value as not provided", () => {
+    const result = statusChangeSchema.safeParse({
+      ...VALID_STATUS_CHANGE,
+      occurredOn: "",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.occurredOn).toBeUndefined();
+  });
+
+  it("treats a missing value as not provided", () => {
+    const result = statusChangeSchema.safeParse(VALID_STATUS_CHANGE);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.occurredOn).toBeUndefined();
+  });
+
+  it("rejects malformed, impossible and null dates", () => {
+    for (const bad of ["24/09/2026", "2026-09-31", "2026-9-24", null]) {
+      expect(
+        statusChangeSchema.safeParse({
+          ...VALID_STATUS_CHANGE,
+          occurredOn: bad,
+        } as never).success
+      ).toBe(false);
+    }
+  });
+});
+
+describe("caseNoteSchema action date", () => {
+  const note = { kind: "REMARK", remarks: "Inspected the site with the crew." };
+
+  it("accepts an optional calendar day", () => {
+    expect(
+      caseNoteSchema.safeParse({ ...note, occurredOn: "2026-09-22" }).success
+    ).toBe(true);
+    expect(caseNoteSchema.safeParse(note).success).toBe(true);
+  });
+
+  it("rejects an impossible day", () => {
+    expect(
+      caseNoteSchema.safeParse({ ...note, occurredOn: "2026-02-30" }).success
+    ).toBe(false);
+  });
+
+  it("treats a blank day as not provided", () => {
+    const result = caseNoteSchema.safeParse({ ...note, occurredOn: "" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.occurredOn).toBeUndefined();
+  });
+});
+
+describe("resolutionSchema.resolvedOn blank handling", () => {
+  it("treats a blank resolution date as not provided", () => {
+    const result = resolutionSchema.safeParse({
+      ...VALID_RESOLUTION,
+      resolvedOn: "",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.resolvedOn).toBeUndefined();
   });
 });

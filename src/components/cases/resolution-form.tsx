@@ -11,26 +11,28 @@ import {
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
 import { RESOLUTION_TYPES } from "@/lib/cases/workflow";
+import { formatCalendarDay } from "@/lib/format";
 import { copy, type Locale } from "@/lib/i18n";
 
 const selectStyles =
   "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
-function todayValue(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Manila",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
-
+/**
+ * Records the resolution and moves the case to RESOLVED. A proof photo of the
+ * fix is required, like every other status change.
+ */
 export function ResolutionForm({
   concernId,
   locale = "en",
+  today,
+  earliestDay,
 }: {
   concernId: number;
   locale?: Locale;
+  /** Today in Asia/Manila (YYYY-MM-DD); the latest allowed resolution date. */
+  today: string;
+  /** Earliest allowed resolution date (YYYY-MM-DD). */
+  earliestDay: string;
 }) {
   const t = copy[locale].desk;
   const router = useRouter();
@@ -43,7 +45,8 @@ export function ResolutionForm({
     setFormError(null);
     setSuccess(null);
 
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     const summary = String(data.get("summary") ?? "").trim();
     const actionsTaken = String(data.get("actionsTaken") ?? "").trim();
     const remarks = String(data.get("remarks") ?? "").trim();
@@ -57,18 +60,22 @@ export function ResolutionForm({
       setFormError(t.remarksRequired);
       return;
     }
+    const file = data.get("attachment");
+    if (!(file instanceof File) || file.size === 0) {
+      setFormError(t.proofRequired);
+      return;
+    }
 
-    const form = new FormData();
-    form.set("summary", summary);
-    form.set("actionsTaken", actionsTaken);
-    form.set("remarks", remarks);
-    form.set(
+    const body = new FormData();
+    body.set("summary", summary);
+    body.set("actionsTaken", actionsTaken);
+    body.set("remarks", remarks);
+    body.set(
       "resolutionType",
       String(data.get("resolutionType") ?? "FIXED")
     );
-    if (resolvedOn) form.set("resolvedOn", resolvedOn);
-    const file = data.get("attachment");
-    if (file instanceof File && file.size > 0) form.set("attachment", file);
+    if (resolvedOn) body.set("resolvedOn", resolvedOn);
+    body.set("attachment", file);
 
     setSubmitting(true);
     const result = await apiRequest<{
@@ -77,7 +84,7 @@ export function ResolutionForm({
       resolution: { resolvedOn: string };
     }>(`/api/v1/concerns/${concernId}/resolutions`, {
       method: "POST",
-      body: form,
+      body,
     });
     setSubmitting(false);
 
@@ -94,6 +101,7 @@ export function ResolutionForm({
       return;
     }
 
+    form.reset();
     setSuccess(
       t.resolvedNotify
         .replace("{caseNumber}", result.data.caseNumber)
@@ -151,21 +159,26 @@ export function ResolutionForm({
             id="resolution-on"
             name="resolvedOn"
             type="date"
-            max={todayValue()}
+            defaultValue={today}
+            min={earliestDay}
+            max={today}
           />
-          <p className="mt-1 text-xs text-slate-500">{t.dateHint}</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {t.actionDateHint.replace("{date}", formatCalendarDay(earliestDay))}
+          </p>
         </div>
       </div>
 
       <div>
-        <Label htmlFor="resolution-attachment">{t.attachment}</Label>
+        <Label htmlFor="resolution-attachment">{t.proofPhoto}</Label>
         <Input
           id="resolution-attachment"
           name="attachment"
           type="file"
           accept="image/jpeg,image/png,image/webp"
+          required
         />
-        <p className="mt-1 text-xs text-slate-500">{t.attachmentHint}</p>
+        <p className="mt-1 text-xs text-slate-500">{t.proofPhotoHint}</p>
       </div>
 
       <div>

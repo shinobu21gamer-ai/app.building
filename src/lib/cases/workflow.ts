@@ -26,6 +26,12 @@ export const STATUS_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
 export const WORKFLOW_TARGET_STATUSES = ["IN_PROGRESS", "RESOLVED", "CLOSED"] as const;
 export type WorkflowTargetStatus = (typeof WORKFLOW_TARGET_STATUSES)[number];
 
+// Every status change made through case management must carry a proof photo.
+// The photo is stored on the journal entry and is the evidence for the change.
+// Remarks and actions are text entries and do not need one.
+export const PROOF_REQUIRED_MESSAGE =
+  "A proof photo is required to update the status of a case. Attach a JPEG, PNG, or WebP image of up to 5 MB.";
+
 // case_status_history.entryType values used by the workflow. The schema
 // comment lists the full set (ASSIGNMENT / PRIORITY_OVERRIDE come from the
 // routing and priority services; SLA_BREACH from the SLA scanner).
