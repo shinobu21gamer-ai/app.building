@@ -195,7 +195,9 @@ See `.env.example`. The only required variable is `DATABASE_URL`, a PostgreSQL c
 
 For browser push, generate VAPID keys with `npx web-push generate-vapid-keys`,
 then set `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY`, and `VAPID_PRIVATE_KEY`. Users
-must open the Alerts page and choose **Enable phone alerts**. Browser/OS policy
+must open the Alerts page and choose **Enable phone alerts**. Browser push remains
+available as a silent visual notification; the web page does not play an alarm.
+Sound and vibration alarms are handled by the native app. Browser/OS policy
 still controls delivery when the browser is closed.
 
 ### Native Android APK Alerts

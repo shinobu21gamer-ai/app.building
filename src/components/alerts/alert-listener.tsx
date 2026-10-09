@@ -8,32 +8,6 @@ import { enqueueAlerts, removeAlert, removeAlerts } from "@/lib/alert-queue";
 import type { AlertView } from "@/components/alerts/alert-archive";
 import { getPushMode } from "@/lib/capacitor-types";
 
-interface AlarmSound {
-  context: AudioContext;
-  stop: () => void;
-  resume: () => Promise<void>;
-}
-
-function audioContextClass(): typeof AudioContext | null {
-  return (
-    window.AudioContext ||
-    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext ||
-    null
-  );
-}
-
-/**
- * Every sound registers a teardown here the moment it is created and is
- * deregistered the moment it stops. This guarantees no alarm can outlive the
- * reference we hold on it, which is what previously left un-stoppable alarms
- * ringing over the top of each other.
- */
-const liveAlarms = new Set<() => void>();
-
-function silenceEveryAlarm() {
-  for (const stop of Array.from(liveAlarms)) stop();
-}
-
 /** Starts the one native alarm for the alert currently at the head of the queue. */
 function startNativeAlarm(alert: AlertView) {
   const bridge = (window as Window & {
@@ -99,120 +73,6 @@ function stopNativeAlarm(alertId: number) {
   }
 }
 
-interface ToneOptions {
-  frequency: number;
-  type: OscillatorType;
-  gain: number;
-  duration: number | null;
-  vibratoRate?: number;
-  vibratoDepth?: number;
-  tremoloRate?: number;
-  tremoloDepth?: number;
-}
-
-function buildTone(context: AudioContext, options: ToneOptions): AlarmSound {
-  const { frequency, type, gain: peak, duration, vibratoRate, vibratoDepth, tremoloRate, tremoloDepth } = options;
-  const now = context.currentTime;
-
-  const master = context.createGain();
-  master.connect(context.destination);
-  master.gain.setValueAtTime(0.0001, now);
-  master.gain.exponentialRampToValueAtTime(peak, now + 0.02);
-
-  const voice = context.createOscillator();
-  voice.type = type;
-  voice.frequency.setValueAtTime(frequency, now);
-  voice.connect(master);
-  voice.start(now);
-  if (duration !== null) voice.stop(now + duration);
-
-  const nodes: OscillatorNode[] = [voice];
-  const gains: GainNode[] = [master];
-
-  if (vibratoRate && vibratoDepth) {
-    const lfo = context.createOscillator();
-    lfo.type = "sine";
-    lfo.frequency.value = vibratoRate;
-    const lfoGain = context.createGain();
-    lfoGain.gain.value = vibratoDepth;
-    lfo.connect(lfoGain).connect(voice.frequency);
-    lfo.start(now);
-    nodes.push(lfo);
-  }
-
-  if (tremoloRate && tremoloDepth) {
-    const amp = context.createOscillator();
-    amp.type = "square";
-    amp.frequency.value = tremoloRate;
-    const ampGain = context.createGain();
-    ampGain.gain.value = tremoloDepth;
-    amp.connect(ampGain).connect(master.gain);
-    amp.start(now);
-    nodes.push(amp);
-    gains.push(ampGain);
-  }
-
-  let closed = false;
-  const stop = () => {
-    if (closed) return;
-    closed = true;
-    liveAlarms.delete(stop);
-    const t = context.currentTime;
-    try {
-      master.gain.cancelScheduledValues(t);
-      master.gain.setValueAtTime(Math.max(master.gain.value, 0.0001), t);
-      master.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
-      for (const node of nodes) node.stop(t + 0.1);
-    } catch {
-      // nodes may already be stopped; closing the context is enough
-    }
-    window.setTimeout(() => void context.close().catch(() => undefined), 200);
-  };
-
-  liveAlarms.add(stop);
-  return {
-    context,
-    stop,
-    resume: async () => {
-      if (context.state === "suspended") await context.resume();
-    },
-  };
-}
-
-function createAlarmSound(severity: string): AlarmSound | null {
-  const AudioContextClass = audioContextClass();
-  if (!AudioContextClass) return null;
-  try {
-    const context = new AudioContextClass();
-    switch (severity) {
-      case "CRITICAL":
-        return buildTone(context, {
-          frequency: 960,
-          type: "square",
-          gain: 0.9,
-          duration: null,
-          vibratoRate: 0.5,
-          vibratoDepth: 300,
-          tremoloRate: 2.5,
-          tremoloDepth: 0.35,
-        });
-      case "WARNING":
-        return buildTone(context, {
-          frequency: 800,
-          type: "square",
-          gain: 0.7,
-          duration: null,
-          vibratoRate: 1.5,
-          vibratoDepth: 120,
-        });
-      default:
-        return buildTone(context, { frequency: 880, type: "sine", gain: 0.4, duration: 0.5 });
-    }
-  } catch {
-    return null;
-  }
-}
-
 export function AlertListener({ enabled = true }: { enabled?: boolean }) {
   const [pending, setPending] = useState<AlertView[]>([]);
   const [ackError, setAckError] = useState<string | null>(null);
@@ -230,22 +90,15 @@ export function AlertListener({ enabled = true }: { enabled?: boolean }) {
     dialogRef.current?.focus();
   }, []);
 
-  // Whenever the head of the queue changes, tear the previous alarm down before
-  // starting the next one. Without this the sounds stack up and the user loses
-  // the handle needed to silence them.
+  // The web stays visual-only. Sound/vibration alarms are owned by the native
+  // app so a browser open alongside the app cannot sound a second alarm.
   useEffect(() => {
     if (!current || lastPresented.current === current.id) return;
     lastPresented.current = current.id;
     shownIds.current.add(current.id);
-    silenceEveryAlarm();
     setMuted(false);
     setAckError(null);
-    const isNative = getPushMode() === "capacitor";
-    if (isNative) {
-      startNativeAlarm(current);
-    } else if (current.sound) {
-      createAlarmSound(current.severity)?.resume().catch(() => undefined);
-    }
+    if (getPushMode() === "capacitor") startNativeAlarm(current);
     focusDialog();
   }, [current, focusDialog]);
 
@@ -270,7 +123,6 @@ export function AlertListener({ enabled = true }: { enabled?: boolean }) {
       const id = detail?.id;
       if (!id) return;
       void (async () => {
-        silenceEveryAlarm();
         const result = await apiRequest(`/api/v1/alerts/${id}/acknowledge`, { method: "POST" });
         if (result.success || result.error.code === "NOT_FOUND") {
           stopNativeAlarm(id);
@@ -311,7 +163,6 @@ export function AlertListener({ enabled = true }: { enabled?: boolean }) {
     return () => {
       cancelled = true;
       window.clearInterval(timer);
-      silenceEveryAlarm();
     };
   }, [offer, enabled]);
 
@@ -327,7 +178,6 @@ export function AlertListener({ enabled = true }: { enabled?: boolean }) {
     }
     // The alert may have been removed by an administrator while this client
     // still had it queued. A 404 is then equivalent to a completed dismissal.
-    silenceEveryAlarm();
     stopNativeAlarm(current.id);
     const isNative = getPushMode() === "capacitor";
     if (isNative) {
@@ -366,7 +216,6 @@ export function AlertListener({ enabled = true }: { enabled?: boolean }) {
       shownIds.current.add(id);
       stopNativeAlarm(id);
     });
-    silenceEveryAlarm();
     const isNative = getPushMode() === "capacitor";
     if (isNative) {
       const bridge = (window as Window & { AlertBridge?: { openAlertsPage?: () => void } }).AlertBridge;
@@ -382,7 +231,6 @@ export function AlertListener({ enabled = true }: { enabled?: boolean }) {
   }
 
   function silence() {
-    silenceEveryAlarm();
     if (current) silenceNativeAlarm(current.id);
     setMuted(true);
   }
@@ -453,7 +301,7 @@ export function AlertListener({ enabled = true }: { enabled?: boolean }) {
               {batchBusy ? "Acknowledging all…" : `Acknowledge & skip all ${queuedCount} alerts`}
             </Button>
           )}
-          {(current.sound || getPushMode() === "capacitor") && !muted && (
+          {getPushMode() === "capacitor" && !muted && (
             <Button type="button" variant="outline" onClick={silence} disabled={isBusy}>
               <VolumeX size={17} aria-hidden="true" />
               {current.sound ? "Silence alarm (do not acknowledge)" : "Silence vibration (do not acknowledge)"}
