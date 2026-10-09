@@ -1,22 +1,27 @@
 import { z } from "zod";
+import { CALENDAR_DAY_RE, isValidCalendarDay } from "@/lib/cases/action-date";
 import {
   RESOLUTION_TYPES,
   WORKFLOW_TARGET_STATUSES,
 } from "@/lib/cases/workflow";
 
-export const RESOLUTION_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+function calendarDayField(label: string) {
+  return z
+    .string()
+    .regex(CALENDAR_DAY_RE, `${label} must be a valid date (YYYY-MM-DD).`)
+    .refine(isValidCalendarDay, `${label} must be a real calendar date (YYYY-MM-DD).`);
+}
 
-function isValidCalendarDate(value: string): boolean {
-  const match = RESOLUTION_DATE_RE.exec(value);
-  if (!match) return false;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
+/**
+ * An optional calendar day (YYYY-MM-DD). A blank string, such as an untouched
+ * form field, counts as "not provided". Routes map an absent form field to
+ * undefined before validating, so nulls are rejected here like any other type.
+ */
+function optionalCalendarDay(label: string) {
+  return z.preprocess(
+    (value) =>
+      typeof value === "string" && value.trim() === "" ? undefined : value,
+    calendarDayField(label).optional()
   );
 }
 
@@ -33,14 +38,8 @@ export const resolutionSchema = z.object({
     .max(2000, "Actions taken is too long."),
   resolutionType: z.enum(RESOLUTION_TYPES),
   // Optional calendar date (YYYY-MM-DD) the issue was actually resolved.
-  resolvedOn: z
-    .string()
-    .regex(RESOLUTION_DATE_RE, "Resolution date must be a valid date (YYYY-MM-DD).")
-    .refine(
-      isValidCalendarDate,
-      "Resolution date must be a real calendar date (YYYY-MM-DD)."
-    )
-    .optional(),
+  // Defaults to today; the service applies the timeline rules.
+  resolvedOn: optionalCalendarDay("Resolution date"),
 });
 
 export const feedbackSchema = z.object({
@@ -65,6 +64,9 @@ export const statusChangeSchema = z
       .trim()
       .min(5, "Provide remarks for the status change (at least 5 characters).")
       .max(1000, "Remarks are too long."),
+    // Date the status change actually happened. Defaults to today. For RESOLVED
+    // the resolution's own resolvedOn is used instead (see the service).
+    occurredOn: optionalCalendarDay("Action date"),
     resolution: resolutionSchema.optional(),
   })
   .refine((value) => value.status !== "RESOLVED" || value.resolution !== undefined, {
@@ -79,6 +81,8 @@ export const caseNoteSchema = z.object({
     .trim()
     .min(5, "Provide at least 5 characters.")
     .max(1000, "Remarks are too long."),
+  // Date the remark or action actually happened. Defaults to today.
+  occurredOn: optionalCalendarDay("Action date"),
 });
 
 export type StatusChangeBody = z.infer<typeof statusChangeSchema>;

@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth/session";
 import { Button } from "@/components/ui/button";
 import { PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { PrintButton } from "@/components/ui/print-button";
-import { formatDateTime } from "@/lib/format";
+import { describeJournalEntry } from "@/components/concern/case-timeline";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { hasCoordinates } from "@/lib/maps";
+import { sortJournal } from "@/lib/cases/journal";
 import { statusLabel } from "@/lib/cases/workflow";
+import { copy } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Case printout",
@@ -39,14 +43,19 @@ export default async function OfficialCasePrintPage({
           phone: true,
         },
       },
+      // The printed case sheet is the official record, so it carries the whole
+      // journal (every status change with its proof, remark and action).
       history: {
-        orderBy: { createdAt: "desc" },
-        take: 5,
+        orderBy: { createdAt: "asc" },
         select: {
+          id: true,
           createdAt: true,
+          occurredOn: true,
           remarks: true,
+          fromStatus: true,
           toStatus: true,
           entryType: true,
+          attachmentUrl: true,
         },
       },
       resolutions: {
@@ -176,21 +185,36 @@ export default async function OfficialCasePrintPage({
         {concern.history.length > 0 ? (
           <div className="mt-6 border-t border-slate-200 pt-4">
             <h3 className="text-sm font-semibold text-slate-900">
-              Recent history
+              Case journal
             </h3>
-            <ul className="mt-2 space-y-2 text-sm text-slate-700">
-              {concern.history.map((entry, index) => (
-                <li key={`${entry.createdAt.toISOString()}-${index}`}>
-                  <span className="text-xs text-slate-500">
-                    {formatDateTime(entry.createdAt)}
+            <ol className="mt-2 space-y-3 text-sm text-slate-700">
+              {sortJournal(concern.history).map((entry) => (
+                <li key={entry.id} className="break-inside-avoid">
+                  <p className="font-medium text-slate-900">
+                    {describeJournalEntry(entry, copy.en.desk)}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {entry.occurredOn
+                      ? `Action date ${formatDate(entry.occurredOn)} · recorded ${formatDateTime(entry.createdAt)}`
+                      : `Recorded ${formatDateTime(entry.createdAt)}`}
                     {entry.toStatus ? ` · ${statusLabel(entry.toStatus)}` : ""}
-                  </span>
+                  </p>
                   {entry.remarks ? (
                     <p className="mt-0.5">{entry.remarks}</p>
                   ) : null}
+                  {entry.attachmentUrl ? (
+                    <Image
+                      src={entry.attachmentUrl}
+                      alt={`Proof photo for case ${concern.caseNumber}`}
+                      width={800}
+                      height={600}
+                      unoptimized
+                      className="mt-2 h-auto w-48 max-w-full rounded border border-slate-200"
+                    />
+                  ) : null}
                 </li>
               ))}
-            </ul>
+            </ol>
           </div>
         ) : null}
 

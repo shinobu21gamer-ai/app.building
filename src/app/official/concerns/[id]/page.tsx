@@ -18,6 +18,12 @@ import { CaseNoteForm } from "@/components/cases/case-note-form";
 import { ResolutionForm } from "@/components/cases/resolution-form";
 import { loadPriorityConfig } from "@/lib/priority/config";
 import { formatDate, formatDateTime } from "@/lib/format";
+import {
+  earliestActionDay,
+  lastStatusChangeDay,
+  manilaDay,
+  todayManila,
+} from "@/lib/cases/action-date";
 import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import {
   allowedTransitions,
@@ -135,14 +141,28 @@ export default async function OfficialConcernDetailPage({
     assignedOfficeId: concern.assignedOfficeId,
   });
   const nextStatuses = allowedTransitions(concern.status);
-  // Resolving has its own richer form (resolution date + attachment), so it is
-  // excluded from the generic status form. ASSIGNED is reached through the
+  // Resolving has its own richer form (resolution details + proof photo), so it
+  // is excluded from the generic status form. ASSIGNED is reached through the
   // routing/reassignment services, not the workflow status endpoint.
   const workflowStatuses = nextStatuses.filter(
     (status) => status !== "RESOLVED" && status !== "ASSIGNED"
   );
   const canResolve = concern.status === "IN_PROGRESS";
   const resolution = concern.resolutions[0] ?? null;
+
+  // Calendar bounds for the Case management forms. Status changes may not be
+  // dated before the previous status change; notes only before submission.
+  const today = todayManila();
+  const submittedDay = manilaDay(concern.submittedAt);
+  const lastStatusDay = lastStatusChangeDay(concern.history);
+  const statusEarliestDay = earliestActionDay(
+    { submittedDay, lastStatusDay },
+    { statusChange: true }
+  );
+  const noteEarliestDay = earliestActionDay(
+    { submittedDay, lastStatusDay },
+    { statusChange: false }
+  );
 
   const { factors, thresholds } = await loadPriorityConfig();
   const activeFactors = factors.filter((f) => f.isActive !== false);
@@ -363,7 +383,7 @@ export default async function OfficialConcernDetailPage({
                     <dd className="mt-2">
                       <Image
                         src={resolution.attachmentUrl}
-                        alt={`Resolution attachment for ${concern.caseNumber}`}
+                        alt={`Proof photo of the resolution for ${concern.caseNumber}`}
                         width={800}
                         height={600}
                         unoptimized
@@ -429,6 +449,8 @@ export default async function OfficialConcernDetailPage({
                 remarks: entry.remarks,
                 actorRole: entry.actorRole,
                 createdAt: entry.createdAt,
+                occurredOn: entry.occurredOn,
+                attachmentUrl: entry.attachmentUrl,
               }))}
             />
           </Card>
@@ -443,7 +465,12 @@ export default async function OfficialConcernDetailPage({
                     <p className="mb-3 text-sm font-medium text-slate-700">
                       {desk.resolveCase}
                     </p>
-                    <ResolutionForm concernId={concern.id} locale={locale} />
+                    <ResolutionForm
+                      concernId={concern.id}
+                      locale={locale}
+                      today={today}
+                      earliestDay={statusEarliestDay}
+                    />
                   </div>
                 )}
                 <div className={canResolve && !resolution ? "border-t border-slate-100 pt-5" : ""}>
@@ -452,6 +479,8 @@ export default async function OfficialConcernDetailPage({
                     currentStatus={concern.status}
                     allowedTransitions={workflowStatuses}
                     locale={locale}
+                    today={today}
+                    earliestDay={statusEarliestDay}
                   />
                 </div>
                 <div className="border-t border-slate-100 pt-5">
@@ -462,6 +491,8 @@ export default async function OfficialConcernDetailPage({
                     concernId={concern.id}
                     disabled={concern.status === "CLOSED"}
                     locale={locale}
+                    today={today}
+                    earliestDay={noteEarliestDay}
                   />
                 </div>
               </div>

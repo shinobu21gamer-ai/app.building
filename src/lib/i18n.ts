@@ -70,7 +70,7 @@ const en = {
       { key: "prioritize", title: "Prioritize", description: "A transparent score ranks urgency, impact, and safety." },
       { key: "route", title: "Route", description: "The case goes to the office that handles that category." },
       { key: "process", title: "Process", description: "Officials add remarks and update status as they work." },
-      { key: "resolve", title: "Resolve", description: "The fix is recorded with a date and optional proof photo." },
+      { key: "resolve", title: "Resolve", description: "The fix is recorded with a date and a proof photo." },
       { key: "track", title: "Track", description: "You follow the same case number from start to close." },
     ],
     reportTitle: "What you can report",
@@ -106,7 +106,7 @@ const en = {
     officialTitle: "For barangay officials",
     officialDesc: "Accounts are created by an administrator.",
     officialBody:
-      "Sign in to see cases routed to your office. Update status, add progress remarks, reassign when needed, and record the resolution with the date and optional proof of the fix. Residents see those updates on their case page.",
+      "Sign in to see cases routed to your office. Update status with a proof photo, add progress remarks, reassign when needed, and record the resolution with its date and proof photo. Each entry keeps its action date. Residents see those updates on their case page.",
     adminTitle: "For administrators",
     adminDesc: "Hall staff who configure the system.",
     adminBody:
@@ -801,25 +801,26 @@ const en = {
     resolveCase: "Resolve the case",
     closeCase: "Close the case",
     currentStatus:
-      "Current status: {status}. Every change is recorded in the case history with your name and remarks.",
-    resolutionDetails: "Resolution details",
+      "Current status: {status}. Every change is recorded in the case history with your name, the action date, remarks, and a proof photo.",
     summary: "Summary",
-    summaryPlaceholder: "Briefly describe the outcome.",
     actionsTaken: "Actions taken",
     actionsPlaceholder: "What was actually done to address the concern?",
     resolutionType: "Resolution type",
-    dateResolved: "Date resolved",
+    actionDate: "Date of action",
+    actionDateHint:
+      "Defaults to today. An earlier day is allowed, but not before {date} and never in the future.",
+    proofPhoto: "Proof photo (required)",
+    proofPhotoHint:
+      "Every status update needs a photo as proof. JPEG, PNG, or WebP, up to 5 MB. Residents and your office can see it.",
+    proofRequired:
+      "Attach a proof photo (JPEG, PNG, or WebP) to update the status of this case.",
+    proofAlt: "Proof photo for this journal entry",
+    proofPhotoCaption: "Proof photo",
+    actionDateLine: "Action date: {date} · Recorded {recorded}",
     optional: "(optional)",
-    dateResolvedHint:
-      "Defaults to today. Use this when the work finished on an earlier calendar day.",
-    photoFix: "Photo of the fix",
-    photoFixHint:
-      "JPEG, PNG, or WebP — max 5 MB. Residents will see this photo as proof of resolution.",
     remarks: "Remarks",
     remarksPlaceholder: "Explain this status change.",
     remarksError: "Provide remarks for the status change (at least 5 characters).",
-    resolutionRequired:
-      "A resolution summary, the actions taken, and a resolution type are required.",
     successMove: "Case {caseNumber} moved from {from} to {to}.",
     saving: "Saving...",
     updateStatus: "Update status",
@@ -836,10 +837,7 @@ const en = {
     resolutionDescription: "Resolution description",
     resolutionDescPlaceholder: "Briefly describe the outcome of the concern.",
     resolutionDate: "Resolution date",
-    dateHint: "Leave blank to use today. Cannot be in the future.",
-    attachment: "Supporting attachment (optional)",
-    attachmentHint:
-      "JPEG, PNG, or WebP, up to 5 MB. Visible to the resident and your office.",
+    attachment: "Proof photo",
     remarksJournalPlaceholder: "Notes recorded in the case journal.",
     remarksRequired: "Remarks are required (at least 5 characters).",
     summaryActionsRequired:
@@ -1099,7 +1097,7 @@ const fil: typeof en = {
       { key: "prioritize", title: "Unahin", description: "May malinaw na iskor para sa urgency, epekto, at kaligtasan." },
       { key: "route", title: "Ihatid", description: "Pupunta ang kaso sa tanggapan na may hawak sa kategoryang iyon." },
       { key: "process", title: "Proseso", description: "Nagdaragdag ng tala at ina-update ang status ang mga opisyal." },
-      { key: "resolve", title: "Resolusyon", description: "Naitatala ang ayos, petsa, at opsyonal na litrato ng resulta." },
+      { key: "resolve", title: "Resolusyon", description: "Naitatala ang ayos, petsa, at litratong patunay ng resulta." },
       { key: "track", title: "Subaybayan", description: "Iisa ang case number mula umpisa hanggang sarado." },
     ],
     reportTitle: "Ano ang puwedeng iulat",
@@ -1135,7 +1133,7 @@ const fil: typeof en = {
     officialTitle: "Para sa mga opisyal ng barangay",
     officialDesc: "Ang account ay ginagawa ng administrador.",
     officialBody:
-      "Mag-sign in para makita ang mga kasong naihatid sa inyong tanggapan. I-update ang status, magdagdag ng tala, mag-reassign kung kailangan, at itala ang resolusyon kasama ang petsa at opsyonal na litrato. Nakikita ito ng residente sa kanyang case page.",
+      "Mag-sign in para makita ang mga kasong naihatid sa inyong tanggapan. I-update ang status na may litratong patunay, magdagdag ng tala, mag-reassign kung kailangan, at itala ang resolusyon kasama ang petsa at litratong patunay. May petsa ng aksyon ang bawat entry. Nakikita ito ng residente sa kanyang case page.",
     adminTitle: "Para sa mga administrador",
     adminDesc: "Staff ng hall na nagse-set up ng sistema.",
     adminBody:
@@ -1831,25 +1829,26 @@ const fil: typeof en = {
     resolveCase: "I-resolve ang kaso",
     closeCase: "Isara ang kaso",
     currentStatus:
-      "Kasalukuyang status: {status}. Naitatala ang bawat palit sa history kasama ang pangalan at remarks mo.",
-    resolutionDetails: "Detalye ng resolusyon",
+      "Kasalukuyang status: {status}. Naitatala ang bawat palit sa history kasama ang pangalan mo, petsa ng aksyon, remarks, at litratong patunay.",
     summary: "Buod",
-    summaryPlaceholder: "Ilarawan nang maikli ang kinalabasan.",
     actionsTaken: "Mga ginawa",
     actionsPlaceholder: "Ano ang aktwal na ginawa para sa concern?",
     resolutionType: "Uri ng resolusyon",
-    dateResolved: "Petsa ng resolusyon",
+    actionDate: "Petsa ng aksyon",
+    actionDateHint:
+      "Ngayong araw ang default. Puwede ang mas naunang araw, pero hindi bago sa {date} at hindi sa hinaharap.",
+    proofPhoto: "Litratong patunay (kailangan)",
+    proofPhotoHint:
+      "Kailangan ng litratong patunay ang bawat pagbabago ng status. JPEG, PNG, o WebP, hanggang 5 MB. Makikita ito ng residente at ng inyong opisina.",
+    proofRequired:
+      "Maglakip ng litratong patunay (JPEG, PNG, o WebP) para i-update ang status ng kasong ito.",
+    proofAlt: "Litratong patunay para sa entry na ito",
+    proofPhotoCaption: "Litratong patunay",
+    actionDateLine: "Petsa ng aksyon: {date} · Naitala noong {recorded}",
     optional: "(opsyonal)",
-    dateResolvedHint:
-      "Default ay ngayong araw. Gamitin kung natapos ang trabaho sa naunang araw.",
-    photoFix: "Litrato ng ayos",
-    photoFixHint:
-      "JPEG, PNG, o WebP — hanggang 5 MB. Makikita ito ng residente bilang patunay.",
     remarks: "Remarks",
     remarksPlaceholder: "Ipaliwanag ang pagbabago ng status.",
     remarksError: "Maglagay ng remarks (hindi bababa sa 5 karakter).",
-    resolutionRequired:
-      "Kailangan ang buod ng resolusyon, mga ginawa, at uri ng resolusyon.",
     successMove: "Inilipat ang kaso {caseNumber} mula {from} papuntang {to}.",
     saving: "Sine-save...",
     updateStatus: "I-update ang status",
@@ -1866,10 +1865,7 @@ const fil: typeof en = {
     resolutionDescription: "Deskripsyon ng resolusyon",
     resolutionDescPlaceholder: "Ilarawan nang maikli ang kinalabasan ng concern.",
     resolutionDate: "Petsa ng resolusyon",
-    dateHint: "Iwanang blangko para sa araw na ito. Hindi puwedeng future date.",
-    attachment: "Karagdagang attachment (opsyonal)",
-    attachmentHint:
-      "JPEG, PNG, o WebP, hanggang 5 MB. Nakikita ng residente at ng inyong opisina.",
+    attachment: "Litratong patunay",
     remarksJournalPlaceholder: "Tala sa journal ng kaso.",
     remarksRequired: "Kailangan ang remarks (hindi bababa sa 5 karakter).",
     summaryActionsRequired:

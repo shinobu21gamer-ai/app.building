@@ -10,6 +10,7 @@ import {
   Textarea,
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
+import { formatCalendarDay } from "@/lib/format";
 import { copy, type Locale } from "@/lib/i18n";
 
 const selectStyles =
@@ -19,10 +20,16 @@ export function CaseNoteForm({
   concernId,
   disabled,
   locale = "en",
+  today,
+  earliestDay,
 }: {
   concernId: number;
   disabled?: boolean;
   locale?: Locale;
+  /** Today in Asia/Manila (YYYY-MM-DD); the latest allowed action date. */
+  today: string;
+  /** Earliest allowed action date (YYYY-MM-DD) for this case. */
+  earliestDay: string;
 }) {
   const t = copy[locale].desk;
   const router = useRouter();
@@ -49,6 +56,7 @@ export function CaseNoteForm({
     const data = new FormData(form);
     const kind = String(data.get("kind") ?? "REMARK");
     const remarks = String(data.get("remarks") ?? "").trim();
+    const occurredOn = String(data.get("occurredOn") ?? "").trim();
     if (remarks.length < 5) {
       setRemarksError(t.noteTooShort);
       return;
@@ -59,7 +67,11 @@ export function CaseNoteForm({
       `/api/v1/concerns/${concernId}/notes`,
       {
         method: "POST",
-        body: JSON.stringify({ kind, remarks }),
+        body: JSON.stringify({
+          kind,
+          remarks,
+          ...(occurredOn ? { occurredOn } : {}),
+        }),
       }
     );
     setSubmitting(false);
@@ -100,6 +112,22 @@ export function CaseNoteForm({
           <option value="REMARK">{t.progressRemark}</option>
           <option value="ACTION">{t.actionTaken}</option>
         </select>
+      </div>
+
+      <div>
+        <Label htmlFor="note-occurred-on">{t.actionDate}</Label>
+        <input
+          id="note-occurred-on"
+          name="occurredOn"
+          type="date"
+          defaultValue={today}
+          min={earliestDay}
+          max={today}
+          className={selectStyles}
+        />
+        <p className="mt-1 text-xs text-slate-500">
+          {t.actionDateHint.replace("{date}", formatCalendarDay(earliestDay))}
+        </p>
       </div>
 
       <div>

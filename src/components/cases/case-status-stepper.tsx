@@ -1,5 +1,5 @@
 import { CASE_STATUSES, type CaseStatus } from "@/lib/cases/workflow";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 
 const STATUS_INDEX: Record<CaseStatus, number> = {
   SUBMITTED: 0,
@@ -9,7 +9,13 @@ const STATUS_INDEX: Record<CaseStatus, number> = {
   CLOSED: 4,
 };
 
-type ReachedDates = Partial<Record<CaseStatus, Date | null>>;
+/**
+ * When a step was reached. `dateOnly` is set when the moment is a recorded
+ * action date (a calendar day), so only the day is shown.
+ */
+export type ReachedAt = { at: Date; dateOnly: boolean };
+
+type ReachedDates = Partial<Record<CaseStatus, ReachedAt | null>>;
 
 /** A step is complete once the case has passed it or reached it with a date. */
 function isReached(
@@ -85,7 +91,9 @@ export function CaseStatusStepper({
               </span>
               {reachedDate ? (
                 <span className="text-xs tabular-nums text-slate-500">
-                  {formatDateTime(reachedDate)}
+                  {reachedDate.dateOnly
+                    ? formatDate(reachedDate.at)
+                    : formatDateTime(reachedDate.at)}
                 </span>
               ) : (
                 <span className="text-xs text-slate-400">

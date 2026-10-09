@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth/session";
@@ -6,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import { PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { PrintButton } from "@/components/ui/print-button";
 import { CopyCaseNumber } from "@/components/cases/copy-case-number";
-import { formatDateTime } from "@/lib/format";
+import { describeJournalEntry } from "@/components/concern/case-timeline";
+import { sortJournal } from "@/lib/cases/journal";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { hasCoordinates } from "@/lib/maps";
+import { copy } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Case receipt",
@@ -28,6 +32,19 @@ export default async function CasePrintPage({
     include: {
       category: { select: { name: true } },
       assignedOffice: { select: { name: true } },
+      history: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          createdAt: true,
+          occurredOn: true,
+          remarks: true,
+          fromStatus: true,
+          toStatus: true,
+          entryType: true,
+          attachmentUrl: true,
+        },
+      },
     },
   });
 
@@ -132,6 +149,41 @@ export default async function CasePrintPage({
             </dd>
           </div>
         </dl>
+
+        {concern.history.length > 0 ? (
+          <section className="mt-8 border-t border-slate-200 pt-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Progress so far
+            </h2>
+            <ol className="mt-3 space-y-3 text-sm text-slate-700">
+              {sortJournal(concern.history).map((entry) => (
+                <li key={entry.id} className="break-inside-avoid">
+                  <p className="font-medium text-slate-900">
+                    {describeJournalEntry(entry, copy.en.desk)}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {entry.occurredOn
+                      ? `Action date ${formatDate(entry.occurredOn)} · recorded ${formatDateTime(entry.createdAt)}`
+                      : `Recorded ${formatDateTime(entry.createdAt)}`}
+                  </p>
+                  {entry.remarks ? (
+                    <p className="mt-0.5">{entry.remarks}</p>
+                  ) : null}
+                  {entry.attachmentUrl ? (
+                    <Image
+                      src={entry.attachmentUrl}
+                      alt={`Proof photo for case ${concern.caseNumber}`}
+                      width={800}
+                      height={600}
+                      unoptimized
+                      className="mt-2 h-auto w-48 max-w-full rounded border border-slate-200"
+                    />
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          </section>
+        ) : null}
 
         <p className="mt-8 border-t border-slate-200 pt-4 text-xs text-slate-500">
           Not for life-threatening emergencies. Call 911. This receipt is not
