@@ -5,6 +5,8 @@ self.addEventListener("push", (event) => {
       body: data.body || "You have a new community alert.",
       tag: data.alertId ? `barangayresolve-alert-${data.alertId}` : "barangayresolve-alert",
       requireInteraction: data.severity === "CRITICAL",
+      // Browser notifications stay visual-only; alarm sound and vibration belong to the native app.
+      silent: true,
       data: { url: data.url || "/alerts" },
     })
   );
