@@ -44,7 +44,7 @@ export default async function OfficialCasePrintPage({
         take: 5,
         select: {
           createdAt: true,
-          remark: true,
+          remarks: true,
           toStatus: true,
           entryType: true,
         },
@@ -59,6 +59,7 @@ export default async function OfficialCasePrintPage({
 
   if (!concern) notFound();
 
+  const coordinates = { lat: concern.locationLat, lng: concern.locationLng };
   const resolution = concern.resolutions[0] ?? null;
 
   return (
@@ -139,8 +140,8 @@ export default async function OfficialCasePrintPage({
             </dt>
             <dd className="mt-0.5 text-slate-900">
               {concern.locationAddress}
-              {hasCoordinates(concern.locationLat, concern.locationLng)
-                ? ` (${Number(concern.locationLat).toFixed(5)}, ${Number(concern.locationLng).toFixed(5)})`
+              {hasCoordinates(coordinates)
+                ? ` (${coordinates.lat.toFixed(5)}, ${coordinates.lng.toFixed(5)})`
                 : ""}
             </dd>
           </div>
