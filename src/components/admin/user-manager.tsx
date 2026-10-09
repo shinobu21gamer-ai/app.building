@@ -29,6 +29,7 @@ import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
 import { useToast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api-client";
 import { extractApiError } from "@/lib/utils";
+import { copy, type Locale } from "@/lib/i18n";
 type RoleOption = { id: number; key: string; name: string };
 type OfficeOption = { id: number; name: string; code: string };
 
@@ -76,13 +77,16 @@ export function UserManager({
   offices,
   fixedRole,
   currentUserId,
+  locale = "en",
 }: {
   users: AdminUserItem[];
   roles: RoleOption[];
   offices: OfficeOption[];
   fixedRole?: "OFFICIAL";
   currentUserId: number;
+  locale?: Locale;
 }) {
+  const t = copy[locale].admin.mgr;
   const router = useRouter();
   const { showToast } = useToast();
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -199,27 +203,28 @@ export function UserManager({
     });
 
     if (showOffice && !officeId) {
-      setError("Select an office for this official.");
-      showToast("error", "Select an office for this official.");
+      setError(t.selectOfficeError);
+      showToast("error", t.selectOfficeError);
       return;
     }
     if (!editingId && password.trim().length < 8) {
-      setError("Set a password of at least 8 characters.");
-      showToast("error", "Set a password of at least 8 characters.");
+      setError(t.passwordCreateError);
+      showToast("error", t.passwordCreateError);
       return;
     }
     if (!firstName.trim() || !lastName.trim() || !email.trim()) {
       const missing = [];
-      if (!firstName.trim()) missing.push("First name");
-      if (!lastName.trim()) missing.push("Last name");
-      if (!email.trim()) missing.push("Email");
-      setError(`Please fill in: ${missing.join(", ")}.`);
-      showToast("error", `Please fill in: ${missing.join(", ")}.`);
+      if (!firstName.trim()) missing.push(t.firstName);
+      if (!lastName.trim()) missing.push(t.lastName);
+      if (!email.trim()) missing.push(t.email);
+      const msg = t.fillIn.replace("{fields}", missing.join(", "));
+      setError(msg);
+      showToast("error", msg);
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError("Please enter a valid email address.");
-      showToast("error", "Please enter a valid email address.");
+      setError(t.emailInvalid);
+      showToast("error", t.emailInvalid);
       return;
     }
 
@@ -254,9 +259,7 @@ export function UserManager({
       return;
     }
 
-    const successMsg = editingId
-      ? "Account updated successfully."
-      : "Account created successfully!";
+    const successMsg = editingId ? t.accountUpdated : t.accountCreated;
     setSuccess(successMsg);
     showToast("success", successMsg);
     resetForm();
@@ -279,9 +282,10 @@ export function UserManager({
       showToast("error", errorMsg);
       return;
     }
-    const msg = `${user.firstName} ${user.lastName} ${
-      user.isActive ? "disabled" : "enabled"
-    }.`;
+    const msg = (user.isActive ? t.userDisabled : t.userEnabled).replace(
+      "{name}",
+      `${user.firstName} ${user.lastName}`
+    );
     setSuccess(msg);
     showToast("success", msg);
     router.refresh();
@@ -295,7 +299,7 @@ export function UserManager({
       { method: "DELETE" }
     );
     if (!result.success) return extractApiError(result.error);
-    const msg = `Deleted unused account ${user.email}.`;
+    const msg = t.deletedUnused.replace("{email}", user.email);
     setSuccess(msg);
     showToast("success", msg);
     router.refresh();
@@ -315,7 +319,10 @@ export function UserManager({
       code: result.data.code,
       expiresInMinutes: result.data.expiresInMinutes,
     });
-    showToast("success", `Reset code generated for ${user.firstName} ${user.lastName}.`);
+    showToast(
+      "success",
+      t.resetGenerated.replace("{name}", `${user.firstName} ${user.lastName}`)
+    );
     return null;
   }
 
@@ -338,17 +345,17 @@ export function UserManager({
           {editingId ? (
             <>
               <Pencil size={16} className="text-slate-500" />
-              Edit account
+              {t.editAccount}
             </>
           ) : fixedRole === "OFFICIAL" ? (
             <>
               <Shield size={16} className="text-slate-500" />
-              Add official
+              {t.addOfficial}
             </>
           ) : (
             <>
               <Plus size={16} className="text-slate-500" />
-              Add account
+              {t.addAccount}
             </>
           )}
         </h2>
@@ -358,7 +365,7 @@ export function UserManager({
             <Label htmlFor="user-first">
               <span className="inline-flex items-center gap-1.5">
                 <User size={14} className="text-slate-500" />
-                First name
+                {t.firstName}
               </span>
             </Label>
             <div className="relative">
@@ -382,14 +389,14 @@ export function UserManager({
               )}
             </div>
             {isFirstNameInvalid() && (
-              <p className="mt-1 text-xs text-red-600">First name is required.</p>
+              <p className="mt-1 text-xs text-red-600">{t.firstRequired}</p>
             )}
           </div>
           <div>
             <Label htmlFor="user-last">
               <span className="inline-flex items-center gap-1.5">
                 <User size={14} className="text-slate-500" />
-                Last name
+                {t.lastName}
               </span>
             </Label>
             <div className="relative">
@@ -413,14 +420,14 @@ export function UserManager({
               )}
             </div>
             {isLastNameInvalid() && (
-              <p className="mt-1 text-xs text-red-600">Last name is required.</p>
+              <p className="mt-1 text-xs text-red-600">{t.lastRequired}</p>
             )}
           </div>
           <div>
             <Label htmlFor="user-email">
               <span className="inline-flex items-center gap-1.5">
                 <Mail size={14} className="text-slate-500" />
-                Email
+                {t.email}
               </span>
             </Label>
             <div className="relative">
@@ -446,9 +453,7 @@ export function UserManager({
             </div>
             {isEmailInvalid() && (
               <p className="mt-1 text-xs text-red-600">
-                {email.trim().length === 0
-                  ? "Email is required."
-                  : "Please enter a valid email address."}
+                {email.trim().length === 0 ? t.emailRequired : t.emailInvalid}
               </p>
             )}
           </div>
@@ -456,21 +461,21 @@ export function UserManager({
             <Label htmlFor="user-phone">
               <span className="inline-flex items-center gap-1.5">
                 <Phone size={14} className="text-slate-500" />
-                Phone
+                {t.phone}
               </span>
             </Label>
             <Input
               id="user-phone"
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
-              placeholder="Optional"
+              placeholder={t.optional}
             />
           </div>
           <div>
             <Label htmlFor="user-password">
               <span className="inline-flex items-center gap-1.5">
                 <Lock size={14} className="text-slate-500" />
-                Password {editingId ? "(leave blank to keep)" : ""}
+                {t.password} {editingId ? t.passwordKeep : ""}
               </span>
             </Label>
             <div className="relative">
@@ -480,7 +485,7 @@ export function UserManager({
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 onBlur={() => setTouched((p) => ({ ...p, password: true }))}
-                placeholder={editingId ? "Unchanged" : "At least 8 characters"}
+                placeholder={editingId ? t.passwordUnchanged : t.passwordPlaceholder}
                 autoComplete="new-password"
                 invalid={isPasswordInvalid()}
                 className="pr-9"
@@ -497,7 +502,7 @@ export function UserManager({
             </div>
             {isPasswordInvalid() && (
               <p className="mt-1 text-xs text-red-600">
-                Password must be at least 8 characters.
+                {t.passwordMin}
               </p>
             )}
           </div>
@@ -505,14 +510,14 @@ export function UserManager({
             <Label htmlFor="user-address">
               <span className="inline-flex items-center gap-1.5">
                 <MapPin size={14} className="text-slate-500" />
-                Address
+                {t.address}
               </span>
             </Label>
             <Input
               id="user-address"
               value={address}
               onChange={(event) => setAddress(event.target.value)}
-              placeholder="Optional"
+              placeholder={t.optional}
             />
           </div>
 
@@ -521,7 +526,7 @@ export function UserManager({
               <Label htmlFor="user-role">
                 <span className="inline-flex items-center gap-1.5">
                   <Shield size={14} className="text-slate-500" />
-                  Role
+                  {t.role}
                 </span>
               </Label>
               <select
@@ -544,7 +549,7 @@ export function UserManager({
               <Label htmlFor="user-office">
                 <span className="inline-flex items-center gap-1.5">
                   <Building2 size={14} className="text-slate-500" />
-                  Office
+                  {t.office}
                 </span>
               </Label>
               <select
@@ -553,7 +558,7 @@ export function UserManager({
                 onChange={(event) => setOfficeId(event.target.value)}
                 className={selectStyles}
               >
-                <option value="">Select an office</option>
+                <option value="">{t.selectOffice}</option>
                 {officeOptions.map((office) => (
                   <option key={office.id} value={office.id}>
                     {office.name}
@@ -572,7 +577,7 @@ export function UserManager({
             className="h-4 w-4 rounded border-slate-300"
           />
           <ToggleLeft size={14} className="text-slate-500" />
-          Account active (can sign in)
+          {t.accountActive}
         </label>
 
         <div className="flex flex-wrap gap-2">
@@ -580,24 +585,24 @@ export function UserManager({
             {busy ? (
               <>
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Saving...
+                {t.saving}
               </>
             ) : editingId ? (
               <>
                 <Save size={16} />
-                Save changes
+                {t.saveChanges}
               </>
             ) : (
               <>
                 <Plus size={16} />
-                Create account
+                {t.createAccount}
               </>
             )}
           </Button>
           {editingId && (
             <Button type="button" variant="outline" onClick={resetForm}>
               <X size={16} />
-              Cancel edit
+              {t.cancelEdit}
             </Button>
           )}
         </div>
@@ -605,37 +610,40 @@ export function UserManager({
 
       <div>
         <h2 className="mb-3 text-base font-semibold text-slate-900">
-          {fixedRole === "OFFICIAL" ? "Officials" : "Accounts"} ({users.length})
+          {(fixedRole === "OFFICIAL" ? t.officialsList : t.accountsList).replace(
+            "{count}",
+            String(users.length)
+          )}
         </h2>
         {users.length === 0 ? (
           <p className="py-6 text-center text-sm text-slate-600">
-            No accounts match the current filters.
+            {t.noAccounts}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm">
               <caption className="sr-only">
-                {fixedRole === "OFFICIAL" ? "Barangay officials" : "User accounts"}
+                {fixedRole === "OFFICIAL" ? t.officialsList.replace("{count}", String(users.length)) : t.accountsList.replace("{count}", String(users.length))}
               </caption>
               <thead>
                 <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Name
+                    {t.colName}
                   </th>
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Email
+                    {t.colEmail}
                   </th>
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Role
+                    {t.colRole}
                   </th>
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Office
+                    {t.colOffice}
                   </th>
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Records
+                    {t.colRecords}
                   </th>
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Status
+                    {t.colStatus}
                   </th>
                   <th scope="col" className="py-2 font-semibold">
                     <span className="sr-only">Actions</span>
@@ -651,7 +659,7 @@ export function UserManager({
                         {user.firstName} {user.lastName}
                         {isSelf && (
                           <span className="ml-2 text-xs text-slate-500">
-                            (you)
+                            {t.you}
                           </span>
                         )}
                       </td>
@@ -667,9 +675,9 @@ export function UserManager({
                       </td>
                       <td className="py-3 pr-4">
                         {user.isActive ? (
-                          <Badge tone="green">Active</Badge>
+                          <Badge tone="green">{t.active}</Badge>
                         ) : (
-                          <Badge tone="gray">Disabled</Badge>
+                          <Badge tone="gray">{t.disabled}</Badge>
                         )}
                       </td>
                       <td className="py-3">
@@ -680,7 +688,7 @@ export function UserManager({
                             className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:text-brand-800"
                           >
                             <Pencil size={14} />
-                            Edit
+                            {t.edit}
                           </button>
                           <button
                             type="button"
@@ -689,32 +697,41 @@ export function UserManager({
                             className="inline-flex items-center gap-1 text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-40"
                           >
                             {user.isActive ? (
-                              <><PowerOff size={14} /> Disable</>
+                              <><PowerOff size={14} /> {t.disable}</>
                             ) : (
-                              <><Power size={14} /> Enable</>
+                              <><Power size={14} /> {t.enable}</>
                             )}
                           </button>
                           <ConfirmActionButton
-                            label="Delete"
+                            label={t.delete}
                             icon={<Trash2 size={14} />}
-                            title={`Delete ${user.firstName} ${user.lastName}?`}
+                            title={t.deleteUserTitle.replace(
+                              "{name}",
+                              `${user.firstName} ${user.lastName}`
+                            )}
                             description={
                               user.references.total > 0
-                                ? `This account is linked to ${user.references.total} historical record(s). Deletion will be refused to preserve case history — deactivate the account instead.`
-                                : "This account has no linked records and will be permanently removed."
+                                ? t.deleteUserLinked.replace(
+                                    "{count}",
+                                    String(user.references.total)
+                                  )
+                                : t.deleteUserEmpty
                             }
-                            confirmLabel="Delete account"
+                            confirmLabel={t.deleteAccount}
                             tone="danger"
                             disabled={isSelf}
                             onConfirm={() => deleteUser(user)}
                           />
                           {!isSelf && (
                             <ConfirmActionButton
-                              label="Reset password"
+                              label={t.resetPassword}
                               icon={<Key size={14} />}
-                              title={`Reset password for ${user.firstName} ${user.lastName}?`}
-                              description="A one-time reset code will be generated and shown to you. Give it to the user; they can redeem it once at the reset-password page. The code expires within 30 minutes."
-                              confirmLabel="Generate code"
+                              title={t.resetTitle.replace(
+                                "{name}",
+                                `${user.firstName} ${user.lastName}`
+                              )}
+                              description={t.resetDesc}
+                              confirmLabel={t.generateCode}
                               disabled={busy}
                               className="inline-flex items-center gap-1 text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-40"
                               onConfirm={() => resetPassword(user)}
@@ -743,13 +760,13 @@ export function UserManager({
               className="inline-flex items-center gap-2 text-base font-semibold text-slate-900"
             >
               <Key size={16} className="text-slate-500" />
-              One-time reset code for {resetResult.name}
+              {t.resetCodeTitle.replace("{name}", resetResult.name)}
             </h2>
             <p className="mt-2 text-sm text-slate-600">
-              Show this code to the user. It can be redeemed once at{" "}
-              <span className="font-medium">/reset-password</span> and expires
-              in {resetResult.expiresInMinutes} minutes. Anyone who sees it can
-              take over the account, so share it in person.
+              {t.resetCodeBody.replace(
+                "{minutes}",
+                String(resetResult.expiresInMinutes)
+              )}
             </p>
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
               <p className="break-all text-center font-mono text-lg font-bold tracking-widest text-slate-900">
@@ -762,7 +779,7 @@ export function UserManager({
               className="mt-5 w-full"
             >
               <CheckCircle2 size={16} />
-              Got it
+              {t.gotIt}
             </Button>
           </div>
         </div>

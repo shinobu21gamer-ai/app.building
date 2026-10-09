@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/field";
 import { formatDateTime } from "@/lib/format";
 import { FeedbackForm } from "./feedback-form";
+import { copy, type Locale } from "@/lib/i18n";
 
 export type FeedbackView = {
   wasResolved: boolean;
@@ -17,11 +18,14 @@ export function FeedbackCard({
   concernId,
   existing,
   resubmissionAllowed,
+  locale = "en",
 }: {
   concernId: number;
   existing?: FeedbackView | null;
   resubmissionAllowed: boolean;
+  locale?: Locale;
 }) {
+  const t = copy[locale].feedback;
   const [showForm, setShowForm] = useState(!existing);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -31,17 +35,19 @@ export function FeedbackCard({
         {notice && <FormMessage tone="success">{notice}</FormMessage>}
         <div className="space-y-1 text-sm text-slate-600">
           <p>
-            You rated this case <span className="font-semibold">{existing.rating}/5</span>
-            {" · "}Resolved:{" "}
+            {t.youRated}{" "}
+            <span className="font-semibold">{existing.rating}/5</span>
+            {" · "}
+            {t.resolved}:{" "}
             <span className="font-semibold">
-              {existing.wasResolved ? "Yes" : "No"}
+              {existing.wasResolved ? t.yes : t.no}
             </span>
           </p>
           {existing.comment && (
             <p className="text-slate-500">“{existing.comment}”</p>
           )}
           <p className="text-xs text-slate-400">
-            Submitted {formatDateTime(existing.updatedAt)}
+            {t.submitted.replace("{date}", formatDateTime(existing.updatedAt))}
           </p>
         </div>
       </div>
@@ -54,7 +60,7 @@ export function FeedbackCard({
       {existing && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-slate-600">
-            Current feedback: {existing.rating}/5
+            {t.current.replace("{rating}", String(existing.rating))}
           </p>
           {!showForm && (
             <Button
@@ -63,7 +69,7 @@ export function FeedbackCard({
               size="sm"
               onClick={() => setShowForm(true)}
             >
-              Update feedback
+              {t.update}
             </Button>
           )}
         </div>
@@ -72,6 +78,7 @@ export function FeedbackCard({
         <FeedbackForm
           concernId={concernId}
           existing={existing}
+          locale={locale}
           onDone={(message) => {
             setNotice(message);
             setShowForm(false);
@@ -85,7 +92,7 @@ export function FeedbackCard({
           size="sm"
           onClick={() => setShowForm(false)}
         >
-          Cancel
+          {t.cancel}
         </Button>
       )}
     </div>

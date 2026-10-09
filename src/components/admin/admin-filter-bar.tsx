@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { copy, type Locale } from "@/lib/i18n";
 
 export type FilterField = {
   name: string;
@@ -17,12 +18,15 @@ export function AdminFilterBar({
   qPlaceholder = "Search...",
   fields = [],
   initialValues = {},
+  locale = "en",
 }: {
   initialQ?: string;
   qPlaceholder?: string;
   fields?: FilterField[];
   initialValues?: Record<string, string>;
+  locale?: Locale;
 }) {
+  const t = copy[locale].filters;
   const router = useRouter();
   const pathname = usePathname();
   const [q, setQ] = useState(initialQ);
@@ -62,7 +66,7 @@ export function AdminFilterBar({
           htmlFor="admin-filter-q"
           className="mb-1 block text-xs font-medium text-slate-600"
         >
-          Search
+          {t.search}
         </label>
         <input
           id="admin-filter-q"
@@ -106,14 +110,14 @@ export function AdminFilterBar({
         type="submit"
         className="inline-flex h-10 items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800"
       >
-        Apply
+        {t.apply}
       </button>
       <button
         type="button"
         onClick={clear}
         className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
       >
-        Clear
+        {t.clear}
       </button>
     </form>
   );

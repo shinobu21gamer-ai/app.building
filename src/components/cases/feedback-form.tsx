@@ -9,6 +9,7 @@ import {
   Textarea,
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
+import { copy, type Locale } from "@/lib/i18n";
 
 const selectStyles =
   "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
@@ -23,11 +24,14 @@ export function FeedbackForm({
   concernId,
   existing,
   onDone,
+  locale = "en",
 }: {
   concernId: number;
   existing?: FeedbackDraft | null;
   onDone?: (message: string) => void;
+  locale?: Locale;
 }) {
+  const t = copy[locale].feedback;
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -68,9 +72,7 @@ export function FeedbackForm({
       return;
     }
 
-    const message = result.data.created
-      ? "Thank you for your feedback."
-      : "Your feedback has been updated.";
+    const message = result.data.created ? t.thanks : t.updated;
     setSuccess(message);
     router.refresh();
     onDone?.(message);
@@ -82,52 +84,48 @@ export function FeedbackForm({
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
 
       <div>
-        <Label htmlFor="feedback-was-resolved">Was the concern resolved?</Label>
+        <Label htmlFor="feedback-was-resolved">{t.wasResolved}</Label>
         <select
           id="feedback-was-resolved"
           name="wasResolved"
           defaultValue={existing ? String(existing.wasResolved) : "true"}
           className={selectStyles}
         >
-          <option value="true">Yes</option>
-          <option value="false">No</option>
+          <option value="true">{t.yes}</option>
+          <option value="false">{t.no}</option>
         </select>
       </div>
 
       <div>
-        <Label htmlFor="feedback-rating">Satisfaction rating</Label>
+        <Label htmlFor="feedback-rating">{t.rating}</Label>
         <select
           id="feedback-rating"
           name="rating"
           defaultValue={existing?.rating ?? 3}
           className={selectStyles}
         >
-          <option value={5}>5 — Very satisfied</option>
-          <option value={4}>4 — Satisfied</option>
-          <option value={3}>3 — Neutral</option>
-          <option value={2}>2 — Dissatisfied</option>
-          <option value={1}>1 — Very dissatisfied</option>
+          <option value={5}>{t.rating5}</option>
+          <option value={4}>{t.rating4}</option>
+          <option value={3}>{t.rating3}</option>
+          <option value={2}>{t.rating2}</option>
+          <option value={1}>{t.rating1}</option>
         </select>
       </div>
 
       <div>
-        <Label htmlFor="feedback-comment">Comment (optional)</Label>
+        <Label htmlFor="feedback-comment">{t.comment}</Label>
         <Textarea
           id="feedback-comment"
           name="comment"
           rows={3}
           maxLength={500}
           defaultValue={existing?.comment ?? ""}
-          placeholder="Anything else you would like the barangay to know?"
+          placeholder={t.commentPlaceholder}
         />
       </div>
 
       <Button type="submit" disabled={submitting} variant="secondary">
-        {submitting
-          ? "Saving..."
-          : existing
-            ? "Update feedback"
-            : "Submit feedback"}
+        {submitting ? t.saving : existing ? t.update : t.submit}
       </Button>
     </form>
   );

@@ -220,6 +220,24 @@ export async function recordIpFailure(ip: string | null): Promise<void> {
   if (reliableIp !== null) await bump("ip", reliableIp, Date.now());
 }
 
+/**
+ * Public case-status lookup. Uses a dedicated IP key so it cannot starve
+ * the login throttle. Failed lookups (unknown number or wrong email) count.
+ */
+export async function checkTrackAllowed(ip: string | null): Promise<RateLimitDecision> {
+  const now = Date.now();
+  const reliableIp = reliableClientIp(ip);
+  if (reliableIp === null) {
+    return { allowed: true, retryAfterSeconds: null };
+  }
+  return decide(await readBucket("ip", `track:${reliableIp}`, now), 20, now);
+}
+
+export async function recordTrackFailure(ip: string | null): Promise<void> {
+  const reliableIp = reliableClientIp(ip);
+  if (reliableIp !== null) await bump("ip", `track:${reliableIp}`, Date.now());
+}
+
 /** A successful login clears only the caller's email bucket. The IP bucket is
  *  deliberately left intact so failed guesses for several accounts can never
  *  drain one attacker's IP-side counter. */

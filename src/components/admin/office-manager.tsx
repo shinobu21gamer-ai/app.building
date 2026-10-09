@@ -9,6 +9,7 @@ import { FormMessage, Input, Label, Textarea } from "@/components/ui/field";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
 import { apiRequest } from "@/lib/api-client";
 import { extractApiError } from "@/lib/utils";
+import { copy, type Locale } from "@/lib/i18n";
 
 export type AdminOfficeItem = {
   id: number;
@@ -37,9 +38,15 @@ function contactHref(contact: string): string | null {
   return null;
 }
 
-function OfficeContact({ contact }: { contact: string | null }) {
+function OfficeContact({
+  contact,
+  emptyLabel,
+}: {
+  contact: string | null;
+  emptyLabel: string;
+}) {
   if (!contact) {
-    return <span className="font-semibold text-amber-700">Add contact details</span>;
+    return <span className="font-semibold text-amber-700">{emptyLabel}</span>;
   }
   const href = contactHref(contact);
   return href ? (
@@ -51,7 +58,14 @@ function OfficeContact({ contact }: { contact: string | null }) {
   );
 }
 
-export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
+export function OfficeManager({
+  offices,
+  locale = "en",
+}: {
+  offices: AdminOfficeItem[];
+  locale?: Locale;
+}) {
+  const t = copy[locale].admin.mgr;
   const router = useRouter();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [name, setName] = useState("");
@@ -93,7 +107,7 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
     setSuccess(null);
 
     if (!contact.trim()) {
-      setError("Contact details are required for every office.");
+      setError(t.contactRequired);
       return;
     }
     const payload = {
@@ -121,7 +135,7 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
       setError(extractApiError(result.error));
       return;
     }
-    setSuccess(editingId ? "Office updated." : "Office created.");
+    setSuccess(editingId ? t.officeUpdated : t.officeCreated);
     resetForm();
     router.refresh();
   }
@@ -139,7 +153,12 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
       setError(extractApiError(result.error));
       return;
     }
-    setSuccess(`${office.name} ${office.isActive ? "disabled" : "enabled"}.`);
+    setSuccess(
+      (office.isActive ? t.officeDisabled : t.officeEnabled).replace(
+        "{name}",
+        office.name
+      )
+    );
     router.refresh();
   }
 
@@ -151,7 +170,7 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
       { method: "DELETE" }
     );
     if (!result.success) return extractApiError(result.error);
-    setSuccess(`Deleted unused office ${office.code}.`);
+    setSuccess(t.deletedOffice.replace("{code}", office.code));
     router.refresh();
     return null;
   }
@@ -164,16 +183,14 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">
-            {editingId ? "Edit office" : "Add an office"}
+            {editingId ? t.editOffice : t.addOffice}
           </h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
-            Manage office names, services, and contact details for routing.
-          </p>
+          <p className="mt-1 text-sm leading-6 text-slate-600">{t.officeLead}</p>
         </div>
 
         <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="office-name">Office name</Label>
+            <Label htmlFor="office-name">{t.officeName}</Label>
             <Input
               id="office-name"
               value={name}
@@ -183,7 +200,7 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
             />
           </div>
           <div>
-            <Label htmlFor="office-code">Office code</Label>
+            <Label htmlFor="office-code">{t.officeCode}</Label>
             <Input
               id="office-code"
               value={code}
@@ -193,24 +210,25 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
             />
           </div>
           <div>
-            <Label htmlFor="office-head">Head officer</Label>
+            <Label htmlFor="office-head">{t.headOfficer}</Label>
             <Input
               id="office-head"
               value={headOfficer}
               onChange={(event) => setHeadOfficer(event.target.value)}
-              placeholder="Optional"
+              placeholder={t.optional}
             />
           </div>
           <div>
             <Label htmlFor="office-contact">
-              Contact <span className="font-semibold text-red-700">(required)</span>
+              {t.contact}{" "}
+              <span className="font-semibold text-red-700">{t.required}</span>
             </Label>
             <Input
               id="office-contact"
               type="text"
               value={contact}
               onChange={(event) => setContact(event.target.value)}
-              placeholder="Phone number, email, or other contact"
+              placeholder={t.contactPlaceholder}
               autoComplete="tel"
               required
               minLength={3}
@@ -218,13 +236,13 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
             />
           </div>
           <div className="sm:col-span-2">
-            <Label htmlFor="office-description">Description</Label>
+            <Label htmlFor="office-description">{t.officeDesc}</Label>
             <Textarea
               id="office-description"
               rows={2}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="What services does this office handle? (optional)"
+              placeholder={t.officeDescPlaceholder}
               maxLength={500}
             />
           </div>
@@ -237,18 +255,18 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
             onChange={(event) => setIsActive(event.target.checked)}
             className="h-4 w-4 rounded border-slate-300 accent-brand-700"
           />
-          Accepting new concerns
+          {t.accepting}
         </label>
 
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={busy}>
             {editingId ? <Save size={16} aria-hidden="true" /> : <Plus size={16} aria-hidden="true" />}
-            {busy ? "Saving…" : editingId ? "Save changes" : "Create office"}
+            {busy ? t.saving : editingId ? t.saveChanges : t.createOffice}
           </Button>
           {editingId && (
             <Button type="button" variant="outline" onClick={resetForm} disabled={busy}>
               <X size={16} aria-hidden="true" />
-              Cancel edit
+              {t.cancelEdit}
             </Button>
           )}
         </div>
@@ -257,14 +275,15 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
       <section aria-labelledby="offices-heading" className="border-t border-slate-200 pt-6">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="offices-heading" className="text-lg font-semibold text-slate-900">
-            Offices <span className="text-base font-medium text-slate-500">({offices.length})</span>
+            {t.officesList}{" "}
+            <span className="text-base font-medium text-slate-500">({offices.length})</span>
           </h2>
-          <p className="text-sm text-slate-600">Contact details are shown on every office card.</p>
+          <p className="text-sm text-slate-600">{t.contactShown}</p>
         </div>
 
         {offices.length === 0 ? (
           <p className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-600">
-            No offices match these filters.
+            {t.noOffices}
           </p>
         ) : (
           <div className="mt-4 grid gap-4 xl:grid-cols-2">
@@ -278,15 +297,18 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="break-words text-base font-semibold text-slate-900">{office.name}</h3>
                       {office.isActive ? (
-                        <Badge tone="green">Active</Badge>
+                        <Badge tone="green">{t.active}</Badge>
                       ) : (
-                        <Badge tone="gray">Disabled</Badge>
+                        <Badge tone="gray">{t.disabled}</Badge>
                       )}
                     </div>
                     <p className="mt-1 text-sm font-medium text-slate-600">
                       {office.code}
                       <span className="px-2 text-slate-300" aria-hidden="true">·</span>
-                      {office.references.total} linked record{office.references.total === 1 ? "" : "s"}
+                      {t.linkedRecords.replace(
+                        "{count}",
+                        String(office.references.total)
+                      )}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -299,7 +321,7 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
                       aria-label={`Edit ${office.name}`}
                     >
                       <Pencil size={14} aria-hidden="true" />
-                      Edit
+                      {t.edit}
                     </Button>
                     <Button
                       type="button"
@@ -307,21 +329,24 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
                       size="sm"
                       disabled={busy}
                       onClick={() => toggleActive(office)}
-                      aria-label={`${office.isActive ? "Disable" : "Enable"} ${office.name}`}
+                      aria-label={`${office.isActive ? t.disable : t.enable} ${office.name}`}
                     >
                       <Power size={14} aria-hidden="true" />
-                      {office.isActive ? "Disable" : "Enable"}
+                      {office.isActive ? t.disable : t.enable}
                     </Button>
                     <ConfirmActionButton
-                      label="Delete"
+                      label={t.delete}
                       icon={<Trash2 size={14} aria-hidden="true" />}
-                      title={`Delete ${office.name}?`}
+                      title={t.deleteOfficeTitle.replace("{name}", office.name)}
                       description={
                         office.references.total > 0
-                          ? `This office is referenced by ${office.references.total} record(s). Deletion will be refused to preserve routing and case history — deactivate it instead.`
-                          : "This office has no linked records and will be permanently removed."
+                          ? t.deleteOfficeLinked.replace(
+                              "{count}",
+                              String(office.references.total)
+                            )
+                          : t.deleteOfficeEmpty
                       }
-                      confirmLabel="Delete office"
+                      confirmLabel={t.deleteOffice}
                       tone="danger"
                       disabled={busy}
                       className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:opacity-40"
@@ -332,16 +357,26 @@ export function OfficeManager({ offices }: { offices: AdminOfficeItem[] }) {
 
                 <dl className="mt-4 grid gap-x-4 gap-y-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
                   <div className="min-w-0">
-                    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Contact</dt>
-                    <dd className="mt-1 text-sm leading-6"><OfficeContact contact={office.contact} /></dd>
+                    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                      {t.contact}
+                    </dt>
+                    <dd className="mt-1 text-sm leading-6">
+                      <OfficeContact contact={office.contact} emptyLabel={t.addContact} />
+                    </dd>
                   </div>
                   <div className="min-w-0">
-                    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Head officer</dt>
-                    <dd className="mt-1 break-words text-sm leading-6 text-slate-800">{office.headOfficer || "Not assigned"}</dd>
+                    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                      {t.headOfficer}
+                    </dt>
+                    <dd className="mt-1 break-words text-sm leading-6 text-slate-800">
+                      {office.headOfficer || t.notAssigned}
+                    </dd>
                   </div>
                   {office.description && (
                     <div className="sm:col-span-2">
-                      <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Services</dt>
+                      <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                        {t.services}
+                      </dt>
                       <dd className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">{office.description}</dd>
                     </div>
                   )}

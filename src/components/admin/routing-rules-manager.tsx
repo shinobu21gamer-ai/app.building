@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FormMessage, Input, Label } from "@/components/ui/field";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
 import { apiRequest } from "@/lib/api-client";
+import { copy, type Locale } from "@/lib/i18n";
 
 type Option = { id: number; name: string; code: string };
 
@@ -27,11 +28,14 @@ export function RoutingRulesManager({
   rules,
   categories,
   offices,
+  locale = "en",
 }: {
   rules: RoutingRuleItem[];
   categories: Option[];
   offices: Option[];
+  locale?: Locale;
 }) {
+  const t = copy[locale].admin.mgr;
   const router = useRouter();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [categoryId, setCategoryId] = useState(
@@ -91,7 +95,7 @@ export function RoutingRulesManager({
     setSuccess(null);
 
     if (!categoryId || !officeId) {
-      setError("Select both a category and an office.");
+      setError(t.selectBoth);
       return;
     }
 
@@ -127,11 +131,7 @@ export function RoutingRulesManager({
       return;
     }
 
-    setSuccess(
-      editingId
-        ? "Routing rule updated."
-        : "Routing rule created. New concerns in that category will route automatically."
-    );
+    setSuccess(editingId ? t.ruleUpdated : t.ruleCreated);
     resetForm();
     router.refresh();
   }
@@ -151,9 +151,9 @@ export function RoutingRulesManager({
       return;
     }
     setSuccess(
-      `Routing rule ${rule.category.code} → ${rule.office.code} ${
-        rule.isActive ? "disabled" : "enabled"
-      }.`
+      (rule.isActive ? t.ruleDisabled : t.ruleEnabled)
+        .replace("{from}", rule.category.code)
+        .replace("{to}", rule.office.code)
     );
     router.refresh();
   }
@@ -176,7 +176,9 @@ export function RoutingRulesManager({
       return result.error.message;
     }
     setSuccess(
-      `Deleted routing rule ${rule.category.code} → ${rule.office.code}.`
+      t.ruleDeleted
+        .replace("{from}", rule.category.code)
+        .replace("{to}", rule.office.code)
     );
     router.refresh();
     return null;
@@ -200,11 +202,11 @@ export function RoutingRulesManager({
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <h2 className="text-base font-semibold text-slate-900">
-          {editingId ? "Edit routing rule" : "Add routing rule"}
+          {editingId ? t.editRule : t.addRule}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <Label htmlFor="rule-category">Category</Label>
+            <Label htmlFor="rule-category">{t.category}</Label>
             <select
               id="rule-category"
               value={categoryId}
@@ -219,7 +221,7 @@ export function RoutingRulesManager({
             </select>
           </div>
           <div>
-            <Label htmlFor="rule-office">Responsible office</Label>
+            <Label htmlFor="rule-office">{t.responsibleOffice}</Label>
             <select
               id="rule-office"
               value={officeId}
@@ -234,7 +236,7 @@ export function RoutingRulesManager({
             </select>
           </div>
           <div>
-            <Label htmlFor="rule-priority">Priority order</Label>
+            <Label htmlFor="rule-priority">{t.priorityOrder}</Label>
             <Input
               id="rule-priority"
               type="number"
@@ -242,12 +244,10 @@ export function RoutingRulesManager({
               value={priorityOrder}
               onChange={(e) => setPriorityOrder(e.target.value)}
             />
-            <p className="mt-1 text-xs text-slate-500">
-              Lower runs first when a category has several rules.
-            </p>
+            <p className="mt-1 text-xs text-slate-500">{t.orderHint}</p>
           </div>
           <div>
-            <Label htmlFor="rule-active">Status</Label>
+            <Label htmlFor="rule-active">{t.colStatus}</Label>
             <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
               <input
                 id="rule-active"
@@ -256,17 +256,17 @@ export function RoutingRulesManager({
                 onChange={(e) => setIsActive(e.target.checked)}
                 className="h-4 w-4 rounded border-slate-300"
               />
-              Active
+              {t.active}
             </label>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={busy}>
-            {busy ? "Saving..." : editingId ? "Save changes" : "Create rule"}
+            {busy ? t.saving : editingId ? t.saveChanges : t.createRule}
           </Button>
           {editingId && (
             <Button type="button" variant="outline" onClick={resetForm}>
-              Cancel edit
+              {t.cancelEdit}
             </Button>
           )}
         </div>
@@ -275,44 +275,45 @@ export function RoutingRulesManager({
       <div>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-slate-900">
-            Configured rules ({visibleRules.length}
-            {needle ? ` of ${rules.length}` : ""})
+            {needle
+              ? t.rulesOf
+                  .replace("{shown}", String(visibleRules.length))
+                  .replace("{total}", String(rules.length))
+              : t.rulesList.replace("{count}", String(visibleRules.length))}
           </h2>
           <Input
             type="search"
-            aria-label="Filter by category or office"
+            aria-label={t.filterRules}
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            placeholder="Filter by category or office"
+            placeholder={t.filterRules}
             className="max-w-xs"
           />
         </div>
         {visibleRules.length === 0 ? (
           <p className="py-6 text-center text-sm text-slate-600">
-            {rules.length === 0
-              ? "No routing rules configured yet. Concerns will stay unassigned until a rule is added."
-              : "No routing rules match the filter."}
+            {rules.length === 0 ? t.noRulesYet : t.noRulesMatch}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
-              <caption className="sr-only">Routing rules</caption>
+              <caption className="sr-only">{t.rulesCaption}</caption>
               <thead>
                 <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Category
+                    {t.colCategory}
                   </th>
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Office
+                    {t.colOffice}
                   </th>
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Order
+                    {t.colOrder}
                   </th>
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Status
+                    {t.colStatus}
                   </th>
                   <th scope="col" className="py-2 font-semibold">
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{t.edit}</span>
                   </th>
                 </tr>
               </thead>
@@ -330,9 +331,9 @@ export function RoutingRulesManager({
                     </td>
                     <td className="py-3 pr-4">
                       {rule.isActive ? (
-                        <Badge tone="green">Active</Badge>
+                        <Badge tone="green">{t.active}</Badge>
                       ) : (
-                        <Badge tone="gray">Disabled</Badge>
+                        <Badge tone="gray">{t.disabled}</Badge>
                       )}
                     </td>
                     <td className="py-3">
@@ -342,7 +343,7 @@ export function RoutingRulesManager({
                           onClick={() => startEdit(rule)}
                           className="text-sm font-semibold text-brand-700 hover:text-brand-800"
                         >
-                          Edit
+                          {t.edit}
                         </button>
                         <button
                           type="button"
@@ -350,13 +351,15 @@ export function RoutingRulesManager({
                           disabled={busy}
                           className="text-sm font-semibold text-slate-600 hover:text-slate-900"
                         >
-                          {rule.isActive ? "Disable" : "Enable"}
+                          {rule.isActive ? t.disable : t.enable}
                         </button>
                         <ConfirmActionButton
-                          label="Delete"
-                          title="Delete routing rule?"
-                          description={`${rule.category.name} → ${rule.office.name} will be permanently removed. Existing concerns keep the office they were already routed to.`}
-                          confirmLabel="Delete rule"
+                          label={t.delete}
+                          title={t.deleteRuleTitle}
+                          description={t.deleteRuleDesc
+                            .replace("{category}", rule.category.name)
+                            .replace("{office}", rule.office.name)}
+                          confirmLabel={t.deleteRule}
                           tone="danger"
                           onConfirm={() => deleteRule(rule)}
                         />

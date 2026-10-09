@@ -6,7 +6,8 @@ import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, PriorityBadge, StatusBadge } from "@/components/ui/badge";
-import { FormMessage } from "@/components/ui/field";
+import { CaseReceipt } from "@/components/cases/case-receipt";
+import { CopyCaseNumber } from "@/components/cases/copy-case-number";
 import {
   CaseTimeline,
   type ResolutionInfo,
@@ -20,6 +21,9 @@ import {
 import { FeedbackCard, type FeedbackView } from "@/components/cases/feedback-card";
 import { isFeedbackResubmissionAllowed } from "@/lib/cases/settings";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { copy } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
+import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 
 export const metadata: Metadata = {
   title: "Case Details",
@@ -35,6 +39,8 @@ export default async function ConcernDetailPage({
   searchParams,
 }: PageProps) {
   const user = await requireRole(["RESIDENT"]);
+  const locale = await getLocale();
+  const t = copy[locale].resident;
   const { id } = await params;
   const { created } = await searchParams;
 
@@ -132,28 +138,34 @@ export default async function ConcernDetailPage({
     <div className="space-y-6">
       <div>
         <Button href="/resident/concerns" variant="ghost" size="sm">
-          ← Back to my concerns
+          ← {t.back}
         </Button>
       </div>
 
       {created === "1" && (
-        <FormMessage tone="success">
-          Your concern has been submitted successfully. Case number{" "}
-          <span className="font-semibold">{concern.caseNumber}</span>. Keep this
-          number for reference.
-        </FormMessage>
+        <CaseReceipt caseNumber={concern.caseNumber} concernId={concern.id} />
       )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="font-mono text-xs text-slate-500">
-            {concern.caseNumber}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-mono text-xs text-slate-500">
+              {concern.caseNumber}
+            </p>
+            <CopyCaseNumber caseNumber={concern.caseNumber} />
+            <Button
+              href={`/resident/concerns/${concern.id}/print`}
+              variant="outline"
+              size="sm"
+            >
+              {t.print}
+            </Button>
+          </div>
           <h1 className="mt-1 text-2xl font-bold text-slate-900">
             {concern.title}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Submitted {formatDateTime(concern.submittedAt)}
+            {t.submitted} {formatDateTime(concern.submittedAt)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -161,39 +173,55 @@ export default async function ConcernDetailPage({
           {concern.priorityLevel ? (
             <PriorityBadge level={concern.priorityLevel} />
           ) : (
-            <Badge tone="neutral">Priority pending</Badge>
+            <Badge tone="neutral">{t.pendingPriority}</Badge>
           )}
         </div>
       </div>
 
-      <Card title="Case progress" description="The lifecycle of your case, newest stage marked.">
+      <Card title={t.progress} description={t.progressDesc}>
         <CaseStatusStepper currentStatus={concern.status} reached={reachedAt} />
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card title="Concern details">
+          <Card title={t.details}>
             <dl className="space-y-4 text-sm">
               <div>
-                <dt className="text-slate-500">Category</dt>
+                <dt className="text-slate-500">{t.category}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {concern.category.name}
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">Location</dt>
+                <dt className="text-slate-500">{t.location}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {concern.locationAddress}
+                  {hasCoordinates(concern.locationLat, concern.locationLng) ? (
+                    <>
+                      {" · "}
+                      <a
+                        href={openStreetMapUrl(
+                          concern.locationLat,
+                          concern.locationLng
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-brand-700 hover:text-brand-800"
+                      >
+                        {t.map}
+                      </a>
+                    </>
+                  ) : null}
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">Description</dt>
+                <dt className="text-slate-500">{t.description}</dt>
                 <dd className="mt-0.5 whitespace-pre-wrap text-slate-700">
                   {concern.description}
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">Assigned office</dt>
+                <dt className="text-slate-500">{t.office}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {concern.assignedOffice ? (
                     <>
@@ -206,7 +234,7 @@ export default async function ConcernDetailPage({
                     </>
                   ) : (
                     <span className="font-normal text-amber-700">
-                      Awaiting office assignment
+                      {t.awaiting}
                     </span>
                   )}
                 </dd>
@@ -215,7 +243,7 @@ export default async function ConcernDetailPage({
 
             {concern.imageUrl && (
               <div className="mt-5 border-t border-slate-100 pt-5">
-                <p className="mb-2 text-slate-500">Supporting image</p>
+                <p className="mb-2 text-slate-500">{t.photo}</p>
                 <Image
                   src={concern.imageUrl}
                   alt={`Supporting image for ${concern.caseNumber}`}
@@ -229,8 +257,8 @@ export default async function ConcernDetailPage({
           </Card>
 
           <Card
-            title="Priority assessment"
-            description="This is the rule-based recommendation. Barangay officials may override it."
+            title={copy[locale].desk.automatedTitle}
+            description={copy[locale].desk.automatedDesc}
           >
             {latestAssessment ? (
               <PriorityBreakdown
@@ -247,6 +275,7 @@ export default async function ConcernDetailPage({
                       : null
                 }
                 createdAt={latestAssessment.createdAt}
+                locale={locale}
               />
             ) : (
               <p className="text-sm text-slate-500">
@@ -302,20 +331,22 @@ export default async function ConcernDetailPage({
 
           {canSubmitFeedback(concern.status) && (
             <Card
-              title="Your feedback"
-              description="Tell us how the barangay handled this case. Your feedback is recorded against this case only."
+              title={copy[locale].feedback.title}
+              description={copy[locale].feedback.lead}
             >
               <FeedbackCard
                 concernId={concern.id}
                 existing={existingFeedback}
                 resubmissionAllowed={feedbackResubmissionAllowed}
+                locale={locale}
               />
             </Card>
           )}
         </div>
 
-        <Card title="Case timeline">
+        <Card title={copy[locale].desk.timelineTitle}>
           <CaseTimeline
+            locale={locale}
             entries={concern.history.map((entry) => ({
               id: entry.id,
               entryType: entry.entryType,

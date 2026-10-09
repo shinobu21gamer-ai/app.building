@@ -10,6 +10,8 @@ import {
   parseUserFilters,
 } from "@/lib/admin/query";
 import { firstParam } from "@/lib/utils";
+import { copy } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
   title: "Users",
@@ -23,6 +25,8 @@ export default async function AdminUsersPage({
   searchParams: Promise<SearchParams>;
 }) {
   const actor = await requireRole(["ADMIN"]);
+  const locale = await getLocale();
+  const t = copy[locale].admin;
   const params = await searchParams;
   const filters = parseUserFilters(params);
 
@@ -42,32 +46,30 @@ export default async function AdminUsersPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">User accounts</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Create accounts, assign roles and offices, and enable or disable
-          access. Disabling preserves historical records.
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">{t.usersTitle}</h1>
+        <p className="mt-1 text-sm text-slate-600">{t.usersLead}</p>
       </div>
 
       <AdminFilterBar
+        locale={locale}
         initialQ={firstParam(params, "q")}
-        qPlaceholder="Search by name or email"
+        qPlaceholder={t.usersSearch}
         fields={[
           {
             name: "role",
-            label: "Role",
+            label: t.filterRole,
             options: [
-              { value: "", label: "All roles" },
+              { value: "", label: t.filterAllRoles },
               ...roles.map((role) => ({ value: role.key, label: role.name })),
             ],
           },
           {
             name: "status",
-            label: "Status",
+            label: t.filterStatus,
             options: [
-              { value: "", label: "All" },
-              { value: "active", label: "Active" },
-              { value: "disabled", label: "Disabled" },
+              { value: "", label: t.filterAll },
+              { value: "active", label: t.filterActive },
+              { value: "disabled", label: t.filterDisabled },
             ],
           },
         ]}
@@ -83,6 +85,7 @@ export default async function AdminUsersPage({
           roles={roles}
           offices={offices}
           currentUserId={actor.id}
+          locale={locale}
         />
       </Card>
     </div>

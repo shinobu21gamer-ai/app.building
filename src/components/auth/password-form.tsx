@@ -6,8 +6,10 @@ import { apiRequest } from "@/lib/api-client";
 import { extractFieldErrors } from "@/lib/validation-errors";
 import { Button } from "@/components/ui/button";
 import { FieldError, FormMessage, Input, Label } from "@/components/ui/field";
+import { copy, type Locale } from "@/lib/i18n";
 
-export function PasswordForm() {
+export function PasswordForm({ locale = "en" }: { locale?: Locale }) {
+  const t = copy[locale].profile;
   const [form, setForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -30,7 +32,7 @@ export function PasswordForm() {
     setFieldErrors({});
 
     if (form.newPassword !== form.confirmNewPassword) {
-      setFieldErrors({ confirmNewPassword: "Passwords do not match." });
+      setFieldErrors({ confirmNewPassword: t.mismatch });
       return;
     }
 
@@ -63,7 +65,7 @@ export function PasswordForm() {
     }
 
     setForm({ currentPassword: "", newPassword: "", confirmNewPassword: "" });
-    setMessage({ tone: "success", text: "Password changed." });
+    setMessage({ tone: "success", text: t.changed });
   }
 
   return (
@@ -73,7 +75,7 @@ export function PasswordForm() {
       )}
 
       <div>
-        <Label htmlFor="currentPassword">Current password</Label>
+        <Label htmlFor="currentPassword">{t.currentPassword}</Label>
         <Input
           id="currentPassword"
           type="password"
@@ -91,7 +93,7 @@ export function PasswordForm() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="newPassword">New password</Label>
+          <Label htmlFor="newPassword">{t.newPassword}</Label>
           <Input
             id="newPassword"
             type="password"
@@ -107,7 +109,7 @@ export function PasswordForm() {
           )}
         </div>
         <div>
-          <Label htmlFor="confirmNewPassword">Confirm new password</Label>
+          <Label htmlFor="confirmNewPassword">{t.confirmPassword}</Label>
           <Input
             id="confirmNewPassword"
             type="password"
@@ -125,7 +127,7 @@ export function PasswordForm() {
       </div>
 
       <Button type="submit" disabled={submitting}>
-        {submitting ? "Changing…" : "Change password"}
+        {submitting ? t.changing : t.change}
       </Button>
     </form>
   );

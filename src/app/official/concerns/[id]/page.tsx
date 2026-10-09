@@ -18,10 +18,13 @@ import { CaseNoteForm } from "@/components/cases/case-note-form";
 import { ResolutionForm } from "@/components/cases/resolution-form";
 import { loadPriorityConfig } from "@/lib/priority/config";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import {
   allowedTransitions,
   canManageConcern,
 } from "@/lib/cases/workflow";
+import { copy } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
   title: "Review Concern",
@@ -39,6 +42,9 @@ export default async function OfficialConcernDetailPage({
   params,
 }: PageProps) {
   const user = await requireRole(["OFFICIAL", "ADMIN"]);
+  const locale = await getLocale();
+  const t = copy[locale].official;
+  const desk = copy[locale].desk;
   const { id } = await params;
   const numericId = Number(id);
   if (!Number.isInteger(numericId) || numericId <= 0) notFound();
@@ -163,7 +169,7 @@ export default async function OfficialConcernDetailPage({
   return (
     <div className="space-y-6">
       <Button href="/official/concerns" variant="ghost" size="sm">
-        ← Back to concerns
+        {desk.backConcerns}
       </Button>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -175,43 +181,70 @@ export default async function OfficialConcernDetailPage({
             {concern.title}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Submitted by {userName(concern.user)} ·{" "}
-            {formatDateTime(concern.submittedAt)}
+            {desk.submittedBy
+              .replace("{name}", userName(concern.user) ?? "")
+              .replace("{date}", formatDateTime(concern.submittedAt))}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            href={`/official/concerns/${concern.id}/print`}
+            variant="outline"
+            size="sm"
+            className="no-print"
+          >
+            {t.print}
+          </Button>
           <StatusBadge status={concern.status} />
           {concern.priorityLevel && (
             <PriorityBadge level={concern.priorityLevel} />
           )}
-          {latest?.isOverride && <span className="text-xs text-amber-700">overridden</span>}
+          {latest?.isOverride && (
+            <span className="text-xs text-amber-700">{desk.overridden}</span>
+          )}
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card title="Concern details">
+          <Card title={desk.detailsTitle}>
             <dl className="space-y-4 text-sm">
               <div>
-                <dt className="text-slate-500">Category</dt>
+                <dt className="text-slate-500">{desk.category}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {concern.category.name}
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">Location</dt>
+                <dt className="text-slate-500">{desk.location}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {concern.locationAddress}
+                  {hasCoordinates(concern.locationLat, concern.locationLng) ? (
+                    <>
+                      {" · "}
+                      <a
+                        href={openStreetMapUrl(
+                          concern.locationLat,
+                          concern.locationLng
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-brand-700 hover:text-brand-800"
+                      >
+                        {desk.openMap}
+                      </a>
+                    </>
+                  ) : null}
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">Resident</dt>
+                <dt className="text-slate-500">{desk.residentLabel}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {userName(concern.user)} ({concern.user.email})
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">Description</dt>
+                <dt className="text-slate-500">{desk.description}</dt>
                 <dd className="mt-0.5 whitespace-pre-wrap text-slate-700">
                   {concern.description}
                 </dd>
@@ -220,7 +253,7 @@ export default async function OfficialConcernDetailPage({
 
             {concern.imageUrl && (
               <div className="mt-5 border-t border-slate-100 pt-5">
-                <p className="mb-2 text-slate-500">Supporting image</p>
+                <p className="mb-2 text-slate-500">{desk.supportingImage}</p>
                 <Image
                   src={concern.imageUrl}
                   alt={`Supporting image for ${concern.caseNumber}`}
@@ -233,10 +266,7 @@ export default async function OfficialConcernDetailPage({
             )}
           </Card>
 
-          <Card
-            title="Automated recommendation"
-            description="Produced by the rule-based priority engine from the submitted factor scores."
-          >
+          <Card title={desk.automatedTitle} description={desk.automatedDesc}>
             {automated ? (
               <PriorityBreakdown
                 level={automated.level}
@@ -244,18 +274,17 @@ export default async function OfficialConcernDetailPage({
                 evaluation={parseEvaluation(automated.calculationJson)}
                 isOverride={false}
                 createdAt={automated.createdAt}
+                locale={locale}
               />
             ) : (
-              <p className="text-sm text-slate-500">
-                No automated assessment is on record for this concern.
-              </p>
+              <p className="text-sm text-slate-500">{desk.noAutomated}</p>
             )}
           </Card>
 
           {overrides.length > 0 && (
             <Card
-              title="Override history"
-              description="Official overrides are appended and the automated result is preserved."
+              title={desk.overrideHistoryTitle}
+              description={desk.overrideHistoryDesc}
             >
               <div className="space-y-5">
                 {overrides.map((override) => (
@@ -274,6 +303,7 @@ export default async function OfficialConcernDetailPage({
                         userName(override.assessedBy)
                       }
                       createdAt={override.createdAt}
+                      locale={locale}
                     />
                   </div>
                 ))}
@@ -283,36 +313,51 @@ export default async function OfficialConcernDetailPage({
 
           {resolution && (
             <Card
-              title="Resolution"
-              description="Recorded when the case was marked resolved."
+              title={desk.resolutionTitle}
+              description={desk.resolutionRecorded}
             >
               <dl className="space-y-3 text-sm">
                 <div>
-                  <dt className="text-slate-500">Summary</dt>
+                  <dt className="text-slate-500">{desk.summary}</dt>
                   <dd className="mt-0.5 text-slate-700">
                     {resolution.summary}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Actions taken</dt>
+                  <dt className="text-slate-500">{desk.actionsTaken}</dt>
                   <dd className="mt-0.5 whitespace-pre-wrap text-slate-700">
                     {resolution.actionsTaken}
                   </dd>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-slate-500">
                   <span>
-                    Handled by {resolution.official.firstName}{" "}
-                    {resolution.official.lastName}
+                    {desk.handledBy.replace(
+                      "{name}",
+                      `${resolution.official.firstName} ${resolution.official.lastName}`
+                    )}
                   </span>
-                  <Badge tone="green">{resolution.resolutionType}</Badge>
+                  <Badge tone="green">
+                    {desk.types[resolution.resolutionType as keyof typeof desk.types] ??
+                      resolution.resolutionType}
+                  </Badge>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-1 text-slate-500">
-                  <span>Resolved {formatDate(resolution.resolvedOn)}</span>
-                  <span>Recorded {formatDateTime(resolution.resolvedAt)}</span>
+                  <span>
+                    {desk.resolvedOn.replace(
+                      "{date}",
+                      formatDate(resolution.resolvedOn)
+                    )}
+                  </span>
+                  <span>
+                    {desk.recordedOn.replace(
+                      "{date}",
+                      formatDateTime(resolution.resolvedAt)
+                    )}
+                  </span>
                 </div>
                 {resolution.attachmentUrl && (
                   <div>
-                    <dt className="text-slate-500">Attachment</dt>
+                    <dt className="text-slate-500">{desk.attachment}</dt>
                     <dd className="mt-2">
                       <Image
                         src={resolution.attachmentUrl}
@@ -331,8 +376,8 @@ export default async function OfficialConcernDetailPage({
 
           {concern.assignments.length > 0 && (
             <Card
-              title="Assignment history"
-              description="Every assignment and reassignment for this case."
+              title={desk.assignmentHistoryTitle}
+              description={desk.assignmentHistoryDesc}
             >
               <ol className="space-y-4">
                 {concern.assignments.map((assignment) => (
@@ -345,16 +390,19 @@ export default async function OfficialConcernDetailPage({
                         {assignment.office.name}
                         {assignment.official
                           ? ` · ${assignment.official.firstName} ${assignment.official.lastName}`
-                          : " · office pool"}
+                          : desk.officePoolSuffix}
                       </span>
                       {assignment.isCurrent && (
-                        <Badge tone="green">Current</Badge>
+                        <Badge tone="green">{desk.currentBadge}</Badge>
                       )}
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
                       {assignment.assignedBy
-                        ? `By ${assignment.assignedBy.firstName} ${assignment.assignedBy.lastName}`
-                        : "Automatic routing"}{" "}
+                        ? desk.byPerson.replace(
+                            "{name}",
+                            `${assignment.assignedBy.firstName} ${assignment.assignedBy.lastName}`
+                          )
+                        : desk.automaticRouting}{" "}
                       · {formatDateTime(assignment.assignedAt)}
                     </p>
                     {assignment.reason && (
@@ -368,11 +416,9 @@ export default async function OfficialConcernDetailPage({
             </Card>
           )}
 
-          <Card
-            title="Case timeline"
-            description="Full activity journal for this concern."
-          >
+          <Card title={desk.timelineTitle} description={desk.timelineDesc}>
             <CaseTimeline
+              locale={locale}
               entries={concern.history.map((entry) => ({
                 id: entry.id,
                 entryType: entry.entryType,
@@ -387,18 +433,15 @@ export default async function OfficialConcernDetailPage({
         </div>
 
         <div className="space-y-6">
-          <Card
-            title="Case management"
-            description="Move the case through its lifecycle, add progress remarks, and record actions taken. Every entry is journaled."
-          >
+          <Card title={desk.manageTitle} description={desk.manageDesc}>
             {canManage ? (
               <div className="space-y-6">
                 {canResolve && !resolution && (
                   <div>
                     <p className="mb-3 text-sm font-medium text-slate-700">
-                      Resolve the case
+                      {desk.resolveCase}
                     </p>
-                    <ResolutionForm concernId={concern.id} />
+                    <ResolutionForm concernId={concern.id} locale={locale} />
                   </div>
                 )}
                 <div className={canResolve && !resolution ? "border-t border-slate-100 pt-5" : ""}>
@@ -406,48 +449,44 @@ export default async function OfficialConcernDetailPage({
                     concernId={concern.id}
                     currentStatus={concern.status}
                     allowedTransitions={workflowStatuses}
+                    locale={locale}
                   />
                 </div>
                 <div className="border-t border-slate-100 pt-5">
                   <p className="mb-3 text-sm font-medium text-slate-700">
-                    Progress notes
+                    {desk.progressNotes}
                   </p>
                   <CaseNoteForm
                     concernId={concern.id}
                     disabled={concern.status === "CLOSED"}
+                    locale={locale}
                   />
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-slate-500">
-                This concern belongs to another office. Only that office&apos;s
-                officials (or an administrator) can update its status.
-              </p>
+              <p className="text-sm text-slate-500">{desk.otherOffice}</p>
             )}
           </Card>
 
-          <Card
-            title="Office assignment"
-            description="Determined by the configured routing rules. Officials may reassign."
-          >
+          <Card title={desk.assignmentTitle} description={desk.assignmentDesc}>
             {currentAssignment ? (
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500">Office</dt>
+                  <dt className="text-slate-500">{t.officeCol}</dt>
                   <dd className="font-medium text-slate-900">
                     {currentAssignment.office.name}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500">Official</dt>
+                  <dt className="text-slate-500">{desk.official}</dt>
                   <dd className="font-medium text-slate-900">
                     {currentAssignment.official
                       ? `${currentAssignment.official.firstName} ${currentAssignment.official.lastName}`
-                      : "Office pool"}
+                      : desk.officePool}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500">Assigned</dt>
+                  <dt className="text-slate-500">{desk.assigned}</dt>
                   <dd className="text-slate-700">
                     {formatDateTime(currentAssignment.assignedAt)}
                   </dd>
@@ -455,14 +494,15 @@ export default async function OfficialConcernDetailPage({
               </dl>
             ) : (
               <p className="text-sm text-amber-700">
-                This concern has not been routed to an office yet.
+                {desk.notRouted}
               </p>
             )}
 
             {isFinalized ? (
               <p className="mt-4 border-t border-slate-100 pt-4 text-sm text-slate-500">
-                This case is {concern.status === "RESOLVED" ? "resolved" : "closed"};
-                it can no longer be reassigned.
+                {concern.status === "RESOLVED"
+                  ? desk.cannotReassignResolved
+                  : desk.cannotReassignClosed}
               </p>
             ) : canReassign ? (
               <div className="mt-4 border-t border-slate-100 pt-4">
@@ -471,25 +511,22 @@ export default async function OfficialConcernDetailPage({
                   offices={reassignOffices}
                   currentOfficeId={concern.assignedOfficeId}
                   currentOfficialId={concern.assignedOfficialId}
+                  locale={locale}
                 />
               </div>
             ) : (
               <p className="mt-4 border-t border-slate-100 pt-4 text-sm text-slate-500">
-                This concern belongs to another office. Only that office&apos;s
-                officials (or an administrator) can reassign it.
+                {desk.otherOfficeReassign}
               </p>
             )}
           </Card>
 
-          <Card
-            title="Override recommendation"
-            description="Adjust the factor scores and/or set a level directly. The reason is required."
-          >
+          <Card title={desk.overrideTitle} description={desk.overrideDesc}>
             {isFinalized ? (
               <p className="text-sm text-slate-500">
                 {concern.status === "RESOLVED"
-                  ? "This case is resolved; its priority can no longer be overridden."
-                  : "This case is closed; its priority can no longer be overridden."}
+                  ? desk.cannotOverrideResolved
+                  : desk.cannotOverrideClosed}
               </p>
             ) : canManage ? (
               <PriorityOverrideForm
@@ -504,12 +541,10 @@ export default async function OfficialConcernDetailPage({
                 levels={levels}
                 defaultScores={defaultScores}
                 currentLevel={concern.priorityLevel}
+                locale={locale}
               />
             ) : (
-              <p className="text-sm text-slate-500">
-                This concern belongs to another office. Only that office&apos;s
-                officials (or an administrator) can override its priority.
-              </p>
+              <p className="text-sm text-slate-500">{desk.otherOfficeOverride}</p>
             )}
           </Card>
         </div>

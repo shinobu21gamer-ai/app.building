@@ -7,8 +7,10 @@ import { apiRequest } from "@/lib/api-client";
 import { extractFieldErrors } from "@/lib/validation-errors";
 import { Button } from "@/components/ui/button";
 import { FieldError, FormMessage, Input, Label } from "@/components/ui/field";
+import { copy, type Locale } from "@/lib/i18n";
 
-export function ResetPasswordForm() {
+export function ResetPasswordForm({ locale = "en" }: { locale?: Locale }) {
+  const t = copy[locale].reset;
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -49,12 +51,12 @@ export function ResetPasswordForm() {
     return (
       <div className="space-y-4">
         <FormMessage tone="success">
-          Your password was reset.{" "}
+          {t.done}{" "}
           <a
             href="/login"
             className="font-semibold text-emerald-800 underline hover:text-emerald-900"
           >
-            Sign in with your new password
+            {t.signIn}
           </a>
           .
         </FormMessage>
@@ -65,13 +67,10 @@ export function ResetPasswordForm() {
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-4">
       {error && <FormMessage tone="error">{error}</FormMessage>}
-      <p className="text-sm leading-relaxed text-slate-600">
-        Ask your barangay administrator for a password-reset code, then enter
-        it below together with a new password.
-      </p>
+      <p className="text-sm leading-relaxed text-slate-600">{t.lead}</p>
 
       <div>
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t.email}</Label>
         <Input
           id="email"
           name="email"
@@ -88,7 +87,7 @@ export function ResetPasswordForm() {
       </div>
 
       <div>
-        <Label htmlFor="code">Reset code</Label>
+        <Label htmlFor="code">{t.code}</Label>
         <Input
           id="code"
           name="code"
@@ -106,7 +105,7 @@ export function ResetPasswordForm() {
       </div>
 
       <div>
-        <Label htmlFor="newPassword">New password</Label>
+        <Label htmlFor="newPassword">{t.newPassword}</Label>
         <Input
           id="newPassword"
           name="newPassword"
@@ -116,7 +115,7 @@ export function ResetPasswordForm() {
           onChange={(e) => setNewPassword(e.target.value)}
           invalid={Boolean(fieldErrors.newPassword)}
           disabled={submitting}
-          placeholder="At least 8 characters, with upper, lower and a number"
+          placeholder={t.newPasswordPlaceholder}
           required
         />
         {fieldErrors.newPassword && (
@@ -125,7 +124,7 @@ export function ResetPasswordForm() {
       </div>
 
       <Button type="submit" disabled={submitting} className="w-full">
-        {submitting ? "Resetting…" : "Reset password"}
+        {submitting ? t.submitting : t.submit}
       </Button>
     </form>
   );

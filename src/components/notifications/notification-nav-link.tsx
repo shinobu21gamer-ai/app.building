@@ -9,7 +9,13 @@ const NOTIFICATIONS_CHANGED = "notifications:changed";
 
 type NotificationChangeEvent = CustomEvent<{ unreadCount: number }>;
 
-export function NotificationNavLink({ initialUnread }: { initialUnread: number }) {
+export function NotificationNavLink({
+  initialUnread,
+  label = "Notifications",
+}: {
+  initialUnread: number;
+  label?: string;
+}) {
   const [unread, setUnread] = useState(initialUnread);
   const pathname = usePathname();
 
@@ -31,11 +37,11 @@ export function NotificationNavLink({ initialUnread }: { initialUnread: number }
       variant={pathname === "/notifications" ? "secondary" : "ghost"}
       size="sm"
       aria-label={
-        unread > 0 ? `Notifications, ${unread} unread` : "Notifications"
+        unread > 0 ? `${label}, ${unread} unread` : label
       }
     >
       <BellRing size={15} aria-hidden="true" />
-      Notifications
+      {label}
       {unread > 0 && (
         <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">
           {unread > 99 ? "99+" : unread}

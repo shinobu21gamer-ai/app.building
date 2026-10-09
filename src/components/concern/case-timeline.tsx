@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/format";
+import { copy, type Locale } from "@/lib/i18n";
 
 type HistoryEntry = {
   id: number;
@@ -17,36 +18,43 @@ export type ResolutionInfo = {
   resolutionType: string;
 };
 
-const ENTRY_LABEL: Record<string, string> = {
-  STATUS_CHANGE: "Status change",
-  ASSIGNMENT: "Assignment",
-  RESOLUTION: "Concern resolved",
-  CLOSE: "Case closed",
-  REMARK: "Progress remark",
-  ACTION: "Action taken",
-  PRIORITY_OVERRIDE: "Priority override",
-  SLA_BREACH: "Service deadline missed",
-};
-
-function describeEntry(entry: HistoryEntry): string {
-  if (entry.entryType === "STATUS_CHANGE") {
-    if (entry.fromStatus && entry.toStatus) {
-      return `Status changed from ${entry.fromStatus} to ${entry.toStatus}`;
-    }
-    if (entry.toStatus) return `Status set to ${entry.toStatus}`;
-  }
-  return ENTRY_LABEL[entry.entryType] ?? "Update";
-}
-
 export function CaseTimeline({
   entries,
   resolution,
+  locale = "en",
 }: {
   entries: HistoryEntry[];
   resolution?: ResolutionInfo | null;
+  locale?: Locale;
 }) {
+  const t = copy[locale].desk;
+
+  function describeEntry(entry: HistoryEntry): string {
+    if (entry.entryType === "STATUS_CHANGE") {
+      if (entry.fromStatus && entry.toStatus) {
+        return t.entryStatusChange
+          .replace("{from}", entry.fromStatus)
+          .replace("{to}", entry.toStatus);
+      }
+      if (entry.toStatus) {
+        return t.entryStatusSet.replace("{status}", entry.toStatus);
+      }
+      return t.entryStatus;
+    }
+    const labels: Record<string, string> = {
+      ASSIGNMENT: t.entryAssignment,
+      RESOLUTION: t.entryResolution,
+      CLOSE: t.entryClose,
+      REMARK: t.entryRemark,
+      ACTION: t.entryAction,
+      PRIORITY_OVERRIDE: t.entryOverride,
+      SLA_BREACH: t.entrySla,
+    };
+    return labels[entry.entryType] ?? t.entryUpdate;
+  }
+
   if (entries.length === 0) {
-    return <p className="text-sm text-slate-500">No activity recorded yet.</p>;
+    return <p className="text-sm text-slate-500">{t.noActivity}</p>;
   }
 
   return (
@@ -71,7 +79,10 @@ export function CaseTimeline({
                 <span className="font-semibold text-emerald-900">
                   {resolution.summary}
                 </span>
-                <Badge tone="green">{resolution.resolutionType}</Badge>
+                <Badge tone="green">
+                  {t.types[resolution.resolutionType as keyof typeof t.types] ??
+                    resolution.resolutionType}
+                </Badge>
               </div>
               <p className="whitespace-pre-wrap text-emerald-800">
                 {resolution.actionsTaken}

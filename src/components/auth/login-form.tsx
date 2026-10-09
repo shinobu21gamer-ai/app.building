@@ -2,11 +2,13 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import { loginSchema } from "@/lib/validations/auth";
 import { apiRequest } from "@/lib/api-client";
 import { extractFieldErrors } from "@/lib/validation-errors";
 import { Button } from "@/components/ui/button";
 import { FieldError, FormMessage, Input, Label } from "@/components/ui/field";
+import { copy, type Locale } from "@/lib/i18n";
 
 type LoginResponse = {
   user: {
@@ -18,7 +20,14 @@ type LoginResponse = {
   redirect: string;
 };
 
-export function LoginForm({ nextPath }: { nextPath?: string | null }) {
+export function LoginForm({
+  nextPath,
+  locale = "en",
+}: {
+  nextPath?: string | null;
+  locale?: Locale;
+}) {
+  const t = copy[locale].login;
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,6 +35,7 @@ export function LoginForm({ nextPath }: { nextPath?: string | null }) {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const validateField = useCallback((name: "email" | "password", value: string) => {
     const fieldSchema = loginSchema.shape[name];
@@ -93,11 +103,11 @@ export function LoginForm({ nextPath }: { nextPath?: string | null }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-4" autoComplete="off">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
       <div>
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t.email}</Label>
         <Input
           id="email"
           name="email"
@@ -115,30 +125,44 @@ export function LoginForm({ nextPath }: { nextPath?: string | null }) {
       </div>
 
       <div>
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => handleChange("password", e.target.value)}
-          onBlur={(e) => handleBlur("password", e.target.value)}
-          invalid={Boolean(fieldErrors.password) && touched.password}
-          disabled={submitting}
-          required
-        />
+        <Label htmlFor="password">{t.password}</Label>
+        <div className="relative">
+          <Input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => handleChange("password", e.target.value)}
+            onBlur={(e) => handleBlur("password", e.target.value)}
+            invalid={Boolean(fieldErrors.password) && touched.password}
+            disabled={submitting}
+            required
+            className="pr-10"
+          />
+          <button
+            type="button"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 hover:text-slate-800"
+            onClick={() => setShowPassword((current) => !current)}
+            aria-label={showPassword ? t.hidePassword : t.showPassword}
+          >
+            {showPassword ? (
+              <EyeOff size={16} aria-hidden="true" />
+            ) : (
+              <Eye size={16} aria-hidden="true" />
+            )}
+          </button>
+        </div>
         {touched.password && fieldErrors.password && <FieldError>{fieldErrors.password}</FieldError>}
       </div>
 
       <Button type="submit" disabled={submitting} className="w-full">
-        {submitting ? "Signing in…" : "Sign in"}
+        {submitting ? t.submitting : t.submit}
       </Button>
 
       {nextPath && (
         <p className="text-xs text-slate-500 text-center">
-          You will be returned to <span className="font-medium">{nextPath}</span>{" "}
-          after signing in.
+          {t.next} <span className="font-medium">{nextPath}</span> {t.after}
         </p>
       )}
     </form>

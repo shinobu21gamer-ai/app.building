@@ -10,6 +10,7 @@ import {
   Textarea,
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
+import { copy, type Locale } from "@/lib/i18n";
 
 export type ReassignOffice = {
   id: number;
@@ -26,12 +27,15 @@ export function ReassignForm({
   offices,
   currentOfficeId,
   currentOfficialId,
+  locale = "en",
 }: {
   concernId: number;
   offices: ReassignOffice[];
   currentOfficeId: number | null;
   currentOfficialId: number | null;
+  locale?: Locale;
 }) {
+  const t = copy[locale].desk;
   const router = useRouter();
   const initialOffice =
     currentOfficeId && offices.some((o) => o.id === currentOfficeId)
@@ -56,14 +60,14 @@ export function ReassignForm({
     setSuccess(null);
 
     if (!officeId) {
-      setFormError("Select an office to assign this concern to.");
+      setFormError(t.selectOffice);
       return;
     }
 
     const data = new FormData(event.currentTarget);
     const reason = String(data.get("reason") ?? "").trim();
     if (reason.length < 5) {
-      setReasonError("Provide a reason for the assignment (at least 5 characters).");
+      setReasonError(t.assignReasonError);
       return;
     }
 
@@ -94,10 +98,17 @@ export function ReassignForm({
     }
 
     const { assignment } = result.data;
+    const template = result.data.previousOfficeName
+      ? assignment.officialName
+        ? t.reassignedToOfficial
+        : t.reassignedTo
+      : assignment.officialName
+        ? t.assignedToOfficial
+        : t.assignedTo;
     setSuccess(
-      `${result.data.previousOfficeName ? "Reassigned" : "Assigned"} to ${
-        assignment.officeName
-      }${assignment.officialName ? ` (${assignment.officialName})` : ""}.`
+      template
+        .replace("{office}", assignment.officeName)
+        .replace("{official}", assignment.officialName ?? "")
     );
     router.refresh();
   }
@@ -105,7 +116,7 @@ export function ReassignForm({
   if (offices.length === 0) {
     return (
       <p className="text-sm text-slate-500">
-        No active offices are available for assignment.
+        {t.noOffices}
       </p>
     );
   }
@@ -116,7 +127,7 @@ export function ReassignForm({
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
 
       <div>
-        <Label htmlFor="assign-office">Responsible office</Label>
+        <Label htmlFor="assign-office">{t.assignOffice}</Label>
         <select
           id="assign-office"
           value={officeId ?? ""}
@@ -135,14 +146,14 @@ export function ReassignForm({
       </div>
 
       <div>
-        <Label htmlFor="assign-official">Specific official (optional)</Label>
+        <Label htmlFor="assign-official">{t.assignOfficial}</Label>
         <select
           id="assign-official"
           value={officialId}
           onChange={(e) => setOfficialId(e.target.value)}
           className={selectStyles}
         >
-          <option value="">Assign to the office (any official)</option>
+          <option value="">{t.assignAny}</option>
           {(selectedOffice?.officials ?? []).map((official) => (
             <option key={official.id} value={official.id}>
               {official.firstName} {official.lastName}
@@ -150,26 +161,25 @@ export function ReassignForm({
           ))}
         </select>
         <p className="mt-1 text-xs text-slate-500">
-          Whoever is selected is recorded on the assignment; all officials in
-          the office are notified.
+          {t.assignOfficialHint}
         </p>
       </div>
 
       <div>
-        <Label htmlFor="assign-reason">Reason for assignment</Label>
+        <Label htmlFor="assign-reason">{t.assignReason}</Label>
         <Textarea
           id="assign-reason"
           name="reason"
           rows={3}
           maxLength={500}
-          placeholder="Explain why this concern belongs to this office."
+          placeholder={t.assignReasonPlaceholder}
           invalid={Boolean(reasonError)}
         />
         {reasonError && <FieldError>{reasonError}</FieldError>}
       </div>
 
       <Button type="submit" disabled={submitting}>
-        {submitting ? "Saving..." : "Save assignment"}
+        {submitting ? t.saving : t.saveAssignment}
       </Button>
     </form>
   );

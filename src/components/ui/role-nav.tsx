@@ -19,7 +19,7 @@ export function RoleNav({ items }: { items: RoleNavItem[] }) {
   return (
     <nav
       aria-label="Section"
-      className="mb-6 flex flex-wrap gap-1 border-b border-slate-200 pb-3"
+      className="no-print mb-6 flex flex-wrap gap-1 border-b border-slate-200 pb-3"
     >
       {items.map((item) => {
         const active = item.href === activeHref;

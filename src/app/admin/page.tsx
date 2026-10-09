@@ -10,6 +10,8 @@ import { getAdminDashboard } from "@/lib/dashboards/admin";
 import { statusLabel } from "@/lib/cases/workflow";
 import { MaintenanceActions } from "@/components/admin/maintenance-actions";
 import { AlertComposer } from "@/components/admin/alert-composer";
+import { copy } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
   title: "Administrator",
@@ -38,6 +40,8 @@ function formatHours(value: number | null): string {
 
 export default async function AdminPage() {
   const user = await requireRole(["ADMIN"]);
+  const locale = await getLocale();
+  const t = copy[locale].admin;
   const dashboard = await getAdminDashboard();
   const { totals, byStatus, byPriority, byCategory, byOffice, processingTime } =
     dashboard;
@@ -47,71 +51,71 @@ export default async function AdminPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            Welcome, {user.firstName}
+            {t.welcome.replace("{name}", user.firstName)}
           </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Live system overview. Every figure is calculated from the database.
-          </p>
+          <p className="mt-1 text-sm text-slate-600">{t.overview}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button href="/admin/users" variant="outline" size="sm">
             <Users size={14} aria-hidden="true" />
-            Users
+            {t.navUsers}
           </Button>
           <Button href="/admin/officials" variant="outline" size="sm">
             <UserRound size={14} aria-hidden="true" />
-            Officials
+            {t.navOfficials}
           </Button>
           <Button href="/admin/offices" variant="outline" size="sm">
             <Building2 size={14} aria-hidden="true" />
-            Offices
+            {t.navOffices}
           </Button>
           <Button href="/admin/categories" variant="outline" size="sm">
             <Tags size={14} aria-hidden="true" />
-            Categories
+            {t.navCategories}
           </Button>
           <Button href="/admin/priority" variant="outline" size="sm">
             <SlidersHorizontal size={14} aria-hidden="true" />
-            Priority rules
+            {t.navPriority}
           </Button>
           <Button href="/admin/routing" variant="outline" size="sm">
             <GitBranch size={14} aria-hidden="true" />
-            Routing rules
+            {t.navRouting}
           </Button>
           <Button href="/admin/settings" variant="outline" size="sm">
             <Settings2 size={14} aria-hidden="true" />
-            Settings
+            {t.navSettings}
           </Button>
-          <Button href="/api/v1/admin/reports/concerns" variant="secondary" size="sm">
+          <Button href="/admin/reports" variant="secondary" size="sm">
             <Download size={14} aria-hidden="true" />
-            Export cases CSV
+            {t.navReports}
           </Button>
-          <MaintenanceActions />
+          <MaintenanceActions locale={locale} />
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total cases" value={totals.total} />
-        <StatCard label="Resolved / closed" value={totals.resolved} />
-        <StatCard label="Unresolved" value={totals.unresolved} />
+        <StatCard label={t.totalCases} value={totals.total} />
+        <StatCard label={t.resolvedClosed} value={totals.resolved} />
+        <StatCard label={t.unresolved} value={totals.unresolved} />
         <StatCard
-          label="Average processing time"
+          label={t.avgProcessing}
           value={formatHours(processingTime.averageHours)}
-          hint={`${processingTime.sampleSize} resolved case${
-            processingTime.sampleSize === 1 ? "" : "s"
-          } measured`}
+          hint={
+            processingTime.sampleSize === 1
+              ? t.measuredOne
+              : t.measuredMany.replace(
+                  "{count}",
+                  String(processingTime.sampleSize)
+                )
+          }
         />
       </div>
 
-      <AlertComposer />
+      <AlertComposer locale={locale} />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card
-          title="Cases by status"
-          description="Distribution across the case lifecycle."
-        >
+        <Card title={t.byStatusChart} description={t.byStatusChartDesc}>
           <DonutChart
-            centerLabel="Cases"
+            centerLabel={t.casesLabel}
             segments={byStatus.map((entry) => ({
               label: statusLabel(entry.status),
               value: entry.count,
@@ -120,10 +124,7 @@ export default async function AdminPage() {
           />
         </Card>
 
-        <Card
-          title="Cases by priority"
-          description="Priority level assigned by the assessment engine or an official."
-        >
+        <Card title={t.byPriorityChart} description={t.byPriorityChartDesc}>
           <BarChart
             items={byPriority.map((entry) => ({
               label: statusLabel(entry.level),
@@ -133,56 +134,50 @@ export default async function AdminPage() {
           />
         </Card>
 
-        <Card title="Cases by category" description="Submission volume per category.">
+        <Card title={t.byCategoryChart} description={t.byCategoryChartDesc}>
           <BarChart
             items={byCategory.map((entry) => ({
               label: entry.name,
               value: entry.count,
               tone: "brand",
             }))}
-            emptyLabel="No cases have been submitted yet."
+            emptyLabel={t.noSubmitted}
           />
         </Card>
 
-        <Card
-          title="Cases by office"
-          description="Where cases are currently assigned."
-        >
+        <Card title={t.byOfficeChart} description={t.byOfficeChartDesc}>
           <BarChart
             items={byOffice.map((entry) => ({
               label: entry.name,
               value: entry.count,
               tone: "violet",
             }))}
-            emptyLabel="No cases have been assigned yet."
+            emptyLabel={t.noAssigned}
           />
         </Card>
       </div>
 
-      <Card
-        title="Processing time"
-        description="Measured only for cases with reliable timestamps (both a submission time and a recorded resolution time)."
-      >
+      <Card title={t.processingTitle} description={t.processingDesc}>
         {processingTime.sampleSize === 0 ? (
           <p className="py-6 text-center text-sm text-slate-600">
-            No resolved cases with reliable timestamps yet.
+            {t.noTimestamps}
           </p>
         ) : (
           <dl className="grid gap-4 sm:grid-cols-3">
             <div>
-              <dt className="text-sm text-slate-500">Average</dt>
+              <dt className="text-sm text-slate-500">{t.average}</dt>
               <dd className="mt-1 text-2xl font-bold text-slate-900">
                 {formatHours(processingTime.averageHours)}
               </dd>
             </div>
             <div>
-              <dt className="text-sm text-slate-500">Fastest</dt>
+              <dt className="text-sm text-slate-500">{t.fastest}</dt>
               <dd className="mt-1 text-2xl font-bold text-slate-900">
                 {formatHours(processingTime.fastestHours)}
               </dd>
             </div>
             <div>
-              <dt className="text-sm text-slate-500">Slowest</dt>
+              <dt className="text-sm text-slate-500">{t.slowest}</dt>
               <dd className="mt-1 text-2xl font-bold text-slate-900">
                 {formatHours(processingTime.slowestHours)}
               </dd>

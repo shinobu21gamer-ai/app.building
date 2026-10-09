@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
+import { copy, type Locale } from "@/lib/i18n";
 
 export type NotificationItem = {
   id: number;
@@ -36,11 +37,14 @@ export function NotificationInbox({
   notifications,
   unreadCount,
   role,
+  locale = "en",
 }: {
   notifications: NotificationItem[];
   unreadCount: number;
   role: string;
+  locale?: Locale;
 }) {
+  const t = copy[locale].notifications;
   const router = useRouter();
   const [items, setItems] = useState(notifications);
   const [remainingUnread, setRemainingUnread] = useState(unreadCount);
@@ -136,7 +140,7 @@ export function NotificationInbox({
             variant={filter === "all" ? "secondary" : "ghost"}
             onClick={() => setFilter("all")}
           >
-            All ({items.length})
+            {t.all} ({items.length})
           </Button>
           <Button
             type="button"
@@ -144,7 +148,7 @@ export function NotificationInbox({
             variant={filter === "unread" ? "secondary" : "ghost"}
             onClick={() => setFilter("unread")}
           >
-            Unread ({remainingUnread})
+            {t.unread} ({remainingUnread})
           </Button>
         </div>
         <Button
@@ -154,15 +158,13 @@ export function NotificationInbox({
           onClick={markAllRead}
           disabled={busy || remainingUnread === 0}
         >
-          Mark all as read
+          {t.markAll}
         </Button>
       </div>
 
       {visible.length === 0 ? (
         <p className="rounded-xl border border-slate-200 bg-white py-12 text-center text-sm text-slate-600">
-          {filter === "unread"
-            ? "You have no unread notifications."
-            : "No notifications yet. Updates about your concerns will appear here."}
+          {filter === "unread" ? t.emptyUnread : t.empty}
         </p>
       ) : (
         <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
@@ -187,7 +189,7 @@ export function NotificationInbox({
                       <p className="text-sm font-semibold text-slate-900">
                         {item.title}
                       </p>
-                      {unread && <Badge tone="blue">New</Badge>}
+                      {unread && <Badge tone="blue">{t.new}</Badge>}
                     </div>
                     <p className="mt-1 text-sm text-slate-600">{item.message}</p>
 
@@ -211,7 +213,7 @@ export function NotificationInbox({
                           disabled={busy}
                           className="rounded-md px-2 py-1 text-xs font-semibold text-slate-600 transition-[background-color,color] duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:opacity-50"
                         >
-                          Mark as read
+                          {t.markRead}
                         </button>
                       </div>
                     )}

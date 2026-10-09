@@ -3,6 +3,8 @@ import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { PriorityConfigForm } from "@/components/admin/priority-config-form";
 import { loadPriorityConfig } from "@/lib/priority/config";
+import { copy } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
   title: "Priority Rules",
@@ -10,25 +12,20 @@ export const metadata: Metadata = {
 
 export default async function AdminPriorityPage() {
   await requireRole(["ADMIN"]);
+  const locale = await getLocale();
+  const t = copy[locale].admin;
   const { factors, thresholds } = await loadPriorityConfig();
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          Priority Rule Configuration
-        </h1>
-        <p className="mt-1 max-w-2xl text-sm text-slate-600">
-          BarangayResolve uses a transparent rule-based engine: each concern
-          factor is rated, multiplied by its configured weight, summed into a
-          total score, and mapped to a priority level by the thresholds below.
-          Changes affect new submissions; existing assessments keep the values
-          they were computed with.
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">{t.priorityTitle}</h1>
+        <p className="mt-1 max-w-2xl text-sm text-slate-600">{t.priorityLead}</p>
       </div>
 
       <Card>
         <PriorityConfigForm
+          locale={locale}
           initialThresholds={thresholds.map((t) => ({
             level: t.level,
             minScore: t.minScore,

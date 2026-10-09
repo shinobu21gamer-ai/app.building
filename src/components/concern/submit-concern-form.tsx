@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Send,
@@ -25,6 +25,8 @@ import { useToast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api-client";
 import { createConcernSchema } from "@/lib/validations/concern";
 import { cn } from "@/lib/utils";
+import { copy, type Locale } from "@/lib/i18n";
+import { openStreetMapUrl } from "@/lib/maps";
 
 type CategoryOption = { id: number; name: string };
 
@@ -52,20 +54,6 @@ type FieldErrors = Partial<Record<FieldKey, string>>;
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const BARANGAY_AREAS = [
-  "Purok 1",
-  "Purok 2",
-  "Purok 3",
-  "Purok 4",
-  "Purok 5",
-  "Purok 6",
-  "Purok 7",
-  "Barangay Hall",
-  "Public Market",
-  "Health Center",
-  "School Zone",
-  "Other area",
-];
 
 const FACTOR_FIELD: Record<string, FieldKey> = {
   URGENCY: "urgencyScore",
@@ -73,6 +61,22 @@ const FACTOR_FIELD: Record<string, FieldKey> = {
   AFFECTED_POPULATION: "affectedPopulationScore",
   SAFETY: "safetyScore",
 };
+
+function factorOptionLabel(
+  labels: Record<string, string[]>,
+  factorKey: string,
+  value: number,
+  minScore: number,
+  maxScore: number
+): string {
+  const options = labels[factorKey];
+  if (options && maxScore - minScore + 1 === options.length) {
+    return `${value} — ${options[value - minScore]}`;
+  }
+  if (value === minScore) return `${value} — lowest`;
+  if (value === maxScore) return `${value} — highest`;
+  return String(value);
+}
 
 const selectBaseStyles =
   "h-10 w-full rounded-lg border bg-white px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
@@ -89,10 +93,15 @@ function selectStyles(invalid: boolean) {
 export function SubmitConcernForm({
   categories,
   factors,
+  areas,
+  locale = "en",
 }: {
   categories: CategoryOption[];
   factors: FactorOption[];
+  areas: string[];
+  locale?: Locale;
 }) {
+  const t = copy[locale].submit;
   const router = useRouter();
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -100,7 +109,23 @@ export function SubmitConcernForm({
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({});
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    null
+  );
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(selectedFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedFile]);
 
   function handleBlur(field: FieldKey) {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -134,6 +159,29 @@ export function SubmitConcernForm({
 
     setFieldErrors((prev) => ({ ...prev, image: undefined }));
     setSelectedFile(file);
+  }
+
+  function pinLocation() {
+    if (!navigator.geolocation) {
+      setGeoError(t.geoUnsupported);
+      return;
+    }
+    setGeoLoading(true);
+    setGeoError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoords({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setGeoLoading(false);
+      },
+      (error) => {
+        setGeoError(error.code === 1 ? t.geoDenied : t.geoFailed);
+        setGeoLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60_000 }
+    );
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -170,13 +218,13 @@ export function SubmitConcernForm({
       }
     }
     if (!values.locationArea) {
-      nextErrors.locationArea = "Select the barangay area.";
+      nextErrors.locationArea = t.areaRequired;
     }
     const combinedLocation = values.locationArea
       ? `${values.locationArea} - ${values.locationAddress.trim()}`
       : values.locationAddress.trim();
     if (combinedLocation.length > 255) {
-      nextErrors.locationAddress = "Exact location is too long.";
+      nextErrors.locationAddress = t.tooLong;
     }
     if (fieldErrors.image) nextErrors.image = fieldErrors.image;
     if (!selectedFile) nextErrors.image = "A proof image is required.";
@@ -189,7 +237,7 @@ export function SubmitConcernForm({
         allTouched[key as FieldKey] = true;
       }
       setTouched((prev) => ({ ...prev, ...allTouched }));
-      showToast("error", "Please fix the errors in the form before submitting.");
+      showToast("error", t.fix);
       return;
     }
 
@@ -202,6 +250,10 @@ export function SubmitConcernForm({
     payload.set("impactScore", values.impactScore);
     payload.set("affectedPopulationScore", values.affectedPopulationScore);
     payload.set("safetyScore", values.safetyScore);
+    if (coords) {
+      payload.set("locationLat", String(coords.lat));
+      payload.set("locationLng", String(coords.lng));
+    }
     if (selectedFile) payload.set("image", selectedFile);
 
     setSubmitting(true);
@@ -229,11 +281,11 @@ export function SubmitConcernForm({
         if (Object.keys(serverErrors).length > 0) setFieldErrors(serverErrors);
       }
       setFormError(result.error.message);
-      showToast("error", result.error.message || "Failed to submit concern.");
+      showToast("error", result.error.message || t.fail);
       return;
     }
 
-    showToast("success", "Concern submitted successfully! Redirecting...");
+    showToast("success", t.success);
     router.push(`${result.data.redirect}?created=1`);
     router.refresh();
   }
@@ -246,14 +298,14 @@ export function SubmitConcernForm({
         <Label htmlFor="title">
           <span className="inline-flex items-center gap-1.5">
             <FileText size={14} className="text-slate-500" />
-            Concern title
+            {t.concernTitle}
           </span>
         </Label>
         <div className="relative">
           <Input
             id="title"
             name="title"
-            placeholder="e.g. Broken street light on Mabini Street"
+            placeholder={t.titlePlaceholder}
             maxLength={150}
             invalid={Boolean(fieldErrors.title)}
             onBlur={() => handleBlur("title")}
@@ -281,7 +333,7 @@ export function SubmitConcernForm({
         <Label htmlFor="categoryId">
           <span className="inline-flex items-center gap-1.5">
             <Tag size={14} className="text-slate-500" />
-            Category
+            {t.category}
           </span>
         </Label>
         <select
@@ -292,7 +344,7 @@ export function SubmitConcernForm({
           onBlur={() => handleBlur("categoryId")}
         >
           <option value="" disabled>
-            Select a category
+            {t.categoryPlaceholder}
           </option>
           {categories.map((category) => (
             <option key={category.id} value={category.id}>
@@ -309,14 +361,14 @@ export function SubmitConcernForm({
         <Label htmlFor="description">
           <span className="inline-flex items-center gap-1.5">
             <FileText size={14} className="text-slate-500" />
-            Description
+            {t.description}
           </span>
         </Label>
         <Textarea
           id="description"
           name="description"
           rows={5}
-          placeholder="Describe the problem, how long it has been occurring, and who it affects."
+          placeholder={t.descriptionPlaceholder}
           maxLength={2000}
           invalid={Boolean(fieldErrors.description)}
           onBlur={() => handleBlur("description")}
@@ -330,7 +382,7 @@ export function SubmitConcernForm({
         <Label htmlFor="locationArea">
           <span className="inline-flex items-center gap-1.5">
             <MapPin size={14} className="text-slate-500" />
-            Barangay area
+            {t.area}
           </span>
         </Label>
         <select
@@ -341,9 +393,9 @@ export function SubmitConcernForm({
           onBlur={() => handleBlur("locationArea")}
         >
           <option value="" disabled>
-            Select the barangay area
+            {t.areaPlaceholder}
           </option>
-          {BARANGAY_AREAS.map((area) => (
+          {areas.map((area) => (
             <option key={area} value={area}>
               {area}
             </option>
@@ -358,14 +410,14 @@ export function SubmitConcernForm({
         <Label htmlFor="locationAddress">
           <span className="inline-flex items-center gap-1.5">
             <MapPin size={14} className="text-slate-500" />
-            Exact location
+            {t.exact}
           </span>
         </Label>
         <div className="relative">
           <Input
             id="locationAddress"
             name="locationAddress"
-            placeholder="e.g. beside the covered court, house number 12"
+            placeholder={t.exactPlaceholder}
             maxLength={220}
             invalid={Boolean(fieldErrors.locationAddress)}
             onBlur={() => handleBlur("locationAddress")}
@@ -386,16 +438,57 @@ export function SubmitConcernForm({
         )}
       </div>
 
+      <div className="rounded-lg border border-dashed border-slate-300 p-4">
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+          <MapPin size={14} className="text-slate-500" />
+          {t.pin}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">{t.pinHelp}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={pinLocation}
+            disabled={geoLoading}
+          >
+            {geoLoading ? t.locating : t.useLocation}
+          </Button>
+          {coords ? (
+            <>
+              <a
+                href={openStreetMapUrl(coords.lat, coords.lng)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-semibold text-brand-700 hover:text-brand-800"
+              >
+                {t.openMap}
+              </a>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setCoords(null)}
+              >
+                {t.clearPin}
+              </Button>
+            </>
+          ) : null}
+        </div>
+        {coords ? (
+          <p className="mt-2 text-xs text-emerald-700">
+            {t.pinned}: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+          </p>
+        ) : null}
+        {geoError ? <FieldError>{geoError}</FieldError> : null}
+      </div>
+
       <fieldset className="rounded-lg border border-slate-200 p-4">
         <legend className="inline-flex items-center gap-1.5 px-1 text-sm font-semibold text-slate-700">
           <AlertTriangle size={14} className="text-slate-500" />
-          Priority assessment
+          {t.priority}
         </legend>
-        <p className="mb-3 text-xs text-slate-500">
-          Rate each factor from {factors[0]?.minScore ?? 1} to{" "}
-          {factors[0]?.maxScore ?? 5}. The system computes a recommended
-          priority level from your answers.
-        </p>
+        <p className="mb-3 text-xs text-slate-500">{t.priorityHelp}</p>
         <div className="space-y-4">
           {factors.map((factor) => {
             const fieldKey = FACTOR_FIELD[factor.key];
@@ -423,7 +516,13 @@ export function SubmitConcernForm({
                   </option>
                   {options.map((value) => (
                     <option key={value} value={value}>
-                      {value}
+                      {factorOptionLabel(
+                        t.factors,
+                        factor.key,
+                        value,
+                        factor.minScore,
+                        factor.maxScore
+                      )}
                     </option>
                   ))}
                 </select>
@@ -440,7 +539,7 @@ export function SubmitConcernForm({
         <Label htmlFor="image">
           <span className="inline-flex items-center gap-1.5">
             <ImageIcon size={14} className="text-slate-500" />
-            Proof image
+            {t.image}
           </span>
         </Label>
         <input
@@ -460,14 +559,23 @@ export function SubmitConcernForm({
           )}
         />
         <p className="mt-1 text-xs text-slate-500">
-          Required proof image. JPEG, PNG, or WebP. Maximum 5 MB.
+          {t.imageHelp}
         </p>
         {selectedFile && (
-          <p className="mt-1 inline-flex items-center gap-1 text-xs text-emerald-600">
-            <CheckCircle2 size={12} />
-            Selected: {selectedFile.name} (
-            {Math.ceil(selectedFile.size / 1024)} KB)
-          </p>
+          <div className="mt-2 flex items-start gap-3">
+            {previewUrl ? (
+              <img
+                src={previewUrl}
+                alt="Selected proof"
+                className="h-20 w-20 rounded-lg border border-slate-200 object-cover"
+              />
+            ) : null}
+            <p className="inline-flex items-center gap-1 text-xs text-emerald-600">
+              <CheckCircle2 size={12} />
+              {t.selected}: {selectedFile.name} (
+              {Math.ceil(selectedFile.size / 1024)} KB)
+            </p>
+          </div>
         )}
         {fieldErrors.image && touched.image && (
           <FieldError>{fieldErrors.image}</FieldError>
@@ -479,18 +587,18 @@ export function SubmitConcernForm({
           {submitting ? (
             <>
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              Submitting...
+              {t.sending}
             </>
           ) : (
             <>
               <Send size={16} />
-              Submit concern
+              {t.send}
             </>
           )}
         </Button>
         <Button href="/resident/concerns" variant="outline">
           <ArrowLeft size={16} />
-          Cancel
+          {t.cancel}
         </Button>
       </div>
     </form>

@@ -9,6 +9,8 @@ import {
   parseNameFilters,
 } from "@/lib/admin/query";
 import { firstParam } from "@/lib/utils";
+import { copy } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
   title: "Concern categories",
@@ -22,6 +24,8 @@ export default async function AdminCategoriesPage({
   searchParams: Promise<SearchParams>;
 }) {
   await requireRole(["ADMIN"]);
+  const locale = await getLocale();
+  const t = copy[locale].admin;
   const params = await searchParams;
   const filters = parseNameFilters(params);
   const categories = await listAdminCategories(filters);
@@ -29,27 +33,22 @@ export default async function AdminCategoriesPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          Concern categories
-        </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Categories classify resident concerns and drive automatic routing. A
-          category that is referenced by any record can be disabled but not
-          deleted.
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">{t.categoriesTitle}</h1>
+        <p className="mt-1 text-sm text-slate-600">{t.categoriesLead}</p>
       </div>
 
       <AdminFilterBar
+        locale={locale}
         initialQ={firstParam(params, "q")}
-        qPlaceholder="Search by category name or code"
+        qPlaceholder={t.categoriesSearch}
         fields={[
           {
             name: "status",
-            label: "Status",
+            label: t.filterStatus,
             options: [
-              { value: "", label: "All" },
-              { value: "active", label: "Active" },
-              { value: "disabled", label: "Disabled" },
+              { value: "", label: t.filterAll },
+              { value: "active", label: t.filterActive },
+              { value: "disabled", label: t.filterDisabled },
             ],
           },
         ]}
@@ -57,7 +56,10 @@ export default async function AdminCategoriesPage({
       />
 
       <Card>
-        <CategoryManager categories={categories.map(adminCategoryView)} />
+        <CategoryManager
+          categories={categories.map(adminCategoryView)}
+          locale={locale}
+        />
       </Card>
     </div>
   );
