@@ -33,6 +33,8 @@ export default async function CasePrintPage({
 
   if (!concern) notFound();
 
+  const coordinates = { lat: concern.locationLat, lng: concern.locationLng };
+
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <div className="no-print flex flex-wrap items-center justify-between gap-2">
@@ -100,8 +102,8 @@ export default async function CasePrintPage({
             </dt>
             <dd className="mt-0.5 text-slate-900">
               {concern.locationAddress}
-              {hasCoordinates(concern.locationLat, concern.locationLng)
-                ? ` (${concern.locationLat.toFixed(5)}, ${concern.locationLng.toFixed(5)})`
+              {hasCoordinates(coordinates)
+                ? ` (${coordinates.lat.toFixed(5)}, ${coordinates.lng.toFixed(5)})`
                 : ""}
             </dd>
           </div>

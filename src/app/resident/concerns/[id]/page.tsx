@@ -84,6 +84,7 @@ export default async function ConcernDetailPage({
 
   if (!concern) notFound();
 
+  const coordinates = { lat: concern.locationLat, lng: concern.locationLng };
   const resolution = concern.resolutions[0] ?? null;
   const currentAssignment = concern.assignments[0] ?? null;
   const latestAssessment =
@@ -196,13 +197,13 @@ export default async function ConcernDetailPage({
                 <dt className="text-slate-500">{t.location}</dt>
                 <dd className="mt-0.5 font-medium text-slate-900">
                   {concern.locationAddress}
-                  {hasCoordinates(concern.locationLat, concern.locationLng) ? (
+                  {hasCoordinates(coordinates) ? (
                     <>
                       {" · "}
                       <a
                         href={openStreetMapUrl(
-                          concern.locationLat,
-                          concern.locationLng
+                          coordinates.lat,
+                          coordinates.lng
                         )}
                         target="_blank"
                         rel="noopener noreferrer"
