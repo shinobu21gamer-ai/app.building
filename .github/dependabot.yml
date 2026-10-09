@@ -15,3 +15,9 @@ updates:
           - "typescript"
           - "astro"
           - "@astrojs/*"
+          # Prisma 7 removes `datasource url` from schema files (P1012 breaks
+          # `prisma generate`) and its client requires a driver adapter, which
+          # this app does not use yet. Stay on the pinned Prisma 6 line; a
+          # Prisma 7 upgrade is a deliberate migration, not an auto-bump.
+          - "prisma"
+          - "@prisma/client"
