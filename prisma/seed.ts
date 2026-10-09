@@ -51,7 +51,6 @@ async function main() {
       description: "Roads, drainage, streetlights, and public works.",
       headOfficer: "Councilor R. Dela Cruz",
       contact: "0917-000-0001",
-      location: "Barangay Hall, Barangay Sample, Philippines",
     },
     {
       code: "ENV",
@@ -59,7 +58,6 @@ async function main() {
       description: "Waste management, cleanliness, and sanitation.",
       headOfficer: "Councilor M. Reyes",
       contact: "0917-000-0002",
-      location: "Barangay Hall, Barangay Sample, Philippines",
     },
     {
       code: "PEACE",
@@ -67,7 +65,6 @@ async function main() {
       description: "Community safety, noise, and dispute concerns.",
       headOfficer: "Councilor A. Santos",
       contact: "0917-000-0003",
-      location: "Barangay Hall, Barangay Sample, Philippines",
     },
     {
       code: "SECRETARY",
@@ -75,7 +72,6 @@ async function main() {
       description: "Documents, certificates, and records requests.",
       headOfficer: "Sec. L. Villanueva",
       contact: "0917-000-0004",
-      location: "Barangay Hall, Barangay Sample, Philippines",
     },
     {
       code: "HEALTH",
@@ -83,7 +79,6 @@ async function main() {
       description: "Health and medical-related community concerns.",
       headOfficer: "Councilor J. Garcia",
       contact: "0917-000-0005",
-      location: "Barangay Hall, Barangay Sample, Philippines",
     },
   ];
 

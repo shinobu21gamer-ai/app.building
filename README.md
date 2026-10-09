@@ -9,7 +9,7 @@ Residents submit community concerns online; the system categorizes them, compute
 | Layer | Choice |
 |---|---|
 | Framework | Next.js 15 (App Router) + TypeScript |
-| Database | SQLite via Prisma ORM (portable to MySQL/PostgreSQL) |
+| Database | PostgreSQL via Prisma ORM |
 | Auth | Custom credentials + JWT (HttpOnly cookie) + bcrypt |
 | Validation | Zod (client + server) |
 | UI | Tailwind CSS v4 + custom design system + dependency-free SVG charts |
@@ -31,12 +31,13 @@ On this machine npm is invoked as `npm.cmd` because PowerShell blocks the `npm.p
 npm install
 
 # 2. Configure environment
-copy .env.example .env    # default SQLite DATABASE_URL already points to prisma/dev.db
+copy .env.example .env    # then edit .env: set DATABASE_URL to your PostgreSQL
+                          # database (a free Neon Postgres instance works well)
 
-# 3. Generate the Prisma client
+# 3. Generate the Prisma client (also runs automatically after npm install)
 npm run db:generate
 
-# 4. Apply migrations (creates prisma/dev.db and the full schema)
+# 4. Apply migrations (creates the full schema in your DATABASE_URL database)
 npm run db:migrate        # for an existing project use: npx prisma migrate dev
 
 # 5. Seed development/testing data
@@ -187,7 +188,7 @@ APK; from then on keep using the same keystore so updates install in place.
 
 ## Environment Variables
 
-See `.env.example`. The only required variable is `DATABASE_URL` (defaults to the SQLite file `prisma/dev.db`).
+See `.env.example`. The only required variable is `DATABASE_URL`, a PostgreSQL connection string (for example `postgresql://user:password@host:5432/barangayresolve`, or a Neon connection string).
 
 ### Web Push
 
@@ -539,8 +540,9 @@ total score, and maps that total to a priority level.
   a `PRIORITY_OVERRIDE` history entry, notifies the resident, and records an
   audit entry. Residents see the latest assessment plus the override reason on
   their case details page.
-- Because SQLite has no native enums, factor keys and levels are stored as
-  strings and validated in `src/lib/priority/engine.ts`.
+- Enum-like factor keys and levels are stored as strings and validated in
+  `src/lib/priority/engine.ts` (the schema keeps value sets application-defined
+  rather than DB-enforced).
 
 ## Automatic Routing Engine
 
@@ -890,7 +892,7 @@ src/
 - Known npm audit advisories exist in build-time tooling only (`prisma` CLI via
   `deepmerge-ts`, and Next.js's bundled `postcss`). The automatic fix would
   force breaking major upgrades (`next@16`), so they are tracked instead.
-- SQLite stores enum-like fields as `String`; allowed values are documented in
+- Enum-like fields are stored as `String`; allowed values are documented in
   the schema and will be enforced by Zod + domain services.
 - `CaseAssignment.assignedById` is nullable: `null` marks a system-generated
   assignment from the automatic routing engine, while a value identifies the

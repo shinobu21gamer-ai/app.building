@@ -13,7 +13,12 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Prisma 6.x requires `url` in the schema (Prisma 7 removes it — the URL
+  // must then live only in prisma.config.ts). package.json pins prisma to
+  // 6.19.3 and .github/dependabot.yml excludes it from auto-bumps, so a
+  // Prisma 7 upgrade cannot sneak in and break this schema; when upgrading
+  // deliberately, move this line to `datasource.url` in prisma.config.ts.
+  url = env("DATABASE_URL")
 }
 
 // ----------------------------------------------------------------
