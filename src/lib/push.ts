@@ -30,6 +30,7 @@ function emptyPlatformReport(
     registered,
     accepted: 0,
     failed: 0,
+    pruned: 0,
     skipped: registered,
     configured,
     ...(reason ? { reason } : {}),
@@ -382,6 +383,7 @@ async function deliverWebPush(payload: AlertPayload): Promise<PushPlatformReport
 
   let accepted = 0;
   let failed = 0;
+  let pruned = 0;
   await Promise.all(
     subscriptions.map(async (subscription) => {
       try {
@@ -394,12 +396,15 @@ async function deliverWebPush(payload: AlertPayload): Promise<PushPlatformReport
         );
         accepted += 1;
       } catch (error) {
-        failed += 1;
         const statusCode =
           error && typeof error === "object" && "statusCode" in error ? error.statusCode : null;
         if (statusCode === 404 || statusCode === 410) {
+          // The browser subscription no longer exists; remove it. This is expected
+          // housekeeping, not a delivery failure.
+          pruned += 1;
           await db.pushSubscription.delete({ where: { id: subscription.id } });
         } else {
+          failed += 1;
           console.error("[push] failed to deliver alert:", error);
         }
       }
@@ -410,6 +415,7 @@ async function deliverWebPush(payload: AlertPayload): Promise<PushPlatformReport
     registered: subscriptions.length,
     accepted,
     failed,
+    pruned,
     skipped: 0,
     configured: true,
   };
@@ -459,6 +465,7 @@ async function deliverNativePush(
 
   let androidAccepted = 0;
   let androidFailed = 0;
+  let androidPruned = 0;
   const firebaseAccount = account;
   if (firebaseAccount) {
     await Promise.all(
@@ -467,12 +474,13 @@ async function deliverNativePush(
           await sendFcmMessage(row.token, payload, firebaseAccount);
           androidAccepted += 1;
         } catch (error) {
-          androidFailed += 1;
           const fcmCode = (error as { fcmCode?: string | null }).fcmCode;
           if (fcmCode && INVALID_FCM_CODES.has(fcmCode)) {
+            androidPruned += 1;
             await db.nativePushToken.update({ where: { id: row.id }, data: { active: false } });
             return;
           }
+          androidFailed += 1;
           console.error("[push] failed to deliver native alert:", error);
         }
       })
@@ -481,6 +489,7 @@ async function deliverNativePush(
 
   let iosAccepted = 0;
   let iosFailed = 0;
+  let iosPruned = 0;
   if (apnsConfigured && apnsBundleId) {
     const apnsEnvironment = process.env.APNS_ENVIRONMENT === "sandbox" ? "sandbox" : "production";
     await Promise.all(
@@ -489,12 +498,13 @@ async function deliverNativePush(
           await sendApnsMessage(row.token, payload, apnsBundleId, apnsEnvironment);
           iosAccepted += 1;
         } catch (error) {
-          iosFailed += 1;
           const apnsStatus = (error as { apnsStatus?: number }).apnsStatus;
           if (apnsStatus && INVALID_APNS_CODES.has(apnsStatus)) {
+            iosPruned += 1;
             await db.nativePushToken.update({ where: { id: row.id }, data: { active: false } });
             return;
           }
+          iosFailed += 1;
           console.error("[push] failed to deliver native alert:", error);
         }
       })
@@ -506,12 +516,14 @@ async function deliverNativePush(
       ...androidReport,
       accepted: androidAccepted,
       failed: androidFailed,
+      pruned: androidPruned,
       skipped: account ? 0 : androidTokens.length,
     },
     ios: {
       ...iosReport,
       accepted: iosAccepted,
       failed: iosFailed,
+      pruned: iosPruned,
       skipped: apnsConfigured ? 0 : iosTokens.length,
     },
   };
@@ -528,6 +540,7 @@ export async function sendSystemAlertPush(input: AlertPayload): Promise<SystemAl
       registered: 0,
       accepted: 0,
       failed: 0,
+      pruned: 0,
       skipped: 0,
       configured: false,
       reason: "Push delivery could not be evaluated; check server logs.",

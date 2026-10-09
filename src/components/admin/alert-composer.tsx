@@ -102,12 +102,17 @@ export function AlertComposer() {
     const accepted = channels.reduce((total, channel) => total + channel.accepted, 0);
     const failed = channels.reduce((total, channel) => total + channel.failed, 0);
     const skipped = channels.reduce((total, channel) => total + channel.skipped, 0);
+    const pruned = channels.reduce((total, channel) => total + channel.pruned, 0);
+    const prunedNote =
+      pruned > 0
+        ? ` ${pruned} stale device registration${pruned === 1 ? " was" : "s were"} removed.`
+        : "";
     const statusUnknown = channels.some((channel) =>
       channel.reason === "Push delivery could not be evaluated; check server logs."
     );
     setFeedback(
       accepted > 0
-        ? `Alert saved. Push providers accepted ${accepted} of ${registered} registered delivery request${registered === 1 ? "" : "s"}. Acceptance does not guarantee that a phone received it.`
+        ? `Alert saved. Push providers accepted ${accepted} of ${registered} registered delivery request${registered === 1 ? "" : "s"}. Acceptance does not guarantee that a phone received it.${prunedNote}`
         : "Alert saved. No push provider accepted a delivery request."
     );
     if (statusUnknown) {
@@ -115,7 +120,7 @@ export function AlertComposer() {
     } else if (registered === 0) {
       setDeliveryWarning("No active phone or browser push registrations were found. Users can still see this alert when they open the app.");
     } else if (failed > 0 || skipped > 0) {
-      setDeliveryWarning(`${failed} push request${failed === 1 ? "" : "s"} failed and ${skipped} were skipped. Check Firebase/APNs/VAPID configuration and server logs.`);
+      setDeliveryWarning(`${failed} push request${failed === 1 ? "" : "s"} failed and ${skipped} were skipped. Check server logs for the provider error details, and Firebase/APNs/VAPID configuration if the failures repeat.`);
     }
   }
 

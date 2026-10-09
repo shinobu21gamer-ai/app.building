@@ -10,9 +10,9 @@ import type { SystemAlertPushReport } from "@/lib/push-types";
 export const runtime = "nodejs";
 
 const PUSH_DELIVERY_UNAVAILABLE: SystemAlertPushReport = {
-  web: { registered: 0, accepted: 0, failed: 0, skipped: 0, configured: false },
-  android: { registered: 0, accepted: 0, failed: 0, skipped: 0, configured: false },
-  ios: { registered: 0, accepted: 0, failed: 0, skipped: 0, configured: false },
+  web: { registered: 0, accepted: 0, failed: 0, pruned: 0, skipped: 0, configured: false },
+  android: { registered: 0, accepted: 0, failed: 0, pruned: 0, skipped: 0, configured: false },
+  ios: { registered: 0, accepted: 0, failed: 0, pruned: 0, skipped: 0, configured: false },
 };
 
 export const GET = withErrorBoundary(async (req: Request) => {
