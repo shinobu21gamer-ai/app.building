@@ -102,6 +102,36 @@ export function requestNativePushToken(): boolean {
   }
 }
 
+/**
+ * Which generation of the native shell this APK is. The diagnostics card uses
+ * this to tell an old APK apart from a reading that simply has not arrived yet:
+ * an APK built before the bridge existed reports every native value as
+ * "unknown", which reads like a mystery instead of the actionable answer
+ * ("reinstall the latest APK") it actually is.
+ */
+export type AlertBridgeState = "missing" | "legacy" | "current";
+
+export function readAlertBridgeState(): AlertBridgeState {
+  const bridge = getAlertBridge();
+  if (!bridge) return "missing";
+  if (typeof bridge.pushDiagnostics !== "function") return "legacy";
+  return "current";
+}
+
+/**
+ * Plain-language explanation for the diagnostics card, or null when the APK is
+ * current and the rows below can be trusted.
+ */
+export function staleBridgeExplanation(state: AlertBridgeState): string | null {
+  if (state === "missing") {
+    return "This APK is older than the current app: it cannot report its push state at all, so every native value below is unreadable. Reinstall the latest APK (built with google-services.json in place), then reopen this screen.";
+  }
+  if (state === "legacy") {
+    return "This APK predates the app's push diagnostics. Reinstall the latest APK to see the push state.";
+  }
+  return null;
+}
+
 export type NativeExitReport = {
   reason: string;
   label: string;

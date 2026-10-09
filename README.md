@@ -169,6 +169,7 @@ get the full text; it reports three independent things:
 
 | Report | Meaning | Fix |
 | --- | --- | --- |
+| `google-services.json packaged: unknown` / native rows show `old APK` | The APK on the phone was built before the app could report its push state, so nothing native can be read from it | Reinstall the latest APK — build it with `android/app/google-services.json` in place (`npm run android:apk -- --push-config …`) |
 | `google-services.json packaged: no` | The APK has no Firebase project | Rebuild with `android/app/google-services.json` in place (the build script now refuses to skip this) |
 | `Firebase started: no` | The file's package name does not match `com.barangayresolve.app` | Re-download it from the Firebase console for that package |
 | `Last push error: …SERVICE_NOT_AVAILABLE…` | The phone could not reach Firebase (no connection, no/outdated Google Play services, or a Google-account restriction) | Fix the phone's network/Play services, then press *Refresh* |
