@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
 import { RESOLUTION_TYPES } from "@/lib/cases/workflow";
+import { copy, type Locale } from "@/lib/i18n";
 
 const selectStyles =
   "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
@@ -24,7 +25,14 @@ function todayValue(): string {
   }).format(new Date());
 }
 
-export function ResolutionForm({ concernId }: { concernId: number }) {
+export function ResolutionForm({
+  concernId,
+  locale = "en",
+}: {
+  concernId: number;
+  locale?: Locale;
+}) {
+  const t = copy[locale].desk;
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -42,13 +50,11 @@ export function ResolutionForm({ concernId }: { concernId: number }) {
     const resolvedOn = String(data.get("resolvedOn") ?? "").trim();
 
     if (summary.length < 10 || actionsTaken.length < 10) {
-      setFormError(
-        "Provide a resolution summary and the actions taken (at least 10 characters each)."
-      );
+      setFormError(t.summaryActionsRequired);
       return;
     }
     if (remarks.length < 5) {
-      setFormError("Remarks are required (at least 5 characters).");
+      setFormError(t.remarksRequired);
       return;
     }
 
@@ -89,7 +95,9 @@ export function ResolutionForm({ concernId }: { concernId: number }) {
     }
 
     setSuccess(
-      `Case ${result.data.caseNumber} marked ${result.data.status}. The resident will be notified.`
+      t.resolvedNotify
+        .replace("{caseNumber}", result.data.caseNumber)
+        .replace("{status}", result.data.status)
     );
     router.refresh();
   }
@@ -100,30 +108,30 @@ export function ResolutionForm({ concernId }: { concernId: number }) {
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
 
       <div>
-        <Label htmlFor="resolution-summary">Resolution description</Label>
+        <Label htmlFor="resolution-summary">{t.resolutionDescription}</Label>
         <Textarea
           id="resolution-summary"
           name="summary"
           rows={2}
           maxLength={2000}
-          placeholder="Briefly describe the outcome of the concern."
+          placeholder={t.resolutionDescPlaceholder}
         />
       </div>
 
       <div>
-        <Label htmlFor="resolution-actions">Action taken</Label>
+        <Label htmlFor="resolution-actions">{t.actionTaken}</Label>
         <Textarea
           id="resolution-actions"
           name="actionsTaken"
           rows={3}
           maxLength={2000}
-          placeholder="What was actually done to address the concern?"
+          placeholder={t.actionsPlaceholder}
         />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="resolution-type">Resolution type</Label>
+          <Label htmlFor="resolution-type">{t.resolutionType}</Label>
           <select
             id="resolution-type"
             name="resolutionType"
@@ -132,54 +140,47 @@ export function ResolutionForm({ concernId }: { concernId: number }) {
           >
             {RESOLUTION_TYPES.map((type) => (
               <option key={type} value={type}>
-                {type.replaceAll("_", " ")}
+                {t.types[type]}
               </option>
             ))}
           </select>
         </div>
         <div>
-          <Label htmlFor="resolution-on">Resolution date</Label>
+          <Label htmlFor="resolution-on">{t.resolutionDate}</Label>
           <Input
             id="resolution-on"
             name="resolvedOn"
             type="date"
             max={todayValue()}
           />
-          <p className="mt-1 text-xs text-slate-500">
-            Leave blank to use today. Cannot be in the future.
-          </p>
+          <p className="mt-1 text-xs text-slate-500">{t.dateHint}</p>
         </div>
       </div>
 
       <div>
-        <Label htmlFor="resolution-attachment">
-          Supporting attachment (optional)
-        </Label>
+        <Label htmlFor="resolution-attachment">{t.attachment}</Label>
         <Input
           id="resolution-attachment"
           name="attachment"
           type="file"
           accept="image/jpeg,image/png,image/webp"
         />
-        <p className="mt-1 text-xs text-slate-500">
-          JPEG, PNG, or WebP, up to 5 MB. Visible to the resident and your
-          office.
-        </p>
+        <p className="mt-1 text-xs text-slate-500">{t.attachmentHint}</p>
       </div>
 
       <div>
-        <Label htmlFor="resolution-remarks">Remarks</Label>
+        <Label htmlFor="resolution-remarks">{t.remarks}</Label>
         <Textarea
           id="resolution-remarks"
           name="remarks"
           rows={2}
           maxLength={1000}
-          placeholder="Notes recorded in the case journal."
+          placeholder={t.remarksJournalPlaceholder}
         />
       </div>
 
       <Button type="submit" disabled={submitting}>
-        {submitting ? "Saving..." : "Mark case resolved"}
+        {submitting ? t.saving : t.markResolved}
       </Button>
     </form>
   );

@@ -8,6 +8,8 @@ import { PasswordForm } from "@/components/auth/password-form";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { NativeServerUrlCard } from "@/components/settings/native-server-url-card";
 import { requireUser } from "@/lib/auth/session";
+import { copy } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
   title: "My profile",
@@ -15,6 +17,8 @@ export const metadata: Metadata = {
 
 export default async function ProfilePage() {
   const user = await requireUser();
+  const locale = await getLocale();
+  const t = copy[locale].profile;
 
   return (
     <Container className="py-10">
@@ -23,10 +27,8 @@ export default async function ProfilePage() {
           <Badge tone="blue" className="mb-2">
             {user.role.name}
           </Badge>
-          <h1 className="text-2xl font-bold text-slate-900">My profile</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Review and update your personal information.
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900">{t.title}</h1>
+          <p className="mt-1 text-sm text-slate-600">{t.lead}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -40,15 +42,16 @@ export default async function ProfilePage() {
             variant="outline"
             size="sm"
           >
-            Back to dashboard
+            {t.back}
           </Button>
           <LogoutButton size="sm" />
         </div>
       </div>
 
       <div className="mt-8 grid items-start gap-4 lg:grid-cols-2">
-        <Card title="Profile details">
+        <Card title={t.details}>
           <ProfileForm
+            locale={locale}
             user={{
               id: user.id,
               email: user.email,
@@ -59,8 +62,8 @@ export default async function ProfilePage() {
             }}
           />
         </Card>
-        <Card title="Change password">
-          <PasswordForm />
+        <Card title={t.password}>
+          <PasswordForm locale={locale} />
         </Card>
       </div>
 

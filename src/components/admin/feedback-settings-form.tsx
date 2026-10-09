@@ -5,12 +5,16 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
+import { copy, type Locale } from "@/lib/i18n";
 
 export function FeedbackSettingsForm({
   feedbackResubmissionAllowed,
+  locale = "en",
 }: {
   feedbackResubmissionAllowed: boolean;
+  locale?: Locale;
 }) {
+  const t = copy[locale].admin.mgr;
   const router = useRouter();
   const [enabled, setEnabled] = useState(feedbackResubmissionAllowed);
   const [submitting, setSubmitting] = useState(false);
@@ -40,9 +44,7 @@ export function FeedbackSettingsForm({
     }
     setMessage({
       tone: "success",
-      text: enabled
-        ? "Residents may now revise their feedback after submitting it."
-        : "Each resident may now submit feedback only once per case.",
+      text: enabled ? t.feedbackOn : t.feedbackOff,
     });
     router.refresh();
   }
@@ -56,18 +58,12 @@ export function FeedbackSettingsForm({
           onChange={(event) => setEnabled(event.target.checked)}
           className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
         />
-        <span className="text-sm text-slate-700">
-          Allow residents to revise or re-submit feedback after they have
-          already rated a case.
-        </span>
+        <span className="text-sm text-slate-700">{t.feedbackAllow}</span>
       </label>
-      <p className="text-xs text-slate-500">
-        When disabled (default), only one feedback submission per case is
-        accepted and duplicates are rejected.
-      </p>
+      <p className="text-xs text-slate-500">{t.feedbackHint}</p>
       {message && <FormMessage tone={message.tone}>{message.text}</FormMessage>}
       <Button type="button" size="sm" disabled={submitting} onClick={save}>
-        {submitting ? "Saving..." : "Save setting"}
+        {submitting ? t.saving : t.saveSetting}
       </Button>
     </div>
   );

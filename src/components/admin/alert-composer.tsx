@@ -7,6 +7,7 @@ import { FormMessage, Input, Label, Textarea } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
 import { createAlertSchema } from "@/lib/validations/alert";
 import type { SystemAlertPushReport } from "@/lib/push-types";
+import { copy, type Locale } from "@/lib/i18n";
 
 type Severity = "INFO" | "WARNING" | "CRITICAL";
 type CreateAlertResponse = {
@@ -44,7 +45,8 @@ function zodFieldErrors(details: unknown): Record<string, string> {
   return out;
 }
 
-export function AlertComposer() {
+export function AlertComposer({ locale = "en" }: { locale?: Locale }) {
+  const t = copy[locale].admin;
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [severity, setSeverity] = useState<Severity>("INFO");
@@ -72,7 +74,7 @@ export function AlertComposer() {
     if (!parsed.success) {
       const errors = zodFieldErrors(parsed.error.flatten().fieldErrors);
       setFieldErrors(errors);
-      setError("Please fix the highlighted fields before publishing.");
+      setError(t.alertFix);
       setBusy(false);
       return;
     }
@@ -112,8 +114,10 @@ export function AlertComposer() {
     );
     setFeedback(
       accepted > 0
-        ? `Alert saved. Push providers accepted ${accepted} of ${registered} registered delivery request${registered === 1 ? "" : "s"}. Acceptance does not guarantee that a phone received it.${prunedNote}`
-        : "Alert saved. No push provider accepted a delivery request."
+        ? `${t.alertSavedPush
+            .replace("{accepted}", String(accepted))
+            .replace("{registered}", String(registered))}${prunedNote}`
+        : t.alertSavedNone
     );
     if (statusUnknown) {
       setDeliveryWarning("Push delivery status could not be evaluated. Check the server logs; the alert itself was saved.");
@@ -133,8 +137,8 @@ export function AlertComposer() {
   return (
     <form onSubmit={submit} className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/50 p-4" noValidate>
       <div>
-        <h2 className="font-semibold text-slate-900">Broadcast alert</h2>
-        <p className="mt-1 text-xs text-slate-600">Users must acknowledge the alert before it closes.</p>
+        <h2 className="font-semibold text-slate-900">{t.alertTitle}</h2>
+        <p className="mt-1 text-xs text-slate-600">{t.alertLead}</p>
       </div>
 
       {feedback && <FormMessage tone={deliveryWarning ? "error" : "success"}>{feedback}</FormMessage>}
@@ -142,7 +146,7 @@ export function AlertComposer() {
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
       <div>
-        <Label htmlFor="alert-title">Title</Label>
+        <Label htmlFor="alert-title">{t.alertName}</Label>
         <Input
           id="alert-title"
           value={title}
@@ -163,13 +167,13 @@ export function AlertComposer() {
         )}
         {!titleError && titleTooShort && (
           <p className="mt-1 text-xs font-medium text-red-600">
-            Title must be at least {TITLE_MIN} characters.
+            {t.alertTitleMin.replace("{min}", String(TITLE_MIN))}
           </p>
         )}
       </div>
 
       <div>
-        <Label htmlFor="alert-message">What is happening?</Label>
+        <Label htmlFor="alert-message">{t.alertMessage}</Label>
         <Textarea
           id="alert-message"
           value={message}
@@ -191,13 +195,13 @@ export function AlertComposer() {
         )}
         {!messageError && messageTooShort && (
           <p className="mt-1 text-xs font-medium text-red-600">
-            Message must be at least {MESSAGE_MIN} characters.
+            {t.alertMessageMin.replace("{min}", String(MESSAGE_MIN))}
           </p>
         )}
       </div>
 
       <div>
-        <Label htmlFor="alert-severity">Severity</Label>
+        <Label htmlFor="alert-severity">{t.alertSeverity}</Label>
         <select
           id="alert-severity"
           value={severity}
@@ -205,23 +209,23 @@ export function AlertComposer() {
           className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
           aria-invalid={Boolean(severityError)}
         >
-          <option value="INFO">Information</option>
-          <option value="WARNING">Warning</option>
-          <option value="CRITICAL">Critical</option>
+          <option value="INFO">{t.alertInfo}</option>
+          <option value="WARNING">{t.alertWarning}</option>
+          <option value="CRITICAL">{t.alertCritical}</option>
         </select>
         {severityError && <p className="mt-1 text-xs font-medium text-red-600">{severityError}</p>}
         <p className="mt-1 text-xs text-slate-500">
           {severity === "CRITICAL"
-            ? "Looping tone and vibration on Android; lock-screen popup requires Android permissions."
+            ? t.alertHintCritical
             : severity === "WARNING"
-              ? "Repeating tone and vibration on Android; lock-screen popup requires Android permissions."
-              : "One non-looping tone and vibration pattern on Android."}
+              ? t.alertHintWarning
+              : t.alertHintInfo}
         </p>
       </div>
 
       <Button type="submit" disabled={busy}>
         <Send size={16} aria-hidden="true" />
-        {busy ? "Publishing…" : "Alert all users"}
+        {busy ? t.alertPublishing : t.alertPublish}
       </Button>
     </form>
   );

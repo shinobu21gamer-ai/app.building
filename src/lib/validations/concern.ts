@@ -39,3 +39,22 @@ export const createConcernSchema = z.object({
 });
 
 export type CreateConcernInput = z.infer<typeof createConcernSchema>;
+
+/** Public status lookup: case number plus the submitter's account email. */
+export const CASE_NUMBER_RE = /^BR-\d{8}-\d{4,}$/;
+
+export const trackConcernSchema = z.object({
+  caseNumber: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(CASE_NUMBER_RE, "Enter a case number like BR-20261009-0001."),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(255, "Email is too long.")
+    .email("Enter a valid email address."),
+});
+
+export type TrackConcernInput = z.infer<typeof trackConcernSchema>;

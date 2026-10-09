@@ -10,6 +10,7 @@ import {
   Textarea,
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
+import { copy, type Locale } from "@/lib/i18n";
 
 export type OverrideFactor = {
   key: string;
@@ -41,13 +42,16 @@ export function PriorityOverrideForm({
   levels,
   defaultScores,
   currentLevel,
+  locale = "en",
 }: {
   concernId: number;
   factors: OverrideFactor[];
   levels: string[];
   defaultScores: Record<ScoreKey, number>;
   currentLevel: string | null;
+  locale?: Locale;
 }) {
+  const t = copy[locale].desk;
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -63,7 +67,7 @@ export function PriorityOverrideForm({
     const data = new FormData(event.currentTarget);
     const reason = String(data.get("reason") ?? "").trim();
     if (reason.length < 5) {
-      setReasonError("Provide a reason for the override (at least 5 characters).");
+      setReasonError(t.overrideReasonError);
       return;
     }
 
@@ -101,7 +105,9 @@ export function PriorityOverrideForm({
     }
 
     setSuccess(
-      `Priority override saved. New level: ${result.data.assessment.level} (score ${result.data.assessment.totalScore}).`
+      t.overrideSaved
+        .replace("{level}", result.data.assessment.level)
+        .replace("{score}", String(result.data.assessment.totalScore))
     );
     router.refresh();
   }
@@ -139,14 +145,14 @@ export function PriorityOverrideForm({
       </div>
 
       <div>
-        <Label htmlFor="levelOverride">Priority level override</Label>
+        <Label htmlFor="levelOverride">{t.levelOverride}</Label>
         <select
           id="levelOverride"
           name="levelOverride"
           defaultValue=""
           className={selectStyles}
         >
-          <option value="">Use the computed recommendation</option>
+          <option value="">{t.useComputed}</option>
           {levels.map((level) => (
             <option key={level} value={level}>
               {level}
@@ -154,26 +160,28 @@ export function PriorityOverrideForm({
           ))}
         </select>
         <p className="mt-1 text-xs text-slate-500">
-          Current level: {currentLevel ?? "not assessed"}. Selecting a level
-          overrides the computed result and is recorded for audit.
+          {t.currentLevel.replace(
+            "{level}",
+            currentLevel ?? t.notAssessedLevel
+          )}
         </p>
       </div>
 
       <div>
-        <Label htmlFor="reason">Reason for override</Label>
+        <Label htmlFor="reason">{t.overrideReason}</Label>
         <Textarea
           id="reason"
           name="reason"
           rows={3}
           maxLength={500}
-          placeholder="Explain why the automated recommendation is being changed."
+          placeholder={t.overrideReasonPlaceholder}
           invalid={Boolean(reasonError)}
         />
         {reasonError && <FieldError>{reasonError}</FieldError>}
       </div>
 
       <Button type="submit" disabled={submitting}>
-        {submitting ? "Saving..." : "Save override"}
+        {submitting ? t.saving : t.saveOverride}
       </Button>
     </form>
   );

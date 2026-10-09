@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { copy } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
   title: "My Concerns",
@@ -21,6 +23,8 @@ function lastUpdated(
 
 export default async function MyConcernsPage() {
   const user = await requireRole(["RESIDENT"]);
+  const locale = await getLocale();
+  const t = copy[locale].resident;
 
   const concerns = await db.concern.findMany({
     where: { userId: user.id },
@@ -40,28 +44,60 @@ export default async function MyConcernsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Concerns</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            All concerns you have submitted, newest first.
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900">{t.myTitle}</h1>
+          <p className="mt-1 text-sm text-slate-600">{t.myLead}</p>
         </div>
         <Button href="/resident/concerns/new" size="sm">
-          Submit concern
+          {t.submit}
         </Button>
       </div>
 
       <Card>
         {concerns.length === 0 ? (
           <div className="py-10 text-center">
-            <p className="text-sm text-slate-600">
-              You have not submitted any concerns yet.
-            </p>
+            <p className="text-sm text-slate-600">{t.empty}</p>
             <Button href="/resident/concerns/new" className="mt-3" size="sm">
-              Submit your first concern
+              {t.first}
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            <ul className="divide-y divide-slate-100 md:hidden">
+              {concerns.map((concern) => (
+                <li key={concern.id}>
+                  <Link
+                    href={`/resident/concerns/${concern.id}`}
+                    className="block py-3 hover:bg-slate-50"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium text-slate-900">{concern.title}</p>
+                      <StatusBadge status={concern.status} />
+                    </div>
+                    <p className="mt-1 font-mono text-xs text-slate-500">
+                      {concern.caseNumber}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {concern.category.name}
+                      {concern.assignedOffice
+                        ? ` · ${concern.assignedOffice.name}`
+                        : ` · ${t.pendingRoute}`}
+                      {" · "}
+                      {formatDateTime(
+                        lastUpdated(concern.updatedAt, concern.history[0] ?? null)
+                      )}
+                    </p>
+                    <div className="mt-2">
+                      {concern.priorityLevel ? (
+                        <PriorityBadge level={concern.priorityLevel} />
+                      ) : (
+                        <Badge tone="neutral">{t.pendingPriority}</Badge>
+                      )}
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[900px] text-left text-sm">
               <caption className="sr-only">My submitted concerns</caption>
               <thead>
@@ -111,12 +147,12 @@ export default async function MyConcernsPage() {
                       {concern.priorityLevel ? (
                         <PriorityBadge level={concern.priorityLevel} />
                       ) : (
-                        <Badge tone="neutral">Priority pending</Badge>
+                        <Badge tone="neutral">{t.pendingPriority}</Badge>
                       )}
                     </td>
                     <td className="py-3 pr-4 text-slate-600">
                       {concern.assignedOffice?.name ?? (
-                        <span className="text-amber-700">Pending routing</span>
+                        <span className="text-amber-700">{t.pendingRoute}</span>
                       )}
                     </td>
                     <td className="py-3 pr-4 text-slate-600">
@@ -135,14 +171,15 @@ export default async function MyConcernsPage() {
                         href={`/resident/concerns/${concern.id}`}
                         className="text-sm font-semibold text-brand-700 hover:text-brand-800"
                       >
-                        View
+                        {t.view}
                       </Link>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </Card>
     </div>

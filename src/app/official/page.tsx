@@ -11,6 +11,8 @@ import { parseConcernFilters } from "@/lib/cases/query";
 import { getOfficialDashboard } from "@/lib/dashboards/official";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { firstParam } from "@/lib/utils";
+import { copy } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
   title: "Official Dashboard",
@@ -24,6 +26,8 @@ export default async function OfficialPage({
   searchParams: Promise<SearchParams>;
 }) {
   const user = await requireRole(["OFFICIAL", "ADMIN"]);
+  const locale = await getLocale();
+  const t = copy[locale].official;
   const params = await searchParams;
   const filters = parseConcernFilters(params);
 
@@ -51,24 +55,24 @@ export default async function OfficialPage({
 
   const scopeLabel = isOfficial
     ? user.office
-      ? `${user.office.name} caseload`
-      : "No office is assigned to your account."
+      ? t.caseload.replace("{office}", user.office.name)
+      : t.noOffice
     : filters.officeId
-      ? "System view — filtered by office"
-      : "System view — all offices";
+      ? t.systemFiltered
+      : t.systemAll;
 
   const stats = [
-    { label: "Assigned cases", value: counts.assigned },
-    { label: "Pending", value: counts.pending, hint: "Awaiting action" },
-    { label: "High priority", value: counts.highPriority, hint: "High / critical" },
-    { label: "In progress", value: counts.inProgress },
+    { label: t.assigned, value: counts.assigned },
+    { label: t.pending, value: counts.pending, hint: t.pendingHint },
+    { label: t.highPriority, value: counts.highPriority, hint: t.highHint },
+    { label: t.inProgress, value: counts.inProgress },
   ];
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">
-          Welcome, {user.firstName}
+          {t.welcome.replace("{name}", user.firstName)}
         </h1>
         <p className="mt-1 text-sm text-slate-600">{scopeLabel}</p>
       </div>
@@ -84,13 +88,10 @@ export default async function OfficialPage({
         ))}
       </div>
 
-      <Card
-        title="Recently resolved"
-        description="The five most recently resolved cases in scope."
-      >
+      <Card title={t.recentResolved} description={t.recentResolvedDesc}>
         {recentlyResolved.length === 0 ? (
           <p className="py-6 text-center text-sm text-slate-600">
-            No cases have been resolved yet.
+            {t.noResolved}
           </p>
         ) : (
           <ul className="divide-y divide-slate-100">
@@ -128,12 +129,10 @@ export default async function OfficialPage({
         )}
       </Card>
 
-      <Card
-        title="Search and filter cases"
-        description="Narrow your caseload by keyword, status, priority, category, office, or submission date."
-      >
+      <Card title={t.searchTitle} description={t.searchDesc}>
         <ConcernFilters
           action="/official"
+          locale={locale}
           categories={categories}
           offices={offices}
           showOfficeScope={showOfficeScope}
@@ -150,16 +149,20 @@ export default async function OfficialPage({
       </Card>
 
       <Card
-        title={`${cases.total} case${cases.total === 1 ? "" : "s"}`}
+        title={
+          cases.total === 1
+            ? t.casesOne
+            : t.casesMany.replace("{count}", String(cases.total))
+        }
         description={
           cases.truncated
-            ? `Showing the most recent ${cases.concerns.length}. Refine your search to narrow the results.`
-            : "Newest first."
+            ? t.truncated.replace("{count}", String(cases.concerns.length))
+            : t.newest
         }
       >
         {cases.concerns.length === 0 ? (
           <p className="py-10 text-center text-sm text-slate-600">
-            No cases match these criteria.
+            {t.noMatch}
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -168,19 +171,19 @@ export default async function OfficialPage({
               <thead>
                 <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Case no.
+                    {t.caseNo}
                   </th>
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Title
+                    {t.titleCol}
                   </th>
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Priority
+                    {t.priorityCol}
                   </th>
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Status
+                    {t.statusCol}
                   </th>
                   <th scope="col" className="py-2 pr-4 font-semibold">
-                    Updated
+                    {t.updatedCol}
                   </th>
                   <th scope="col" className="py-2 font-semibold">
                     <span className="sr-only">Actions</span>
@@ -200,7 +203,7 @@ export default async function OfficialPage({
                       {concern.priorityLevel ? (
                         <PriorityBadge level={concern.priorityLevel} />
                       ) : (
-                        <span className="text-slate-400">Not assessed</span>
+                        <span className="text-slate-400">{t.notAssessed}</span>
                       )}
                     </td>
                     <td className="py-3 pr-4">
@@ -214,7 +217,7 @@ export default async function OfficialPage({
                         href={`/official/concerns/${concern.id}`}
                         className="text-sm font-semibold text-brand-700 hover:text-brand-800"
                       >
-                        Manage
+                        {t.manage}
                       </Link>
                     </td>
                   </tr>
@@ -225,7 +228,7 @@ export default async function OfficialPage({
         )}
         <div className="mt-4 border-t border-slate-100 pt-4">
           <Button href="/official/concerns" variant="outline" size="sm">
-            Open full case management
+            {t.openFull}
           </Button>
         </div>
       </Card>

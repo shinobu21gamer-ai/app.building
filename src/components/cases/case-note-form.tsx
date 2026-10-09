@@ -10,6 +10,7 @@ import {
   Textarea,
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
+import { copy, type Locale } from "@/lib/i18n";
 
 const selectStyles =
   "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
@@ -17,10 +18,13 @@ const selectStyles =
 export function CaseNoteForm({
   concernId,
   disabled,
+  locale = "en",
 }: {
   concernId: number;
   disabled?: boolean;
+  locale?: Locale;
 }) {
+  const t = copy[locale].desk;
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -30,7 +34,7 @@ export function CaseNoteForm({
   if (disabled) {
     return (
       <p className="text-sm text-slate-500">
-        Closed cases cannot be modified.
+        {t.closedLocked}
       </p>
     );
   }
@@ -46,7 +50,7 @@ export function CaseNoteForm({
     const kind = String(data.get("kind") ?? "REMARK");
     const remarks = String(data.get("remarks") ?? "").trim();
     if (remarks.length < 5) {
-      setRemarksError("Provide at least 5 characters.");
+      setRemarksError(t.noteTooShort);
       return;
     }
 
@@ -74,7 +78,7 @@ export function CaseNoteForm({
     }
 
     setSuccess(
-      kind === "ACTION" ? "Action recorded." : "Progress remark added."
+      kind === "ACTION" ? t.actionRecorded : t.remarkAdded
     );
     form.reset();
     router.refresh();
@@ -86,33 +90,33 @@ export function CaseNoteForm({
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
 
       <div>
-        <Label htmlFor="note-kind">Entry type</Label>
+        <Label htmlFor="note-kind">{t.noteKind}</Label>
         <select
           id="note-kind"
           name="kind"
           defaultValue="REMARK"
           className={selectStyles}
         >
-          <option value="REMARK">Progress remark</option>
-          <option value="ACTION">Action taken</option>
+          <option value="REMARK">{t.progressRemark}</option>
+          <option value="ACTION">{t.actionTaken}</option>
         </select>
       </div>
 
       <div>
-        <Label htmlFor="note-remarks">Details</Label>
+        <Label htmlFor="note-remarks">{t.noteDetails}</Label>
         <Textarea
           id="note-remarks"
           name="remarks"
           rows={3}
           maxLength={1000}
-          placeholder="Add an update, observation, or action performed."
+          placeholder={t.notePlaceholder}
           invalid={Boolean(remarksError)}
         />
         {remarksError && <FieldError>{remarksError}</FieldError>}
       </div>
 
       <Button type="submit" disabled={submitting} variant="secondary">
-        {submitting ? "Saving..." : "Add entry"}
+        {submitting ? t.saving : t.addEntry}
       </Button>
     </form>
   );

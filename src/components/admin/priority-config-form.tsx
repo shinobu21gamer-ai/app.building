@@ -10,6 +10,7 @@ import {
   Textarea,
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
+import { copy, type Locale } from "@/lib/i18n";
 
 type ThresholdRow = {
   level: string;
@@ -31,10 +32,13 @@ type FactorRow = {
 export function PriorityConfigForm({
   initialThresholds,
   initialFactors,
+  locale = "en",
 }: {
   initialThresholds: ThresholdRow[];
   initialFactors: FactorRow[];
+  locale?: Locale;
 }) {
+  const t = copy[locale].admin.mgr;
   const router = useRouter();
   const [thresholds, setThresholds] = useState(initialThresholds);
   const [factors, setFactors] = useState(initialFactors);
@@ -63,11 +67,11 @@ export function PriorityConfigForm({
     const result = await apiRequest<unknown>("/api/v1/admin/priority-config", {
       method: "PUT",
       body: JSON.stringify({
-        thresholds: thresholds.map((t) => ({
-          level: t.level,
-          minScore: t.minScore,
-          maxScore: t.maxScore,
-          label: t.label || null,
+        thresholds: thresholds.map((row) => ({
+          level: row.level,
+          minScore: row.minScore,
+          maxScore: row.maxScore,
+          label: row.label || null,
         })),
         factors: factors.map((f, index) => ({
           key: f.key,
@@ -96,7 +100,7 @@ export function PriorityConfigForm({
       return;
     }
 
-    setSuccess("Priority rules saved. New submissions will use these settings.");
+    setSuccess(t.prioritySaved);
     router.refresh();
   }
 
@@ -109,6 +113,7 @@ export function PriorityConfigForm({
     (sum, f) => sum + f.maxScore * f.weight,
     0
   );
+  const range = { min: String(minPossible), max: String(maxPossible) };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
@@ -117,11 +122,10 @@ export function PriorityConfigForm({
 
       <section>
         <h2 className="text-base font-semibold text-slate-900">
-          Scoring factors
+          {t.factorsTitle}
         </h2>
         <p className="mt-1 text-sm text-slate-600">
-          Each factor&apos;s weight multiplies the resident&apos;s rating. With
-          the current settings the total score ranges {minPossible}–{maxPossible}.
+          {t.factorsLead.replace("{min}", range.min).replace("{max}", range.max)}
         </p>
         <div className="mt-4 space-y-3">
           {factors.map((factor, index) => (
@@ -132,7 +136,7 @@ export function PriorityConfigForm({
               }`}
             >
               <div className="col-span-2 sm:col-span-2">
-                <Label htmlFor={`factor-label-${factor.key}`}>Factor</Label>
+                <Label htmlFor={`factor-label-${factor.key}`}>{t.factor}</Label>
                 <Input
                   id={`factor-label-${factor.key}`}
                   value={factor.label}
@@ -143,7 +147,7 @@ export function PriorityConfigForm({
               </div>
               <div className="col-span-2 sm:col-span-4">
                 <Label htmlFor={`factor-description-${factor.key}`}>
-                  Resident-facing description
+                  {t.factorDesc}
                 </Label>
                 <Textarea
                   id={`factor-description-${factor.key}`}
@@ -153,11 +157,11 @@ export function PriorityConfigForm({
                   }
                   rows={2}
                   maxLength={255}
-                  placeholder="Shown to residents when submitting a concern."
+                  placeholder={t.factorDescPlaceholder}
                 />
               </div>
               <div>
-                <Label htmlFor={`factor-weight-${factor.key}`}>Weight</Label>
+                <Label htmlFor={`factor-weight-${factor.key}`}>{t.weight}</Label>
                 <Input
                   id={`factor-weight-${factor.key}`}
                   type="number"
@@ -170,7 +174,7 @@ export function PriorityConfigForm({
                 />
               </div>
               <div>
-                <Label htmlFor={`factor-min-${factor.key}`}>Min score</Label>
+                <Label htmlFor={`factor-min-${factor.key}`}>{t.minScore}</Label>
                 <Input
                   id={`factor-min-${factor.key}`}
                   type="number"
@@ -183,7 +187,7 @@ export function PriorityConfigForm({
                 />
               </div>
               <div>
-                <Label htmlFor={`factor-max-${factor.key}`}>Max score</Label>
+                <Label htmlFor={`factor-max-${factor.key}`}>{t.maxScore}</Label>
                 <Input
                   id={`factor-max-${factor.key}`}
                   type="number"
@@ -196,7 +200,7 @@ export function PriorityConfigForm({
                 />
               </div>
               <div>
-                <Label htmlFor={`factor-active-${factor.key}`}>Active</Label>
+                <Label htmlFor={`factor-active-${factor.key}`}>{t.active}</Label>
                 <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
                   <input
                     id={`factor-active-${factor.key}`}
@@ -207,7 +211,7 @@ export function PriorityConfigForm({
                     }
                     className="h-4 w-4 rounded border-slate-300"
                   />
-                  Used
+                  {t.used}
                 </label>
               </div>
             </div>
@@ -217,11 +221,12 @@ export function PriorityConfigForm({
 
       <section>
         <h2 className="text-base font-semibold text-slate-900">
-          Priority thresholds
+          {t.thresholdsTitle}
         </h2>
         <p className="mt-1 text-sm text-slate-600">
-          Thresholds must be contiguous and cover the full range{" "}
-          {minPossible}–{maxPossible}.
+          {t.thresholdsLead
+            .replace("{min}", range.min)
+            .replace("{max}", range.max)}
         </p>
         <div className="mt-4 space-y-3">
           {thresholds.map((threshold, index) => (
@@ -231,7 +236,7 @@ export function PriorityConfigForm({
             >
               <div>
                 <Label htmlFor={`threshold-level-${threshold.level}`}>
-                  Level
+                  {t.level}
                 </Label>
                 <Input
                   id={`threshold-level-${threshold.level}`}
@@ -241,7 +246,7 @@ export function PriorityConfigForm({
               </div>
               <div>
                 <Label htmlFor={`threshold-label-${threshold.level}`}>
-                  Display label
+                  {t.displayLabel}
                 </Label>
                 <Input
                   id={`threshold-label-${threshold.level}`}
@@ -253,7 +258,7 @@ export function PriorityConfigForm({
               </div>
               <div>
                 <Label htmlFor={`threshold-min-${threshold.level}`}>
-                  Min score
+                  {t.minScore}
                 </Label>
                 <Input
                   id={`threshold-min-${threshold.level}`}
@@ -268,7 +273,7 @@ export function PriorityConfigForm({
               </div>
               <div>
                 <Label htmlFor={`threshold-max-${threshold.level}`}>
-                  Max score
+                  {t.maxScore}
                 </Label>
                 <Input
                   id={`threshold-max-${threshold.level}`}
@@ -287,7 +292,7 @@ export function PriorityConfigForm({
       </section>
 
       <Button type="submit" disabled={saving}>
-        {saving ? "Saving..." : "Save priority rules"}
+        {saving ? t.saving : t.savePriority}
       </Button>
     </form>
   );

@@ -4,8 +4,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
+import { copy, type Locale } from "@/lib/i18n";
 
-export function MaintenanceActions() {
+export function MaintenanceActions({ locale = "en" }: { locale?: Locale }) {
+  const t = copy[locale].admin;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -18,11 +20,7 @@ export function MaintenanceActions() {
       method: "POST",
     });
     setBusy(false);
-    setMessage(
-      result.success
-        ? label
-        : result.error.message
-    );
+    setMessage(result.success ? label : result.error.message);
     setFailed(!result.success);
   }
 
@@ -33,9 +31,9 @@ export function MaintenanceActions() {
         variant="outline"
         size="sm"
         disabled={busy}
-        onClick={() => run("/api/v1/admin/sla/scan", "SLA scan completed.")}
+        onClick={() => run("/api/v1/admin/sla/scan", t.slaDone)}
       >
-        Scan SLA breaches
+        {t.scanSla}
       </Button>
       <Button
         type="button"
@@ -43,12 +41,14 @@ export function MaintenanceActions() {
         size="sm"
         disabled={busy}
         onClick={() =>
-          run("/api/v1/admin/email-deliveries/retry", "Email retry completed.")
+          run("/api/v1/admin/email-deliveries/retry", t.emailRetryDone)
         }
       >
-        Retry failed emails
+        {t.retryEmails}
       </Button>
-      {message && <FormMessage tone={failed ? "error" : "success"}>{message}</FormMessage>}
+      {message && (
+        <FormMessage tone={failed ? "error" : "success"}>{message}</FormMessage>
+      )}
     </div>
   );
 }

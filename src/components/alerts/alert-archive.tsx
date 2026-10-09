@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
+import { copy, type Locale } from "@/lib/i18n";
 
 export type AlertView = {
   id: number;
@@ -20,9 +21,9 @@ export type AlertView = {
 };
 
 const REACTIONS = [
-  { value: "ACKNOWLEDGED", label: "Acknowledge", Icon: Check },
-  { value: "HELPFUL", label: "Helpful", Icon: ThumbsUp },
-  { value: "NEED_HELP", label: "Need help", Icon: LifeBuoy },
+  { value: "ACKNOWLEDGED", labelKey: "acknowledge", Icon: Check },
+  { value: "HELPFUL", labelKey: "helpful", Icon: ThumbsUp },
+  { value: "NEED_HELP", labelKey: "needHelp", Icon: LifeBuoy },
 ] as const;
 
 function severityStyle(severity: string): string {
@@ -34,10 +35,13 @@ function severityStyle(severity: string): string {
 export function AlertArchive({
   initialAlerts,
   canRemoveAlerts = false,
+  locale = "en",
 }: {
   initialAlerts: AlertView[];
   canRemoveAlerts?: boolean;
+  locale?: Locale;
 }) {
+  const t = copy[locale].alerts;
   const [alerts, setAlerts] = useState(initialAlerts);
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +93,7 @@ export function AlertArchive({
       )}
       {alerts.length === 0 && (
         <p className="rounded-xl border border-slate-200 bg-white p-8 text-center text-base text-slate-700">
-          No alerts yet.
+          {t.empty}
         </p>
       )}
       {alerts.map((alert) => (
@@ -105,11 +109,11 @@ export function AlertArchive({
               <time className="text-sm font-medium text-slate-600">{formatDateTime(alert.createdAt)}</time>
               {canRemoveAlerts && (
                 <ConfirmActionButton
-                  label="Remove"
+                  label={t.remove}
                   icon={<Trash2 size={14} aria-hidden="true" />}
-                  title="Remove this alert?"
-                  description={`This permanently removes “${alert.title}” from the alert archive for everyone. Push notifications and emails already sent cannot be recalled, and anyone currently viewing the alert may need to dismiss it.`}
-                  confirmLabel="Remove alert"
+                  title={t.removeTitle}
+                  description={t.removeDesc.replace("{title}", alert.title)}
+                  confirmLabel={t.confirmRemove}
                   tone="danger"
                   disabled={busy === alert.id}
                   onConfirm={() => removeAlert(alert.id)}
@@ -120,8 +124,8 @@ export function AlertArchive({
           <p className="mt-4 whitespace-pre-wrap break-words text-base leading-7 text-slate-800">
             {alert.message}
           </p>
-          <div className="mt-5 flex flex-wrap gap-2" aria-label={`Reactions for ${alert.title}`}>
-            {REACTIONS.map(({ value, label, Icon }) => (
+          <div className="mt-5 flex flex-wrap gap-2" aria-label={t.reactions.replace("{title}", alert.title)}>
+            {REACTIONS.map(({ value, labelKey, Icon }) => (
               <Button
                 key={value}
                 size="sm"
@@ -130,7 +134,7 @@ export function AlertArchive({
                 onClick={() => react(alert.id, value)}
               >
                 <Icon size={15} aria-hidden="true" />
-                {label} ({alert.reactions[value] ?? 0})
+                {t[labelKey]} ({alert.reactions[value] ?? 0})
               </Button>
             ))}
           </div>

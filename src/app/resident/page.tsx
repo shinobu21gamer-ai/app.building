@@ -4,10 +4,11 @@ import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, StatusBadge } from "@/components/ui/badge";
-import { LogoutButton } from "@/components/auth/logout-button";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { getResidentDashboard } from "@/lib/dashboards/resident";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { copy } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
   title: "Resident Dashboard",
@@ -15,13 +16,15 @@ export const metadata: Metadata = {
 
 export default async function ResidentPage() {
   const user = await requireRole(["RESIDENT"]);
+  const locale = await getLocale();
+  const t = copy[locale].resident;
   const dashboard = await getResidentDashboard(user.id);
   const { totals, recent, notifications, unreadNotifications } = dashboard;
 
   const stats = [
-    { label: "Total concerns", value: totals.total },
-    { label: "Active concerns", value: totals.active },
-    { label: "Resolved concerns", value: totals.resolved },
+    { label: t.total, value: totals.total },
+    { label: t.active, value: totals.active },
+    { label: t.resolved, value: totals.resolved },
   ];
 
   return (
@@ -29,20 +32,17 @@ export default async function ResidentPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            Welcome, {user.firstName}
+            {t.welcome.replace("{name}", user.firstName)}
           </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Submit community concerns and track their progress.
-          </p>
+          <p className="mt-1 text-sm text-slate-600">{t.lead}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button href="/resident/concerns/new" size="sm">
-            Submit concern
+            {t.submit}
           </Button>
           <Button href="/profile" variant="outline" size="sm">
-            My profile
+            {t.profile}
           </Button>
-          <LogoutButton size="sm" />
         </div>
       </div>
 
@@ -53,17 +53,12 @@ export default async function ResidentPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card
-          title="Recent concerns"
-          description="Your five most recent submissions."
-        >
+        <Card title={t.recent} description={t.recentDesc}>
           {recent.length === 0 ? (
             <div className="py-6 text-center">
-              <p className="text-sm text-slate-600">
-                You have not submitted any concerns yet.
-              </p>
+              <p className="text-sm text-slate-600">{t.empty}</p>
               <Button href="/resident/concerns/new" className="mt-3" size="sm">
-                Submit your first concern
+                {t.first}
               </Button>
             </div>
           ) : (
@@ -91,27 +86,24 @@ export default async function ResidentPage() {
           )}
           <div className="mt-4 border-t border-slate-100 pt-4">
             <Button href="/resident/concerns" variant="outline" size="sm">
-              View all my concerns
+              {t.viewAll}
             </Button>
           </div>
         </Card>
 
-        <Card
-          title="Notifications"
-          description="Your five most recent updates."
-        >
+        <Card title={t.notifications} description={t.notificationsDesc}>
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm text-slate-500">Unread</span>
+            <span className="text-sm text-slate-500">{t.unread}</span>
             {unreadNotifications > 0 ? (
-              <Badge tone="red">{unreadNotifications} unread</Badge>
+              <Badge tone="red">
+                {unreadNotifications} {t.unread.toLowerCase()}
+              </Badge>
             ) : (
-              <Badge tone="green">All read</Badge>
+              <Badge tone="green">{t.allRead}</Badge>
             )}
           </div>
           {notifications.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-600">
-              No notifications yet. Updates about your concerns will appear here.
-            </p>
+            <p className="py-6 text-center text-sm text-slate-600">{t.noNotes}</p>
           ) : (
             <ul className="divide-y divide-slate-100">
               {notifications.map((notification) => {
@@ -158,7 +150,7 @@ export default async function ResidentPage() {
           )}
           <div className="mt-4 border-t border-slate-100 pt-4">
             <Button href="/notifications" variant="outline" size="sm">
-              View all notifications
+              {t.viewNotes}
             </Button>
           </div>
         </Card>

@@ -19,7 +19,7 @@ export async function RoleShell({
   await requireRole(roles);
 
   return (
-    <Container className="py-8">
+    <Container className="py-8 print:py-0">
       <RoleNav items={items} />
       {children}
     </Container>

@@ -8,6 +8,7 @@ import { FormMessage, Input, Label, Textarea } from "@/components/ui/field";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
 import { apiRequest } from "@/lib/api-client";
 import { extractApiError } from "@/lib/utils";
+import { copy, type Locale } from "@/lib/i18n";
 
 export type AdminCategoryItem = {
   id: number;
@@ -20,9 +21,12 @@ export type AdminCategoryItem = {
 
 export function CategoryManager({
   categories,
+  locale = "en",
 }: {
   categories: AdminCategoryItem[];
+  locale?: Locale;
 }) {
+  const t = copy[locale].admin.mgr;
   const router = useRouter();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [name, setName] = useState("");
@@ -75,7 +79,7 @@ export function CategoryManager({
       setError(extractApiError(result.error));
       return;
     }
-    setSuccess(editingId ? "Category updated." : "Category created.");
+    setSuccess(editingId ? t.categoryUpdated : t.categoryCreated);
     resetForm();
     router.refresh();
   }
@@ -94,7 +98,10 @@ export function CategoryManager({
       return;
     }
     setSuccess(
-      `${category.name} ${category.isActive ? "disabled" : "enabled"}.`
+      (category.isActive ? t.categoryDisabled : t.categoryEnabled).replace(
+        "{name}",
+        category.name
+      )
     );
     router.refresh();
   }
@@ -109,7 +116,7 @@ export function CategoryManager({
       { method: "DELETE" }
     );
     if (!result.success) return extractApiError(result.error);
-    setSuccess(`Deleted unused category ${category.code}.`);
+    setSuccess(t.deletedCategory.replace("{code}", category.code));
     router.refresh();
     return null;
   }
@@ -121,11 +128,11 @@ export function CategoryManager({
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <h2 className="text-base font-semibold text-slate-900">
-          {editingId ? "Edit category" : "Add category"}
+          {editingId ? t.editCategory : t.addCategory}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label htmlFor="category-name">Name</Label>
+            <Label htmlFor="category-name">{t.name}</Label>
             <Input
               id="category-name"
               value={name}
@@ -134,7 +141,7 @@ export function CategoryManager({
             />
           </div>
           <div>
-            <Label htmlFor="category-code">Code</Label>
+            <Label htmlFor="category-code">{t.code}</Label>
             <Input
               id="category-code"
               value={code}
@@ -144,13 +151,13 @@ export function CategoryManager({
             />
           </div>
           <div className="sm:col-span-2">
-            <Label htmlFor="category-description">Description</Label>
+            <Label htmlFor="category-description">{t.description}</Label>
             <Textarea
               id="category-description"
               rows={2}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Optional"
+              placeholder={t.optional}
             />
           </div>
         </div>
@@ -162,20 +169,16 @@ export function CategoryManager({
             onChange={(event) => setIsActive(event.target.checked)}
             className="h-4 w-4 rounded border-slate-300"
           />
-          Available for new concerns
+          {t.availableNew}
         </label>
 
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={busy}>
-            {busy
-              ? "Saving..."
-              : editingId
-                ? "Save changes"
-                : "Create category"}
+            {busy ? t.saving : editingId ? t.saveChanges : t.createCategory}
           </Button>
           {editingId && (
             <Button type="button" variant="outline" onClick={resetForm}>
-              Cancel edit
+              {t.cancelEdit}
             </Button>
           )}
         </div>
@@ -183,7 +186,7 @@ export function CategoryManager({
 
       <div>
         <h2 className="mb-3 text-base font-semibold text-slate-900">
-          Categories ({categories.length})
+          {t.categoriesList.replace("{count}", String(categories.length))}
         </h2>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left text-sm">
@@ -191,16 +194,16 @@ export function CategoryManager({
             <thead>
               <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                 <th scope="col" className="py-2 pr-4 font-semibold">
-                  Name
+                  {t.name}
                 </th>
                 <th scope="col" className="py-2 pr-4 font-semibold">
-                  Code
+                  {t.code}
                 </th>
                 <th scope="col" className="py-2 pr-4 font-semibold">
-                  Records
+                  {t.colRecords}
                 </th>
                 <th scope="col" className="py-2 pr-4 font-semibold">
-                  Status
+                  {t.colStatus}
                 </th>
                 <th scope="col" className="py-2 font-semibold">
                   <span className="sr-only">Actions</span>
@@ -219,9 +222,9 @@ export function CategoryManager({
                   </td>
                   <td className="py-3 pr-4">
                     {category.isActive ? (
-                      <Badge tone="green">Active</Badge>
+                      <Badge tone="green">{t.active}</Badge>
                     ) : (
-                      <Badge tone="gray">Disabled</Badge>
+                      <Badge tone="gray">{t.disabled}</Badge>
                     )}
                   </td>
                   <td className="py-3">
@@ -231,7 +234,7 @@ export function CategoryManager({
                         onClick={() => startEdit(category)}
                         className="text-sm font-semibold text-brand-700 hover:text-brand-800"
                       >
-                        Edit
+                        {t.edit}
                       </button>
                       <button
                         type="button"
@@ -239,17 +242,20 @@ export function CategoryManager({
                         disabled={busy}
                         className="text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-40"
                       >
-                        {category.isActive ? "Disable" : "Enable"}
+                        {category.isActive ? t.disable : t.enable}
                       </button>
                       <ConfirmActionButton
-                        label="Delete"
-                        title={`Delete ${category.name}?`}
+                        label={t.delete}
+                        title={t.deleteCategoryTitle.replace("{name}", category.name)}
                         description={
                           category.references.total > 0
-                            ? `This category is referenced by ${category.references.total} record(s). Deletion will be refused to preserve case history — deactivate it instead.`
-                            : "This category has no linked records and will be permanently removed."
+                            ? t.deleteCategoryLinked.replace(
+                                "{count}",
+                                String(category.references.total)
+                              )
+                            : t.deleteCategoryEmpty
                         }
-                        confirmLabel="Delete category"
+                        confirmLabel={t.deleteCategory}
                         tone="danger"
                         onConfirm={() => deleteCategory(category)}
                       />

@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/api-client";
 import { extractFieldErrors } from "@/lib/validation-errors";
 import { Button } from "@/components/ui/button";
 import { FieldError, FormMessage, Input, Label } from "@/components/ui/field";
+import { copy, type Locale } from "@/lib/i18n";
 
 type RegisterResponse = {
   user: { email: string; firstName: string; lastName: string };
@@ -33,7 +34,8 @@ const initialForm: FormData = {
   address: "",
 };
 
-export function RegisterForm() {
+export function RegisterForm({ locale = "en" }: { locale?: Locale }) {
+  const t = copy[locale].register;
   const router = useRouter();
   const [form, setForm] = useState<FormData>(initialForm);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -47,7 +49,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
     // For confirmPassword, we need special handling
     if (name === "confirmPassword") {
       if (value !== form.password) {
-        setFieldErrors((prev) => ({ ...prev, confirmPassword: "Passwords do not match." }));
+        setFieldErrors((prev) => ({ ...prev, confirmPassword: t.mismatch }));
       } else {
         setFieldErrors((prev) => {
           const next = { ...prev };
@@ -74,7 +76,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
         });
       }
     }
-  }, [form.password]);
+  }, [form.password, t.mismatch]);
 
   const handleBlur = (name: FormFieldName, value: string) => {
     setTouched((prev) => ({ ...prev, [name]: true }));
@@ -96,7 +98,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
     setTouched(allTouched);
 
     if (form.password !== form.confirmPassword) {
-      setFieldErrors({ confirmPassword: "Passwords do not match." });
+      setFieldErrors({ confirmPassword: t.mismatch });
       return;
     }
 
@@ -143,7 +145,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="firstName">First name</Label>
+          <Label htmlFor="firstName">{t.firstName}</Label>
           <Input
             id="firstName"
             name="firstName"
@@ -157,7 +159,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
           {isInvalid("firstName") && <FieldError>{fieldErrors.firstName}</FieldError>}
         </div>
         <div>
-          <Label htmlFor="lastName">Last name</Label>
+          <Label htmlFor="lastName">{t.lastName}</Label>
           <Input
             id="lastName"
             name="lastName"
@@ -173,7 +175,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
       </div>
 
       <div>
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t.email}</Label>
         <Input
           id="email"
           name="email"
@@ -191,7 +193,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
       </div>
 
       <div>
-        <Label htmlFor="phone">Phone (optional)</Label>
+        <Label htmlFor="phone">{t.phone}</Label>
         <Input
           id="phone"
           name="phone"
@@ -208,7 +210,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
       </div>
 
       <div>
-        <Label htmlFor="address">Address (optional)</Label>
+        <Label htmlFor="address">{t.address}</Label>
         <Input
           id="address"
           name="address"
@@ -217,14 +219,14 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
           onBlur={(e) => handleBlur("address", e.target.value)}
           invalid={isInvalid("address")}
           disabled={submitting}
-          placeholder="Purok, street, barangay"
+          placeholder={t.addressPlaceholder}
         />
         {isInvalid("address") && <FieldError>{fieldErrors.address}</FieldError>}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t.password}</Label>
           <Input
             id="password"
             name="password"
@@ -239,12 +241,11 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
           />
           {isInvalid("password") && <FieldError>{fieldErrors.password}</FieldError>}
           <p className="mt-1 text-xs text-slate-500">
-            At least 8 characters with a lowercase letter, uppercase letter, and
-            number.
+            {t.passwordHint}
           </p>
         </div>
         <div>
-          <Label htmlFor="confirmPassword">Confirm password</Label>
+          <Label htmlFor="confirmPassword">{t.confirmPassword}</Label>
           <Input
             id="confirmPassword"
             name="confirmPassword"
@@ -262,7 +263,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
       </div>
 
       <Button type="submit" disabled={submitting} className="w-full">
-        {submitting ? "Creating account…" : "Create account"}
+        {submitting ? t.submitting : t.submit}
       </Button>
     </form>
   );

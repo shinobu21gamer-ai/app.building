@@ -9,6 +9,8 @@ import {
   parseNameFilters,
 } from "@/lib/admin/query";
 import { firstParam } from "@/lib/utils";
+import { copy } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
   title: "Offices",
@@ -22,6 +24,8 @@ export default async function AdminOfficesPage({
   searchParams: Promise<SearchParams>;
 }) {
   await requireRole(["ADMIN"]);
+  const locale = await getLocale();
+  const t = copy[locale].admin;
   const params = await searchParams;
   const filters = parseNameFilters(params);
   const offices = await listAdminOffices(filters);
@@ -29,25 +33,22 @@ export default async function AdminOfficesPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Offices</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Offices receive routed concerns. An office that is referenced by any
-          record can be disabled but not deleted, so historical routing stays
-          intact.
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">{t.officesTitle}</h1>
+        <p className="mt-1 text-sm text-slate-600">{t.officesLead}</p>
       </div>
 
       <AdminFilterBar
+        locale={locale}
         initialQ={firstParam(params, "q")}
-        qPlaceholder="Search by office name or code"
+        qPlaceholder={t.officesSearch}
         fields={[
           {
             name: "status",
-            label: "Status",
+            label: t.filterStatus,
             options: [
-              { value: "", label: "All" },
-              { value: "active", label: "Active" },
-              { value: "disabled", label: "Disabled" },
+              { value: "", label: t.filterAll },
+              { value: "active", label: t.filterActive },
+              { value: "disabled", label: t.filterDisabled },
             ],
           },
         ]}
@@ -55,7 +56,7 @@ export default async function AdminOfficesPage({
       />
 
       <Card>
-        <OfficeManager offices={offices.map(adminOfficeView)} />
+        <OfficeManager offices={offices.map(adminOfficeView)} locale={locale} />
       </Card>
     </div>
   );

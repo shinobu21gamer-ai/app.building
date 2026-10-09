@@ -10,6 +10,8 @@ import {
   parseUserFilters,
 } from "@/lib/admin/query";
 import { firstParam } from "@/lib/utils";
+import { copy } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
   title: "Officials",
@@ -23,6 +25,8 @@ export default async function AdminOfficialsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const actor = await requireRole(["ADMIN"]);
+  const locale = await getLocale();
+  const t = copy[locale].admin;
   const params = await searchParams;
   const filters = parseUserFilters(params);
 
@@ -38,24 +42,22 @@ export default async function AdminOfficialsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Officials</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Manage the officials who handle concerns for each office. Disabling an
-          official revokes sign-in access without deleting their case history.
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">{t.officialsTitle}</h1>
+        <p className="mt-1 text-sm text-slate-600">{t.officialsLead}</p>
       </div>
 
       <AdminFilterBar
+        locale={locale}
         initialQ={firstParam(params, "q")}
-        qPlaceholder="Search officials by name or email"
+        qPlaceholder={t.officialsSearch}
         fields={[
           {
             name: "status",
-            label: "Status",
+            label: t.filterStatus,
             options: [
-              { value: "", label: "All" },
-              { value: "active", label: "Active" },
-              { value: "disabled", label: "Disabled" },
+              { value: "", label: t.filterAll },
+              { value: "active", label: t.filterActive },
+              { value: "disabled", label: t.filterDisabled },
             ],
           },
         ]}
@@ -69,6 +71,7 @@ export default async function AdminOfficialsPage({
           offices={offices}
           fixedRole="OFFICIAL"
           currentUserId={actor.id}
+          locale={locale}
         />
       </Card>
     </div>

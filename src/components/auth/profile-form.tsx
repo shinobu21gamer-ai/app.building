@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/api-client";
 import { extractFieldErrors } from "@/lib/validation-errors";
 import { Button } from "@/components/ui/button";
 import { FieldError, FormMessage, Input, Label } from "@/components/ui/field";
+import { copy, type Locale } from "@/lib/i18n";
 
 type ProfileUser = {
   id: number;
@@ -16,7 +17,14 @@ type ProfileUser = {
   address: string | null;
 };
 
-export function ProfileForm({ user }: { user: ProfileUser }) {
+export function ProfileForm({
+  user,
+  locale = "en",
+}: {
+  user: ProfileUser;
+  locale?: Locale;
+}) {
+  const t = copy[locale].profile;
   const [form, setForm] = useState({
     firstName: user.firstName,
     lastName: user.lastName,
@@ -64,7 +72,7 @@ export function ProfileForm({ user }: { user: ProfileUser }) {
       return;
     }
 
-    setMessage({ tone: "success", text: "Profile updated." });
+    setMessage({ tone: "success", text: t.saved });
   }
 
   return (
@@ -74,16 +82,14 @@ export function ProfileForm({ user }: { user: ProfileUser }) {
       )}
 
       <div>
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t.email}</Label>
         <Input id="email" value={user.email} disabled readOnly />
-        <p className="mt-1 text-xs text-slate-500">
-          Email cannot be changed.
-        </p>
+        <p className="mt-1 text-xs text-slate-500">{t.emailLocked}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="firstName">First name</Label>
+          <Label htmlFor="firstName">{t.firstName}</Label>
           <Input
             id="firstName"
             value={form.firstName}
@@ -97,7 +103,7 @@ export function ProfileForm({ user }: { user: ProfileUser }) {
           )}
         </div>
         <div>
-          <Label htmlFor="lastName">Last name</Label>
+          <Label htmlFor="lastName">{t.lastName}</Label>
           <Input
             id="lastName"
             value={form.lastName}
@@ -113,7 +119,7 @@ export function ProfileForm({ user }: { user: ProfileUser }) {
       </div>
 
       <div>
-        <Label htmlFor="phone">Phone</Label>
+        <Label htmlFor="phone">{t.phone}</Label>
         <Input
           id="phone"
           type="tel"
@@ -126,7 +132,7 @@ export function ProfileForm({ user }: { user: ProfileUser }) {
       </div>
 
       <div>
-        <Label htmlFor="address">Address</Label>
+        <Label htmlFor="address">{t.address}</Label>
         <Input
           id="address"
           value={form.address}
@@ -138,7 +144,7 @@ export function ProfileForm({ user }: { user: ProfileUser }) {
       </div>
 
       <Button type="submit" disabled={submitting}>
-        {submitting ? "Saving…" : "Save changes"}
+        {submitting ? t.saving : t.save}
       </Button>
     </form>
   );
