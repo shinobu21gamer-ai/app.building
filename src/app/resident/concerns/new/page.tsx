@@ -45,14 +45,14 @@ export default async function NewConcernPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t.title}</h1>
-        <p className="mt-1 text-sm text-slate-600">{t.lead}</p>
+        <h1 className="text-title text-ink sm:text-display">{t.title}</h1>
+        <p className="mt-1 text-sm text-ink-muted">{t.lead}</p>
       </div>
 
       <Card>
         {categories.length === 0 || factors.length === 0 ? (
           <div className="py-8 text-center">
-            <p className="text-sm text-slate-600">{t.unavailable}</p>
+            <p className="text-sm text-ink-muted">{t.unavailable}</p>
             <Button
               href="/resident/concerns"
               variant="outline"

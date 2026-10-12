@@ -74,11 +74,11 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
   }
 
   return (
-    <fieldset className="space-y-3 rounded-lg border border-slate-200 px-4 py-3">
-      <legend className="px-1 text-sm font-semibold text-slate-800">
+    <fieldset className="space-y-3 rounded-control border border-line px-4 py-3">
+      <legend className="px-1 text-sm font-semibold text-ink">
         {t.geotagTitle}
       </legend>
-      <p className="text-xs text-slate-500">{t.geotagDesc}</p>
+      <p className="text-xs text-ink-subtle">{t.geotagDesc}</p>
 
       <div className="flex flex-wrap items-center gap-2">
         <Button
@@ -175,7 +175,7 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
             onChange={(event) =>
               setValue((prev) => ({ ...prev, source: event.target.value }))
             }
-            className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
+            className="h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
           >
             <option value="">—</option>
             {SOURCES.map((source) => (
@@ -187,7 +187,7 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
         </div>
       </div>
 
-      <p className="text-xs text-slate-500">{t.geotagMapHint}</p>
+      <p className="text-xs text-ink-subtle">{t.geotagMapHint}</p>
 
       <input type="hidden" name="locationLat" value={value.lat} />
       <input type="hidden" name="locationLng" value={value.lng} />

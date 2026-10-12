@@ -69,8 +69,8 @@ export default async function TreasuryBudgetsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t.budgetsTitle}</h1>
-        <p className="mt-1 text-sm text-slate-600">{t.budgetsLead}</p>
+        <h1 className="text-title text-ink sm:text-display">{t.budgetsTitle}</h1>
+        <p className="mt-1 text-sm text-ink-muted">{t.budgetsLead}</p>
       </div>
 
       {canPrepare && (
@@ -84,7 +84,7 @@ export default async function TreasuryBudgetsPage() {
         >
           {fundSources.length === 0 || coaAccounts.length === 0 ? (
             <div className="space-y-3">
-              <p className="text-sm text-slate-600">{t.codesLead}</p>
+              <p className="text-sm text-ink-muted">{t.codesLead}</p>
               <Button href="/treasury/codes" size="sm" variant="outline">
                 {t.navCodes}
               </Button>
@@ -103,14 +103,14 @@ export default async function TreasuryBudgetsPage() {
 
       {allocations.length === 0 ? (
         <Card>
-          <p className="text-sm text-slate-500">{t.noEntries}</p>
+          <p className="text-sm text-ink-subtle">{t.noEntries}</p>
         </Card>
       ) : (
         <Card>
           <div className="-mx-5 overflow-x-auto px-5">
             <table className="w-full min-w-[54rem] border-collapse text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-subtle">
                   <th className="py-2 pr-3 font-medium">{t.allocationLabel}</th>
                   <th className="py-2 pr-3 font-medium">{t.coaAccount}</th>
                   <th className="py-2 pr-3 font-medium">{t.fundingTitle}</th>
@@ -134,7 +134,7 @@ export default async function TreasuryBudgetsPage() {
                 {allocations.map((allocation) => (
                   <tr
                     key={allocation.id}
-                    className="border-b border-slate-100 align-top"
+                    className="border-b border-line align-top"
                   >
                     <td className="py-2 pr-3">
                       <Button
@@ -150,15 +150,15 @@ export default async function TreasuryBudgetsPage() {
                         {allocation.consistent ? "" : " · ledger check needed"}
                       </p>
                     </td>
-                    <td className="py-2 pr-3 font-mono text-xs text-slate-600">
+                    <td className="py-2 pr-3 font-mono text-xs text-ink-muted">
                       {allocation.coaCode}
-                      <p className="font-sans text-xs text-slate-500">
+                      <p className="font-sans text-xs text-ink-subtle">
                         {allocation.coaName}
                       </p>
                     </td>
-                    <td className="py-2 pr-3 text-xs text-slate-600">
+                    <td className="py-2 pr-3 text-xs text-ink-muted">
                       {allocation.fundSourceCode}
-                      <p className="text-slate-500">{allocation.fundSourceName}</p>
+                      <p className="text-ink-subtle">{allocation.fundSourceName}</p>
                     </td>
                     <td className="py-2 pr-3 text-right tabular-nums">
                       {formatPeso(allocation.appropriation)}
@@ -166,13 +166,13 @@ export default async function TreasuryBudgetsPage() {
                     <td className="py-2 pr-3 text-right tabular-nums text-amber-700">
                       {formatPeso(allocation.reserved)}
                     </td>
-                    <td className="py-2 pr-3 text-right tabular-nums text-slate-600">
+                    <td className="py-2 pr-3 text-right tabular-nums text-ink-muted">
                       {formatPeso(allocation.disbursed)}
                     </td>
                     <td className="py-2 pr-3 text-right font-semibold tabular-nums text-emerald-700">
                       {formatPeso(allocation.available)}
                     </td>
-                    <td className="py-2 pr-3 text-xs text-slate-600">
+                    <td className="py-2 pr-3 text-xs text-ink-muted">
                       {allocation.officeName ?? t.officeWideWard}
                     </td>
                     <td className="py-2 pr-3">

@@ -48,14 +48,14 @@ export function LedgerTable({
   const t = copy[locale].revamp.treasuryDesk;
 
   if (entries.length === 0) {
-    return <p className="text-sm text-slate-500">{t.noEntries}</p>;
+    return <p className="text-sm text-ink-subtle">{t.noEntries}</p>;
   }
 
   return (
     <div className="-mx-5 overflow-x-auto px-5">
       <table className="w-full min-w-[46rem] border-collapse text-sm">
         <thead>
-          <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+          <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-subtle">
             <th className="py-2 pr-3 font-medium">{t.ledgerEntry}</th>
             {showAllocation && (
               <th className="py-2 pr-3 font-medium">{t.coaAccount}</th>
@@ -76,7 +76,7 @@ export function LedgerTable({
         </thead>
         <tbody>
           {entries.map((entry) => (
-            <tr key={entry.id} className="border-b border-slate-100">
+            <tr key={entry.id} className="border-b border-line">
               <td className="py-2 pr-3">
                 <Badge tone={ENTRY_TONES[entry.entryType] ?? "neutral"}>
                   {entry.entryLabel}
@@ -86,28 +86,28 @@ export function LedgerTable({
                 </p>
               </td>
               {showAllocation && (
-                <td className="py-2 pr-3 font-mono text-xs text-slate-600">
+                <td className="py-2 pr-3 font-mono text-xs text-ink-muted">
                   {entry.coaCode ?? "—"}
                 </td>
               )}
-              <td className="py-2 pr-3 text-slate-700">{entry.memo ?? "—"}</td>
+              <td className="py-2 pr-3 text-ink-muted">{entry.memo ?? "—"}</td>
               <td className="py-2 pr-3 text-right tabular-nums">
                 {formatPeso(entry.amount)}
               </td>
-              <td className="py-2 pr-3 text-right tabular-nums text-slate-600">
+              <td className="py-2 pr-3 text-right tabular-nums text-ink-muted">
                 {entry.reservedAfter === undefined
                   ? "—"
                   : formatPeso(entry.reservedAfter)}
               </td>
-              <td className="py-2 pr-3 text-right tabular-nums text-slate-600">
+              <td className="py-2 pr-3 text-right tabular-nums text-ink-muted">
                 {entry.disbursedAfter === undefined
                   ? "—"
                   : formatPeso(entry.disbursedAfter)}
               </td>
-              <td className="py-2 pr-3 text-right font-semibold tabular-nums text-slate-900">
+              <td className="py-2 pr-3 text-right font-semibold tabular-nums text-ink">
                 {formatPeso(entry.availableAfter)}
               </td>
-              <td className="py-2 pr-3 text-slate-600">
+              <td className="py-2 pr-3 text-ink-muted">
                 {entry.actorName ?? "—"}
               </td>
             </tr>
@@ -137,7 +137,7 @@ export function AgingBars({
     <ul className="space-y-2">
       {buckets.map((entry) => (
         <li key={entry.bucket} className="space-y-1">
-          <div className="flex items-center justify-between text-xs text-slate-600">
+          <div className="flex items-center justify-between text-xs text-ink-muted">
             <span>{t.agingBucket.replace("{bucket}", entry.bucket)}</span>
             <span>
               {t.agingCount
@@ -145,7 +145,7 @@ export function AgingBars({
                 .replace("{amount}", entry.amount.toLocaleString("en-PH"))}
             </span>
           </div>
-          <div className="h-2 rounded-full bg-slate-100">
+          <div className="h-2 rounded-full bg-surface-sunken">
             <div
               className="h-2 rounded-full bg-amber-500"
               style={{ width: `${(entry.count / largest) * 100}%` }}

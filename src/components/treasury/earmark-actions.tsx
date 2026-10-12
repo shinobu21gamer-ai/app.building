@@ -99,7 +99,7 @@ export function EarmarkActions({
         <form action={(formData) => run(mode, formData)} className="space-y-3">
           <RequiredLegend>{t.requiredLegend}</RequiredLegend>
           {mode === "APPROVE" && (
-            <p className="text-sm text-slate-600">{t.earmarkApproved}</p>
+            <p className="text-sm text-ink-muted">{t.earmarkApproved}</p>
           )}
           {mode === "CANCEL" && (
             <div>

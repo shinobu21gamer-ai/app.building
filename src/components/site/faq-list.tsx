@@ -8,10 +8,10 @@ export function FaqList({
   const visible = limit ? items.slice(0, limit) : items;
 
   return (
-    <div className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <div className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
       {visible.map((item) => (
         <details key={item.question} className="group px-5 py-1">
-          <summary className="cursor-pointer list-none py-3 text-sm font-semibold text-slate-900 marker:content-none [&::-webkit-details-marker]:hidden">
+          <summary className="cursor-pointer list-none py-3 text-sm font-semibold text-ink marker:content-none [&::-webkit-details-marker]:hidden">
             <span className="flex items-start justify-between gap-3">
               {item.question}
               <span
@@ -22,7 +22,7 @@ export function FaqList({
               </span>
             </span>
           </summary>
-          <p className="pb-4 text-sm leading-relaxed text-slate-600 group-open:animate-fade-in">
+          <p className="pb-4 text-sm leading-relaxed text-ink-muted group-open:animate-fade-in">
             {item.answer}
           </p>
         </details>

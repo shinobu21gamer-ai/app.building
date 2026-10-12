@@ -26,21 +26,21 @@ export function FundingPanel({
       <p
         className={
           funding.gate.certified
-            ? "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
-            : "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+            ? "rounded-control border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+            : "rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
         }
       >
         {funding.gate.message}
       </p>
 
       <div className="flex flex-wrap gap-3 text-sm">
-        <span className="text-slate-700">
+        <span className="text-ink-muted">
           {t.fundingPaid}:{" "}
           <span className="font-semibold tabular-nums">
             {formatPeso(funding.paid)}
           </span>
         </span>
-        <span className="text-slate-700">
+        <span className="text-ink-muted">
           {t.fundingCommitted}:{" "}
           <span className="font-semibold tabular-nums">
             {formatPeso(funding.committed)}
@@ -49,11 +49,11 @@ export function FundingPanel({
       </div>
 
       {funding.earmarks.length > 0 && (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-line">
           {funding.earmarks.map((earmark) => (
             <li key={earmark.earmarkId} className="py-2">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs text-slate-500">
+                <span className="font-mono text-xs text-ink-subtle">
                   {earmark.code ?? `#${earmark.earmarkId}`}
                 </span>
                 <Badge
@@ -67,12 +67,12 @@ export function FundingPanel({
                 >
                   {earmark.status}
                 </Badge>
-                <span className="text-sm font-semibold text-slate-900">
+                <span className="text-sm font-semibold text-ink">
                   {formatPeso(earmark.amount)}
                 </span>
               </div>
-              <p className="text-sm text-slate-700">{earmark.purpose}</p>
-              <p className="text-xs text-slate-500">
+              <p className="text-sm text-ink-muted">{earmark.purpose}</p>
+              <p className="text-xs text-ink-subtle">
                 {earmark.coaCode} · {earmark.fundSource}
                 {earmark.approvedAt
                   ? ` · ${formatDateTime(earmark.approvedAt)}`
@@ -84,13 +84,13 @@ export function FundingPanel({
       )}
 
       {funding.disbursements.length > 0 && (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-line">
           {funding.disbursements.map((voucher) => (
             <li
               key={voucher.id}
               className="flex flex-wrap items-center justify-between gap-2 py-2"
             >
-              <span className="text-sm text-slate-700">
+              <span className="text-sm text-ink-muted">
                 {voucher.voucherNumber ?? `#${voucher.id}`} · {voucher.payee} ·{" "}
                 {formatPeso(voucher.amount)}
               </span>

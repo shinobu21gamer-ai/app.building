@@ -33,8 +33,8 @@ export default async function AdminRoutingPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t.routingTitle}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-slate-600">{t.routingLead}</p>
+        <h1 className="text-title text-ink sm:text-display">{t.routingTitle}</h1>
+        <p className="mt-1 max-w-2xl text-sm text-ink-muted">{t.routingLead}</p>
       </div>
 
       <Card>

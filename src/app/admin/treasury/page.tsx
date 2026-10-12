@@ -51,10 +51,10 @@ export default async function AdminTreasuryPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-title text-ink sm:text-display">
             {t.adminTreasuryTitle}
           </h1>
-          <p className="mt-1 text-sm text-slate-600">{t.adminTreasuryLead}</p>
+          <p className="mt-1 text-sm text-ink-muted">{t.adminTreasuryLead}</p>
         </div>
         <div className="flex gap-2">
           <Button href="/treasury/budgets" size="sm" variant="outline">
@@ -70,21 +70,21 @@ export default async function AdminTreasuryPage() {
         <div className="mb-4">
           <FiscalYearForm locale={locale} />
         </div>
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-line">
           {fiscalYears.map((year) => (
             <li key={year.id} className="space-y-2 py-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-semibold text-slate-900">
+                <span className="text-sm font-semibold text-ink">
                   {year.name}
                 </span>
                 <Badge tone={year.isClosed ? "gray" : "green"}>
                   {year.isClosed ? t.closeFiscalYear : t.fiscalYearYear}
                 </Badge>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-ink-subtle">
                   {formatDate(year.startsOn)} → {formatDate(year.endsOn)}
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-ink-subtle">
                 {year.allocations.length} {t.budgetsTitle.toLowerCase()} ·{" "}
                 {formatPeso(
                   year.allocations.reduce(
@@ -104,11 +104,11 @@ export default async function AdminTreasuryPage() {
       </Card>
 
       <Card title={t.fundSource}>
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-line">
           {fundSources.map((source) => (
             <li key={source.id} className="space-y-2 py-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs text-slate-600">
+                <span className="font-mono text-xs text-ink-muted">
                   {source.code}
                 </span>
                 <Badge
@@ -122,10 +122,10 @@ export default async function AdminTreasuryPage() {
                 >
                   {source.verificationStatus}
                 </Badge>
-                <span className="text-sm text-slate-800">{source.name}</span>
+                <span className="text-sm text-ink">{source.name}</span>
               </div>
               {source.verificationSource && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-ink-subtle">
                   {t.verificationSource}: {source.verificationSource}
                 </p>
               )}
@@ -142,9 +142,9 @@ export default async function AdminTreasuryPage() {
 
       <Card title={t.budgetsTitle} description={t.budgetsLead}>
         {allocations.length === 0 ? (
-          <p className="text-sm text-slate-500">{t.noEntries}</p>
+          <p className="text-sm text-ink-subtle">{t.noEntries}</p>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line">
             {allocations.map((allocation) => (
               <li
                 key={allocation.id}
@@ -163,14 +163,14 @@ export default async function AdminTreasuryPage() {
                     >
                       {allocation.status}
                     </Badge>
-                    <span className="text-sm font-semibold text-slate-900">
+                    <span className="text-sm font-semibold text-ink">
                       {allocation.label}
                     </span>
-                    <span className="text-sm tabular-nums text-slate-700">
+                    <span className="text-sm tabular-nums text-ink-muted">
                       {formatPeso(allocation.available)}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-ink-subtle">
                     {allocation.coaCode} · {allocation.fundSourceCode} · FY{" "}
                     {allocation.fiscalYear}
                     {allocation.officeName ? ` · ${allocation.officeName}` : ""}

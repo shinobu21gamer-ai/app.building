@@ -59,40 +59,40 @@ export default async function AdminSlaPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t.title}</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">{t.lead}</p>
+        <h1 className="text-title text-ink">{t.title}</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-muted">{t.lead}</p>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <p className="text-xs uppercase tracking-wide text-slate-500">{t.statOpen}</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">{overview.counts.open}</p>
+          <p className="text-xs uppercase tracking-wide text-ink-subtle">{t.statOpen}</p>
+          <p className="mt-1 text-2xl font-bold text-ink">{overview.counts.open}</p>
         </Card>
         <Card>
-          <p className="text-xs uppercase tracking-wide text-slate-500">
+          <p className="text-xs uppercase tracking-wide text-ink-subtle">
             {t.statAcknowledged}
           </p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">
+          <p className="mt-1 text-2xl font-bold text-ink">
             {overview.counts.acknowledged}
           </p>
         </Card>
         <Card>
-          <p className="text-xs uppercase tracking-wide text-slate-500">{t.statBreaching}</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">
+          <p className="text-xs uppercase tracking-wide text-ink-subtle">{t.statBreaching}</p>
+          <p className="mt-1 text-2xl font-bold text-ink">
             {overview.breachingCases}
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-ink-subtle">
             {t.statOpenCases.replace("{count}", String(overview.openCases))}
           </p>
         </Card>
         <Card>
-          <p className="text-xs uppercase tracking-wide text-slate-500">{t.statWindow}</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">
+          <p className="text-xs uppercase tracking-wide text-ink-subtle">{t.statWindow}</p>
+          <p className="mt-1 text-2xl font-bold text-ink">
             {overview.activePolicies > 0
               ? t.statPolicies.replace("{count}", String(overview.activePolicies))
               : `${SLA_DEFAULT_HOURS}h`}
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-ink-subtle">
             {t.statPoliciesTotal.replace("{count}", String(overview.policies))}
           </p>
         </Card>
@@ -108,13 +108,13 @@ export default async function AdminSlaPage({ searchParams }: PageProps) {
                 className={`rounded-full border px-3 py-1 text-xs font-medium ${
                   status === filter.value
                     ? "border-brand-700 bg-brand-50 text-brand-800"
-                    : "border-slate-200 text-slate-600 hover:border-slate-300"
+                    : "border-line text-ink-muted hover:border-line-strong"
                 }`}
               >
                 {filter.label}
               </a>
             ))}
-            <span className="ml-auto text-xs text-slate-500">
+            <span className="ml-auto text-xs text-ink-subtle">
               {t.showing.replace("{count}", String(queue.rows.length)).replace(
                 "{total}",
                 String(queue.total)
@@ -129,7 +129,7 @@ export default async function AdminSlaPage({ searchParams }: PageProps) {
       <Card title={t.policiesTitle} description={t.policiesLead}>
         <div className="space-y-5">
           {policies.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+            <p className="rounded-control border border-dashed border-line px-4 py-6 text-center text-sm text-ink-subtle">
               {t.policiesEmpty.replace("{hours}", String(SLA_DEFAULT_HOURS))}
             </p>
           ) : (
@@ -137,12 +137,12 @@ export default async function AdminSlaPage({ searchParams }: PageProps) {
               {policies.map((policy) => (
                 <div
                   key={policy.id}
-                  className="rounded-xl border border-slate-200 bg-white p-4"
+                  className="rounded-card border border-line bg-surface p-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-slate-900">{policy.name}</span>
+                        <span className="font-medium text-ink">{policy.name}</span>
                         <Badge tone={policy.isActive ? "green" : "gray"}>
                           {policy.isActive ? t.active : t.inactive}
                         </Badge>
@@ -152,7 +152,7 @@ export default async function AdminSlaPage({ searchParams }: PageProps) {
                           {policy.hours === SLA_DEFAULT_HOURS ? t.defaultWindow : ""}
                         </Badge>
                       </div>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-xs text-ink-subtle">
                         {t.scope}: {policy.typeName ?? t.allTypes} ·{" "}
                         {policy.priorityLevel ?? t.allPriorities} · {t.escalateTo}{" "}
                         {policy.escalateToRole}
@@ -187,9 +187,9 @@ export default async function AdminSlaPage({ searchParams }: PageProps) {
             </div>
           )}
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <h3 className="text-sm font-semibold text-slate-900">{t.createPolicyTitle}</h3>
-            <p className="mt-1 text-xs text-slate-500">{t.createPolicyLead}</p>
+          <div className="rounded-card border border-line bg-surface-muted p-4">
+            <h3 className="text-sm font-semibold text-ink">{t.createPolicyTitle}</h3>
+            <p className="mt-1 text-xs text-ink-subtle">{t.createPolicyLead}</p>
             <div className="mt-4">
               <PolicyForm locale={locale} types={types} />
             </div>
@@ -199,14 +199,14 @@ export default async function AdminSlaPage({ searchParams }: PageProps) {
 
       <Card title={t.runsTitle} description={t.runsLead}>
         {overview.lastRuns.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+          <p className="rounded-control border border-dashed border-line px-4 py-6 text-center text-sm text-ink-subtle">
             {t.runsEmpty}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[36rem] text-left text-sm">
-              <thead className="text-xs uppercase tracking-wide text-slate-500">
-                <tr className="border-b border-slate-200">
+              <thead className="text-xs uppercase tracking-wide text-ink-subtle">
+                <tr className="border-b border-line">
                   <th className="px-2 py-2">{t.colWhen}</th>
                   <th className="px-2 py-2">{t.colTrigger}</th>
                   <th className="px-2 py-2">{t.colStatus}</th>
@@ -215,11 +215,11 @@ export default async function AdminSlaPage({ searchParams }: PageProps) {
               </thead>
               <tbody>
                 {overview.lastRuns.map((run) => (
-                  <tr key={run.id} className="border-b border-slate-100">
-                    <td className="px-2 py-2 whitespace-nowrap text-xs text-slate-500">
+                  <tr key={run.id} className="border-b border-line">
+                    <td className="px-2 py-2 whitespace-nowrap text-xs text-ink-subtle">
                       {formatDateTime(run.startedAt)}
                     </td>
-                    <td className="px-2 py-2 text-xs text-slate-600">{run.triggerSource}</td>
+                    <td className="px-2 py-2 text-xs text-ink-muted">{run.triggerSource}</td>
                     <td className="px-2 py-2">
                       <Badge
                         tone={
@@ -233,7 +233,7 @@ export default async function AdminSlaPage({ searchParams }: PageProps) {
                         {run.status}
                       </Badge>
                     </td>
-                    <td className="px-2 py-2 text-xs text-slate-600">
+                    <td className="px-2 py-2 text-xs text-ink-muted">
                       {run.processed}
                       {run.error ? (
                         <span className="ml-1 text-red-600">{run.error}</span>

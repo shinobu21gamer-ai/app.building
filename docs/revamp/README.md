@@ -1,8 +1,8 @@
 # BarangayResolve — Complete Revamp
 
 Planning and delivery notes for the UI/UX, workflow, schema and module revamp.
-**Status: Stage 5 of 7 (SLA escalation + tamper-evident audit chain) is implemented on this branch.**
-Stages 6-7 are specified here and are delivered one at a time, on your go-ahead.
+**Status: Stage 6 of 7 (design system + mobile-first role portals) is implemented on this branch.**
+Stage 7 is specified here and is delivered on your go-ahead.
 
 | Stage | Scope | State |
 |---|---|---|
@@ -11,7 +11,7 @@ Stages 6-7 are specified here and are delivered one at a time, on your go-ahead.
 | 3 | Core workflow, including manpower planning and crew assignment | **Delivered** (this branch) |
 | 4 | Treasury (COA MOOE budgets, earmarks, disbursements, approvals, live balances) | **Delivered** (this branch) |
 | 5 | SLA (48-hour escalation via cron) and the hash-chained audit log | **Delivered** (this branch) |
-| 6 | UI revamp (design system + mobile-first role portals) | Specified, awaiting go-ahead |
+| 6 | UI revamp (design system + mobile-first role portals) | **Delivered** (this branch) |
 | 7 | Reports and dashboards | Specified, awaiting go-ahead |
 
 Documents in this folder:
@@ -259,23 +259,51 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
   the revamp brief ("retention rules") with nothing behind it yet. Now flagged as
   an open item below rather than quietly dropped.
 
-### Stage 6 — UI revamp
+### Stage 6 — UI revamp ✅
 
 | Path | | Purpose |
 |---|---|---|
-| `src/app/globals.css` | M | Design tokens v2 (colour, type scale, spacing, radius, elevation, motion) |
-| `src/components/ui/*` | M/N | Button, card, badge, field (with `*`), input, select, dialog/sheet, tabs, table, stat, timeline, empty state, pagination, map frame |
-| `src/lib/design/form-fields.ts` | N | Field manifest (label, `required`, help) that forms render from, so a required Zod field cannot lose its `*` |
-| `src/components/site/*` | M | Role-aware header, mobile nav, footer, language toggle |
-| `src/app/layout.tsx` | M | Shell wiring only — the frozen alert listeners (`AlertListener`, `NativePushListener`, `PushSessionSync`, `NativeCrashNotice`) stay mounted, unchanged |
-| `src/components/role-shell.tsx` | M | Mobile-first shell: bottom tab bar on small screens, sidebar on large |
-| `next.config.ts` | M | Adds the OpenStreetMap tile host to `img-src` only (map tiles load as images; `connect-src` stays `'self'`) |
-| `src/app/page.tsx`, `help/`, `track/`, `register/`, `login/` | M | Public pages |
-| `src/app/transparency/page.tsx`, `transparency/[publicRef]/page.tsx` | N | PII-free public transparency + map |
-| `src/app/{resident,official,admin,treasury,captain,crew}/**` | M | Every role portal restyled and reorganised |
-| `src/components/{cases,concern,dashboard,priority,routing}/**` | M/N | Screens and widgets |
-| `src/lib/i18n.ts` | M | New copy for both locales |
-| `src/lib/design/form-fields.test.ts` | N | Asserts every required Zod field is marked `required` in the manifest (no DOM test dependency) |
+| `src/app/globals.css` | M ✅ | Tokens v2: semantic surfaces/ink/lines, status colours, radius, elevation, type scale, tab-bar height; `.has-tabbar`, `.no-scrollbar`, `.tap-target`, `.safe-bottom` |
+| `src/components/ui/page-header.tsx` | N ✅ | The title/description/actions block every portal page starts with |
+| `src/components/ui/empty-state.tsx` | N ✅ | "Nothing here yet" with an explanation and an optional action |
+| `src/components/ui/table.tsx` | N ✅ | `Table`/`THead`/`TBody`/`TR`/`TH`/`TD`, edge-to-edge horizontal scroll on phones |
+| `src/components/ui/pagination.tsx` | N ✅ | Two large targets + "showing 41-60 of 438", filters preserved by `hrefFor` |
+| `src/components/ui/sheet.tsx` | N ✅ | Bottom sheet: Escape, backdrop, focus and scroll-lock handling |
+| `src/components/ui/mobile-tab-bar.tsx` | N ✅ | Fixed bottom tab bar (<md) with the role's first four destinations + a "More" sheet |
+| `src/components/ui/nav-icons.ts` | N ✅ | Glyph per destination, keyed off the last path segment |
+| `src/components/ui/role-nav.tsx` | M ✅ | Now the sticky desktop sidebar (same active logic as the tab bar) |
+| `src/components/role-shell.tsx` | M ✅ | One column + tab bar on phones, sidebar + content from `md` up; the six portals inherit it unchanged |
+| `src/components/ui/{card,badge,button,field}.tsx` | M ✅ | Token colours, `Card` actions/flush, new `Select`/`FieldHint`, `StatusBadge` for all seven stages |
+| `src/components/ui/map-frame.tsx` | N ✅ | OSM tile mosaic with marker, attribution and an external link (replaces the CSP-blocked iframe) |
+| `src/components/concern/concern-map.tsx` | M ✅ | Wraps `MapFrame`; same props, so case pages were untouched |
+| `next.config.ts` | M ✅ | OSM tile hosts added to `img-src` only; `connect-src` stays `'self'` |
+| `src/lib/nav.ts` + `nav.test.ts` | N ✅ | Active-href rule, tab partitioning, icon keys (15 tests) |
+| `src/lib/maps.ts` + `maps.test.ts` | M ✅ | Slippy-map tile maths, mosaic and marker placement (18 tests) |
+| `src/lib/cases/public-query.ts` + `public-query.test.ts` | N ✅ | Public read model: filters, paging, stats, facets; never joins back to `Concern` (14 tests) |
+| `src/app/transparency/page.tsx`, `transparency/[publicRef]/page.tsx` | N ✅ | The public PII-free transparency list (filters, stats, pager) and one anonymised case with a coarse map |
+| `src/lib/design/form-fields.ts` + `form-fields.test.ts` | N ✅ | Requiredness derived from Zod + a parity test against the forms' own `*` markers (10 tests) |
+| `src/app/{resident,official,page,transparency}/**`, `src/components/portals/portal-intro.tsx` | M ✅ | Adopted `PageHeader`/`EmptyState`; the resident intake and auth forms gained the missing `*` markers |
+| `src/components/{site/site-footer.tsx,auth/register-form.tsx}` | M ✅ | Transparency link, tab-bar clearance, consent markers |
+| `src/app/**`, `src/components/**` (119 files) | M ✅ | Migrated from raw `slate-*`/`bg-white`/`rounded-*` classes to the semantic tokens |
+| `src/lib/i18n.ts` | M ✅ | `revamp.transparency` (43 keys), `revamp.common.statuses`, `submit.requiredLegend`, footer label, `statusLabelFor()` — en + fil |
+
+**Where this diverged from the stage-6 plan** (deliberate):
+
+- No `dialog`/`tabs`/`timeline` primitives: the sheet covers the modals in use,
+  filters are links (shareable, survive reload), and the case timeline already
+  exists as `components/concern/case-timeline.tsx`.
+- The field manifest is **derived** from the schemas and enforced by a parity test
+  over eight forms, rather than every form rendering its labels from a manifest.
+  Rewriting 45 form components to render from a manifest would have been a large
+  mechanical change with no extra guarantee; the test gives the same guarantee for
+  the forms it covers and fails loudly if a form's markup changes shape.
+- Public pages were polished in place (tokens, header, footer, focus states)
+  rather than re-composed; the landing page keeps its hero and sections.
+- `role-shell.tsx` renders a sidebar from `md` up (not only from `lg`), and the
+  tab bar carries the first four destinations rather than a fixed global set —
+  each portal decides its own order.
+- **The case map changed from an embedded iframe to tiles.** It is now a static
+  preview plus an "open in OpenStreetMap" link, and it works in production.
 
 ### Stage 7 — Reports
 
@@ -325,6 +353,13 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
    anonymous reference (`BR-PUB-…`), never the real case number; coordinates are rounded
    to a coarse geohash. Historical cases are only projected after the consent review in
    stage 6 — the migration does not publish anything by itself.
+9. **The case map is a tile preview, not an embedded map.** It cannot be panned
+   or zoomed in place any more: it shows the pin, the coordinates and a link that
+   opens the real map. The embedded `openstreetmap.org` iframe was blocked by the
+   production CSP (and would have needed `frame-src` for a third party, plus their
+   JavaScript on every case page). If you would rather have an interactive map on
+   the case page, the options are widening the CSP for the embed, or paying for a
+   tile/SDK service with an API key — say the word and I will price it in.
 8. **Retention sweep is the one unfinished control.** Stage 2 landed the retention
    *policy* data (`RetentionRun`, consent records, the privacy helpers on
    `/admin/privacy`) but no job that applies it. Stage 5 was the natural place to add

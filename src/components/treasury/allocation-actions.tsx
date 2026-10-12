@@ -124,7 +124,7 @@ export function AllocationActions({
         <form action={(formData) => run(mode, formData)} className="space-y-3">
           <RequiredLegend>{t.requiredLegend}</RequiredLegend>
           {mode === "APPROVE" && (
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-ink-muted">
               {t.approveAllocation} — {t.allocationApproved}
             </p>
           )}

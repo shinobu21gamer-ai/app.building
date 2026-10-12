@@ -171,7 +171,7 @@ export default async function ConcernDetailPage({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-mono text-xs text-slate-500">
+            <p className="font-mono text-xs text-ink-subtle">
               {concern.caseNumber}
             </p>
             <CopyCaseNumber caseNumber={concern.caseNumber} />
@@ -183,10 +183,10 @@ export default async function ConcernDetailPage({
               {t.print}
             </Button>
           </div>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">
+          <h1 className="mt-1 text-ink text-title sm:text-display">
             {concern.title}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-ink-subtle">
             {t.submitted} {formatDateTime(concern.submittedAt)}
           </p>
         </div>
@@ -203,7 +203,7 @@ export default async function ConcernDetailPage({
       <Card title={t.progress} description={t.progressDesc}>
         <CaseStatusStepper currentStatus={concern.status} reached={reachedAt} />
         {crewFlags.crewProgressLabel ? (
-          <p className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+          <p className="mt-4 border-t border-line pt-3 text-xs text-ink-subtle">
             {copy[locale].revamp.workflow.crewProgress}:{" "}
             {crewFlags.crewProgressLabel}
           </p>
@@ -229,14 +229,14 @@ export default async function ConcernDetailPage({
           <Card title={t.details}>
             <dl className="space-y-4 text-sm">
               <div>
-                <dt className="text-slate-500">{t.category}</dt>
-                <dd className="mt-0.5 font-medium text-slate-900">
+                <dt className="text-ink-subtle">{t.category}</dt>
+                <dd className="mt-0.5 font-medium text-ink">
                   {concern.category.name}
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">{t.location}</dt>
-                <dd className="mt-0.5 font-medium text-slate-900">
+                <dt className="text-ink-subtle">{t.location}</dt>
+                <dd className="mt-0.5 font-medium text-ink">
                   {concern.locationAddress}
                   {hasCoordinates(coordinates) ? (
                     <>
@@ -257,19 +257,19 @@ export default async function ConcernDetailPage({
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">{t.description}</dt>
-                <dd className="mt-0.5 whitespace-pre-wrap text-slate-700">
+                <dt className="text-ink-subtle">{t.description}</dt>
+                <dd className="mt-0.5 whitespace-pre-wrap text-ink-muted">
                   {concern.description}
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">{t.office}</dt>
-                <dd className="mt-0.5 font-medium text-slate-900">
+                <dt className="text-ink-subtle">{t.office}</dt>
+                <dd className="mt-0.5 font-medium text-ink">
                   {concern.assignedOffice ? (
                     <>
                       {concern.assignedOffice.name}
                       {currentAssignment && (
-                        <span className="ml-2 text-xs font-normal text-slate-500">
+                        <span className="ml-2 text-xs font-normal text-ink-subtle">
                           on {formatDateTime(currentAssignment.assignedAt)}
                         </span>
                       )}
@@ -284,15 +284,15 @@ export default async function ConcernDetailPage({
             </dl>
 
             {concern.imageUrl && (
-              <div className="mt-5 border-t border-slate-100 pt-5">
-                <p className="mb-2 text-slate-500">{t.photo}</p>
+              <div className="mt-5 border-t border-line pt-5">
+                <p className="mb-2 text-ink-subtle">{t.photo}</p>
                 <Image
                   src={concern.imageUrl}
                   alt={`Supporting image for ${concern.caseNumber}`}
                   width={800}
                   height={600}
                   unoptimized
-                  className="h-auto w-full max-w-md rounded-lg border border-slate-200"
+                  className="h-auto w-full max-w-md rounded-control border border-line"
                 />
               </div>
             )}
@@ -320,7 +320,7 @@ export default async function ConcernDetailPage({
                 locale={locale}
               />
             ) : (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-ink-subtle">
                 This concern has not been assessed yet.
               </p>
             )}
@@ -330,31 +330,31 @@ export default async function ConcernDetailPage({
             <Card title="Resolution">
               <dl className="space-y-3 text-sm">
                 <div>
-                  <dt className="text-slate-500">Summary</dt>
-                  <dd className="mt-0.5 text-slate-700">
+                  <dt className="text-ink-subtle">Summary</dt>
+                  <dd className="mt-0.5 text-ink-muted">
                     {resolution.summary}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Actions taken</dt>
-                  <dd className="mt-0.5 whitespace-pre-wrap text-slate-700">
+                  <dt className="text-ink-subtle">Actions taken</dt>
+                  <dd className="mt-0.5 whitespace-pre-wrap text-ink-muted">
                     {resolution.actionsTaken}
                   </dd>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-slate-500">
+                <div className="flex flex-wrap items-center gap-2 text-ink-subtle">
                   <span>
                     Handled by {resolution.official.firstName}{" "}
                     {resolution.official.lastName}
                   </span>
                   <Badge tone="green">{resolution.resolutionType}</Badge>
                 </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-1 text-slate-500">
+                <div className="flex flex-wrap gap-x-6 gap-y-1 text-ink-subtle">
                   <span>Resolved {formatDate(resolution.resolvedOn)}</span>
                   <span>Recorded {formatDateTime(resolution.resolvedAt)}</span>
                 </div>
                 {resolution.attachmentUrl && (
                   <div>
-                    <dt className="text-slate-500">Proof photo</dt>
+                    <dt className="text-ink-subtle">Proof photo</dt>
                     <dd className="mt-2">
                       <Image
                         src={resolution.attachmentUrl}
@@ -362,7 +362,7 @@ export default async function ConcernDetailPage({
                         width={800}
                         height={600}
                         unoptimized
-                        className="h-auto w-full max-w-md rounded-lg border border-slate-200"
+                        className="h-auto w-full max-w-md rounded-control border border-line"
                       />
                     </dd>
                   </div>

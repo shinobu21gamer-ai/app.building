@@ -20,7 +20,7 @@ import {
 } from "@/lib/validations/treasury";
 
 const selectStyles =
-  "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
+  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
 export type VoucherAllocationOption = {
   id: number;
@@ -80,7 +80,7 @@ export function VoucherForm({
   );
 
   if (allocations.length === 0) {
-    return <p className="text-sm text-slate-500">{t.noEntries}</p>;
+    return <p className="text-sm text-ink-subtle">{t.noEntries}</p>;
   }
 
   if (!open) {

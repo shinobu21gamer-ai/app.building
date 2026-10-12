@@ -12,7 +12,7 @@ export type FilterField = {
 };
 
 const selectStyles =
-  "h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
+  "h-10 rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
 export function AdminFilterBar({
   initialQ = "",
@@ -65,12 +65,12 @@ export function AdminFilterBar({
   return (
     <form
       onSubmit={apply}
-      className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-3"
+      className="flex flex-wrap items-end gap-3 rounded-card border border-line bg-surface p-3"
     >
       <div className="min-w-[200px] flex-1">
         <label
           htmlFor="admin-filter-q"
-          className="mb-1 block text-xs font-medium text-slate-600"
+          className="mb-1 block text-xs font-medium text-ink-muted"
         >
           {t.search}
         </label>
@@ -80,7 +80,7 @@ export function AdminFilterBar({
           value={q}
           onChange={(event) => setQ(event.target.value)}
           placeholder={qPlaceholder}
-          className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
+          className="h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
         />
       </div>
 
@@ -88,7 +88,7 @@ export function AdminFilterBar({
         <div key={field.name}>
           <label
             htmlFor={`admin-filter-${field.name}`}
-            className="mb-1 block text-xs font-medium text-slate-600"
+            className="mb-1 block text-xs font-medium text-ink-muted"
           >
             {field.label}
           </label>
@@ -116,7 +116,7 @@ export function AdminFilterBar({
         type="submit"
         disabled={pending}
         aria-busy={pending || undefined}
-        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800 disabled:cursor-progress disabled:opacity-70"
+        className="inline-flex h-10 items-center justify-center gap-2 rounded-control bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800 disabled:cursor-progress disabled:opacity-70"
       >
         {pending ? (
           <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />
@@ -127,7 +127,7 @@ export function AdminFilterBar({
         type="button"
         onClick={clear}
         disabled={pending}
-        className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-70"
+        className="inline-flex h-10 items-center justify-center rounded-control border border-line-strong bg-surface px-4 text-sm font-semibold text-ink-muted hover:bg-surface-muted disabled:opacity-70"
       >
         {t.clear}
       </button>

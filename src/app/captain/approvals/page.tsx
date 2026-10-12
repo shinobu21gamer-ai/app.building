@@ -50,33 +50,33 @@ export default async function CaptainApprovalsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="text-title text-ink sm:text-display">
           {t.captainApprovalsTitle}
         </h1>
-        <p className="mt-1 text-sm text-slate-600">{t.captainApprovalsLead}</p>
+        <p className="mt-1 text-sm text-ink-muted">{t.captainApprovalsLead}</p>
       </div>
 
       {nothingWaiting && (
         <Card>
-          <p className="text-sm text-slate-500">{t.captainApprovalsEmpty}</p>
+          <p className="text-sm text-ink-subtle">{t.captainApprovalsEmpty}</p>
         </Card>
       )}
 
       {allocations.length > 0 && (
         <Card title={t.awaitingApprovalAllocations}>
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line">
             {allocations.map((allocation) => (
               <li key={allocation.id} className="space-y-2 py-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone="amber">{allocation.status}</Badge>
-                  <span className="text-sm font-semibold text-slate-900">
+                  <span className="text-sm font-semibold text-ink">
                     {allocation.label}
                   </span>
-                  <span className="text-sm tabular-nums text-slate-700">
+                  <span className="text-sm tabular-nums text-ink-muted">
                     {formatPeso(allocation.appropriation)}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-ink-subtle">
                   {allocation.coaCode} — {allocation.coaName} ·{" "}
                   {allocation.fundSourceCode} · FY {allocation.fiscalYear}
                   {allocation.officeName ? ` · ${allocation.officeName}` : ""}
@@ -98,20 +98,20 @@ export default async function CaptainApprovalsPage() {
 
       {earmarks.length > 0 && (
         <Card title={t.awaitingApprovalEarmarks}>
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line">
             {earmarks.map((earmark) => (
               <li key={earmark.id} className="space-y-2 py-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs text-slate-500">
+                  <span className="font-mono text-xs text-ink-subtle">
                     {earmark.code ?? `#${earmark.id}`}
                   </span>
                   <Badge tone="sky">{earmark.status}</Badge>
-                  <span className="text-sm font-semibold text-slate-900">
+                  <span className="text-sm font-semibold text-ink">
                     {formatPeso(earmark.amount)}
                   </span>
                 </div>
-                <p className="text-sm text-slate-700">{earmark.purpose}</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm text-ink-muted">{earmark.purpose}</p>
+                <p className="text-xs text-ink-subtle">
                   {earmark.coaCode} · {earmark.fundSourceCode}
                   {earmark.caseNumber ? ` · ${earmark.caseNumber}` : ""} ·{" "}
                   {formatDateTime(earmark.preparedAt)}
@@ -131,7 +131,7 @@ export default async function CaptainApprovalsPage() {
 
       {vouchers.length > 0 && (
         <Card title={t.awaitingApprovalVouchers}>
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line">
             {vouchers.map((voucher) => (
               <li
                 key={voucher.id}
@@ -139,16 +139,16 @@ export default async function CaptainApprovalsPage() {
               >
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-xs text-slate-500">
+                    <span className="font-mono text-xs text-ink-subtle">
                       {voucher.voucherNumber ?? `#${voucher.id}`}
                     </span>
                     <Badge tone="amber">{voucher.statusLabel}</Badge>
-                    <span className="text-sm font-semibold text-slate-900">
+                    <span className="text-sm font-semibold text-ink">
                       {formatPeso(voucher.amount)}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-slate-700">{voucher.payee}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="mt-1 text-sm text-ink-muted">{voucher.payee}</p>
+                  <p className="text-xs text-ink-subtle">
                     {voucher.particulars} · {voucher.coaCode}
                     {voucher.caseNumber ? ` · ${voucher.caseNumber}` : ""}
                   </p>

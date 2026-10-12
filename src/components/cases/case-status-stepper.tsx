@@ -59,7 +59,7 @@ export function CaseStatusStepper({
               className={`relative z-10 mt-1 flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full border-2 ${
                 done
                   ? "animate-scale-in border-brand-600 bg-brand-600 text-white"
-                  : "border-slate-300 bg-white"
+                  : "border-line-strong bg-surface"
               } ${isCurrent ? "ring-4 ring-brand-100" : ""}`}
             >
               {isCurrent && (
@@ -83,13 +83,13 @@ export function CaseStatusStepper({
             <div className="flex flex-1 items-baseline justify-between gap-3 pb-1">
               <span
                 className={`text-sm font-semibold ${
-                  done ? "text-slate-900" : "text-slate-400"
+                  done ? "text-ink" : "text-slate-400"
                 }`}
               >
                 {humanizeStatus(status)}
               </span>
               {reachedDate ? (
-                <span className="text-xs tabular-nums text-slate-500">
+                <span className="text-xs tabular-nums text-ink-subtle">
                   {reachedDate.dateOnly
                     ? formatDate(reachedDate.at)
                     : formatDateTime(reachedDate.at)}

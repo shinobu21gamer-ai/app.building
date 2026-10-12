@@ -30,7 +30,7 @@ export default async function LoginPage({
           <Button href="/" variant="ghost" size="sm" className="mt-4 w-full">
             {t.back}
           </Button>
-          <p className="mt-4 text-center text-sm text-slate-600">
+          <p className="mt-4 text-center text-sm text-ink-muted">
             <Link
               href="/reset-password"
               className="font-medium text-brand-700 hover:text-brand-800"
@@ -38,7 +38,7 @@ export default async function LoginPage({
               {t.forgot}
             </Link>
           </p>
-          <p className="mt-2 text-center text-sm text-slate-600">
+          <p className="mt-2 text-center text-sm text-ink-muted">
             {t.newHere}{" "}
             <Link
               href="/register"

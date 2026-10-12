@@ -32,16 +32,16 @@ export default async function HelpPage() {
   return (
     <Container className="py-12 sm:py-16">
       <p className="text-sm font-semibold text-brand-700">{t.help.kicker}</p>
-      <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+      <h1 className="mt-2 text-display text-ink">
         {t.help.title}
       </h1>
-      <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-600">
+      <p className="mt-3 max-w-2xl text-base leading-relaxed text-ink-muted">
         {t.help.lead}
       </p>
 
       <section
         id="emergencies"
-        className="mt-8 scroll-mt-24 rounded-xl border border-red-200 bg-red-50 p-5"
+        className="mt-8 scroll-mt-24 rounded-card border border-red-200 bg-red-50 p-5"
       >
         <div className="flex gap-3">
           <ShieldAlert
@@ -70,7 +70,7 @@ export default async function HelpPage() {
       </section>
 
       <section className="mt-12">
-        <h2 className="text-xl font-semibold text-slate-900">
+        <h2 className="text-subtitle text-ink">
           {t.help.residents}
         </h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -78,7 +78,7 @@ export default async function HelpPage() {
             const Icon = STEP_ICONS[step.key as keyof typeof STEP_ICONS];
             return (
               <Card key={step.key}>
-                <p className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                <p className="flex items-center gap-2 text-base font-semibold text-ink">
                   {Icon ? (
                     <Icon
                       size={18}
@@ -88,7 +88,7 @@ export default async function HelpPage() {
                   ) : null}
                   {step.title}
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                <p className="mt-2 text-sm leading-relaxed text-ink-muted">
                   {step.body}
                 </p>
               </Card>
@@ -108,20 +108,20 @@ export default async function HelpPage() {
 
       <section className="mt-12 grid gap-4 sm:grid-cols-2">
         <Card title={t.help.officialTitle} description={t.help.officialDesc}>
-          <p className="text-sm leading-relaxed text-slate-600">
+          <p className="text-sm leading-relaxed text-ink-muted">
             {t.help.officialBody}
           </p>
         </Card>
         <Card title={t.help.adminTitle} description={t.help.adminDesc}>
-          <p className="text-sm leading-relaxed text-slate-600">
+          <p className="text-sm leading-relaxed text-ink-muted">
             {t.help.adminBody}
           </p>
         </Card>
       </section>
 
       <section className="mt-12">
-        <h2 className="text-xl font-semibold text-slate-900">{t.help.faqTitle}</h2>
-        <p className="mt-1 mb-4 text-sm text-slate-600">{t.help.faqLead}</p>
+        <h2 className="text-subtitle text-ink">{t.help.faqTitle}</h2>
+        <p className="mt-1 mb-4 text-sm text-ink-muted">{t.help.faqLead}</p>
         <FaqList items={t.faqs} />
       </section>
     </Container>

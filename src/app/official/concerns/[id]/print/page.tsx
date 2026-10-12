@@ -80,21 +80,21 @@ export default async function OfficialCasePrintPage({
         <PrintButton label="Print case sheet" />
       </div>
 
-      <article className="rounded-xl border border-slate-200 bg-white p-6 print:border-0 print:p-0">
+      <article className="rounded-card border border-line bg-surface p-6 print:border-0 print:p-0">
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
           BarangayResolve · Official copy
         </p>
-        <h1 className="mt-1 text-2xl font-bold text-slate-900">Case sheet</h1>
+        <h1 className="mt-1 text-ink text-title sm:text-display">Case sheet</h1>
         <p className="mt-6 font-mono text-3xl font-bold tracking-wide text-slate-950">
           {concern.caseNumber}
         </p>
-        <h2 className="mt-2 text-lg font-semibold text-slate-900">
+        <h2 className="mt-2 text-lg font-semibold text-ink">
           {concern.title}
         </h2>
 
         <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Status
             </dt>
             <dd className="mt-1">
@@ -102,7 +102,7 @@ export default async function OfficialCasePrintPage({
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Priority
             </dt>
             <dd className="mt-1">
@@ -114,40 +114,40 @@ export default async function OfficialCasePrintPage({
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Category
             </dt>
-            <dd className="mt-0.5 text-slate-900">{concern.category.name}</dd>
+            <dd className="mt-0.5 text-ink">{concern.category.name}</dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Office
             </dt>
-            <dd className="mt-0.5 text-slate-900">
+            <dd className="mt-0.5 text-ink">
               {concern.assignedOffice?.name ?? "Unassigned"}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Resident
             </dt>
-            <dd className="mt-0.5 text-slate-900">
+            <dd className="mt-0.5 text-ink">
               {concern.user.firstName} {concern.user.lastName}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Contact
             </dt>
-            <dd className="mt-0.5 text-slate-900">
+            <dd className="mt-0.5 text-ink">
               {concern.user.phone || concern.user.email}
             </dd>
           </div>
           <div className="sm:col-span-2">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Location
             </dt>
-            <dd className="mt-0.5 text-slate-900">
+            <dd className="mt-0.5 text-ink">
               {concern.locationAddress}
               {hasCoordinates(coordinates)
                 ? ` (${coordinates.lat.toFixed(5)}, ${coordinates.lng.toFixed(5)})`
@@ -155,45 +155,45 @@ export default async function OfficialCasePrintPage({
             </dd>
           </div>
           <div className="sm:col-span-2">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Description
             </dt>
-            <dd className="mt-0.5 whitespace-pre-wrap text-slate-800">
+            <dd className="mt-0.5 whitespace-pre-wrap text-ink">
               {concern.description}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Submitted
             </dt>
-            <dd className="mt-0.5 text-slate-900">
+            <dd className="mt-0.5 text-ink">
               {formatDateTime(concern.submittedAt)}
             </dd>
           </div>
         </dl>
 
         {resolution ? (
-          <div className="mt-6 border-t border-slate-200 pt-4">
-            <h3 className="text-sm font-semibold text-slate-900">Resolution</h3>
-            <p className="mt-1 text-sm text-slate-700">{resolution.summary}</p>
-            <p className="mt-1 text-xs text-slate-500">
+          <div className="mt-6 border-t border-line pt-4">
+            <h3 className="text-sm font-semibold text-ink">Resolution</h3>
+            <p className="mt-1 text-sm text-ink-muted">{resolution.summary}</p>
+            <p className="mt-1 text-xs text-ink-subtle">
               {statusLabel(resolution.resolutionType)}
             </p>
           </div>
         ) : null}
 
         {concern.history.length > 0 ? (
-          <div className="mt-6 border-t border-slate-200 pt-4">
-            <h3 className="text-sm font-semibold text-slate-900">
+          <div className="mt-6 border-t border-line pt-4">
+            <h3 className="text-sm font-semibold text-ink">
               Case journal
             </h3>
-            <ol className="mt-2 space-y-3 text-sm text-slate-700">
+            <ol className="mt-2 space-y-3 text-sm text-ink-muted">
               {sortJournal(concern.history).map((entry) => (
                 <li key={entry.id} className="break-inside-avoid">
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium text-ink">
                     {describeJournalEntry(entry, copy.en.desk)}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-ink-subtle">
                     {entry.occurredOn
                       ? `Action date ${formatDate(entry.occurredOn)} · recorded ${formatDateTime(entry.createdAt)}`
                       : `Recorded ${formatDateTime(entry.createdAt)}`}
@@ -209,7 +209,7 @@ export default async function OfficialCasePrintPage({
                       width={800}
                       height={600}
                       unoptimized
-                      className="mt-2 h-auto w-48 max-w-full rounded border border-slate-200"
+                      className="mt-2 h-auto w-48 max-w-full rounded border border-line"
                     />
                   ) : null}
                 </li>
@@ -218,7 +218,7 @@ export default async function OfficialCasePrintPage({
           </div>
         ) : null}
 
-        <p className="mt-8 border-t border-slate-200 pt-4 text-xs text-slate-500">
+        <p className="mt-8 border-t border-line pt-4 text-xs text-ink-subtle">
           Printed {formatDateTime(new Date())} for barangay hall use. Not for
           life-threatening emergencies — call 911.
         </p>

@@ -44,28 +44,28 @@ export default async function CaptainEscalationsPage({ searchParams }: PageProps
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t.captainTitle}</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+        <h1 className="text-title text-ink">{t.captainTitle}</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-muted">
           {t.captainLead}
         </p>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Card>
-          <p className="text-xs uppercase tracking-wide text-slate-500">{t.statOpen}</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">{queue.counts.open}</p>
+          <p className="text-xs uppercase tracking-wide text-ink-subtle">{t.statOpen}</p>
+          <p className="mt-1 text-2xl font-bold text-ink">{queue.counts.open}</p>
         </Card>
         <Card>
-          <p className="text-xs uppercase tracking-wide text-slate-500">
+          <p className="text-xs uppercase tracking-wide text-ink-subtle">
             {t.statAcknowledged}
           </p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">
+          <p className="mt-1 text-2xl font-bold text-ink">
             {queue.counts.acknowledged}
           </p>
         </Card>
         <Card>
-          <p className="text-xs uppercase tracking-wide text-slate-500">{t.resolved}</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">{queue.counts.resolved}</p>
+          <p className="text-xs uppercase tracking-wide text-ink-subtle">{t.resolved}</p>
+          <p className="mt-1 text-2xl font-bold text-ink">{queue.counts.resolved}</p>
         </Card>
       </div>
 
@@ -79,7 +79,7 @@ export default async function CaptainEscalationsPage({ searchParams }: PageProps
                 className={`rounded-full border px-3 py-1 text-xs font-medium ${
                   status === filter.value
                     ? "border-brand-700 bg-brand-50 text-brand-800"
-                    : "border-slate-200 text-slate-600 hover:border-slate-300"
+                    : "border-line text-ink-muted hover:border-line-strong"
                 }`}
               >
                 {filter.label}

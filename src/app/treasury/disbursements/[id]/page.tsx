@@ -86,14 +86,14 @@ export default async function TreasuryDisbursementPage({ params }: PageProps) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-title text-ink sm:text-display">
               {voucher.voucherNumber ?? `#${voucher.id}`}
             </h1>
             <Badge tone={voucher.status === "LIQUIDATED" ? "green" : "sky"}>
               {voucher.status}
             </Badge>
           </div>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-ink-muted">
             {voucher.allocation.label} · FY {voucher.allocation.fiscalYear.year}
           </p>
         </div>
@@ -112,18 +112,18 @@ export default async function TreasuryDisbursementPage({ params }: PageProps) {
       </div>
 
       {voucher.liquidationDueAt && voucher.status === "RELEASED" && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           {t.liquidationDue}: {formatDate(voucher.liquidationDueAt)}
           {voucher.liquidationStatus ? ` · ${voucher.liquidationStatus}` : ""}
         </p>
       )}
       {voucher.rejectionReason && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {t.rejectVoucher}: {voucher.rejectionReason}
         </p>
       )}
       {voucher.cancelReason && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {t.cancelVoucher}: {voucher.cancelReason}
         </p>
       )}
@@ -132,10 +132,10 @@ export default async function TreasuryDisbursementPage({ params }: PageProps) {
         <dl className="grid gap-3 sm:grid-cols-2">
           {details.map(([label, value]) => (
             <div key={label}>
-              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              <dt className="text-xs font-medium uppercase tracking-wide text-ink-subtle">
                 {label}
               </dt>
-              <dd className="mt-0.5 text-sm text-slate-800">{value}</dd>
+              <dd className="mt-0.5 text-sm text-ink">{value}</dd>
             </div>
           ))}
         </dl>
@@ -143,15 +143,15 @@ export default async function TreasuryDisbursementPage({ params }: PageProps) {
 
       <Card title={t.approvalsTitle} description={t.approvalSelfBlocked}>
         {voucher.approvals.length === 0 ? (
-          <p className="text-sm text-slate-500">{t.noEntries}</p>
+          <p className="text-sm text-ink-subtle">{t.noEntries}</p>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line">
             {voucher.approvals.map((approval) => (
               <li
                 key={`${approval.level}-${approval.approverId}`}
                 className="flex flex-wrap items-center justify-between gap-2 py-2"
               >
-                <span className="text-sm text-slate-700">
+                <span className="text-sm text-ink-muted">
                   {approval.level === 1 ? t.approvalLevel1 : t.approvalLevel2}
                 </span>
                 <span className="flex items-center gap-2">
@@ -165,13 +165,13 @@ export default async function TreasuryDisbursementPage({ params }: PageProps) {
                   >
                     {approval.decision}
                   </Badge>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-ink-subtle">
                     {approval.approverRole} ·{" "}
                     {formatDateTime(approval.decidedAt)}
                   </span>
                 </span>
                 {approval.remarks && (
-                  <p className="w-full text-xs text-slate-500">
+                  <p className="w-full text-xs text-ink-subtle">
                     {approval.remarks}
                   </p>
                 )}

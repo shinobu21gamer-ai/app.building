@@ -20,27 +20,27 @@ export default async function PrivacyPage() {
   return (
     <Container className="py-12 sm:py-16">
       <p className="text-sm font-semibold text-brand-700">{t.kicker}</p>
-      <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+      <h1 className="mt-2 text-display text-ink">
         {t.title}
       </h1>
-      <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-600">
+      <p className="mt-3 max-w-2xl text-base leading-relaxed text-ink-muted">
         {t.lead}
       </p>
 
       <div className="mt-10 space-y-8">
         {t.sections.map((section, index) => (
           <section key={section.title}>
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-ink">
               {index + 1}. {section.title}
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
               {section.body}
             </p>
           </section>
         ))}
       </div>
 
-      <p className="mt-10 max-w-2xl text-sm text-slate-500">{t.footer}</p>
+      <p className="mt-10 max-w-2xl text-sm text-ink-subtle">{t.footer}</p>
 
       {/* RA 10173 rights and the self-service tools that implement them. */}
       <Card
@@ -51,14 +51,14 @@ export default async function PrivacyPage() {
         <ul className="space-y-3">
           {rights.items.map((item) => (
             <li key={item.title}>
-              <p className="text-sm font-medium text-slate-900">{item.title}</p>
-              <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-slate-600">
+              <p className="text-sm font-medium text-ink">{item.title}</p>
+              <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-ink-muted">
                 {item.body}
               </p>
             </li>
           ))}
         </ul>
-        <p className="mt-4 text-xs text-slate-500">
+        <p className="mt-4 text-xs text-ink-subtle">
           {rights.versionLabel}: v{PRIVACY_POLICY_VERSION}
         </p>
         <div className="mt-4 flex flex-wrap gap-3">

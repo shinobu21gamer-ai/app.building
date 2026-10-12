@@ -15,7 +15,7 @@ import { formatPeso } from "@/lib/cases/manpower";
 import { copy, type Locale } from "@/lib/i18n";
 
 const selectStyles =
-  "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
+  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
 export type AllocationOption = {
   id: number;
@@ -50,7 +50,7 @@ export function EarmarkForm({
   const [error, setError] = useState<string | null>(null);
 
   if (allocations.length === 0) {
-    return <p className="text-sm text-slate-500">{t.fundingMissing}</p>;
+    return <p className="text-sm text-ink-subtle">{t.fundingMissing}</p>;
   }
 
   if (!open) {

@@ -13,7 +13,7 @@ import { apiRequest } from "@/lib/api-client";
 import { copy, type Locale } from "@/lib/i18n";
 
 const inputStyles =
-  "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
+  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
 const moneyStyles = inputStyles;
 
@@ -202,10 +202,10 @@ export function AssessmentForm({
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
 
       <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold text-slate-800">
+        <legend className="text-sm font-semibold text-ink">
           {t.assessmentTitle}
         </legend>
-        <p className="text-xs text-slate-500">{t.assessmentDesc}</p>
+        <p className="text-xs text-ink-subtle">{t.assessmentDesc}</p>
 
         {checkboxes.map((box) => {
           const hidden =
@@ -215,7 +215,7 @@ export function AssessmentForm({
           return (
             <label
               key={box.name}
-              className="flex items-start gap-2 text-sm text-slate-700"
+              className="flex items-start gap-2 text-sm text-ink-muted"
             >
               <input
                 type="checkbox"
@@ -229,12 +229,12 @@ export function AssessmentForm({
                     setApprovalRequired(event.target.checked);
                   }
                 }}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                className="mt-0.5 h-4 w-4 rounded border-line-strong"
               />
               <span>
                 {box.label}
                 {box.hint && (
-                  <span className="block text-xs text-slate-500">{box.hint}</span>
+                  <span className="block text-xs text-ink-subtle">{box.hint}</span>
                 )}
               </span>
             </label>
@@ -253,11 +253,11 @@ export function AssessmentForm({
         </div>
       </fieldset>
 
-      <fieldset className="space-y-3 border-t border-slate-100 pt-5">
-        <legend className="text-sm font-semibold text-slate-800">
+      <fieldset className="space-y-3 border-t border-line pt-5">
+        <legend className="text-sm font-semibold text-ink">
           {t.manpowerTitle}
         </legend>
-        <p className="text-xs text-slate-500">{t.manpowerDesc}</p>
+        <p className="text-xs text-ink-subtle">{t.manpowerDesc}</p>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
@@ -274,7 +274,7 @@ export function AssessmentForm({
               required
               defaultValue={defaults?.workersNeeded ?? ""}
             />
-            <p className="mt-1 text-xs text-slate-500">{t.workersNeededHint}</p>
+            <p className="mt-1 text-xs text-ink-subtle">{t.workersNeededHint}</p>
           </div>
           <div>
             <Label htmlFor="durationHours" required>
@@ -303,7 +303,7 @@ export function AssessmentForm({
                 defaultValue={defaultMinutes}
               />
             </div>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-ink-subtle">
               {t.durationHours} · {t.durationMinutes}
             </p>
           </div>
@@ -324,7 +324,7 @@ export function AssessmentForm({
               type="datetime-local"
               defaultValue={toLocalInput(defaults?.scheduledEndAt ?? null)}
             />
-            <p className="mt-1 text-xs text-slate-500">{t.scheduledHint}</p>
+            <p className="mt-1 text-xs text-ink-subtle">{t.scheduledHint}</p>
           </div>
         </div>
 
@@ -344,11 +344,11 @@ export function AssessmentForm({
         </div>
       </fieldset>
 
-      <fieldset className="space-y-3 border-t border-slate-100 pt-5">
-        <legend className="text-sm font-semibold text-slate-800">
+      <fieldset className="space-y-3 border-t border-line pt-5">
+        <legend className="text-sm font-semibold text-ink">
           {t.costTitle}
         </legend>
-        <p className="text-xs text-slate-500">{t.costDesc}</p>
+        <p className="text-xs text-ink-subtle">{t.costDesc}</p>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -362,7 +362,7 @@ export function AssessmentForm({
               className={moneyStyles}
               defaultValue={defaults?.laborCost ?? ""}
             />
-            <p className="mt-1 text-xs text-slate-500">{t.laborHint}</p>
+            <p className="mt-1 text-xs text-ink-subtle">{t.laborHint}</p>
           </div>
           <div>
             <Label htmlFor="materialsCost">{t.materials}</Label>

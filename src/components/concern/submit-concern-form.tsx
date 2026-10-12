@@ -14,13 +14,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  FieldError,
-  FormMessage,
-  Input,
-  Label,
-  Textarea,
-} from "@/components/ui/field";
+import { FieldError, FormMessage, Input, Label, RequiredLegend, Textarea } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api-client";
 import { createConcernSchema } from "@/lib/validations/concern";
@@ -81,14 +75,14 @@ function factorOptionLabel(
 }
 
 const selectBaseStyles =
-  "h-10 w-full rounded-lg border bg-white px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
+  "h-10 w-full rounded-control border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
 function selectStyles(invalid: boolean) {
   return cn(
     selectBaseStyles,
     invalid
       ? "border-red-500 focus:border-red-500"
-      : "border-slate-300 focus:border-brand-600"
+      : "border-line-strong focus:border-brand-600"
   );
 }
 
@@ -280,10 +274,12 @@ export function SubmitConcernForm({
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
 
+      <RequiredLegend>{t.requiredLegend}</RequiredLegend>
+
       <div>
-        <Label htmlFor="title">
+        <Label htmlFor="title" required>
           <span className="inline-flex items-center gap-1.5">
-            <FileText size={14} className="text-slate-500" />
+            <FileText size={14} className="text-ink-subtle" />
             {t.concernTitle}
           </span>
         </Label>
@@ -316,9 +312,9 @@ export function SubmitConcernForm({
       </div>
 
       <div>
-        <Label htmlFor="categoryId">
+        <Label htmlFor="categoryId" required>
           <span className="inline-flex items-center gap-1.5">
-            <Tag size={14} className="text-slate-500" />
+            <Tag size={14} className="text-ink-subtle" />
             {t.category}
           </span>
         </Label>
@@ -345,7 +341,7 @@ export function SubmitConcernForm({
 
       <div>
         <Label htmlFor="typeId">{t.typeLabel}</Label>
-        <p className="mb-1 text-xs text-slate-500">{t.typeHelp}</p>
+        <p className="mb-1 text-xs text-ink-subtle">{t.typeHelp}</p>
         <select
           id="typeId"
           name="typeId"
@@ -362,9 +358,9 @@ export function SubmitConcernForm({
       </div>
 
       <div>
-        <Label htmlFor="description">
+        <Label htmlFor="description" required>
           <span className="inline-flex items-center gap-1.5">
-            <FileText size={14} className="text-slate-500" />
+            <FileText size={14} className="text-ink-subtle" />
             {t.description}
           </span>
         </Label>
@@ -383,9 +379,9 @@ export function SubmitConcernForm({
       </div>
 
       <div>
-        <Label htmlFor="locationArea">
+        <Label htmlFor="locationArea" required>
           <span className="inline-flex items-center gap-1.5">
-            <MapPin size={14} className="text-slate-500" />
+            <MapPin size={14} className="text-ink-subtle" />
             {t.area}
           </span>
         </Label>
@@ -411,9 +407,9 @@ export function SubmitConcernForm({
       </div>
 
       <div>
-        <Label htmlFor="locationAddress">
+        <Label htmlFor="locationAddress" required>
           <span className="inline-flex items-center gap-1.5">
-            <MapPin size={14} className="text-slate-500" />
+            <MapPin size={14} className="text-ink-subtle" />
             {t.exact}
           </span>
         </Label>
@@ -442,21 +438,21 @@ export function SubmitConcernForm({
         )}
       </div>
 
-      <div className="rounded-lg border border-dashed border-slate-300 p-4">
-        <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
-          <MapPin size={14} className="text-slate-500" />
+      <div className="rounded-control border border-dashed border-line-strong p-4">
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+          <MapPin size={14} className="text-ink-subtle" />
           {t.pin}
         </p>
-        <p className="mb-3 mt-1 text-xs text-slate-500">{t.pinHelp}</p>
+        <p className="mb-3 mt-1 text-xs text-ink-subtle">{t.pinHelp}</p>
         <GeotagPicker locale={locale} />
       </div>
 
-      <fieldset className="rounded-lg border border-slate-200 p-4">
-        <legend className="inline-flex items-center gap-1.5 px-1 text-sm font-semibold text-slate-700">
-          <AlertTriangle size={14} className="text-slate-500" />
+      <fieldset className="rounded-control border border-line p-4">
+        <legend className="inline-flex items-center gap-1.5 px-1 text-sm font-semibold text-ink-muted">
+          <AlertTriangle size={14} className="text-ink-subtle" />
           {t.priority}
         </legend>
-        <p className="mb-3 text-xs text-slate-500">{t.priorityHelp}</p>
+        <p className="mb-3 text-xs text-ink-subtle">{t.priorityHelp}</p>
         <div className="space-y-4">
           {factors.map((factor) => {
             const fieldKey = FACTOR_FIELD[factor.key];
@@ -466,9 +462,11 @@ export function SubmitConcernForm({
             }
             return (
               <div key={factor.key}>
-                <Label htmlFor={fieldKey}>{factor.label}</Label>
+                <Label htmlFor={fieldKey} required>
+                  {factor.label}
+                </Label>
                 {factor.description && (
-                  <p className="mb-1 text-xs text-slate-500">
+                  <p className="mb-1 text-xs text-ink-subtle">
                     {factor.description}
                   </p>
                 )}
@@ -504,9 +502,9 @@ export function SubmitConcernForm({
       </fieldset>
 
       <div>
-        <Label htmlFor="image">
+        <Label htmlFor="image" required>
           <span className="inline-flex items-center gap-1.5">
-            <ImageIcon size={14} className="text-slate-500" />
+            <ImageIcon size={14} className="text-ink-subtle" />
             {t.image}
           </span>
         </Label>
@@ -520,13 +518,13 @@ export function SubmitConcernForm({
           onChange={handleFileChange}
           onBlur={() => handleBlur("image")}
           className={cn(
-            "block w-full cursor-pointer rounded-lg border bg-white text-sm text-slate-600 file:mr-3 file:rounded-l-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200",
+            "block w-full cursor-pointer rounded-control border bg-surface text-sm text-ink-muted file:mr-3 file:rounded-l-lg file:border-0 file:bg-surface-sunken file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink-muted hover:file:bg-slate-200",
             fieldErrors.image && !selectedFile
               ? "border-red-500"
-              : "border-slate-300"
+              : "border-line-strong"
           )}
         />
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-ink-subtle">
           {t.imageHelp}
         </p>
         {selectedFile && (
@@ -535,7 +533,7 @@ export function SubmitConcernForm({
               <img
                 src={previewUrl}
                 alt="Selected proof"
-                className="h-20 w-20 rounded-lg border border-slate-200 object-cover"
+                className="h-20 w-20 rounded-control border border-line object-cover"
               />
             ) : null}
             <p className="inline-flex items-center gap-1 text-xs text-emerald-600">

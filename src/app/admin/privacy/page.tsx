@@ -41,13 +41,13 @@ export default async function AdminPrivacyPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="text-title text-ink">
           {t.privacyTitle}
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
           {t.privacyLead}
         </p>
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-ink-subtle">
           {counts.received} received · {counts.inReview} in review ·{" "}
           {counts.completed} completed · {counts.rejected} rejected ·{" "}
           {counts.overdue} overdue
@@ -94,12 +94,12 @@ export default async function AdminPrivacyPage() {
 
       <Card title={t.accessLog} description={t.accessLogLead}>
         {accessLog.length === 0 ? (
-          <p className="text-sm text-slate-500">{t.accessNone}</p>
+          <p className="text-sm text-ink-subtle">{t.accessNone}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-subtle">
                   <th className="px-2 py-2">{copy[locale].revamp.common.date}</th>
                   <th className="px-2 py-2">Actor</th>
                   <th className="px-2 py-2">Subject</th>
@@ -109,24 +109,24 @@ export default async function AdminPrivacyPage() {
               </thead>
               <tbody>
                 {accessLog.map((entry) => (
-                  <tr key={entry.id} className="border-b border-slate-100">
-                    <td className="px-2 py-2 text-xs text-slate-600">
+                  <tr key={entry.id} className="border-b border-line">
+                    <td className="px-2 py-2 text-xs text-ink-muted">
                       {entry.createdAt.toISOString().slice(0, 16).replace("T", " ")}
                     </td>
-                    <td className="px-2 py-2 text-xs text-slate-700">
+                    <td className="px-2 py-2 text-xs text-ink-muted">
                       {entry.actor
                         ? `${entry.actor.firstName} ${entry.actor.lastName}`.trim()
                         : "system"}
                     </td>
-                    <td className="px-2 py-2 text-xs text-slate-700">
+                    <td className="px-2 py-2 text-xs text-ink-muted">
                       {entry.subjectUser
                         ? `${entry.subjectUser.firstName} ${entry.subjectUser.lastName}`.trim()
                         : `#${entry.subjectUserId}`}
                     </td>
-                    <td className="px-2 py-2 font-mono text-xs text-slate-600">
+                    <td className="px-2 py-2 font-mono text-xs text-ink-muted">
                       {entry.field}
                     </td>
-                    <td className="px-2 py-2 text-xs text-slate-600">
+                    <td className="px-2 py-2 text-xs text-ink-muted">
                       {entry.purpose}
                     </td>
                   </tr>

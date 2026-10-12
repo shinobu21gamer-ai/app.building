@@ -45,10 +45,17 @@ export function Badge({
   );
 }
 
+/**
+ * One tone per status of the seven-stage workflow, ordered the way a reader
+ * scans a list: cool for "not started", warm for "work happening", green for
+ * done, grey for closed.
+ */
 const STATUS_TONE: Record<string, Tone> = {
   SUBMITTED: "sky",
   ASSIGNED: "violet",
-  IN_PROGRESS: "amber",
+  UNDER_ASSESSMENT: "blue",
+  AWAITING_BUDGET: "amber",
+  IN_PROGRESS: "orange",
   RESOLVED: "green",
   CLOSED: "gray",
 };
@@ -60,14 +67,22 @@ const PRIORITY_TONE: Record<string, Tone> = {
   CRITICAL: "red",
 };
 
-export function StatusBadge({ status }: { status: string }) {
-  return (
-    <Badge tone={STATUS_TONE[status] ?? "neutral"}>{status}</Badge>
-  );
+export function StatusBadge({
+  status,
+  label,
+}: {
+  status: string;
+  label?: string;
+}) {
+  return <Badge tone={STATUS_TONE[status] ?? "neutral"}>{label ?? status}</Badge>;
 }
 
-export function PriorityBadge({ level }: { level: string }) {
-  return (
-    <Badge tone={PRIORITY_TONE[level] ?? "neutral"}>{level}</Badge>
-  );
+export function PriorityBadge({
+  level,
+  label,
+}: {
+  level: string;
+  label?: string;
+}) {
+  return <Badge tone={PRIORITY_TONE[level] ?? "neutral"}>{label ?? level}</Badge>;
 }

@@ -108,23 +108,23 @@ export function VerificationForm({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">{t.requiredLegend}</p>
+      <p className="text-xs text-ink-subtle">{t.requiredLegend}</p>
 
       {identity.status !== "UNVERIFIED" && (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-          <p className="font-medium text-slate-800">
+        <div className="rounded-control border border-line bg-surface-muted px-4 py-3 text-sm">
+          <p className="font-medium text-ink">
             {t.verification.statusTitle}:{" "}
             <span className="font-semibold">
               {t.verification.statusLabels[identity.status]}
             </span>
           </p>
           {identity.idNumberLast4 && (
-            <p className="mt-1 text-xs text-slate-600">
+            <p className="mt-1 text-xs text-ink-muted">
               {t.verification.last4Label}: ••••{identity.idNumberLast4}
             </p>
           )}
           {identity.decisionReason && (
-            <p className="mt-1 text-xs text-slate-600">
+            <p className="mt-1 text-xs text-ink-muted">
               {t.verification.decisionLabel}: {identity.decisionReason}
             </p>
           )}
@@ -132,7 +132,7 @@ export function VerificationForm({
       )}
 
       {!identity.canResubmit ? (
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-ink-muted">
           {identity.status === "VERIFIED"
             ? t.verification.statusLabels.VERIFIED
             : t.verification.submitted}
@@ -151,7 +151,7 @@ export function VerificationForm({
               value={method}
               onChange={(event) => setMethod(event.target.value)}
               aria-required="true"
-              className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
+              className="h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
             >
               <option value="">{t.verification.methodPlaceholder}</option>
               {ID_METHODS.map((value) => (
@@ -193,7 +193,7 @@ export function VerificationForm({
               autoComplete="off"
               maxLength={40}
             />
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-ink-subtle">
               {t.verification.idNumberHint}
             </p>
             {fieldErrors.idNumber && <FieldError>{fieldErrors.idNumber}</FieldError>}
@@ -210,35 +210,35 @@ export function VerificationForm({
               accept="image/jpeg,image/png,image/webp"
               aria-required="true"
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-2 file:text-sm"
+              className="block w-full text-sm text-ink-muted file:mr-3 file:rounded-control file:border file:border-line-strong file:bg-surface file:px-3 file:py-2 file:text-sm"
             />
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-ink-subtle">
               {t.verification.idPhotoHint}
             </p>
             {fieldErrors.idImage && <FieldError>{fieldErrors.idImage}</FieldError>}
           </div>
 
           <fieldset className="space-y-2">
-            <legend className="text-sm font-medium text-slate-700">
+            <legend className="text-sm font-medium text-ink-muted">
               {t.verification.consentIdVerification}
             </legend>
-            <label className="flex items-start gap-2 text-sm text-slate-700">
+            <label className="flex items-start gap-2 text-sm text-ink-muted">
               <input
                 type="checkbox"
                 checked={confirmAccuracy}
                 onChange={(event) => setConfirmAccuracy(event.target.checked)}
                 aria-required="true"
-                className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                className="mt-0.5 h-4 w-4 rounded border-line-strong"
               />
               <span>{t.verification.confirmAccuracy}</span>
             </label>
-            <label className="flex items-start gap-2 text-sm text-slate-700">
+            <label className="flex items-start gap-2 text-sm text-ink-muted">
               <input
                 type="checkbox"
                 checked={consent}
                 onChange={(event) => setConsent(event.target.checked)}
                 aria-required="true"
-                className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                className="mt-0.5 h-4 w-4 rounded border-line-strong"
               />
               <span>{t.verification.consentIdVerification}</span>
             </label>

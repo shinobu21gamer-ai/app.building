@@ -19,8 +19,8 @@ export default async function AdminPriorityPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t.priorityTitle}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-slate-600">{t.priorityLead}</p>
+        <h1 className="text-title text-ink sm:text-display">{t.priorityTitle}</h1>
+        <p className="mt-1 max-w-2xl text-sm text-ink-muted">{t.priorityLead}</p>
       </div>
 
       <Card>

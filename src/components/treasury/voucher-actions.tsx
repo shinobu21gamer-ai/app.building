@@ -15,7 +15,7 @@ import { copy, type Locale } from "@/lib/i18n";
 import { MODES_OF_PAYMENT } from "@/lib/validations/treasury";
 
 const selectStyles =
-  "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
+  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
 export type VoucherActionView = {
   action: string;
@@ -62,7 +62,7 @@ export function VoucherActions({
   const blocked = actions.filter((entry) => !entry.allowed);
 
   if (actions.length === 0) {
-    return <p className="text-sm text-slate-500">{t.actionBlocked}</p>;
+    return <p className="text-sm text-ink-subtle">{t.actionBlocked}</p>;
   }
 
   async function run(action: string, formData: FormData) {
@@ -136,7 +136,7 @@ export function VoucherActions({
       {open !== null && (
         <form action={(formData) => run(open, formData)} className="space-y-3">
           <RequiredLegend>{t.requiredLegend}</RequiredLegend>
-          <p className="text-sm font-medium text-slate-700">
+          <p className="text-sm font-medium text-ink-muted">
             {labels[open] ?? open}
             {voucherNumber ? ` · ${voucherNumber}` : ""}
           </p>
@@ -250,10 +250,10 @@ export function VoucherActions({
       )}
 
       {blocked.length > 0 && open === null && (
-        <ul className="space-y-1 text-xs text-slate-500">
+        <ul className="space-y-1 text-xs text-ink-subtle">
           {blocked.map((entry) => (
             <li key={entry.action}>
-              <span className="font-medium text-slate-600">
+              <span className="font-medium text-ink-muted">
                 {labels[entry.action] ?? entry.action}:
               </span>{" "}
               {entry.reason ?? t.actionBlocked}

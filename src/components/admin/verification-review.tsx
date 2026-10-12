@@ -103,7 +103,7 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
             id="identity-status"
             value={status}
             onChange={(event) => setStatus(event.target.value)}
-            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm"
+            className="h-10 rounded-control border border-line-strong bg-surface px-3 text-sm"
           >
             <option value="PENDING">PENDING</option>
             <option value="VERIFIED">VERIFIED</option>
@@ -112,7 +112,7 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
           </select>
         </div>
         {queue && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink-subtle">
             {t.queueCounts
               .replace("{pending}", String(queue.counts.pending))
               .replace("{verified}", String(queue.counts.verified))
@@ -122,9 +122,9 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
       </div>
 
       {!queue ? (
-        <p className="text-sm text-slate-500">{t.saving}</p>
+        <p className="text-sm text-ink-subtle">{t.saving}</p>
       ) : queue.submissions.length === 0 ? (
-        <p className="text-sm text-slate-500">{t.noSubmissions}</p>
+        <p className="text-sm text-ink-subtle">{t.noSubmissions}</p>
       ) : (
         <ul className="space-y-3">
           {queue.submissions.map((submission) => {
@@ -132,24 +132,24 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
             return (
               <li
                 key={submission.userId}
-                className="rounded-lg border border-slate-200 px-4 py-3"
+                className="rounded-control border border-line px-4 py-3"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">
+                    <p className="text-sm font-medium text-ink">
                       {submission.resident.name}
-                      <span className="ml-2 text-xs font-normal text-slate-500">
+                      <span className="ml-2 text-xs font-normal text-ink-subtle">
                         {submission.resident.email}
                       </span>
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-600">
+                    <p className="mt-0.5 text-xs text-ink-muted">
                       {t.identityDoc}: {submission.method ?? "—"}
                       {submission.idTypeLabel ? ` (${submission.idTypeLabel})` : ""}
                       {submission.idNumberLast4
                         ? ` · ••••${submission.idNumberLast4}`
                         : ""}
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    <p className="mt-0.5 text-xs text-ink-subtle">
                       {submission.submittedAt
                         ? submission.submittedAt.slice(0, 10)
                         : ""}
@@ -158,7 +158,7 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
                         : ""}
                     </p>
                     {submission.decisionReason && (
-                      <p className="mt-1 text-xs text-slate-600">
+                      <p className="mt-1 text-xs text-ink-muted">
                         {t.decisionReason}: {submission.decisionReason}
                       </p>
                     )}
@@ -208,7 +208,7 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
                 </div>
 
                 {rejectingId === submission.userId && (
-                  <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                  <div className="mt-3 space-y-2 border-t border-line pt-3">
                     <Label htmlFor={`reason-${submission.userId}`}>
                       {t.decisionReason} <span aria-hidden="true">*</span>
                     </Label>

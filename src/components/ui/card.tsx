@@ -3,29 +3,51 @@ import { cn } from "@/lib/utils";
 type CardProps = {
   title?: string;
   description?: string;
+  /** Buttons or links that act on the whole panel; they sit in the header. */
+  actions?: React.ReactNode;
   className?: string;
+  /** Removes the inner padding, for cards whose body is a table. */
+  flush?: boolean;
   children: React.ReactNode;
 };
 
-export function Card({ title, description, className, children }: CardProps) {
+export function Card({
+  title,
+  description,
+  actions,
+  className,
+  flush = false,
+  children,
+}: CardProps) {
+  const hasHeader = Boolean(title || description || actions);
+
   return (
-    <div
+    <section
       className={cn(
-        "rounded-xl border border-slate-200 bg-white shadow-sm",
+        "rounded-card border border-line bg-surface shadow-card",
         className
       )}
     >
-      {(title || description) && (
-        <div className="border-b border-slate-100 px-5 py-4">
-          {title && (
-            <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-          )}
-          {description && (
-            <p className="mt-0.5 text-sm text-slate-500">{description}</p>
-          )}
+      {hasHeader && (
+        <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3.5 sm:px-5">
+          <div className="min-w-0">
+            {title && (
+              <h2 className="text-subtitle text-ink">{title}</h2>
+            )}
+            {description && (
+              <p className="mt-0.5 text-sm leading-relaxed text-ink-subtle">
+                {description}
+              </p>
+            )}
+          </div>
+          {actions ? (
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {actions}
+            </div>
+          ) : null}
         </div>
       )}
-      <div className="px-5 py-4">{children}</div>
-    </div>
+      <div className={flush ? "" : "px-4 py-4 sm:px-5"}>{children}</div>
+    </section>
   );
 }

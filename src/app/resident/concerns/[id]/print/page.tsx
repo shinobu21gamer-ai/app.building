@@ -61,12 +61,12 @@ export default async function CasePrintPage({
         <PrintButton label="Print receipt" />
       </div>
 
-      <article className="rounded-xl border border-slate-200 bg-white p-6 print:border-0 print:p-0">
+      <article className="rounded-card border border-line bg-surface p-6 print:border-0 print:p-0">
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
           BarangayResolve
         </p>
-        <h1 className="mt-1 text-2xl font-bold text-slate-900">Case receipt</h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <h1 className="mt-1 text-ink text-title sm:text-display">Case receipt</h1>
+        <p className="mt-1 text-sm text-ink-muted">
           Present this number at the barangay hall, or use Track a case with
           this number and your account email.
         </p>
@@ -80,14 +80,14 @@ export default async function CasePrintPage({
 
         <dl className="mt-6 grid gap-3 text-sm">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Title
             </dt>
-            <dd className="mt-0.5 font-medium text-slate-900">{concern.title}</dd>
+            <dd className="mt-0.5 font-medium text-ink">{concern.title}</dd>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
                 Status
               </dt>
               <dd className="mt-1">
@@ -95,7 +95,7 @@ export default async function CasePrintPage({
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
                 Priority
               </dt>
               <dd className="mt-1">
@@ -108,16 +108,16 @@ export default async function CasePrintPage({
             </div>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Category
             </dt>
-            <dd className="mt-0.5 text-slate-900">{concern.category.name}</dd>
+            <dd className="mt-0.5 text-ink">{concern.category.name}</dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Location
             </dt>
-            <dd className="mt-0.5 text-slate-900">
+            <dd className="mt-0.5 text-ink">
               {concern.locationAddress}
               {hasCoordinates(coordinates)
                 ? ` (${coordinates.lat.toFixed(5)}, ${coordinates.lng.toFixed(5)})`
@@ -125,43 +125,43 @@ export default async function CasePrintPage({
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Assigned office
             </dt>
-            <dd className="mt-0.5 text-slate-900">
+            <dd className="mt-0.5 text-ink">
               {concern.assignedOffice?.name ?? "Not yet routed"}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Submitted
             </dt>
-            <dd className="mt-0.5 text-slate-900">
+            <dd className="mt-0.5 text-ink">
               {formatDateTime(concern.submittedAt)}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Filed by
             </dt>
-            <dd className="mt-0.5 text-slate-900">
+            <dd className="mt-0.5 text-ink">
               {user.firstName} {user.lastName}
             </dd>
           </div>
         </dl>
 
         {concern.history.length > 0 ? (
-          <section className="mt-8 border-t border-slate-200 pt-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <section className="mt-8 border-t border-line pt-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Progress so far
             </h2>
-            <ol className="mt-3 space-y-3 text-sm text-slate-700">
+            <ol className="mt-3 space-y-3 text-sm text-ink-muted">
               {sortJournal(concern.history).map((entry) => (
                 <li key={entry.id} className="break-inside-avoid">
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium text-ink">
                     {describeJournalEntry(entry, copy.en.desk)}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-ink-subtle">
                     {entry.occurredOn
                       ? `Action date ${formatDate(entry.occurredOn)} · recorded ${formatDateTime(entry.createdAt)}`
                       : `Recorded ${formatDateTime(entry.createdAt)}`}
@@ -176,7 +176,7 @@ export default async function CasePrintPage({
                       width={800}
                       height={600}
                       unoptimized
-                      className="mt-2 h-auto w-48 max-w-full rounded border border-slate-200"
+                      className="mt-2 h-auto w-48 max-w-full rounded border border-line"
                     />
                   ) : null}
                 </li>
@@ -185,7 +185,7 @@ export default async function CasePrintPage({
           </section>
         ) : null}
 
-        <p className="mt-8 border-t border-slate-200 pt-4 text-xs text-slate-500">
+        <p className="mt-8 border-t border-line pt-4 text-xs text-ink-subtle">
           Not for life-threatening emergencies. Call 911. This receipt is not
           proof that the issue is already fixed.
         </p>

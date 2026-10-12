@@ -101,22 +101,22 @@ export function ConsentPanel({
           return (
             <li
               key={item.purpose}
-              className="rounded-lg border border-slate-200 px-4 py-3"
+              className="rounded-control border border-line px-4 py-3"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="max-w-xl">
-                  <p className="text-sm font-medium text-slate-900">
+                  <p className="text-sm font-medium text-ink">
                     {item.label}
                     {item.requiredAtSignup && (
-                      <span className="ml-2 align-middle text-xs font-normal text-slate-500">
+                      <span className="ml-2 align-middle text-xs font-normal text-ink-subtle">
                         *
                       </span>
                     )}
                   </p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                  <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
                     {item.description}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-ink-subtle">
                     {t.policyVersion}: {state?.policyVersion ?? policyVersion}
                     {state?.withdrawnAt
                       ? ` · ${t.withdrawn}: ${state.withdrawnAt.slice(0, 10)}`

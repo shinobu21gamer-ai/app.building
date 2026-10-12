@@ -46,8 +46,8 @@ export default async function AdminUsersPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t.usersTitle}</h1>
-        <p className="mt-1 text-sm text-slate-600">{t.usersLead}</p>
+        <h1 className="text-title text-ink sm:text-display">{t.usersTitle}</h1>
+        <p className="mt-1 text-sm text-ink-muted">{t.usersLead}</p>
       </div>
 
       <AdminFilterBar

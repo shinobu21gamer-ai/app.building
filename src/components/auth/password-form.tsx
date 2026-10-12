@@ -75,7 +75,7 @@ export function PasswordForm({ locale = "en" }: { locale?: Locale }) {
       )}
 
       <div>
-        <Label htmlFor="currentPassword">{t.currentPassword}</Label>
+        <Label htmlFor="currentPassword" required>{t.currentPassword}</Label>
         <Input
           id="currentPassword"
           type="password"
@@ -93,7 +93,7 @@ export function PasswordForm({ locale = "en" }: { locale?: Locale }) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="newPassword">{t.newPassword}</Label>
+          <Label htmlFor="newPassword" required>{t.newPassword}</Label>
           <Input
             id="newPassword"
             type="password"
@@ -109,7 +109,7 @@ export function PasswordForm({ locale = "en" }: { locale?: Locale }) {
           )}
         </div>
         <div>
-          <Label htmlFor="confirmNewPassword">{t.confirmPassword}</Label>
+          <Label htmlFor="confirmNewPassword" required>{t.confirmPassword}</Label>
           <Input
             id="confirmNewPassword"
             type="password"

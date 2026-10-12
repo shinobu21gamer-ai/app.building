@@ -22,7 +22,7 @@ export type RoutingRuleItem = {
 };
 
 const selectStyles =
-  "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
+  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
 export function RoutingRulesManager({
   rules,
@@ -201,7 +201,7 @@ export function RoutingRulesManager({
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <h2 className="text-base font-semibold text-slate-900">
+        <h2 className="text-base font-semibold text-ink">
           {editingId ? t.editRule : t.addRule}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -244,17 +244,17 @@ export function RoutingRulesManager({
               value={priorityOrder}
               onChange={(e) => setPriorityOrder(e.target.value)}
             />
-            <p className="mt-1 text-xs text-slate-500">{t.orderHint}</p>
+            <p className="mt-1 text-xs text-ink-subtle">{t.orderHint}</p>
           </div>
           <div>
             <Label htmlFor="rule-active">{t.colStatus}</Label>
-            <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
+            <label className="flex h-10 items-center gap-2 text-sm text-ink-muted">
               <input
                 id="rule-active"
                 type="checkbox"
                 checked={isActive}
                 onChange={(e) => setIsActive(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300"
+                className="h-4 w-4 rounded border-line-strong"
               />
               {t.active}
             </label>
@@ -274,7 +274,7 @@ export function RoutingRulesManager({
 
       <div>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-slate-900">
+          <h2 className="text-base font-semibold text-ink">
             {needle
               ? t.rulesOf
                   .replace("{shown}", String(visibleRules.length))
@@ -291,7 +291,7 @@ export function RoutingRulesManager({
           />
         </div>
         {visibleRules.length === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-600">
+          <p className="py-6 text-center text-sm text-ink-muted">
             {rules.length === 0 ? t.noRulesYet : t.noRulesMatch}
           </p>
         ) : (
@@ -299,7 +299,7 @@ export function RoutingRulesManager({
             <table className="w-full min-w-[640px] text-left text-sm">
               <caption className="sr-only">{t.rulesCaption}</caption>
               <thead>
-                <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-subtle">
                   <th scope="col" className="py-2 pr-4 font-semibold">
                     {t.colCategory}
                   </th>
@@ -317,16 +317,16 @@ export function RoutingRulesManager({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {visibleRules.map((rule) => (
-                  <tr key={rule.id} className="hover:bg-slate-50">
-                    <td className="py-3 pr-4 font-medium text-slate-900">
+                  <tr key={rule.id} className="hover:bg-surface-muted">
+                    <td className="py-3 pr-4 font-medium text-ink">
                       {rule.category.name}
                     </td>
-                    <td className="py-3 pr-4 text-slate-600">
+                    <td className="py-3 pr-4 text-ink-muted">
                       {rule.office.name}
                     </td>
-                    <td className="py-3 pr-4 text-slate-600">
+                    <td className="py-3 pr-4 text-ink-muted">
                       {rule.priorityOrder}
                     </td>
                     <td className="py-3 pr-4">
@@ -349,7 +349,7 @@ export function RoutingRulesManager({
                           type="button"
                           onClick={() => toggleActive(rule)}
                           disabled={busy}
-                          className="text-sm font-semibold text-slate-600 hover:text-slate-900"
+                          className="text-sm font-semibold text-ink-muted hover:text-ink"
                         >
                           {rule.isActive ? t.disable : t.enable}
                         </button>

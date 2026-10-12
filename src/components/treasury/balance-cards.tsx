@@ -21,13 +21,13 @@ export function BalanceCards({
     {
       label: t.appropriated,
       value: totals.appropriated,
-      className: "text-slate-900",
+      className: "text-ink",
     },
     { label: t.reserved, value: totals.reserved, className: "text-amber-700" },
     {
       label: t.disbursed,
       value: totals.disbursed,
-      className: "text-slate-700",
+      className: "text-ink-muted",
     },
     {
       label: t.available,
@@ -40,7 +40,7 @@ export function BalanceCards({
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
         <Card key={card.label}>
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          <p className="text-xs font-medium uppercase tracking-wide text-ink-subtle">
             {card.label}
           </p>
           <p className={`mt-1 text-2xl font-bold ${card.className}`}>
@@ -49,7 +49,7 @@ export function BalanceCards({
         </Card>
       ))}
       <div className="sm:col-span-2 lg:col-span-4">
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-ink-subtle">
           {t.allocationsLabel}: {totals.allocations}
         </p>
       </div>

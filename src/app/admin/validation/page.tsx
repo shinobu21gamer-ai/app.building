@@ -41,15 +41,15 @@ export default async function ValidationQueuePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="text-title text-ink sm:text-display">
           {t.validationQueueTitle}
         </h1>
-        <p className="mt-1 text-sm text-slate-600">{t.validationQueueDesc}</p>
+        <p className="mt-1 text-sm text-ink-muted">{t.validationQueueDesc}</p>
       </div>
 
       {concerns.length === 0 ? (
         <Card>
-          <p className="text-sm text-slate-500">{t.validationQueueEmpty}</p>
+          <p className="text-sm text-ink-subtle">{t.validationQueueEmpty}</p>
         </Card>
       ) : (
         <ul className="space-y-3">
@@ -58,7 +58,7 @@ export default async function ValidationQueuePage() {
               <Card className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-900">
+                    <span className="text-sm font-semibold text-ink">
                       {concern.caseNumber}
                     </span>
                     <Badge tone={concern.typeId === null ? "amber" : "sky"}>
@@ -66,8 +66,8 @@ export default async function ValidationQueuePage() {
                     </Badge>
                     <PriorityBadge level={concern.priorityLevel ?? "LOW"} />
                   </div>
-                  <p className="mt-1 text-sm text-slate-700">{concern.title}</p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-sm text-ink-muted">{concern.title}</p>
+                  <p className="mt-1 text-xs text-ink-subtle">
                     {concern.category.name} ·{" "}
                     {concern.assignedOffice?.name ?? "—"} ·{" "}
                     {formatDateTime(concern.submittedAt)}

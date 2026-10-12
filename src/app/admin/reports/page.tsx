@@ -68,8 +68,8 @@ export default async function AdminReportsPage({
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{t.reportsTitle}</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="text-title text-ink sm:text-display">{t.reportsTitle}</h1>
+          <p className="mt-1 text-sm text-ink-muted">
             {t.reportsLead.replace("{date}", generatedAt)}
           </p>
         </div>
@@ -127,30 +127,30 @@ export default async function AdminReportsPage({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title={t.byStatus}>
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-line text-sm">
             {report.byStatus.map((row) => (
               <li
                 key={row.status}
                 className="flex items-center justify-between py-2"
               >
                 <StatusBadge status={row.status} />
-                <span className="font-semibold text-slate-900">{row.count}</span>
+                <span className="font-semibold text-ink">{row.count}</span>
               </li>
             ))}
           </ul>
         </Card>
         <Card title={t.byOffice}>
           {report.byOffice.length === 0 ? (
-            <p className="py-4 text-sm text-slate-600">{t.noCases}</p>
+            <p className="py-4 text-sm text-ink-muted">{t.noCases}</p>
           ) : (
-            <ul className="divide-y divide-slate-100 text-sm">
+            <ul className="divide-y divide-line text-sm">
               {report.byOffice.map((row) => (
                 <li
                   key={row.id ?? "none"}
                   className="flex items-center justify-between py-2"
                 >
-                  <span className="text-slate-700">{row.name}</span>
-                  <span className="font-semibold text-slate-900">{row.count}</span>
+                  <span className="text-ink-muted">{row.name}</span>
+                  <span className="font-semibold text-ink">{row.count}</span>
                 </li>
               ))}
             </ul>
@@ -169,7 +169,7 @@ export default async function AdminReportsPage({
         description={report.truncated ? t.truncated : t.newest}
       >
         {report.concerns.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-600">
+          <p className="py-8 text-center text-sm text-ink-muted">
             {t.noMatch}
           </p>
         ) : (
@@ -177,7 +177,7 @@ export default async function AdminReportsPage({
             <table className="w-full min-w-[720px] text-left text-sm">
               <caption className="sr-only">{t.reportsTitle}</caption>
               <thead>
-                <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-subtle">
                   <th scope="col" className="py-2 pr-3 font-semibold">
                     {t.caseCol}
                   </th>
@@ -198,7 +198,7 @@ export default async function AdminReportsPage({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {report.concerns.map((concern) => (
                   <tr key={concern.id}>
                     <td className="py-2 pr-3 font-mono text-xs">
@@ -209,8 +209,8 @@ export default async function AdminReportsPage({
                         {concern.caseNumber}
                       </Link>
                     </td>
-                    <td className="py-2 pr-3 text-slate-900">{concern.title}</td>
-                    <td className="py-2 pr-3 text-slate-600">
+                    <td className="py-2 pr-3 text-ink">{concern.title}</td>
+                    <td className="py-2 pr-3 text-ink-muted">
                       {concern.assignedOffice?.name ?? t.unassigned}
                     </td>
                     <td className="py-2 pr-3">
@@ -223,7 +223,7 @@ export default async function AdminReportsPage({
                     <td className="py-2 pr-3">
                       <StatusBadge status={concern.status} />
                     </td>
-                    <td className="py-2 text-slate-600">
+                    <td className="py-2 text-ink-muted">
                       {formatDate(concern.createdAt)}
                     </td>
                   </tr>

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -29,22 +31,20 @@ export default async function ResidentPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            {t.welcome.replace("{name}", user.firstName)}
-          </h1>
-          <p className="mt-1 text-sm text-slate-600">{t.lead}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button href="/resident/concerns/new" size="sm">
-            {t.submit}
-          </Button>
-          <Button href="/profile" variant="outline" size="sm">
-            {t.profile}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={t.welcome.replace("{name}", user.firstName)}
+        description={t.lead}
+        actions={
+          <>
+            <Button href="/resident/concerns/new" size="sm">
+              {t.submit}
+            </Button>
+            <Button href="/profile" variant="outline" size="sm">
+              {t.profile}
+            </Button>
+          </>
+        }
+      />
 
       <div className="stagger grid gap-4 sm:grid-cols-3">
         {stats.map((stat) => (
@@ -55,25 +55,27 @@ export default async function ResidentPage() {
       <div className="stagger grid gap-6 lg:grid-cols-2">
         <Card title={t.recent} description={t.recentDesc}>
           {recent.length === 0 ? (
-            <div className="py-6 text-center">
-              <p className="text-sm text-slate-600">{t.empty}</p>
-              <Button href="/resident/concerns/new" className="mt-3" size="sm">
-                {t.first}
-              </Button>
-            </div>
+            <EmptyState
+              title={t.empty}
+              action={
+                <Button href="/resident/concerns/new" size="sm">
+                  {t.first}
+                </Button>
+              }
+            />
           ) : (
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-line">
               {recent.map((concern) => (
                 <li key={concern.id}>
                   <Link
                     href={`/resident/concerns/${concern.id}`}
-                    className="flex flex-wrap items-center justify-between gap-2 py-3 hover:bg-slate-50"
+                    className="flex flex-wrap items-center justify-between gap-2 py-3 hover:bg-surface-muted"
                   >
                     <div>
-                      <p className="text-sm font-medium text-slate-900">
+                      <p className="text-sm font-medium text-ink">
                         {concern.title}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-ink-subtle">
                         {concern.caseNumber} · {concern.category.name} ·{" "}
                         {formatDate(concern.createdAt)}
                       </p>
@@ -84,7 +86,7 @@ export default async function ResidentPage() {
               ))}
             </ul>
           )}
-          <div className="mt-4 border-t border-slate-100 pt-4">
+          <div className="mt-4 border-t border-line pt-4">
             <Button href="/resident/concerns" variant="outline" size="sm">
               {t.viewAll}
             </Button>
@@ -93,7 +95,7 @@ export default async function ResidentPage() {
 
         <Card title={t.notifications} description={t.notificationsDesc}>
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm text-slate-500">{t.unread}</span>
+            <span className="text-sm text-ink-subtle">{t.unread}</span>
             {unreadNotifications > 0 ? (
               <Badge tone="red">
                 {unreadNotifications} {t.unread.toLowerCase()}
@@ -103,9 +105,9 @@ export default async function ResidentPage() {
             )}
           </div>
           {notifications.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-600">{t.noNotes}</p>
+            <EmptyState title={t.noNotes} />
           ) : (
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-line">
               {notifications.map((notification) => {
                 const body = (
                   <div className="flex items-start gap-2">
@@ -118,10 +120,10 @@ export default async function ResidentPage() {
                       aria-hidden
                     />
                     <div>
-                      <p className="text-sm font-medium text-slate-900">
+                      <p className="text-sm font-medium text-ink">
                         {notification.title}
                       </p>
-                      <p className="text-xs text-slate-600">
+                      <p className="text-xs text-ink-muted">
                         {notification.message}
                       </p>
                       <p className="mt-0.5 text-xs text-slate-400">
@@ -136,7 +138,7 @@ export default async function ResidentPage() {
                     {notification.concernId ? (
                       <Link
                         href={`/resident/concerns/${notification.concernId}`}
-                        className="block py-3 hover:bg-slate-50"
+                        className="block py-3 hover:bg-surface-muted"
                       >
                         {body}
                       </Link>
@@ -148,7 +150,7 @@ export default async function ResidentPage() {
               })}
             </ul>
           )}
-          <div className="mt-4 border-t border-slate-100 pt-4">
+          <div className="mt-4 border-t border-line pt-4">
             <Button href="/notifications" variant="outline" size="sm">
               {t.viewNotes}
             </Button>

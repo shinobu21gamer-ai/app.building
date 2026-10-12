@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Building2, Download, GitBranch, Settings2, SlidersHorizontal, Tags, UserRound, Users } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { BarChart, type BarItem } from "@/components/dashboard/bar-chart";
@@ -50,10 +51,10 @@ export default async function AdminPage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-title text-ink sm:text-display">
             {t.welcome.replace("{name}", user.firstName)}
           </h1>
-          <p className="mt-1 text-sm text-slate-600">{t.overview}</p>
+          <p className="mt-1 text-sm text-ink-muted">{t.overview}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button href="/admin/users" variant="outline" size="sm">
@@ -159,26 +160,24 @@ export default async function AdminPage() {
 
       <Card title={t.processingTitle} description={t.processingDesc}>
         {processingTime.sampleSize === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-600">
-            {t.noTimestamps}
-          </p>
+          <EmptyState title={t.noTimestamps} />
         ) : (
           <dl className="stagger grid gap-4 sm:grid-cols-3">
             <div>
-              <dt className="text-sm text-slate-500">{t.average}</dt>
-              <dd className="mt-1 text-2xl font-bold text-slate-900">
+              <dt className="text-sm text-ink-subtle">{t.average}</dt>
+              <dd className="mt-1 text-2xl font-bold text-ink">
                 {formatHours(processingTime.averageHours)}
               </dd>
             </div>
             <div>
-              <dt className="text-sm text-slate-500">{t.fastest}</dt>
-              <dd className="mt-1 text-2xl font-bold text-slate-900">
+              <dt className="text-sm text-ink-subtle">{t.fastest}</dt>
+              <dd className="mt-1 text-2xl font-bold text-ink">
                 {formatHours(processingTime.fastestHours)}
               </dd>
             </div>
             <div>
-              <dt className="text-sm text-slate-500">{t.slowest}</dt>
-              <dd className="mt-1 text-2xl font-bold text-slate-900">
+              <dt className="text-sm text-ink-subtle">{t.slowest}</dt>
+              <dd className="mt-1 text-2xl font-bold text-ink">
                 {formatHours(processingTime.slowestHours)}
               </dd>
             </div>

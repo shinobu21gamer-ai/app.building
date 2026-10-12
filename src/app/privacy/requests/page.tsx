@@ -43,13 +43,13 @@ export default async function PrivacyRequestsPage() {
     >
       <div className="space-y-6">
         <header>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-title text-ink">
             {t.title}
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
             {t.lead}
           </p>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-ink-subtle">
             {copy[locale].privacy.title} · v{PRIVACY_POLICY_VERSION}
           </p>
         </header>
@@ -75,7 +75,7 @@ export default async function PrivacyRequestsPage() {
 
         <Card title={t.myRequests}>
           {requests.length === 0 ? (
-            <p className="text-sm text-slate-500">{t.none}</p>
+            <p className="text-sm text-ink-subtle">{t.none}</p>
           ) : (
             <ul className="space-y-3">
               {requests.map((request) => {
@@ -86,10 +86,10 @@ export default async function PrivacyRequestsPage() {
                 return (
                   <li
                     key={request.id}
-                    className="rounded-lg border border-slate-200 px-4 py-3"
+                    className="rounded-control border border-line px-4 py-3"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-slate-900">
+                      <p className="text-sm font-medium text-ink">
                         {request.referenceCode} ·{" "}
                         {t.requestTypes[
                           request.type as keyof typeof t.requestTypes
@@ -110,19 +110,19 @@ export default async function PrivacyRequestsPage() {
                         </Badge>
                       </div>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-ink-subtle">
                       {t.requested}: {request.requestedAt.toISOString().slice(0, 10)}
                       {request.dueAt
                         ? ` · ${t.due}: ${request.dueAt.toISOString().slice(0, 10)}`
                         : ""}
                     </p>
                     {request.resolutionNotes && (
-                      <p className="mt-1 text-xs text-slate-600">
+                      <p className="mt-1 text-xs text-ink-muted">
                         {t.resolution}: {request.resolutionNotes}
                       </p>
                     )}
                     {request.denialReason && (
-                      <p className="mt-1 text-xs text-slate-600">
+                      <p className="mt-1 text-xs text-ink-muted">
                         {t.denial}: {request.denialReason}
                       </p>
                     )}

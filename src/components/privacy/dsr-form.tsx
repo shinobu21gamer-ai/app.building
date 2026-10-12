@@ -9,7 +9,7 @@ import { copy, type Locale } from "@/lib/i18n";
 import { DSR_TYPES, type DsrType } from "@/lib/privacy/catalog";
 
 const selectStyles =
-  "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
+  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
 /**
  * Files a data subject request (RA 10173).
@@ -110,13 +110,13 @@ export function DsrRequestForm({ locale = "en" }: { locale?: Locale }) {
       </div>
 
       <div>
-        <label className="flex items-start gap-2 text-sm text-slate-700">
+        <label className="flex items-start gap-2 text-sm text-ink-muted">
           <input
             type="checkbox"
             checked={confirmed}
             onChange={(event) => setConfirmed(event.target.checked)}
             aria-required="true"
-            className="mt-0.5 h-4 w-4 rounded border-slate-300"
+            className="mt-0.5 h-4 w-4 rounded border-line-strong"
           />
           <span>
             {t.confirm}

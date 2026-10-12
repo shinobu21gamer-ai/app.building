@@ -43,25 +43,25 @@ export default async function TreasuryCodesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t.codesTitle}</h1>
-        <p className="mt-1 text-sm text-slate-600">{t.codesLead}</p>
+        <h1 className="text-title text-ink sm:text-display">{t.codesTitle}</h1>
+        <p className="mt-1 text-sm text-ink-muted">{t.codesLead}</p>
       </div>
 
       <Card title={t.coaAccount}>
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-line">
           {accounts.map((account) => (
             <li key={account.id} className="space-y-2 py-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs text-slate-600">
+                <span className="font-mono text-xs text-ink-muted">
                   {account.code}
                 </span>
                 <Badge tone={TONES[account.verificationStatus] ?? "neutral"}>
                   {account.verificationStatus}
                 </Badge>
                 {account.isMooe && <Badge tone="sky">MOOE</Badge>}
-                <span className="text-sm text-slate-800">{account.name}</span>
+                <span className="text-sm text-ink">{account.name}</span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-ink-subtle">
                 {account.accountClass}
                 {account.groupCode ? ` · ${t.groupCode} ${account.groupCode}` : ""}
                 {account.subObjectCodes
@@ -71,7 +71,7 @@ export default async function TreasuryCodesPage() {
               </p>
               {account.verificationStatus === "VERIFIED" &&
                 account.verificationSource && (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-ink-subtle">
                     {t.verificationSource}: {account.verificationSource}
                     {account.verifiedAt
                       ? ` · ${t.verifiedOn.replace(
@@ -93,19 +93,19 @@ export default async function TreasuryCodesPage() {
       </Card>
 
       <Card title={t.fundSource}>
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-line">
           {fundSources.map((source) => (
             <li key={source.id} className="space-y-2 py-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs text-slate-600">
+                <span className="font-mono text-xs text-ink-muted">
                   {source.code}
                 </span>
                 <Badge tone={TONES[source.verificationStatus] ?? "neutral"}>
                   {source.verificationStatus}
                 </Badge>
-                <span className="text-sm text-slate-800">{source.name}</span>
+                <span className="text-sm text-ink">{source.name}</span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-ink-subtle">
                 {source.description ?? "—"} · {source._count.allocations}{" "}
                 {t.budgetsTitle.toLowerCase()}
               </p>

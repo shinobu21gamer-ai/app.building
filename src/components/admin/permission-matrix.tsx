@@ -90,7 +90,7 @@ export function PermissionMatrix({ locale = "en" }: { locale?: Locale }) {
   }
 
   if (error) return <FormMessage tone="error">{error}</FormMessage>;
-  if (!data) return <p className="text-sm text-slate-500">{t.saving}</p>;
+  if (!data) return <p className="text-sm text-ink-subtle">{t.saving}</p>;
 
   return (
     <div className="space-y-4">
@@ -98,7 +98,7 @@ export function PermissionMatrix({ locale = "en" }: { locale?: Locale }) {
         <FormMessage tone="error">{t.bootstrapWarning}</FormMessage>
       )}
 
-      <div className="flex flex-wrap gap-3 text-xs text-slate-600">
+      <div className="flex flex-wrap gap-3 text-xs text-ink-muted">
         <span className="inline-flex items-center gap-1">
           <Badge tone="green">{t.codeDefault}</Badge>
         </span>
@@ -114,17 +114,17 @@ export function PermissionMatrix({ locale = "en" }: { locale?: Locale }) {
         <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
             <tr>
-              <th className="sticky left-0 bg-white px-3 py-2 text-left font-semibold text-slate-700">
+              <th className="sticky left-0 bg-surface px-3 py-2 text-left font-semibold text-ink-muted">
                 {t.permission}
               </th>
               {data.roles.map((role) => (
                 <th
                   key={role.key}
-                  className="px-3 py-2 text-center font-semibold text-slate-700"
+                  className="px-3 py-2 text-center font-semibold text-ink-muted"
                   title={role.description ?? undefined}
                 >
                   <span className="block">{role.name}</span>
-                  <span className="block text-xs font-normal text-slate-500">
+                  <span className="block text-xs font-normal text-ink-subtle">
                     {role.userCount}
                   </span>
                 </th>
@@ -134,21 +134,21 @@ export function PermissionMatrix({ locale = "en" }: { locale?: Locale }) {
           <tbody>
             {data.categories.map((group) => (
               <>
-                <tr key={group.category} className="bg-slate-50">
+                <tr key={group.category} className="bg-surface-muted">
                   <td
                     colSpan={data.roles.length + 1}
-                    className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500"
+                    className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ink-subtle"
                   >
                     {group.category}
                   </td>
                 </tr>
                 {group.permissions.map((permission) => (
-                  <tr key={permission.key} className="border-t border-slate-100">
-                    <td className="sticky left-0 max-w-[22rem] bg-white px-3 py-2 align-top">
-                      <span className="block font-mono text-xs text-slate-700">
+                  <tr key={permission.key} className="border-t border-line">
+                    <td className="sticky left-0 max-w-[22rem] bg-surface px-3 py-2 align-top">
+                      <span className="block font-mono text-xs text-ink-muted">
                         {permission.key}
                       </span>
-                      <span className="block text-xs text-slate-500">
+                      <span className="block text-xs text-ink-subtle">
                         {permission.description}
                       </span>
                     </td>
@@ -170,7 +170,7 @@ export function PermissionMatrix({ locale = "en" }: { locale?: Locale }) {
                             onChange={() =>
                               toggle(role.key, permission.key, allowed)
                             }
-                            className="h-4 w-4 rounded border-slate-300"
+                            className="h-4 w-4 rounded border-line-strong"
                           />
                           <span className="mt-1 block">
                             {granted && <Badge tone="sky">{t.overrideGranted}</Badge>}

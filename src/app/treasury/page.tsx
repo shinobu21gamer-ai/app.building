@@ -69,10 +69,10 @@ export default async function TreasuryDashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-title text-ink sm:text-display">
             {t.dashboardTitle}
           </h1>
-          <p className="mt-1 text-sm text-slate-600">{t.dashboardLead}</p>
+          <p className="mt-1 text-sm text-ink-muted">{t.dashboardLead}</p>
         </div>
         <div className="flex gap-2">
           <Button href="/treasury/budgets" size="sm" variant="outline">
@@ -88,15 +88,15 @@ export default async function TreasuryDashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title={t.pendingTitle}>
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line">
             {pending.map((entry) => (
               <li
                 key={entry.label}
                 className="flex items-center justify-between gap-3 py-2"
               >
-                <span className="text-sm text-slate-700">{entry.label}</span>
+                <span className="text-sm text-ink-muted">{entry.label}</span>
                 <span className="flex items-center gap-3">
-                  <span className="text-sm font-semibold tabular-nums text-slate-900">
+                  <span className="text-sm font-semibold tabular-nums text-ink">
                     {entry.count}
                   </span>
                   <Button href={entry.href} size="sm" variant="ghost">
@@ -108,7 +108,7 @@ export default async function TreasuryDashboardPage() {
           </ul>
           {(dashboard.counts.unverifiedCoaAccounts > 0 ||
             dashboard.counts.unverifiedFundSources > 0) && (
-            <div className="mt-3 space-y-1 border-t border-slate-100 pt-3 text-xs text-amber-700">
+            <div className="mt-3 space-y-1 border-t border-line pt-3 text-xs text-amber-700">
               {dashboard.counts.unverifiedCoaAccounts > 0 && (
                 <p>
                   {t.unverifiedCodes}: {dashboard.counts.unverifiedCoaAccounts}

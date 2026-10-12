@@ -33,7 +33,7 @@ type DsrRow = {
 };
 
 const selectStyles =
-  "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
+  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
 /**
  * Data subject request queue with the actions that close a request.
@@ -86,7 +86,7 @@ export function DsrQueue({
   }
 
   if (requests.length === 0) {
-    return <p className="text-sm text-slate-500">{t.dsrNone}</p>;
+    return <p className="text-sm text-ink-subtle">{t.dsrNone}</p>;
   }
 
   return (
@@ -96,28 +96,28 @@ export function DsrQueue({
         {requests.map((request) => (
           <li
             key={request.id}
-            className="rounded-lg border border-slate-200 px-4 py-3"
+            className="rounded-control border border-line px-4 py-3"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-slate-900">
+                <p className="text-sm font-medium text-ink">
                   {request.referenceCode} · {request.typeLabel}
                 </p>
-                <p className="mt-0.5 text-xs text-slate-600">
+                <p className="mt-0.5 text-xs text-ink-muted">
                   {request.resident.name} · {request.resident.email}
                   {request.resident.phoneMasked
                     ? ` · ${request.resident.phoneMasked}`
                     : ""}
                 </p>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="mt-0.5 text-xs text-ink-subtle">
                   {common.date}: {request.requestedAt.slice(0, 10)}
                   {request.dueAt ? ` · ${request.dueAt.slice(0, 10)}` : ""}
                 </p>
                 {request.details && (
-                  <p className="mt-1 text-xs text-slate-600">{request.details}</p>
+                  <p className="mt-1 text-xs text-ink-muted">{request.details}</p>
                 )}
                 {request.resolutionNotes && (
-                  <p className="mt-1 text-xs text-slate-600">
+                  <p className="mt-1 text-xs text-ink-muted">
                     {t.resolutionNotes}: {request.resolutionNotes}
                   </p>
                 )}
@@ -155,7 +155,7 @@ export function DsrQueue({
             </div>
 
             {openId === request.id && (
-              <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
+              <div className="mt-3 space-y-3 border-t border-line pt-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <Label htmlFor={`status-${request.id}`}>{common.status}</Label>
@@ -300,7 +300,7 @@ export function PiiRevealForm({ locale = "en" }: { locale?: Locale }) {
           />
         </div>
       </div>
-      <p className="text-xs text-slate-500">{t.revealHelp}</p>
+      <p className="text-xs text-ink-subtle">{t.revealHelp}</p>
       <Button
         type="submit"
         size="sm"
@@ -352,14 +352,14 @@ export function VerificationGateToggle({
   return (
     <div className="space-y-3">
       {error && <FormMessage tone="error">{error}</FormMessage>}
-      <p className="text-xs leading-relaxed text-slate-600">{t.gateLead}</p>
-      <label className="flex items-start gap-2 text-sm text-slate-800">
+      <p className="text-xs leading-relaxed text-ink-muted">{t.gateLead}</p>
+      <label className="flex items-start gap-2 text-sm text-ink">
         <input
           type="checkbox"
           checked={on}
           disabled={busy}
           onChange={toggle}
-          className="mt-0.5 h-4 w-4 rounded border-slate-300"
+          className="mt-0.5 h-4 w-4 rounded border-line-strong"
         />
         <span>{on ? t.gateOn : t.gateOff}</span>
       </label>

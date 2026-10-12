@@ -28,6 +28,7 @@ const en = {
       "A barangay service for reporting community concerns, following them to the right office, and seeing them through to a recorded resolution.",
     residents: "For residents",
     about: "About this service",
+    transparency: "Transparency",
     home: "Home",
     privacy: "Privacy",
     emergencies: "Emergencies",
@@ -286,6 +287,7 @@ const en = {
     photo: "Supporting image",
   },
   submit: {
+    requiredLegend: "* Required field",
     title: "Submit a Concern",
     lead: "Describe the community concern. A case number will be generated and you can track its status from My Concerns.",
     unavailable:
@@ -1205,11 +1207,22 @@ const en = {
       loading: "Loading...",
       none: "Nothing here yet.",
       status: "Status",
+      statuses: {
+        SUBMITTED: "Submitted",
+        ASSIGNED: "Assigned",
+        UNDER_ASSESSMENT: "Under assessment",
+        AWAITING_BUDGET: "Awaiting budget",
+        IN_PROGRESS: "In progress",
+        RESOLVED: "Resolved",
+        CLOSED: "Closed",
+      },
       date: "Date",
       reason: "Reason",
       optional: "Optional",
       notifications: "Notifications",
       dashboard: "Dashboard",
+      more: "More",
+      sectionLabel: "Sections",
     },
     portal: {
       permissionsTitle: "What your role can do",
@@ -1462,6 +1475,58 @@ const en = {
         COMPLAINT: "Complaint",
       },
     },
+    transparency: {
+      title: "Transparency",
+      lead: "Every published case, as the barangay records it — with the people taken out. Names, phone numbers, street addresses and exact pins never appear here.",
+      navTransparency: "Transparency",
+      statsPublished: "Published cases",
+      statsResolved: "Resolved",
+      statsAvg: "Average response",
+      statsAvgValue: "{hours} h",
+      statsAvgNone: "No resolved case yet",
+      filterType: "Service",
+      filterStatus: "Status",
+      filterArea: "Area",
+      filterAll: "All",
+      filtersClear: "Clear filters",
+      resultOne: "1 published case",
+      resultMany: "{count} published cases",
+      colRef: "Reference",
+      colType: "Service",
+      colArea: "Area",
+      colStatus: "Status",
+      colSubmitted: "Submitted",
+      colResolved: "Resolved",
+      emptyTitle: "Nothing published for this filter",
+      emptyBody:
+        "A case appears here when the resident consented to publication and its title could be published without personal details. Withdrawing that consent removes it again.",
+      detailTitle: "Public case {ref}",
+      detailLead:
+        "The anonymised record of one case. The reference belongs to the public view only; it cannot be traced back to a resident.",
+      detailArea: "Area",
+      detailService: "Service",
+      detailStatus: "Status",
+      detailSubmitted: "Submitted",
+      detailResolved: "Resolved",
+      detailClosed: "Closed",
+      detailHours: "Recorded response time",
+      detailHoursValue: "{hours} hours",
+      detailOutcome: "Outcome",
+      detailMapTitle: "Approximate location",
+      detailMapNote:
+        "Rounded to the purok level. The exact pin stays in the case file.",
+      detailNotFound: "No published case has that reference.",
+      detailBack: "All published cases",
+      privacyTitle: "What this page never shows",
+      privacyBody:
+        "Case numbers, names, phone numbers, street addresses, exact coordinates, photos and case notes stay in the case file. The area label and the map are coarse on purpose, and a case is only published with the resident's consent — which they can withdraw at any time.",
+      openCase: "Track your own case",
+      openCaseLead:
+        "Have a case number? Track a case shows your own file, its notes and its status.",
+      pagerPrevious: "Previous",
+      pagerNext: "Next",
+      pagerShown: "{from}-{to} of {total}",
+    },
     workflow: {
       assessmentTitle: "Evaluation and approval",
       assessmentDesc:
@@ -1703,6 +1768,7 @@ const fil: typeof en = {
       "Serbisyo ng barangay para maghain ng concern, ipasa ito sa tamang tanggapan, at sundan hanggang sa may naitalang resolusyon.",
     residents: "Para sa mga residente",
     about: "Tungkol sa serbisyo",
+    transparency: "Transparency",
     home: "Home",
     privacy: "Privacy",
     emergencies: "Mga emergency",
@@ -1961,6 +2027,7 @@ const fil: typeof en = {
     photo: "Kasamang litrato",
   },
   submit: {
+    requiredLegend: "* Kinakailangang field",
     title: "Maghain ng Concern",
     lead: "Ilarawan ang community concern. Bibigyan ka ng case number na masusundan sa Mga Concern Ko.",
     unavailable:
@@ -2882,11 +2949,22 @@ const fil: typeof en = {
       loading: "Naglo-load...",
       none: "Wala pa rito.",
       status: "Katayuan",
+      statuses: {
+        SUBMITTED: "Isinumite",
+        ASSIGNED: "Naitalaga",
+        UNDER_ASSESSMENT: "Sinusuri",
+        AWAITING_BUDGET: "Naghihintay ng badyet",
+        IN_PROGRESS: "Ginagawa",
+        RESOLVED: "Naresolba",
+        CLOSED: "Sarado",
+      },
       date: "Petsa",
       reason: "Dahilan",
       optional: "Opsyonal",
       notifications: "Mga abiso",
       dashboard: "Dashboard",
+      more: "Higit pa",
+      sectionLabel: "Mga seksyon",
     },
     portal: {
       permissionsTitle: "Ang kaya ng iyong role",
@@ -3139,6 +3217,58 @@ const fil: typeof en = {
         COMPLAINT: "Reklamo",
       },
     },
+    transparency: {
+      title: "Transparency",
+      lead: "Lahat ng nai-publish na kaso, ayon sa talaan ng barangay — pero walang tao sa loob. Hindi lumalabas dito ang pangalan, numero ng telepono, eksaktong address, at eksaktong pin.",
+      navTransparency: "Transparency",
+      statsPublished: "Nai-publish na kaso",
+      statsResolved: "Naresolba",
+      statsAvg: "Karaniwang tugon",
+      statsAvgValue: "{hours} oras",
+      statsAvgNone: "Wala pang naresolbang kaso",
+      filterType: "Serbisyo",
+      filterStatus: "Katayuan",
+      filterArea: "Lugar",
+      filterAll: "Lahat",
+      filtersClear: "Alisin ang filter",
+      resultOne: "1 nai-publish na kaso",
+      resultMany: "{count} nai-publish na kaso",
+      colRef: "Reperensya",
+      colType: "Serbisyo",
+      colArea: "Lugar",
+      colStatus: "Katayuan",
+      colSubmitted: "Isinumite",
+      colResolved: "Naresolba",
+      emptyTitle: "Walang nai-publish para sa filter na ito",
+      emptyBody:
+        "Lumalabas ang kaso dito kapag pumayag ang residente na i-publish ito at may titulong maaaring ilathala nang walang personal na detalye. Kapag binawi ang pahintulot, nawawala rin ito.",
+      detailTitle: "Pampublikong kaso {ref}",
+      detailLead:
+        "Ang anonymized na talaan ng isang kaso. Ang reperensya ay para lang sa pampublikong view; hindi ito matutunton pabalik sa residente.",
+      detailArea: "Lugar",
+      detailService: "Serbisyo",
+      detailStatus: "Katayuan",
+      detailSubmitted: "Isinumite",
+      detailResolved: "Naresolba",
+      detailClosed: "Sarado",
+      detailHours: "Naitalang oras ng tugon",
+      detailHoursValue: "{hours} oras",
+      detailOutcome: "Resulta",
+      detailMapTitle: "Tinatayang lokasyon",
+      detailMapNote:
+        "Bilugan hanggang antas ng purok. Nasa case file pa rin ang eksaktong pin.",
+      detailNotFound: "Walang nai-publish na kaso sa reperensyang iyon.",
+      detailBack: "Lahat ng nai-publish na kaso",
+      privacyTitle: "Ang hindi ipinapakita ng pahinang ito",
+      privacyBody:
+        "Nasa case file ang case number, pangalan, numero ng telepono, address, eksaktong coordinate, litrato at mga tala. Sadyang magaspang ang lugar at mapa, at nai-publish lamang ang kaso kapag may pahintulot ang residente — na puwede nilang bawiin anumang oras.",
+      openCase: "Subaybayan ang sariling kaso",
+      openCaseLead:
+        "May case number? Ipinapakita ng Subaybayan ang kaso ang sarili mong file, mga tala at katayuan nito.",
+      pagerPrevious: "Nauna",
+      pagerNext: "Susunod",
+      pagerShown: "{from}-{to} ng {total}",
+    },
     workflow: {
       assessmentTitle: "Pagtatasa at pag-apruba",
       assessmentDesc:
@@ -3359,5 +3489,21 @@ const fil: typeof en = {
 };
 
 export const copy = { en, fil } as const;
+
+/**
+ * The status of a case in the reader's language. Falls back to the raw key when
+ * a status has no translation yet, so a new workflow stage can never render as
+ * an empty badge while its copy is being written.
+ */
+export function statusLabelFor(locale: Locale, status: string): string {
+  const labels = copy[locale].revamp.common.statuses as Record<string, string>;
+  return (
+    labels[status] ??
+    status
+      .replaceAll("_", " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+  );
+}
 
 export type Copy = typeof en;

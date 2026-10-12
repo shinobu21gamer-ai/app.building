@@ -47,9 +47,9 @@ export function PriorityBreakdown({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <PriorityBadge level={level} />
-        <span className="text-sm text-slate-600">
+        <span className="text-sm text-ink-muted">
           {t.totalScore}{" "}
-          <span className="font-semibold text-slate-900">{totalScore}</span>
+          <span className="font-semibold text-ink">{totalScore}</span>
         </span>
         {isOverride ? (
           <Badge tone="amber">{t.officialOverride}</Badge>
@@ -62,7 +62,7 @@ export function PriorityBreakdown({
         <table className="w-full text-sm">
           <caption className="sr-only">{t.howComputed}</caption>
           <thead>
-            <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+            <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-subtle">
               <th scope="col" className="py-1.5 pr-3 text-left font-semibold">
                 {t.factor}
               </th>
@@ -77,29 +77,29 @@ export function PriorityBreakdown({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-line">
             {evaluation.factors.map((factor) => (
               <tr key={factor.key}>
-                <td className="py-1.5 pr-3 text-slate-700">{factor.label}</td>
-                <td className="py-1.5 pr-3 text-right text-slate-700">
+                <td className="py-1.5 pr-3 text-ink-muted">{factor.label}</td>
+                <td className="py-1.5 pr-3 text-right text-ink-muted">
                   {factor.score}
                 </td>
-                <td className="py-1.5 pr-3 text-right text-slate-700">
+                <td className="py-1.5 pr-3 text-right text-ink-muted">
                   {factor.weight}
                 </td>
-                <td className="py-1.5 text-right font-medium text-slate-900">
+                <td className="py-1.5 text-right font-medium text-ink">
                   {factor.weightedScore}
                 </td>
               </tr>
             ))}
             <tr>
               <td
-                className="pt-2 text-right font-semibold text-slate-900"
+                className="pt-2 text-right font-semibold text-ink"
                 colSpan={3}
               >
                 {t.total}
               </td>
-              <td className="pt-2 text-right font-bold text-slate-900">
+              <td className="pt-2 text-right font-bold text-ink">
                 {totalScore}
               </td>
             </tr>
@@ -108,11 +108,11 @@ export function PriorityBreakdown({
       )}
 
       {evaluation && (
-        <div className="rounded-lg bg-slate-50 p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="rounded-control bg-surface-muted p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
             {t.howComputed}
           </p>
-          <ul className="mt-1.5 space-y-0.5 text-xs text-slate-600">
+          <ul className="mt-1.5 space-y-0.5 text-xs text-ink-muted">
             {evaluation.explanation.map((line) => (
               <li key={line}>{line}</li>
             ))}
@@ -121,8 +121,8 @@ export function PriorityBreakdown({
       )}
 
       {isOverride && overrideReason && (
-        <p className="text-sm text-slate-600">
-          <span className="font-medium text-slate-900">
+        <p className="text-sm text-ink-muted">
+          <span className="font-medium text-ink">
             {t.overrideReasonLabel}
           </span>{" "}
           {overrideReason}

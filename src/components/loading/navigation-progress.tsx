@@ -191,7 +191,7 @@ export function NavigationProgress({ label }: { label: string }) {
         <div
           style={{ top }}
           className={cn(
-            "no-print fixed inset-x-0 bottom-0 z-40 overflow-y-auto overscroll-contain bg-white",
+            "no-print fixed inset-x-0 bottom-0 z-40 overflow-y-auto overscroll-contain bg-surface",
             phase === "done" ? "animate-fade-out" : "animate-fade-in"
           )}
         >

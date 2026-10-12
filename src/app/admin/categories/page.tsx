@@ -33,8 +33,8 @@ export default async function AdminCategoriesPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t.categoriesTitle}</h1>
-        <p className="mt-1 text-sm text-slate-600">{t.categoriesLead}</p>
+        <h1 className="text-title text-ink sm:text-display">{t.categoriesTitle}</h1>
+        <p className="mt-1 text-sm text-ink-muted">{t.categoriesLead}</p>
       </div>
 
       <AdminFilterBar

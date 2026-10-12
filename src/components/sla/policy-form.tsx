@@ -140,7 +140,7 @@ export function PolicyForm({
           <select
             id="policy-stage"
             required
-            className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
+            className="h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
             value={values.stage}
             onChange={(event) => set("stage", event.target.value)}
           >
@@ -171,7 +171,7 @@ export function PolicyForm({
           <Label htmlFor="policy-type">{t.typeScope}</Label>
           <select
             id="policy-type"
-            className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
+            className="h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
             value={values.typeId}
             onChange={(event) => set("typeId", event.target.value)}
           >
@@ -188,7 +188,7 @@ export function PolicyForm({
           <Label htmlFor="policy-priority">{t.priorityScope}</Label>
           <select
             id="policy-priority"
-            className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
+            className="h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
             value={values.priorityLevel}
             onChange={(event) => set("priorityLevel", event.target.value)}
           >
@@ -208,7 +208,7 @@ export function PolicyForm({
           <select
             id="policy-role"
             required
-            className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
+            className="h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
             value={values.escalateToRole}
             onChange={(event) => set("escalateToRole", event.target.value)}
           >
@@ -231,7 +231,7 @@ export function PolicyForm({
         </div>
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-slate-700">
+      <label className="flex items-center gap-2 text-sm text-ink-muted">
         <input
           type="checkbox"
           checked={values.isActive}

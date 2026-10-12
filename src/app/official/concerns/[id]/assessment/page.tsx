@@ -60,13 +60,13 @@ export default async function AssessmentPage({ params }: PageProps) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          <p className="text-xs font-medium uppercase tracking-wide text-ink-subtle">
             {concern.caseNumber}
           </p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">
+          <h1 className="mt-1 text-ink text-title sm:text-display">
             {t.assessmentTitle}
           </h1>
-          <p className="mt-1 text-sm text-slate-600">{t.assessmentDesc}</p>
+          <p className="mt-1 text-sm text-ink-muted">{t.assessmentDesc}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
           <StatusBadge status={concern.status} />
@@ -76,7 +76,7 @@ export default async function AssessmentPage({ params }: PageProps) {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 text-sm text-slate-600">
+      <div className="flex flex-wrap gap-2 text-sm text-ink-muted">
         <Badge tone="sky">{concern.category.name}</Badge>
         {concern.type && <Badge tone="violet">{concern.type.name}</Badge>}
         {concern.assignedOffice && (
@@ -88,7 +88,7 @@ export default async function AssessmentPage({ params }: PageProps) {
       </div>
 
       {concern.caseAssessment?.scheduledStartAt && (
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-ink-subtle">
           {t.scheduledStart}:{" "}
           {formatDateTime(concern.caseAssessment.scheduledStartAt)}
           {concern.caseAssessment.scheduledEndAt
@@ -161,13 +161,13 @@ export default async function AssessmentPage({ params }: PageProps) {
                   ] as Array<[string, unknown]>
                 ).map(([label, value]) => (
                   <div key={String(label)} className="flex justify-between gap-3">
-                    <dt className="text-slate-500">{label}</dt>
-                    <dd className="font-medium tabular-nums text-slate-900">
+                    <dt className="text-ink-subtle">{label}</dt>
+                    <dd className="font-medium tabular-nums text-ink">
                       ₱{Number(value ?? 0).toFixed(2)}
                     </dd>
                   </div>
                 ))}
-                <div className="flex justify-between gap-3 border-t border-slate-100 pt-2 text-xs text-slate-500">
+                <div className="flex justify-between gap-3 border-t border-line pt-2 text-xs text-ink-subtle">
                   <dt>{t.workersNeeded}</dt>
                   <dd>
                     {concern.caseAssessment.workersNeeded ?? "—"} ·{" "}
@@ -175,7 +175,7 @@ export default async function AssessmentPage({ params }: PageProps) {
                   </dd>
                 </div>
                 {concern.caseAssessment.submittedAt && (
-                  <div className="flex justify-between gap-3 text-xs text-slate-500">
+                  <div className="flex justify-between gap-3 text-xs text-ink-subtle">
                     <dt>{copy[locale].revamp.common.date}</dt>
                     <dd>{formatDate(concern.caseAssessment.submittedAt)}</dd>
                   </div>

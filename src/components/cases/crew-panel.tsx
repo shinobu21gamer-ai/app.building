@@ -163,7 +163,7 @@ export function CrewPanel({
     return <FormMessage tone="error">{loadError}</FormMessage>;
   }
   if (!data) {
-    return <p className="text-sm text-slate-500">{copy[locale].loading.label}</p>;
+    return <p className="text-sm text-ink-subtle">{copy[locale].loading.label}</p>;
   }
 
   const active = data.assignments.filter((row) => row.isActive);
@@ -177,20 +177,20 @@ export function CrewPanel({
           {t.crewProgress}: {progress.label}
         </Badge>
         {!progress.satisfied && (
-          <span className="text-xs text-slate-500">{t.crewGateHint}</span>
+          <span className="text-xs text-ink-subtle">{t.crewGateHint}</span>
         )}
       </div>
 
       {message && <FormMessage tone="success">{message}</FormMessage>}
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
-      <ul className="divide-y divide-slate-100">
+      <ul className="divide-y divide-line">
         {active.map((row) => (
           <li key={row.id} className="flex items-center justify-between gap-3 py-2">
             <div>
-              <p className="text-sm font-medium text-slate-900">{row.name}</p>
+              <p className="text-sm font-medium text-ink">{row.name}</p>
               {row.trade && (
-                <p className="text-xs text-slate-500">{row.trade}</p>
+                <p className="text-xs text-ink-subtle">{row.trade}</p>
               )}
             </div>
             {canAssign &&
@@ -242,12 +242,12 @@ export function CrewPanel({
           </li>
         ))}
         {active.length === 0 && (
-          <li className="py-2 text-sm text-slate-500">{t.crewNoRoster}</li>
+          <li className="py-2 text-sm text-ink-subtle">{t.crewNoRoster}</li>
         )}
       </ul>
 
       {released.length > 0 && (
-        <details className="text-xs text-slate-500">
+        <details className="text-xs text-ink-subtle">
           <summary>
             {t.crewRelease} · {released.length}
           </summary>
@@ -263,8 +263,8 @@ export function CrewPanel({
       )}
 
       {canAssign && data.roster.length > 0 && (
-        <div className="space-y-3 border-t border-slate-100 pt-4">
-          <p className="text-sm font-medium text-slate-700">{t.crewRoster}</p>
+        <div className="space-y-3 border-t border-line pt-4">
+          <p className="text-sm font-medium text-ink-muted">{t.crewRoster}</p>
           <ul className="space-y-2">
             {data.roster.map((member) => {
               const already = active.some((row) => row.crewId === member.id);
@@ -273,7 +273,7 @@ export function CrewPanel({
                 <li key={member.id}>
                   <label
                     className={`flex items-start gap-2 text-sm ${
-                      selectable ? "text-slate-700" : "text-slate-400"
+                      selectable ? "text-ink-muted" : "text-slate-400"
                     }`}
                   >
                     <input
@@ -287,12 +287,12 @@ export function CrewPanel({
                             : prev.filter((id) => id !== member.id)
                         )
                       }
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                      className="mt-0.5 h-4 w-4 rounded border-line-strong"
                     />
                     <span>
                       {member.name}
                       {member.trade ? ` · ${member.trade}` : ""}
-                      <span className="block text-xs text-slate-500">
+                      <span className="block text-xs text-ink-subtle">
                         {t.crewOpenCases.replace(
                           "{count}",
                           String(member.openAssignments)
@@ -320,7 +320,7 @@ export function CrewPanel({
       )}
 
       {canOverrideShortfall && !progress.satisfied && (
-        <div className="border-t border-slate-100 pt-4">
+        <div className="border-t border-line pt-4">
           {showOverride ? (
             <div className="space-y-2">
               <Label htmlFor="shortfall-reason" required>

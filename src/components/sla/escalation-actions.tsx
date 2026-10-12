@@ -31,7 +31,7 @@ export function EscalationActions({
   const [error, setError] = useState<string | null>(null);
 
   if (status === "RESOLVED") {
-    return <span className="text-xs text-slate-500">{t.resolved}</span>;
+    return <span className="text-xs text-ink-subtle">{t.resolved}</span>;
   }
 
   async function act(action: "ACKNOWLEDGE" | "RESOLVE") {
@@ -74,7 +74,7 @@ export function EscalationActions({
       </div>
 
       {open ? (
-        <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <div className="space-y-2 rounded-control border border-line bg-surface-muted p-3">
           <Label htmlFor={`escalation-note-${id}`} required>
             {t.resolveNote}
           </Label>

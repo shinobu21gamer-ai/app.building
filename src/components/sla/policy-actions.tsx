@@ -62,7 +62,7 @@ export function PolicyActions({
       {error ? <FormMessage tone="error">{error}</FormMessage> : null}
 
       {editing ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="rounded-card border border-line bg-surface-muted p-4">
           <PolicyForm
             locale={locale}
             types={types}

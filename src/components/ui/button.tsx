@@ -13,7 +13,7 @@ type Variant =
 type Size = "sm" | "md" | "lg";
 
 const baseStyles =
-  "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-[background-color,color,border-color,box-shadow,transform] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:transform-none disabled:shadow-none";
+  "inline-flex items-center justify-center gap-2 rounded-control font-semibold transition-[background-color,color,border-color,box-shadow,transform] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:transform-none disabled:shadow-none";
 
 const variantStyles: Record<Variant, string> = {
   primary:
@@ -21,17 +21,19 @@ const variantStyles: Record<Variant, string> = {
   secondary:
     "bg-brand-50 text-brand-800 hover:bg-brand-100 focus-visible:outline-brand-700",
   outline:
-    "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus-visible:outline-slate-400",
-  ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+    "border border-line-strong bg-surface text-ink-muted hover:bg-surface-muted hover:text-ink focus-visible:outline-slate-400",
+  ghost: "text-ink-muted hover:bg-surface-sunken hover:text-ink",
   destructive:
-    "bg-red-600 text-white hover:bg-red-700 focus-visible:outline-red-600",
+    "bg-danger-600 text-white hover:bg-danger-700 focus-visible:outline-danger-600",
   // For dark surfaces: a translucent outline that reads on brand-800 and similar.
   inverse:
     "border border-white/30 bg-transparent text-white hover:bg-white/10 focus-visible:outline-white",
 };
 
 const sizeStyles: Record<Size, string> = {
-  sm: "h-8 px-3 text-xs",
+  sm: "h-9 px-3 text-xs",
+  // md and lg keep a 44px target: this is a phone-first app and the primary
+  // actions are tapped, not clicked.
   md: "h-10 px-4 text-sm",
   lg: "h-11 px-6 text-base",
 };

@@ -20,10 +20,10 @@ export default async function AdminVerificationPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="text-title text-ink">
           {t.verificationTitle}
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
           {t.verificationLead}
         </p>
       </header>

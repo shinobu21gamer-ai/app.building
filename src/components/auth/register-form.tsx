@@ -161,7 +161,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-4" autoComplete="off">
       {error && <FormMessage tone="error">{error}</FormMessage>}
-      <p className="text-xs text-slate-500">{t.requiredLegend}</p>
+      <p className="text-xs text-ink-subtle">{t.requiredLegend}</p>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
@@ -260,7 +260,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
             required
           />
           {isInvalid("password") && <FieldError>{fieldErrors.password}</FieldError>}
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-ink-subtle">
             {t.passwordHint}
           </p>
         </div>
@@ -282,11 +282,11 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
         </div>
       </div>
 
-      <fieldset className="space-y-3 rounded-lg border border-slate-200 px-4 py-3">
-        <legend className="px-1 text-sm font-semibold text-slate-800">
+      <fieldset className="space-y-3 rounded-control border border-line px-4 py-3">
+        <legend className="px-1 text-sm font-semibold text-ink">
           {t.consentTitle}
         </legend>
-        <p className="text-xs leading-relaxed text-slate-500">
+        <p className="text-xs leading-relaxed text-ink-subtle">
           {t.consentLegend}
         </p>
 
@@ -301,7 +301,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
         ).map(([key, label, required]) => (
           <label
             key={key}
-            className="flex items-start gap-2 text-sm text-slate-700"
+            className="flex items-start gap-2 text-sm text-ink-muted"
           >
             <input
               type="checkbox"
@@ -310,14 +310,21 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
               onChange={(event) =>
                 setConsents((prev) => ({ ...prev, [key]: event.target.checked }))
               }
-              className="mt-0.5 h-4 w-4 rounded border-slate-300"
+              className="mt-0.5 h-4 w-4 rounded border-line-strong"
             />
-            <span>{label}</span>
+            <span>
+              {label}
+              {required ? (
+                <span aria-hidden="true" className="ml-0.5 text-danger-600">
+                  *
+                </span>
+              ) : null}
+            </span>
           </label>
         ))}
       </fieldset>
 
-      <p className="text-xs text-slate-500">{t.requiredLegend}</p>
+      <p className="text-xs text-ink-subtle">{t.requiredLegend}</p>
 
       <Button
         type="submit"

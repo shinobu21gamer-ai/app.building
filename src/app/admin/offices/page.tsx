@@ -33,8 +33,8 @@ export default async function AdminOfficesPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t.officesTitle}</h1>
-        <p className="mt-1 text-sm text-slate-600">{t.officesLead}</p>
+        <h1 className="text-title text-ink sm:text-display">{t.officesTitle}</h1>
+        <p className="mt-1 text-sm text-ink-muted">{t.officesLead}</p>
       </div>
 
       <AdminFilterBar

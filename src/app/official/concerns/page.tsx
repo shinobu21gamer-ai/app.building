@@ -79,8 +79,8 @@ export default async function OfficialConcernsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t.caseManagement}</h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <h1 className="text-title text-ink sm:text-display">{t.caseManagement}</h1>
+        <p className="mt-1 text-sm text-ink-muted">
           {scopeLabel} {isOfficial ? t.manageOnly : ""}
         </p>
       </div>
@@ -121,26 +121,26 @@ export default async function OfficialConcernsPage({
         }
       >
         {concerns.length === 0 ? (
-          <p className="py-10 text-center text-sm text-slate-600">
+          <p className="py-10 text-center text-sm text-ink-muted">
             {t.noMatch}
           </p>
         ) : (
           <>
-            <ul className="divide-y divide-slate-100 md:hidden">
+            <ul className="divide-y divide-line md:hidden">
               {concerns.map((concern) => (
                 <li key={concern.id}>
                   <Link
                     href={`/official/concerns/${concern.id}`}
-                    className="block py-3 hover:bg-slate-50"
+                    className="block py-3 hover:bg-surface-muted"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium text-slate-900">{concern.title}</p>
+                      <p className="font-medium text-ink">{concern.title}</p>
                       <StatusBadge status={concern.status} />
                     </div>
-                    <p className="mt-1 font-mono text-xs text-slate-500">
+                    <p className="mt-1 font-mono text-xs text-ink-subtle">
                       {concern.caseNumber}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-ink-subtle">
                       {concern.category.name} · {concern.user.firstName}{" "}
                       {concern.user.lastName}
                       {showOfficeScope && concern.assignedOffice
@@ -173,7 +173,7 @@ export default async function OfficialConcernsPage({
             <table className="w-full min-w-[900px] text-left text-sm">
               <caption className="sr-only">Assigned concerns</caption>
               <thead>
-                <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-subtle">
                   <th scope="col" className="py-2 pr-4 font-semibold">
                     {t.caseNo}
                   </th>
@@ -208,19 +208,19 @@ export default async function OfficialConcernsPage({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {concerns.map((concern) => (
-                  <tr key={concern.id} className="hover:bg-slate-50">
-                    <td className="py-3 pr-4 font-mono text-xs text-slate-600">
+                  <tr key={concern.id} className="hover:bg-surface-muted">
+                    <td className="py-3 pr-4 font-mono text-xs text-ink-muted">
                       {concern.caseNumber}
                     </td>
-                    <td className="py-3 pr-4 font-medium text-slate-900">
+                    <td className="py-3 pr-4 font-medium text-ink">
                       {concern.title}
                     </td>
-                    <td className="py-3 pr-4 text-slate-600">
+                    <td className="py-3 pr-4 text-ink-muted">
                       {concern.category.name}
                     </td>
-                    <td className="py-3 pr-4 text-slate-600">
+                    <td className="py-3 pr-4 text-ink-muted">
                       {concern.user.firstName} {concern.user.lastName}
                     </td>
                     <td className="py-3 pr-4">
@@ -247,13 +247,13 @@ export default async function OfficialConcernsPage({
                       )}
                     </td>
                     {showOfficeScope && (
-                      <td className="py-3 pr-4 text-slate-600">
+                      <td className="py-3 pr-4 text-ink-muted">
                         {concern.assignedOffice?.name ?? (
                           <span className="text-slate-400">{t.unassigned}</span>
                         )}
                       </td>
                     )}
-                    <td className="py-3 pr-4 text-slate-600">
+                    <td className="py-3 pr-4 text-ink-muted">
                       {formatDate(concern.createdAt)}
                     </td>
                     <td className="py-3 text-right">

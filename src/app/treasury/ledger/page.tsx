@@ -42,8 +42,8 @@ export default async function TreasuryLedgerPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t.ledgerTitle}</h1>
-        <p className="mt-1 text-sm text-slate-600">{t.ledgerLead}</p>
+        <h1 className="text-title text-ink sm:text-display">{t.ledgerTitle}</h1>
+        <p className="mt-1 text-sm text-ink-muted">{t.ledgerLead}</p>
       </div>
 
       <div className="flex flex-wrap gap-2">

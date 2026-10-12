@@ -78,10 +78,10 @@ export default async function TreasuryDisbursementsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="text-title text-ink sm:text-display">
           {t.disbursementsTitle}
         </h1>
-        <p className="mt-1 text-sm text-slate-600">{t.disbursementsLead}</p>
+        <p className="mt-1 text-sm text-ink-muted">{t.disbursementsLead}</p>
       </div>
 
       {canPrepare && allocations.length > 0 && (
@@ -127,7 +127,7 @@ export default async function TreasuryDisbursementsPage({
 
       {vouchers.length === 0 ? (
         <Card>
-          <p className="text-sm text-slate-500">{t.noEntries}</p>
+          <p className="text-sm text-ink-subtle">{t.noEntries}</p>
         </Card>
       ) : (
         <ul className="space-y-3">
@@ -135,13 +135,13 @@ export default async function TreasuryDisbursementsPage({
             <li key={voucher.id}>
               <Card className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs text-slate-500">
+                  <span className="font-mono text-xs text-ink-subtle">
                     {voucher.voucherNumber ?? `#${voucher.id}`}
                   </span>
                   <Badge tone={TONES[voucher.status] ?? "neutral"}>
                     {voucher.statusLabel}
                   </Badge>
-                  <span className="text-sm font-semibold text-slate-900">
+                  <span className="text-sm font-semibold text-ink">
                     {formatPeso(voucher.amount)}
                   </span>
                   {voucher.liquidationState !== "NOT_DUE" &&
@@ -149,11 +149,11 @@ export default async function TreasuryDisbursementsPage({
                       <Badge tone="amber">{voucher.liquidationState}</Badge>
                     )}
                 </div>
-                <p className="text-sm text-slate-700">{voucher.payee}</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm text-ink-muted">{voucher.payee}</p>
+                <p className="text-xs text-ink-subtle">
                   {voucher.particulars}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-ink-subtle">
                   {voucher.coaCode} · {voucher.fundSourceCode}
                   {voucher.earmarkCode ? ` · ${voucher.earmarkCode}` : ""}
                   {voucher.caseNumber ? ` · ${voucher.caseNumber}` : ""} ·{" "}

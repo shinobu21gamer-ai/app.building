@@ -30,13 +30,13 @@ export default async function CrewHomePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t.jobTitle}</h1>
-        <p className="mt-1 text-sm text-slate-600">{t.jobDesc}</p>
+        <h1 className="text-title text-ink sm:text-display">{t.jobTitle}</h1>
+        <p className="mt-1 text-sm text-ink-muted">{t.jobDesc}</p>
       </div>
 
       {jobs.length === 0 ? (
         <Card>
-          <p className="text-sm text-slate-500">{t.jobEmpty}</p>
+          <p className="text-sm text-ink-subtle">{t.jobEmpty}</p>
         </Card>
       ) : (
         <ul className="space-y-4">
@@ -65,14 +65,14 @@ export default async function CrewHomePage() {
 
                   <dl className="grid gap-2 text-sm sm:grid-cols-2">
                     <div>
-                      <dt className="text-slate-500">{t.geotagPurok}</dt>
-                      <dd className="text-slate-900">
+                      <dt className="text-ink-subtle">{t.geotagPurok}</dt>
+                      <dd className="text-ink">
                         {job.concern.locationPurok ?? job.concern.locationAddress}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-slate-500">{t.jobSchedule}</dt>
-                      <dd className="text-slate-900">
+                      <dt className="text-ink-subtle">{t.jobSchedule}</dt>
+                      <dd className="text-ink">
                         {job.scheduledStartAt ?? assessment?.scheduledStartAt
                           ? formatDateTime(
                               job.scheduledStartAt ??
@@ -83,19 +83,19 @@ export default async function CrewHomePage() {
                     </div>
                     {assessment?.equipmentNotes && (
                       <div className="sm:col-span-2">
-                        <dt className="text-slate-500">{t.jobEquipment}</dt>
-                        <dd className="text-slate-900">{assessment.equipmentNotes}</dd>
+                        <dt className="text-ink-subtle">{t.jobEquipment}</dt>
+                        <dd className="text-ink">{assessment.equipmentNotes}</dd>
                       </div>
                     )}
                     {job.taskNote && (
                       <div className="sm:col-span-2">
-                        <dt className="text-slate-500">{t.crewProgress}</dt>
-                        <dd className="text-slate-900">{job.taskNote}</dd>
+                        <dt className="text-ink-subtle">{t.crewProgress}</dt>
+                        <dd className="text-ink">{job.taskNote}</dd>
                       </div>
                     )}
                   </dl>
 
-                  <div className="border-t border-slate-100 pt-3">
+                  <div className="border-t border-line pt-3">
                     <CrewJobForm concernId={job.concern.id} locale={locale} />
                   </div>
                 </Card>

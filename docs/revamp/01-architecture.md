@@ -362,16 +362,19 @@ and one way it is read.
   `locationGeohash` for clustering. Residents can submit without a pin (text
   address only); the UI marks the pin as required for `REPAIR` cases, where an
   exact location is operationally necessary.
-- No third-party map SDK is introduced: the map is rendered client-side from
-  OpenStreetMap tiles with plain `<img>` tiles inside a small pan/zoom component,
-  so there is no new dependency, no API key and no per-view cost. Because the
-  production CSP currently restricts images to `'self' data: blob:` (see
-  `next.config.ts`), stage 6 adds the OSM tile host to `img-src` — nothing else in
-  the CSP changes, and `connect-src` stays `'self'` since tiles load as images, not
-  as fetched data. Attribution is rendered under every map, and staff/crew screens
-  cache tiles locally so a slow connection still shows the last view. Concern pins
-  are served only to staff and to the case owner; the public transparency map uses
-  the coarse geohash.
+- No third-party map SDK is introduced. **Delivered in stage 6** as
+  `src/components/ui/map-frame.tsx`: a 3×2 mosaic of plain OpenStreetMap `<img>`
+  tiles, a marker positioned by the fractional tile coordinates
+  (`src/lib/maps.ts`, unit-tested), the OSM attribution, and an "open in
+  OpenStreetMap" link. No iframe, no API key, no per-view cost, and no
+  third-party JavaScript.
+  - It also fixes a production bug: the previous map was an iframe to
+    `openstreetmap.org`, and the CSP (`default-src 'self'`, so `frame-src` was
+    `'self'`) blocked it — every case page showed an empty box. Tiles need
+    `img-src` only, which `next.config.ts` now allows for the tile hosts;
+    `connect-src` stays `'self'`.
+  - Case pages use zoom 16; the public transparency map uses zoom 14 over the
+    coarse coordinates, so the exact pin is never published.
 - `locationVerifiedAt/ById` records staff confirmation of the pin (a `REPAIR`
   case assignment to a crew is blocked until the location is confirmed or the
   override path is used).
@@ -380,40 +383,64 @@ and one way it is read.
 
 ## 10. Design system and mobile-first layouts (stage 6)
 
-- **Tokens first.** `globals.css` keeps Tailwind v4 `@theme` and adds semantic
-  tokens: `--color-surface*`, `--color-ink*`, `--color-brand*` (existing palette),
-  `--color-accent-*` for status, `--radius-*`, `--shadow-*`, `--text-*` scale.
-  Components use semantic names, never raw hex, so a rebrand is one file.
-- **Status colour contract.** One palette for the lifecycle
-  (`SUBMITTED` neutral, `ASSIGNED` info, `UNDER_ASSESSMENT` indigo,
-  `AWAITING_BUDGET` amber, `IN_PROGRESS` blue, `RESOLVED` green, `CLOSED` slate),
-  reused by the stepper, badges, charts and the transparency page. Priority keeps
-  the existing four levels with accessible contrast (never colour alone: icon +
-  text).
-- **Mobile-first, thumb-first.** Layouts are authored at 360 px and scale up:
-  single column, sticky primary action, bottom tab bar (Home / Cases / Submit /
-  Notifications / Profile) on small screens; a sidebar with the same destinations
-  from `md` up. Tables collapse to definition lists; long journals become a
-  timeline. Minimum tap target 44 px, `prefers-reduced-motion` respected (the
-  existing motion system already does this).
-- **Forms.** One `<Field>` component renders label, required `*`, help text and
-  error, wired to Zod (`zodResolver`-style manual validation, no new dependency).
-  Required = not `.optional()` and no `.default()`. The label/help metadata lives
-  in `src/lib/design/form-fields.ts` and forms render from it, so a field's marker
-  and its validation cannot disagree; `form-fields.test.ts` asserts that for every
-  required field in the Zod schemas the manifest says `required: true`. The `*`
-  carries `aria-hidden` text plus a legend (“Fields marked * are required”) so the
-  meaning is available to screen readers too. Multi-step forms (submit,
-  assessment) keep a visible step count and never lose input on validation errors.
-- **Accessibility.** WCAG 2.1 AA contrast, focus-visible rings everywhere,
-  labelled form controls, `aria-live` for async results, keyboard-reachable maps
-  (the geotag has a text/coordinate fallback), print styles for receipts,
-  resolutions and reports.
-- **Empty/error/loading states.** Every screen gets a designed empty state, a
-  skeleton (existing `loading/*` components), and an actionable error message with
-  a request id (from the existing envelope + logger).
+*Delivered in stage 6. `src/lib/nav.test.ts`, `src/lib/maps.test.ts`,
+`src/lib/cases/public-query.test.ts` and `src/lib/design/form-fields.test.ts`
+cover the pure parts; the visual result is the same shell in all six portals.*
 
----
+- **Tokens first.** `globals.css` keeps Tailwind v4 `@theme` and adds semantic
+  tokens: `--color-surface*`, `--color-ink*`, `--color-line*`,
+  `--color-{success,warning,danger,info}-*`, `--radius-control|card`,
+  `--shadow-card|raised|tabbar`, `--container-content` and a `--text-*` scale
+  (`display`, `title`, `subtitle`, `body`, `caption`). The palette values mirror
+  the slate/emerald/amber/red shades they replace, so the change is a rename that
+  makes a rebrand one file — and 119 components were migrated to those names.
+- **Status colour contract.** One tone per workflow stage, ordered the way a list
+  is scanned: `SUBMITTED` sky, `ASSIGNED` violet, `UNDER_ASSESSMENT` blue,
+  `AWAITING_BUDGET` amber, `IN_PROGRESS` orange, `RESOLVED` green, `CLOSED` grey —
+  rendered by `StatusBadge`, and the two new stages also have their own colour
+  (the old badge map only knew five). Priority keeps four levels with text, never
+  colour alone. Status *words* are translated too (`statusLabelFor()` +
+  `revamp.common.statuses`), which the app previously printed in English inside
+  Filipino pages.
+- **Mobile-first, thumb-first.** One column on phones with a fixed bottom tab bar
+  (`MobileTabBar`): the first four destinations of the role become tabs, the rest
+  live behind a "More" sheet; `md` and up swaps to the sticky sidebar (`RoleNav`),
+  same destinations, same active logic (`src/lib/nav.ts`, tested — longest match
+  wins, a page without its own item highlights its section). Tab height is a token
+  (`--tabbar-h`), the footer and content reserve it, and targets are ≥44 px
+  (`.tap-target`). `prefers-reduced-motion` was already respected by the motion
+  system and still is.
+- **Primitives.** `Button`, `Card` (now with an `actions` slot and a `flush`
+  variant for tables), `Badge`/`StatusBadge`, `Container`, `Field`
+  (`Label` + `*`, `RequiredLegend`, `FieldHint`, `Input`, `Textarea`, `Select`),
+  `Table`/`THead`/`TR`/`TH`/`TD` (edge-to-edge horizontal scroll on phones),
+  `PageHeader`, `EmptyState`, `Pagination`, `Sheet` (bottom sheet for the mobile
+  menu) and `MapFrame`. A `<dialog>`/`<tabs>`/`<timeline>` primitive was not built:
+  the sheet covers the modals actually needed, filters are links (so they survive a
+  reload and can be shared), and the case timeline already lives in
+  `src/components/concern/case-timeline.tsx`.
+- **Forms and the `*` rule.** `src/lib/design/form-fields.ts` derives requiredness
+  from the Zod schema (`required` = the schema rejects `undefined`; a nullable
+  field is still required), and `form-fields.test.ts` parses each form's own
+  `<Label htmlFor=... required>` markup and fails when a schema-required field is
+  unmarked, when an optional field claims to be required, or when a control the
+  schema does not know about is not declared (matching passwords, the area picker,
+  the required photo upload). The audit it enforces found real gaps and they were
+  fixed: the whole resident intake form (title, category, description, area and
+  the exact address had no `*` at all), sign-in, reset-password, change-password,
+  track-a-case, and the two consent checkboxes on registration.
+- **Accessibility.** Focus-visible rings on every control, `aria-current="page"`
+  on the active tab/sidebar item, `aria-modal` + Escape + focus handling in the
+  sheet, `role="img"` with a label on the map frame, `aria-invalid` on invalid
+  controls, and the existing `aria-live` regions kept. The unfilled-marker legend
+  is rendered once per form.
+- **Not done in this stage** (so the docs do not overpromise): the public pages
+  were polished in place rather than re-composed (`/`, `/help`, `/track`, `/login`,
+  `/register` keep their structure with the new tokens); tables were not converted
+  into definition lists on small screens (they scroll instead — the mobile-first
+  trade-off is deliberate); and `PageHeader` is adopted on the resident, official,
+  treasury, captain and crew landing pages plus `/transparency`, while list and
+  detail pages keep their equivalent inline headers.
 
 ## 11. API and data conventions
 

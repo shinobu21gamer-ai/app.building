@@ -27,8 +27,8 @@ export default async function ProfilePage() {
           <Badge tone="blue" className="mb-2">
             {user.role.name}
           </Badge>
-          <h1 className="text-2xl font-bold text-slate-900">{t.title}</h1>
-          <p className="mt-1 text-sm text-slate-600">{t.lead}</p>
+          <h1 className="text-title text-ink sm:text-display">{t.title}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{t.lead}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button

@@ -84,7 +84,7 @@ export function ProfileForm({
       <div>
         <Label htmlFor="email">{t.email}</Label>
         <Input id="email" value={user.email} disabled readOnly />
-        <p className="mt-1 text-xs text-slate-500">{t.emailLocked}</p>
+        <p className="mt-1 text-xs text-ink-subtle">{t.emailLocked}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

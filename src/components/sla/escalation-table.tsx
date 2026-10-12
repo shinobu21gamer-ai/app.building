@@ -38,7 +38,7 @@ export function EscalationTable({
 
   if (rows.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+      <p className="rounded-control border border-dashed border-line px-4 py-6 text-center text-sm text-ink-subtle">
         {t.queueEmpty}
       </p>
     );
@@ -51,7 +51,7 @@ export function EscalationTable({
         return (
           <div
             key={row.id}
-            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+            className="rounded-card border border-line bg-surface p-4 shadow-card"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
@@ -62,9 +62,9 @@ export function EscalationTable({
                   <Badge tone={status === "OPEN" ? "red" : status === "ACKNOWLEDGED" ? "amber" : "green"}>
                     {status === "OPEN" ? t.statusOpen : status === "ACKNOWLEDGED" ? t.statusAcknowledged : t.resolved}
                   </Badge>
-                  <span className="font-mono text-xs text-slate-500">{row.caseNumber}</span>
+                  <span className="font-mono text-xs text-ink-subtle">{row.caseNumber}</span>
                 </div>
-                <p className="mt-1 truncate text-sm font-medium text-slate-900">
+                <p className="mt-1 truncate text-sm font-medium text-ink">
                   {showCaseLink ? (
                     <Link
                       className="hover:underline"
@@ -76,7 +76,7 @@ export function EscalationTable({
                     row.caseTitle
                   )}
                 </p>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="mt-0.5 text-xs text-ink-subtle">
                   {t.stuckIn} {row.stage.replaceAll("_", " ").toLowerCase()} ·{" "}
                   {row.hoursOverdue}h {t.overdue} · {t.escalatedTo} {row.escalatedToRole}
                   {row.policyName ? ` · ${row.policyName}` : ""}

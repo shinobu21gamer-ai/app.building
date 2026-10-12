@@ -56,23 +56,23 @@ export default async function ResidentVerificationPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="text-title text-ink">
           {t.verification.title}
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
           {t.verification.lead}
         </p>
       </header>
 
       <Card title={t.verification.gateTitle}>
         {!gateEnabled ? (
-          <p className="text-sm text-slate-600">{t.verification.gateOff}</p>
+          <p className="text-sm text-ink-muted">{t.verification.gateOff}</p>
         ) : gate.allowed ? (
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-muted">
             {gate.advisory ? t.verification.gateAdvisory : t.verification.statusLabels.VERIFIED}
           </p>
         ) : (
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-ink-muted">
             {gate.code === "IDENTITY_PENDING"
               ? t.verification.gatePending
               : gate.code === "IDENTITY_REJECTED"

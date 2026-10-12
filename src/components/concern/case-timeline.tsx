@@ -86,16 +86,16 @@ export function CaseTimeline({
   const t = copy[locale].desk;
 
   if (entries.length === 0) {
-    return <p className="text-sm text-slate-500">{t.noActivity}</p>;
+    return <p className="text-sm text-ink-subtle">{t.noActivity}</p>;
   }
 
   return (
     <ol className="space-y-5">
       {sortJournal(entries).map((entry) => (
-        <li key={entry.id} className="relative border-l border-slate-200 pl-4">
+        <li key={entry.id} className="relative border-l border-line pl-4">
           <span className="absolute top-1.5 -left-[5px] h-2.5 w-2.5 rounded-full bg-brand-600" />
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-slate-900">
+            <span className="text-sm font-medium text-ink">
               {describeJournalEntry(entry, t)}
             </span>
             {entry.actorRole && (
@@ -103,7 +103,7 @@ export function CaseTimeline({
             )}
           </div>
           {entry.remarks && (
-            <p className="mt-1 text-sm text-slate-600">{entry.remarks}</p>
+            <p className="mt-1 text-sm text-ink-muted">{entry.remarks}</p>
           )}
           {entry.entryType === "RESOLUTION" && resolution && (
             <div className="mt-2 space-y-1 rounded-md border border-emerald-100 bg-emerald-50 p-3 text-sm">
@@ -129,9 +129,9 @@ export function CaseTimeline({
                 width={800}
                 height={600}
                 unoptimized
-                className="h-auto w-full max-w-xs rounded-lg border border-slate-200"
+                className="h-auto w-full max-w-xs rounded-control border border-line"
               />
-              <figcaption className="mt-1 text-xs text-slate-500">
+              <figcaption className="mt-1 text-xs text-ink-subtle">
                 {t.proofPhotoCaption}
               </figcaption>
             </figure>

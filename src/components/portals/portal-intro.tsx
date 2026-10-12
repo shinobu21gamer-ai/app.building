@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { permissionDefinition } from "@/lib/auth/rbac";
 
 /**
@@ -29,18 +30,11 @@ export function PortalIntro({
 }) {
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          {title}
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
-          {lead}
-        </p>
-      </header>
+      <PageHeader title={title} description={lead} />
 
       <Card title={permissionsTitle} description={permissionsLead}>
         {permissions.length === 0 ? (
-          <p className="text-sm text-slate-500">—</p>
+          <p className="text-sm text-ink-subtle">—</p>
         ) : (
           <ul className="grid gap-2 sm:grid-cols-2">
             {permissions.map((key) => {
@@ -48,11 +42,11 @@ export function PortalIntro({
               return (
                 <li
                   key={key}
-                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                  className="rounded-control border border-line bg-surface-muted px-3 py-2"
                 >
-                  <p className="font-mono text-xs text-slate-700">{key}</p>
+                  <p className="font-mono text-xs text-ink-muted">{key}</p>
                   {definition && (
-                    <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                    <p className="mt-0.5 text-xs leading-relaxed text-ink-subtle">
                       {definition.description}
                     </p>
                   )}
@@ -68,12 +62,12 @@ export function PortalIntro({
           {modules.map((module) => (
             <div
               key={module.title}
-              className="rounded-lg border border-slate-200 p-4"
+              className="rounded-control border border-line p-4"
             >
-              <h3 className="text-sm font-semibold text-slate-900">
+              <h3 className="text-sm font-semibold text-ink">
                 {module.title}
               </h3>
-              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+              <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                 {module.body}
               </p>
             </div>
