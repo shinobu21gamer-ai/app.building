@@ -35,7 +35,7 @@ export default async function HelpPage() {
       <h1 className="mt-2 text-display text-ink">
         {t.help.title}
       </h1>
-      <p className="mt-3 max-w-2xl text-base leading-relaxed text-ink-muted">
+      <p className="mt-3 max-w-3xl text-base leading-relaxed text-ink-muted">
         {t.help.lead}
       </p>
 
@@ -53,11 +53,11 @@ export default async function HelpPage() {
             <h2 className="text-base font-semibold text-red-950">
               {t.emergency.heading}
             </h2>
-            <p className="mt-1 text-sm leading-relaxed text-red-900">
+            <p className="mt-1 max-w-4xl text-sm leading-relaxed text-red-900">
               {t.emergency.body}
             </p>
             {locale === "en" ? (
-              <p className="mt-2 text-sm leading-relaxed text-red-800">
+              <p className="mt-2 max-w-4xl text-sm leading-relaxed text-red-800">
                 {t.emergency.filipino}
               </p>
             ) : null}
@@ -108,12 +108,12 @@ export default async function HelpPage() {
 
       <section className="mt-12 grid gap-4 sm:grid-cols-2">
         <Card title={t.help.officialTitle} description={t.help.officialDesc}>
-          <p className="text-sm leading-relaxed text-ink-muted">
+          <p className="max-w-3xl text-sm leading-relaxed text-ink-muted">
             {t.help.officialBody}
           </p>
         </Card>
         <Card title={t.help.adminTitle} description={t.help.adminDesc}>
-          <p className="text-sm leading-relaxed text-ink-muted">
+          <p className="max-w-3xl text-sm leading-relaxed text-ink-muted">
             {t.help.adminBody}
           </p>
         </Card>

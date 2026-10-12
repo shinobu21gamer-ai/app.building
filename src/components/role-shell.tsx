@@ -32,7 +32,10 @@ export async function RoleShell({
   return (
     <div className="has-tabbar">
       <Container className="py-6 print:py-0 md:py-8">
-        <div className="flex gap-8">
+        {/* The content column takes every pixel the container is not using for
+            the nav: `min-w-0` lets wide tables scroll inside it instead of
+            pushing the whole shell past the viewport. */}
+        <div className="flex gap-6 xl:gap-10">
           <RoleNav items={items} label={revamp.sectionLabel} />
           <div className="min-w-0 flex-1">{children}</div>
         </div>

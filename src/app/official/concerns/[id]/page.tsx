@@ -314,7 +314,7 @@ export default async function OfficialConcernDetailPage({
               </div>
               <div>
                 <dt className="text-ink-subtle">{desk.description}</dt>
-                <dd className="mt-0.5 whitespace-pre-wrap text-ink-muted">
+                <dd className="mt-0.5 max-w-3xl whitespace-pre-wrap text-ink-muted">
                   {concern.description}
                 </dd>
               </div>
@@ -394,7 +394,7 @@ export default async function OfficialConcernDetailPage({
                 </div>
                 <div>
                   <dt className="text-ink-subtle">{desk.actionsTaken}</dt>
-                  <dd className="mt-0.5 whitespace-pre-wrap text-ink-muted">
+                  <dd className="mt-0.5 max-w-3xl whitespace-pre-wrap text-ink-muted">
                     {resolution.actionsTaken}
                   </dd>
                 </div>
