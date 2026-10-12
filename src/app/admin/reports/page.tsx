@@ -9,6 +9,7 @@ import { Badge, PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ConcernFilters } from "@/components/cases/concern-filters";
 import { PrintButton } from "@/components/ui/print-button";
+import { PageHeader } from "@/components/ui/page-header";
 import { parseConcernFilters } from "@/lib/cases/query";
 import { getConcernReport } from "@/lib/admin/reports";
 import { statusLabel } from "@/lib/cases/workflow";
@@ -67,12 +68,7 @@ export default async function AdminReportsPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-title text-ink sm:text-display">{t.reportsTitle}</h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            {t.reportsLead.replace("{date}", generatedAt)}
-          </p>
-        </div>
+        <PageHeader title={t.reportsTitle} description={t.reportsLead.replace("{date}", generatedAt)} />
         <div className="no-print flex flex-wrap gap-2">
           <PrintButton label={t.print} />
           <Button href={csvHref} variant="secondary" size="sm">
@@ -174,7 +170,7 @@ export default async function AdminReportsPage({
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
+            <table data-stack className="w-full min-w-[720px] text-left text-sm">
               <caption className="sr-only">{t.reportsTitle}</caption>
               <thead>
                 <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-subtle">
@@ -201,7 +197,7 @@ export default async function AdminReportsPage({
               <tbody className="divide-y divide-line">
                 {report.concerns.map((concern) => (
                   <tr key={concern.id}>
-                    <td className="py-2 pr-3 font-mono text-xs">
+                    <td data-label={t.caseCol} className="py-2 pr-3 font-mono text-xs">
                       <Link
                         href={`/official/concerns/${concern.id}`}
                         className="font-semibold text-brand-700 hover:text-brand-800"
@@ -209,21 +205,21 @@ export default async function AdminReportsPage({
                         {concern.caseNumber}
                       </Link>
                     </td>
-                    <td className="py-2 pr-3 text-ink">{concern.title}</td>
-                    <td className="py-2 pr-3 text-ink-muted">
+                    <td data-label={t.titleCol} className="py-2 pr-3 text-ink">{concern.title}</td>
+                    <td data-label={t.officeCol} className="py-2 pr-3 text-ink-muted">
                       {concern.assignedOffice?.name ?? t.unassigned}
                     </td>
-                    <td className="py-2 pr-3">
+                    <td data-label={t.priorityCol} className="py-2 pr-3">
                       {concern.priorityLevel ? (
                         <PriorityBadge level={concern.priorityLevel} />
                       ) : (
                         <Badge tone="neutral">{statusLabel("UNASSESSED")}</Badge>
                       )}
                     </td>
-                    <td className="py-2 pr-3">
+                    <td data-label={t.statusCol} className="py-2 pr-3">
                       <StatusBadge status={concern.status} />
                     </td>
-                    <td className="py-2 text-ink-muted">
+                    <td data-label={t.submittedCol} className="py-2 text-ink-muted">
                       {formatDate(concern.createdAt)}
                     </td>
                   </tr>

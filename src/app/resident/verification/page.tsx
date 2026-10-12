@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Card } from "@/components/ui/card";
 import { VerificationForm } from "@/components/identity/verification-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireRole } from "@/lib/auth/session";
 import { identityGateDecision } from "@/lib/identity/policy";
 import {
@@ -55,14 +56,7 @@ export default async function ResidentVerificationPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-title text-ink">
-          {t.verification.title}
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
-          {t.verification.lead}
-        </p>
-      </header>
+      <PageHeader title={t.verification.title} description={t.verification.lead} />
 
       <Card title={t.verification.gateTitle}>
         {!gateEnabled ? (

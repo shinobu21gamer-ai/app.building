@@ -8,15 +8,19 @@ import { cn } from "@/lib/utils";
 export function Table({
   children,
   className,
+  stack,
   minWidthClass = "min-w-[36rem]",
 }: {
   children: React.ReactNode;
   className?: string;
+  /** Below md, turn each row into a card whose lines come from `TD label`. */
+  stack?: boolean;
   minWidthClass?: string;
 }) {
   return (
     <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
       <table
+        data-stack={stack ? "" : undefined}
         className={cn(
           "w-full border-collapse text-left text-sm",
           minWidthClass,
@@ -97,14 +101,18 @@ export function TH({
 export function TD({
   children,
   align,
+  label,
   className,
 }: {
   children?: React.ReactNode;
   align?: "left" | "right";
+  /** Column heading, shown in front of the value when the table is stacked. */
+  label?: string;
   className?: string;
 }) {
   return (
     <td
+      data-label={label}
       className={cn(
         "px-3 py-2.5 text-ink-muted",
         align === "right" && "text-right tabular-nums",

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { PriorityConfigForm } from "@/components/admin/priority-config-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { loadPriorityConfig } from "@/lib/priority/config";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -18,10 +19,7 @@ export default async function AdminPriorityPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">{t.priorityTitle}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-ink-muted">{t.priorityLead}</p>
-      </div>
+      <PageHeader title={t.priorityTitle} description={t.priorityLead} />
 
       <Card>
         <PriorityConfigForm

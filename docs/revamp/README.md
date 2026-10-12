@@ -282,7 +282,8 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
 | `src/lib/cases/public-query.ts` + `public-query.test.ts` | N ✅ | Public read model: filters, paging, stats, facets; never joins back to `Concern` (14 tests) |
 | `src/app/transparency/page.tsx`, `transparency/[publicRef]/page.tsx` | N ✅ | The public PII-free transparency list (filters, stats, pager) and one anonymised case with a coarse map |
 | `src/lib/design/form-fields.ts` + `form-fields.test.ts` | N ✅ | Requiredness derived from Zod + a parity test against the forms' own `*` markers (10 tests) |
-| `src/app/{resident,official,page,transparency}/**`, `src/components/portals/portal-intro.tsx` | M ✅ | Adopted `PageHeader`/`EmptyState`; the resident intake and auth forms gained the missing `*` markers |
+| `src/app/**` (43 pages), `src/components/portals/portal-intro.tsx` | M ✅ | Every portal page now opens with `PageHeader` (list and detail pages use the new `eyebrow`/`actions` slots); the resident intake and auth forms gained the missing `*` markers |
+| 6 portal surfaces | M ✅ | `data-stack` + `data-label` phone layout for the five hand-written tables and `/transparency`; `src/components/site/site-header.tsx` gained the Transparency link |
 | `src/components/{site/site-footer.tsx,auth/register-form.tsx}` | M ✅ | Transparency link, tab-bar clearance, consent markers |
 | `src/app/**`, `src/components/**` (119 files) | M ✅ | Migrated from raw `slate-*`/`bg-white`/`rounded-*` classes to the semantic tokens |
 | `src/lib/i18n.ts` | M ✅ | `revamp.transparency` (43 keys), `revamp.common.statuses`, `submit.requiredLegend`, footer label, `statusLabelFor()` — en + fil |
@@ -303,7 +304,17 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
   tab bar carries the first four destinations rather than a fixed global set —
   each portal decides its own order.
 - **The case map changed from an embedded iframe to tiles.** It is now a static
-  preview plus an "open in OpenStreetMap" link, and it works in production.
+  preview plus an "open in OpenStreetMap" link, and it works in production. This
+  is the decision kept from the first pass: an interactive map would mean either a
+  third-party script on every case page plus a `frame-src` hole in the CSP, or a
+  keyed tile/SDK service. The static preview needs neither, keeps `connect-src`
+  at `'self'`, and the link hands the resident off to the real map when they want
+  to pan around.
+- **Two frozen surfaces are still on the old markup.** `/alerts` (the page, its
+  diagnostics and the alert composer) and `/notifications` were left out of the
+  token migration and the header sweep on purpose: the Android WebView depends on
+  them. They will keep working, but they will look like the previous design until
+  you want them migrated — that is a separate change with its own test pass.
 
 ### Stage 7 — Reports
 

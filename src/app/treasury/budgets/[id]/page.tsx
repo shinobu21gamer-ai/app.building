@@ -8,6 +8,7 @@ import { EarmarkActions } from "@/components/treasury/earmark-actions";
 import { EarmarkForm } from "@/components/treasury/earmark-form";
 import { LedgerTable } from "@/components/treasury/ledger-table";
 import { VoucherForm } from "@/components/treasury/voucher-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatPeso } from "@/lib/cases/manpower";
 import { formatDateTime } from "@/lib/format";
 import { db } from "@/lib/db";
@@ -71,12 +72,19 @@ export default async function TreasuryAllocationPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-title text-ink sm:text-display">
-              {allocation.label}
-            </h1>
+      <PageHeader
+        title={allocation.label}
+        description={
+          <>
+            {allocation.coaAccount.code} · {allocation.coaAccount.name} · FY{" "}
+            {allocation.fiscalYear.year} · {allocation.fundSource.code}
+            {allocation.office
+              ? ` · ${allocation.office.name}`
+              : ` · ${t.officeWideWard}`}
+          </>
+        }
+        actions={
+          <>
             <Badge
               tone={
                 allocation.status === "APPROVED"
@@ -88,17 +96,12 @@ export default async function TreasuryAllocationPage({ params }: PageProps) {
             >
               {allocation.status}
             </Badge>
-          </div>
-          <p className="mt-1 text-sm text-ink-muted">
-            {allocation.coaAccount.code} · {allocation.coaAccount.name} · FY{" "}
-            {allocation.fiscalYear.year} · {allocation.fundSource.code}
-            {allocation.office ? ` · ${allocation.office.name}` : ` · ${t.officeWideWard}`}
-          </p>
-        </div>
-        <Button href="/treasury/budgets" size="sm" variant="outline">
-          {t.navBudgets}
-        </Button>
-      </div>
+            <Button href="/treasury/budgets" size="sm" variant="outline">
+              {t.navBudgets}
+            </Button>
+          </>
+        }
+      />
 
       {!balance.consistent && (
         <p className="rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">

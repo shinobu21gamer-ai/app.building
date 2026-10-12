@@ -35,6 +35,7 @@ import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import { ConcernMap } from "@/components/concern/concern-map";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const metadata: Metadata = {
   title: "Case Details",
@@ -168,12 +169,12 @@ export default async function ConcernDetailPage({
         <CaseReceipt caseNumber={concern.caseNumber} concernId={concern.id} />
       )}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="font-mono text-xs text-ink-subtle">
-              {concern.caseNumber}
-            </p>
+      <PageHeader
+        eyebrow={concern.caseNumber}
+        title={concern.title}
+        description={`${t.submitted} ${formatDateTime(concern.submittedAt)}`}
+        actions={
+          <>
             <CopyCaseNumber caseNumber={concern.caseNumber} />
             <Button
               href={`/resident/concerns/${concern.id}/print`}
@@ -182,23 +183,15 @@ export default async function ConcernDetailPage({
             >
               {t.print}
             </Button>
-          </div>
-          <h1 className="mt-1 text-ink text-title sm:text-display">
-            {concern.title}
-          </h1>
-          <p className="mt-1 text-sm text-ink-subtle">
-            {t.submitted} {formatDateTime(concern.submittedAt)}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge status={concern.status} />
-          {concern.priorityLevel ? (
-            <PriorityBadge level={concern.priorityLevel} />
-          ) : (
-            <Badge tone="neutral">{t.pendingPriority}</Badge>
-          )}
-        </div>
-      </div>
+            <StatusBadge status={concern.status} />
+            {concern.priorityLevel ? (
+              <PriorityBadge level={concern.priorityLevel} />
+            ) : (
+              <Badge tone="neutral">{t.pendingPriority}</Badge>
+            )}
+          </>
+        }
+      />
 
       <Card title={t.progress} description={t.progressDesc}>
         <CaseStatusStepper currentStatus={concern.status} reached={reachedAt} />

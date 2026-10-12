@@ -413,7 +413,9 @@ cover the pure parts; the visual result is the same shell in all six portals.*
 - **Primitives.** `Button`, `Card` (now with an `actions` slot and a `flush`
   variant for tables), `Badge`/`StatusBadge`, `Container`, `Field`
   (`Label` + `*`, `RequiredLegend`, `FieldHint`, `Input`, `Textarea`, `Select`),
-  `Table`/`THead`/`TR`/`TH`/`TD` (edge-to-edge horizontal scroll on phones),
+  `Table`/`THead`/`TR`/`TH`/`TD` (edge-to-edge horizontal scroll, or — with
+  `stack`/`TD label` or a bare `data-stack` on a hand-written table — a stacked
+  card per row below `md`),
   `PageHeader`, `EmptyState`, `Pagination`, `Sheet` (bottom sheet for the mobile
   menu) and `MapFrame`. A `<dialog>`/`<tabs>`/`<timeline>` primitive was not built:
   the sheet covers the modals actually needed, filters are links (so they survive a
@@ -434,13 +436,23 @@ cover the pure parts; the visual result is the same shell in all six portals.*
   sheet, `role="img"` with a label on the map frame, `aria-invalid` on invalid
   controls, and the existing `aria-live` regions kept. The unfilled-marker legend
   is rendered once per form.
+- **Page headers.** Every portal page renders `PageHeader` — dashboards, lists and
+  detail pages alike. Detail pages use the `eyebrow` slot for the case number or
+  reference code and the `actions` slot for status/priority badges and primary
+  buttons, so the top of a case page reads the same in all five staff portals.
+  Two surfaces keep their own header on purpose: `/profile` (role badge + session
+  actions) was folded into `PageHeader.actions`, and the public pages keep their
+  kicker + display-type hero (`/`, `/help`, `/privacy`, `/terms`).
+- **Mobile tables.** Five hand-written tables (`/admin/privacy`, `/admin/reports`,
+  `/admin/sla`, `/official`, `/treasury/budgets`) plus `/transparency` stack into
+  one card per row below `md`, each line prefixed by its column heading; the two
+  concern queues already had a dedicated phone card list and were left alone.
 - **Not done in this stage** (so the docs do not overpromise): the public pages
   were polished in place rather than re-composed (`/`, `/help`, `/track`, `/login`,
-  `/register` keep their structure with the new tokens); tables were not converted
-  into definition lists on small screens (they scroll instead — the mobile-first
-  trade-off is deliberate); and `PageHeader` is adopted on the resident, official,
-  treasury, captain and crew landing pages plus `/transparency`, while list and
-  detail pages keep their equivalent inline headers.
+  `/register` keep their structure with the new tokens), and the frozen surfaces
+  (`/alerts`, `/notifications` and their components) are untouched by design —
+  they keep their pre-revamp markup, which is why they still carry a raw `slate-*`
+  class or two.
 
 ## 11. API and data conventions
 

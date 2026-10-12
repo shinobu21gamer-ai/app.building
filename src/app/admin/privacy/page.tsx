@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   DsrQueue,
   PiiRevealForm,
@@ -40,19 +41,19 @@ export default async function AdminPrivacyPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-title text-ink">
-          {t.privacyTitle}
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
-          {t.privacyLead}
-        </p>
-        <p className="mt-2 text-xs text-ink-subtle">
-          {counts.received} received · {counts.inReview} in review ·{" "}
-          {counts.completed} completed · {counts.rejected} rejected ·{" "}
-          {counts.overdue} overdue
-        </p>
-      </header>
+      <PageHeader
+        title={t.privacyTitle}
+        description={
+          <>
+            {t.privacyLead}
+            <span className="mt-1 block text-xs text-ink-subtle">
+              {counts.received} received · {counts.inReview} in review ·{" "}
+              {counts.completed} completed · {counts.rejected} rejected ·{" "}
+              {counts.overdue} overdue
+            </span>
+          </>
+        }
+      />
 
       <Card title={t.gateTitle}>
         <VerificationGateToggle enabled={gateEnabled} locale={locale} />
@@ -97,7 +98,7 @@ export default async function AdminPrivacyPage() {
           <p className="text-sm text-ink-subtle">{t.accessNone}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table data-stack className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-subtle">
                   <th className="px-2 py-2">{copy[locale].revamp.common.date}</th>
@@ -110,23 +111,23 @@ export default async function AdminPrivacyPage() {
               <tbody>
                 {accessLog.map((entry) => (
                   <tr key={entry.id} className="border-b border-line">
-                    <td className="px-2 py-2 text-xs text-ink-muted">
+                    <td data-label={copy[locale].revamp.common.date} className="px-2 py-2 text-xs text-ink-muted">
                       {entry.createdAt.toISOString().slice(0, 16).replace("T", " ")}
                     </td>
-                    <td className="px-2 py-2 text-xs text-ink-muted">
+                    <td data-label="Actor" className="px-2 py-2 text-xs text-ink-muted">
                       {entry.actor
                         ? `${entry.actor.firstName} ${entry.actor.lastName}`.trim()
                         : "system"}
                     </td>
-                    <td className="px-2 py-2 text-xs text-ink-muted">
+                    <td data-label="Subject" className="px-2 py-2 text-xs text-ink-muted">
                       {entry.subjectUser
                         ? `${entry.subjectUser.firstName} ${entry.subjectUser.lastName}`.trim()
                         : `#${entry.subjectUserId}`}
                     </td>
-                    <td className="px-2 py-2 font-mono text-xs text-ink-muted">
+                    <td data-label="Field" className="px-2 py-2 font-mono text-xs text-ink-muted">
                       {entry.field}
                     </td>
-                    <td className="px-2 py-2 text-xs text-ink-muted">
+                    <td data-label={copy[locale].revamp.common.reason} className="px-2 py-2 text-xs text-ink-muted">
                       {entry.purpose}
                     </td>
                   </tr>

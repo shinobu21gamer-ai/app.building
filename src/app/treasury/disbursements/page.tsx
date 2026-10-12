@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { VoucherForm } from "@/components/treasury/voucher-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatPeso } from "@/lib/cases/manpower";
 import { formatDateTime } from "@/lib/format";
 import { db } from "@/lib/db";
@@ -77,12 +78,7 @@ export default async function TreasuryDisbursementsPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">
-          {t.disbursementsTitle}
-        </h1>
-        <p className="mt-1 text-sm text-ink-muted">{t.disbursementsLead}</p>
-      </div>
+      <PageHeader title={t.disbursementsTitle} description={t.disbursementsLead} />
 
       {canPrepare && allocations.length > 0 && (
         <Card title={t.newVoucher}>

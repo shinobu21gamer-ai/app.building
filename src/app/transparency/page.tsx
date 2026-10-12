@@ -211,7 +211,7 @@ export default async function TransparencyPage({
           </div>
         ) : (
           <>
-            <Table minWidthClass="min-w-[32rem]">
+            <Table stack minWidthClass="min-w-[32rem]">
               <THead>
                 <TR className="border-t-0 hover:bg-transparent">
                   <TH>{t.colRef}</TH>
@@ -225,7 +225,7 @@ export default async function TransparencyPage({
               <TBody>
                 {data.rows.map((row) => (
                   <TR key={row.publicRef}>
-                    <TD>
+                    <TD label={t.colRef}>
                       <Link
                         href={`/transparency/${row.publicRef}`}
                         className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-brand-700 hover:underline"
@@ -234,16 +234,16 @@ export default async function TransparencyPage({
                         {row.publicRef}
                       </Link>
                     </TD>
-                    <TD>{row.categoryName ?? row.typeKey ?? "—"}</TD>
-                    <TD>{row.areaLabel ?? "—"}</TD>
-                    <TD>
+                    <TD label={t.colType}>{row.categoryName ?? row.typeKey ?? "—"}</TD>
+                    <TD label={t.colArea}>{row.areaLabel ?? "—"}</TD>
+                    <TD label={t.colStatus}>
                       <StatusBadge
                         status={row.status}
                         label={statusLabelFor(locale, row.status)}
                       />
                     </TD>
-                    <TD>{formatDate(row.submittedAt)}</TD>
-                    <TD>{row.resolvedAt ? formatDate(row.resolvedAt) : "—"}</TD>
+                    <TD label={t.colSubmitted}>{formatDate(row.submittedAt)}</TD>
+                    <TD label={t.colResolved}>{row.resolvedAt ? formatDate(row.resolvedAt) : "—"}</TD>
                   </TR>
                 ))}
               </TBody>

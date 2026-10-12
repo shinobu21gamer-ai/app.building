@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { AssessmentForm } from "@/components/cases/assessment-form";
 import { CrewPanel } from "@/components/cases/crew-panel";
+import { PageHeader } from "@/components/ui/page-header";
 import { caseWorkflowFlags } from "@/lib/cases/workflow";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
@@ -58,23 +59,23 @@ export default async function AssessmentPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-ink-subtle">
-            {concern.caseNumber}
-          </p>
-          <h1 className="mt-1 text-ink text-title sm:text-display">
-            {t.assessmentTitle}
-          </h1>
-          <p className="mt-1 text-sm text-ink-muted">{t.assessmentDesc}</p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <StatusBadge status={concern.status} />
-          <Button href={`/official/concerns/${concern.id}`} variant="outline" size="sm">
-            {t.viewAssessment}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow={concern.caseNumber}
+        title={t.assessmentTitle}
+        description={t.assessmentDesc}
+        actions={
+          <>
+            <StatusBadge status={concern.status} />
+            <Button
+              href={`/official/concerns/${concern.id}`}
+              variant="outline"
+              size="sm"
+            >
+              {t.viewAssessment}
+            </Button>
+          </>
+        }
+      />
 
       <div className="flex flex-wrap gap-2 text-sm text-ink-muted">
         <Badge tone="sky">{concern.category.name}</Badge>

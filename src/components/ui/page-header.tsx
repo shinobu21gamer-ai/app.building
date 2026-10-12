@@ -7,11 +7,14 @@ import { cn } from "@/lib/utils";
  */
 export function PageHeader({
   title,
+  eyebrow,
   description,
   actions,
   className,
 }: {
   title: React.ReactNode;
+  /** Small line above the title: a case number, a reference code, a role. */
+  eyebrow?: React.ReactNode;
   description?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
@@ -24,6 +27,11 @@ export function PageHeader({
       )}
     >
       <div className="min-w-0">
+        {eyebrow ? (
+          <p className="mb-1 font-mono text-xs uppercase tracking-wide text-ink-subtle">
+            {eyebrow}
+          </p>
+        ) : null}
         <h1 className="text-title text-ink sm:text-display">{title}</h1>
         {description ? (
           <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-subtle">

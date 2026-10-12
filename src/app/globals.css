@@ -602,3 +602,52 @@ body {
     padding: 0 !important;
   }
 }
+
+/* Phone layout for data tables. Mark a table with `data-stack` and give each
+   cell the column heading as `data-label`; below md the row becomes a small
+   card whose lines are "heading — value". Above md nothing changes. */
+@media (max-width: 767px) {
+  table[data-stack],
+  table[data-stack] tbody,
+  table[data-stack] tr {
+    display: block;
+  }
+  table[data-stack] {
+    min-width: 0;
+  }
+  table[data-stack] thead {
+    display: none;
+  }
+  table[data-stack] tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    background-color: var(--color-surface);
+    overflow: hidden;
+  }
+  table[data-stack] tr:last-child {
+    margin-bottom: 0;
+  }
+  table[data-stack] td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem !important;
+    text-align: left !important;
+    border-top: 1px solid var(--color-line);
+  }
+  table[data-stack] td:first-child {
+    border-top: 0;
+  }
+  table[data-stack] td[data-label]::before {
+    content: attr(data-label);
+    flex: none;
+    max-width: 55%;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-ink-subtle);
+  }
+}

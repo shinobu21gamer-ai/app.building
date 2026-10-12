@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { AdminFilterBar } from "@/components/admin/admin-filter-bar";
 import { UserManager } from "@/components/admin/user-manager";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   adminUserView,
   listAdminUsers,
@@ -45,10 +46,7 @@ export default async function AdminUsersPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">{t.usersTitle}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t.usersLead}</p>
-      </div>
+      <PageHeader title={t.usersTitle} description={t.usersLead} />
 
       <AdminFilterBar
         locale={locale}

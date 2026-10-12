@@ -21,6 +21,7 @@ import { FundingPanel } from "@/components/treasury/funding-panel";
 import { ValidationForm } from "@/components/cases/validation-form";
 import { ResolutionVerifyForm } from "@/components/cases/resolution-verify-form";
 import { ResolutionForm } from "@/components/cases/resolution-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { loadPriorityConfig } from "@/lib/priority/config";
 import { caseFundingView } from "@/lib/treasury/query";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -246,38 +247,32 @@ export default async function OfficialConcernDetailPage({
         {desk.backConcerns}
       </Button>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="font-mono text-xs text-ink-subtle">
-            {concern.caseNumber}
-          </p>
-          <h1 className="mt-1 text-ink text-title sm:text-display">
-            {concern.title}
-          </h1>
-          <p className="mt-1 text-sm text-ink-subtle">
-            {desk.submittedBy
-              .replace("{name}", userName(concern.user) ?? "")
-              .replace("{date}", formatDateTime(concern.submittedAt))}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            href={`/official/concerns/${concern.id}/print`}
-            variant="outline"
-            size="sm"
-            className="no-print"
-          >
-            {t.print}
-          </Button>
-          <StatusBadge status={concern.status} />
-          {concern.priorityLevel && (
-            <PriorityBadge level={concern.priorityLevel} />
-          )}
-          {latest?.isOverride && (
-            <span className="text-xs text-amber-700">{desk.overridden}</span>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        eyebrow={concern.caseNumber}
+        title={concern.title}
+        description={desk.submittedBy
+          .replace("{name}", userName(concern.user) ?? "")
+          .replace("{date}", formatDateTime(concern.submittedAt))}
+        actions={
+          <>
+            <Button
+              href={`/official/concerns/${concern.id}/print`}
+              variant="outline"
+              size="sm"
+              className="no-print"
+            >
+              {t.print}
+            </Button>
+            <StatusBadge status={concern.status} />
+            {concern.priorityLevel && (
+              <PriorityBadge level={concern.priorityLevel} />
+            )}
+            {latest?.isOverride && (
+              <span className="text-xs text-amber-700">{desk.overridden}</span>
+            )}
+          </>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">

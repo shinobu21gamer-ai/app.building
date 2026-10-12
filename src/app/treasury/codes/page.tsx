@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { VerifyRecordForm } from "@/components/treasury/verify-record-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
@@ -42,10 +43,7 @@ export default async function TreasuryCodesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">{t.codesTitle}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t.codesLead}</p>
-      </div>
+      <PageHeader title={t.codesTitle} description={t.codesLead} />
 
       <Card title={t.coaAccount}>
         <ul className="divide-y divide-line">

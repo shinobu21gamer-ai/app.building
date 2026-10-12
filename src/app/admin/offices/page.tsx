@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { AdminFilterBar } from "@/components/admin/admin-filter-bar";
 import { OfficeManager } from "@/components/admin/office-manager";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   adminOfficeView,
   listAdminOffices,
@@ -32,10 +33,7 @@ export default async function AdminOfficesPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">{t.officesTitle}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t.officesLead}</p>
-      </div>
+      <PageHeader title={t.officesTitle} description={t.officesLead} />
 
       <AdminFilterBar
         locale={locale}

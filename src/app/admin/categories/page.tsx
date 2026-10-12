@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { AdminFilterBar } from "@/components/admin/admin-filter-bar";
 import { CategoryManager } from "@/components/admin/category-manager";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   adminCategoryView,
   listAdminCategories,
@@ -32,10 +33,7 @@ export default async function AdminCategoriesPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">{t.categoriesTitle}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t.categoriesLead}</p>
-      </div>
+      <PageHeader title={t.categoriesTitle} description={t.categoriesLead} />
 
       <AdminFilterBar
         locale={locale}

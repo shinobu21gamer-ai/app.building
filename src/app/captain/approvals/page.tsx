@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AllocationActions } from "@/components/treasury/allocation-actions";
 import { EarmarkActions } from "@/components/treasury/earmark-actions";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatPeso } from "@/lib/cases/manpower";
 import { formatDateTime } from "@/lib/format";
 import { db } from "@/lib/db";
@@ -49,12 +50,7 @@ export default async function CaptainApprovalsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">
-          {t.captainApprovalsTitle}
-        </h1>
-        <p className="mt-1 text-sm text-ink-muted">{t.captainApprovalsLead}</p>
-      </div>
+      <PageHeader title={t.captainApprovalsTitle} description={t.captainApprovalsLead} />
 
       {nothingWaiting && (
         <Card>

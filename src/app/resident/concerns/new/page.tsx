@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SubmitConcernForm } from "@/components/concern/submit-concern-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { getBarangayAreas } from "@/lib/cases/settings";
@@ -44,10 +45,7 @@ export default async function NewConcernPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">{t.title}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t.lead}</p>
-      </div>
+      <PageHeader title={t.title} description={t.lead} />
 
       <Card>
         {categories.length === 0 || factors.length === 0 ? (

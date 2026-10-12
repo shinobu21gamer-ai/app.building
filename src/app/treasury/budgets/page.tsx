@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AllocationForm } from "@/components/treasury/allocation-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatPeso } from "@/lib/cases/manpower";
 import { db } from "@/lib/db";
 import { requirePermission, userCan } from "@/lib/auth/session";
@@ -68,10 +69,7 @@ export default async function TreasuryBudgetsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">{t.budgetsTitle}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t.budgetsLead}</p>
-      </div>
+      <PageHeader title={t.budgetsTitle} description={t.budgetsLead} />
 
       {canPrepare && (
         <Card
@@ -108,7 +106,7 @@ export default async function TreasuryBudgetsPage() {
       ) : (
         <Card>
           <div className="-mx-5 overflow-x-auto px-5">
-            <table className="w-full min-w-[54rem] border-collapse text-sm">
+            <table data-stack className="w-full min-w-[54rem] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-subtle">
                   <th className="py-2 pr-3 font-medium">{t.allocationLabel}</th>
@@ -136,7 +134,7 @@ export default async function TreasuryBudgetsPage() {
                     key={allocation.id}
                     className="border-b border-line align-top"
                   >
-                    <td className="py-2 pr-3">
+                    <td data-label={t.allocationLabel} className="py-2 pr-3">
                       <Button
                         href={`/treasury/budgets/${allocation.id}`}
                         size="sm"
@@ -150,32 +148,32 @@ export default async function TreasuryBudgetsPage() {
                         {allocation.consistent ? "" : " · ledger check needed"}
                       </p>
                     </td>
-                    <td className="py-2 pr-3 font-mono text-xs text-ink-muted">
+                    <td data-label={t.coaAccount} className="py-2 pr-3 font-mono text-xs text-ink-muted">
                       {allocation.coaCode}
                       <p className="font-sans text-xs text-ink-subtle">
                         {allocation.coaName}
                       </p>
                     </td>
-                    <td className="py-2 pr-3 text-xs text-ink-muted">
+                    <td data-label={t.fundingTitle} className="py-2 pr-3 text-xs text-ink-muted">
                       {allocation.fundSourceCode}
                       <p className="text-ink-subtle">{allocation.fundSourceName}</p>
                     </td>
-                    <td className="py-2 pr-3 text-right tabular-nums">
+                    <td data-label={t.appropriation} className="py-2 pr-3 text-right tabular-nums">
                       {formatPeso(allocation.appropriation)}
                     </td>
-                    <td className="py-2 pr-3 text-right tabular-nums text-amber-700">
+                    <td data-label={t.reserved} className="py-2 pr-3 text-right tabular-nums text-amber-700">
                       {formatPeso(allocation.reserved)}
                     </td>
-                    <td className="py-2 pr-3 text-right tabular-nums text-ink-muted">
+                    <td data-label={t.disbursed} className="py-2 pr-3 text-right tabular-nums text-ink-muted">
                       {formatPeso(allocation.disbursed)}
                     </td>
-                    <td className="py-2 pr-3 text-right font-semibold tabular-nums text-emerald-700">
+                    <td data-label={t.available} className="py-2 pr-3 text-right font-semibold tabular-nums text-emerald-700">
                       {formatPeso(allocation.available)}
                     </td>
-                    <td className="py-2 pr-3 text-xs text-ink-muted">
+                    <td data-label={t.office} className="py-2 pr-3 text-xs text-ink-muted">
                       {allocation.officeName ?? t.officeWideWard}
                     </td>
-                    <td className="py-2 pr-3">
+                    <td data-label={common.status} className="py-2 pr-3">
                       <Badge tone={STATUS_TONES[allocation.status] ?? "neutral"}>
                         {allocation.status}
                       </Badge>

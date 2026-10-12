@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { PrintButton } from "@/components/ui/print-button";
 import { AuditTable } from "@/components/audit/audit-table";
 import { VerifyButton } from "@/components/audit/verify-button";
+import { PageHeader } from "@/components/ui/page-header";
 import { requirePermission } from "@/lib/auth/session";
 import { formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
@@ -81,19 +82,19 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-title text-ink">{t.title}</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-muted">{t.lead}</p>
-        </div>
-        <Badge tone={status.healthy ? "green" : status.lastRun ? "red" : "amber"}>
-          {status.healthy
-            ? t.chainHealthy
-            : status.lastRun
-              ? t.chainUnverified
-              : t.chainNeverVerified}
-        </Badge>
-      </header>
+      <PageHeader
+        title={t.title}
+        description={t.lead}
+        actions={
+          <Badge tone={status.healthy ? "green" : status.lastRun ? "red" : "amber"}>
+            {status.healthy
+              ? t.chainHealthy
+              : status.lastRun
+                ? t.chainUnverified
+                : t.chainNeverVerified}
+          </Badge>
+        }
+      />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>

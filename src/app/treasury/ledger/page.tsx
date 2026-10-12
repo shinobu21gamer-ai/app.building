@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LedgerTable } from "@/components/treasury/ledger-table";
+import { PageHeader } from "@/components/ui/page-header";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
@@ -41,10 +42,7 @@ export default async function TreasuryLedgerPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">{t.ledgerTitle}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t.ledgerLead}</p>
-      </div>
+      <PageHeader title={t.ledgerTitle} description={t.ledgerLead} />
 
       <div className="flex flex-wrap gap-2">
         <Button

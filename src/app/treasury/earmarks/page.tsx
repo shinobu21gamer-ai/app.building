@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EarmarkActions } from "@/components/treasury/earmark-actions";
 import { EarmarkForm } from "@/components/treasury/earmark-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatPeso } from "@/lib/cases/manpower";
 import { formatDateTime } from "@/lib/format";
 import { db } from "@/lib/db";
@@ -55,10 +56,7 @@ export default async function TreasuryEarmarksPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">{t.earmarksTitle}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t.earmarksLead}</p>
-      </div>
+      <PageHeader title={t.earmarksTitle} description={t.earmarksLead} />
 
       {canPrepare && allocations.length > 0 && (
         <Card title={t.newEarmark}>

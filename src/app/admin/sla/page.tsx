@@ -5,6 +5,7 @@ import { EscalationTable } from "@/components/sla/escalation-table";
 import { PolicyActions } from "@/components/sla/policy-actions";
 import { PolicyForm } from "@/components/sla/policy-form";
 import { RunScanButton } from "@/components/sla/run-scan-button";
+import { PageHeader } from "@/components/ui/page-header";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { formatDateTime } from "@/lib/format";
@@ -58,10 +59,7 @@ export default async function AdminSlaPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-title text-ink">{t.title}</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-muted">{t.lead}</p>
-      </header>
+      <PageHeader title={t.title} description={t.lead} />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -204,7 +202,7 @@ export default async function AdminSlaPage({ searchParams }: PageProps) {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] text-left text-sm">
+            <table data-stack className="w-full min-w-[36rem] text-left text-sm">
               <thead className="text-xs uppercase tracking-wide text-ink-subtle">
                 <tr className="border-b border-line">
                   <th className="px-2 py-2">{t.colWhen}</th>
@@ -216,11 +214,11 @@ export default async function AdminSlaPage({ searchParams }: PageProps) {
               <tbody>
                 {overview.lastRuns.map((run) => (
                   <tr key={run.id} className="border-b border-line">
-                    <td className="px-2 py-2 whitespace-nowrap text-xs text-ink-subtle">
+                    <td data-label={t.colWhen} className="px-2 py-2 whitespace-nowrap text-xs text-ink-subtle">
                       {formatDateTime(run.startedAt)}
                     </td>
-                    <td className="px-2 py-2 text-xs text-ink-muted">{run.triggerSource}</td>
-                    <td className="px-2 py-2">
+                    <td data-label={t.colTrigger} className="px-2 py-2 text-xs text-ink-muted">{run.triggerSource}</td>
+                    <td data-label={t.colStatus} className="px-2 py-2">
                       <Badge
                         tone={
                           run.status === "SUCCESS"
@@ -233,7 +231,7 @@ export default async function AdminSlaPage({ searchParams }: PageProps) {
                         {run.status}
                       </Badge>
                     </td>
-                    <td className="px-2 py-2 text-xs text-ink-muted">
+                    <td data-label={t.colEscalated} className="px-2 py-2 text-xs text-ink-muted">
                       {run.processed}
                       {run.error ? (
                         <span className="ml-1 text-red-600">{run.error}</span>

@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { FeedbackSettingsForm } from "@/components/admin/feedback-settings-form";
 import { AreasSettingsForm } from "@/components/admin/areas-settings-form";
 import { SettingsManager } from "@/components/admin/settings-manager";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   BARANGAY_AREAS_KEY,
   DEFAULT_BARANGAY_AREAS,
@@ -31,10 +32,7 @@ export default async function AdminSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">{t.settingsTitle}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t.settingsLead}</p>
-      </div>
+      <PageHeader title={t.settingsTitle} description={t.settingsLead} />
 
       <Card title={t.feedbackTitle} description={t.feedbackDesc}>
         <FeedbackSettingsForm

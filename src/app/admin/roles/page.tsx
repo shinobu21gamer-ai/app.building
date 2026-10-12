@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Card } from "@/components/ui/card";
 import { PermissionMatrix } from "@/components/admin/permission-matrix";
+import { PageHeader } from "@/components/ui/page-header";
 import { requirePermission } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -19,14 +20,7 @@ export default async function AdminRolesPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-title text-ink">
-          {t.rolesTitle}
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
-          {t.rolesLead}
-        </p>
-      </header>
+      <PageHeader title={t.rolesTitle} description={t.rolesLead} />
 
       <Card>
         <PermissionMatrix locale={locale} />

@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { RoleShell } from "@/components/role-shell";
 import { ConsentPanel } from "@/components/privacy/consent-panel";
 import { DsrRequestForm } from "@/components/privacy/dsr-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireUser } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -42,17 +43,17 @@ export default async function PrivacyRequestsPage() {
       ]}
     >
       <div className="space-y-6">
-        <header>
-          <h1 className="text-title text-ink">
-            {t.title}
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
-            {t.lead}
-          </p>
-          <p className="mt-2 text-xs text-ink-subtle">
-            {copy[locale].privacy.title} · v{PRIVACY_POLICY_VERSION}
-          </p>
-        </header>
+        <PageHeader
+          title={t.title}
+          description={
+            <>
+              {t.lead}
+              <span className="mt-1 block text-xs text-ink-subtle">
+                {copy[locale].privacy.title} · v{PRIVACY_POLICY_VERSION}
+              </span>
+            </>
+          }
+        />
 
         <Card title={t.consentsTitle} description={t.consentsLead}>
           <ConsentPanel

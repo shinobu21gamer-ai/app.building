@@ -164,7 +164,7 @@ export default async function OfficialPage({
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
+            <table data-stack className="w-full min-w-[760px] text-left text-sm">
               <caption className="sr-only">Cases requiring attention</caption>
               <thead>
                 <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-subtle">
@@ -191,23 +191,23 @@ export default async function OfficialPage({
               <tbody className="divide-y divide-line">
                 {cases.concerns.map((concern) => (
                   <tr key={concern.id} className="hover:bg-surface-muted">
-                    <td className="py-3 pr-4 font-mono text-xs text-ink-muted">
+                    <td data-label={t.caseNo} className="py-3 pr-4 font-mono text-xs text-ink-muted">
                       {concern.caseNumber}
                     </td>
-                    <td className="py-3 pr-4 font-medium text-ink">
+                    <td data-label={t.titleCol} className="py-3 pr-4 font-medium text-ink">
                       {concern.title}
                     </td>
-                    <td className="py-3 pr-4">
+                    <td data-label={t.priorityCol} className="py-3 pr-4">
                       {concern.priorityLevel ? (
                         <PriorityBadge level={concern.priorityLevel} />
                       ) : (
                         <span className="text-slate-400">{t.notAssessed}</span>
                       )}
                     </td>
-                    <td className="py-3 pr-4">
+                    <td data-label={t.statusCol} className="py-3 pr-4">
                       <StatusBadge status={concern.status} />
                     </td>
-                    <td className="py-3 pr-4 text-ink-muted">
+                    <td data-label={t.updatedCol} className="py-3 pr-4 text-ink-muted">
                       {formatDate(concern.updatedAt)}
                     </td>
                     <td className="py-3 text-right">

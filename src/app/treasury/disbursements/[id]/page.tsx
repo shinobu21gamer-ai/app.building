@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { VoucherActions } from "@/components/treasury/voucher-actions";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatPeso } from "@/lib/cases/manpower";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { db } from "@/lib/db";
@@ -83,33 +84,31 @@ export default async function TreasuryDisbursementPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-title text-ink sm:text-display">
-              {voucher.voucherNumber ?? `#${voucher.id}`}
-            </h1>
+      <PageHeader
+        title={voucher.voucherNumber ?? `#${voucher.id}`}
+        description={
+          <>
+            {voucher.allocation.label} · FY {voucher.allocation.fiscalYear.year}
+          </>
+        }
+        actions={
+          <>
             <Badge tone={voucher.status === "LIQUIDATED" ? "green" : "sky"}>
               {voucher.status}
             </Badge>
-          </div>
-          <p className="mt-1 text-sm text-ink-muted">
-            {voucher.allocation.label} · FY {voucher.allocation.fiscalYear.year}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button href="/treasury/disbursements" size="sm" variant="outline">
-            {t.navDisbursements}
-          </Button>
-          <Button
-            href={`/treasury/budgets/${voucher.allocationId}`}
-            size="sm"
-            variant="outline"
-          >
-            {t.navBudgets}
-          </Button>
-        </div>
-      </div>
+            <Button href="/treasury/disbursements" size="sm" variant="outline">
+              {t.navDisbursements}
+            </Button>
+            <Button
+              href={`/treasury/budgets/${voucher.allocationId}`}
+              size="sm"
+              variant="outline"
+            >
+              {t.navBudgets}
+            </Button>
+          </>
+        }
+      />
 
       {voucher.liquidationDueAt && voucher.status === "RELEASED" && (
         <p className="rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">

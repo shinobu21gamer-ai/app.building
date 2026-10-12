@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { CrewJobForm } from "@/components/cases/crew-job-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { listCrewJobs } from "@/lib/cases/crew";
 import { formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
@@ -29,10 +30,7 @@ export default async function CrewHomePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">{t.jobTitle}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t.jobDesc}</p>
-      </div>
+      <PageHeader title={t.jobTitle} description={t.jobDesc} />
 
       {jobs.length === 0 ? (
         <Card>

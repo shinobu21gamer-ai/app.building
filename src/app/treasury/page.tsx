@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BalanceCards } from "@/components/treasury/balance-cards";
 import { AgingBars, LedgerTable } from "@/components/treasury/ledger-table";
+import { PageHeader } from "@/components/ui/page-header";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
@@ -68,12 +69,7 @@ export default async function TreasuryDashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-title text-ink sm:text-display">
-            {t.dashboardTitle}
-          </h1>
-          <p className="mt-1 text-sm text-ink-muted">{t.dashboardLead}</p>
-        </div>
+        <PageHeader title={t.dashboardTitle} description={t.dashboardLead} />
         <div className="flex gap-2">
           <Button href="/treasury/budgets" size="sm" variant="outline">
             {t.navBudgets}

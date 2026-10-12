@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, PriorityBadge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -40,12 +41,7 @@ export default async function ValidationQueuePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">
-          {t.validationQueueTitle}
-        </h1>
-        <p className="mt-1 text-sm text-ink-muted">{t.validationQueueDesc}</p>
-      </div>
+      <PageHeader title={t.validationQueueTitle} description={t.validationQueueDesc} />
 
       {concerns.length === 0 ? (
         <Card>

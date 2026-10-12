@@ -11,6 +11,7 @@ import { getAdminDashboard } from "@/lib/dashboards/admin";
 import { statusLabel } from "@/lib/cases/workflow";
 import { MaintenanceActions } from "@/components/admin/maintenance-actions";
 import { AlertComposer } from "@/components/admin/alert-composer";
+import { PageHeader } from "@/components/ui/page-header";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 
@@ -50,12 +51,7 @@ export default async function AdminPage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-title text-ink sm:text-display">
-            {t.welcome.replace("{name}", user.firstName)}
-          </h1>
-          <p className="mt-1 text-sm text-ink-muted">{t.overview}</p>
-        </div>
+        <PageHeader title={t.welcome.replace("{name}", user.firstName)} description={t.overview} />
         <div className="flex flex-wrap items-center gap-2">
           <Button href="/admin/users" variant="outline" size="sm">
             <Users size={14} aria-hidden="true" />

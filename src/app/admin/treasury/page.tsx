@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FiscalYearActions } from "@/components/treasury/fiscal-year-actions";
 import { FiscalYearForm } from "@/components/treasury/fiscal-year-form";
 import { VerifyRecordForm } from "@/components/treasury/verify-record-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatDate } from "@/lib/format";
 import { formatPeso } from "@/lib/cases/manpower";
 import { db } from "@/lib/db";
@@ -50,12 +51,7 @@ export default async function AdminTreasuryPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-title text-ink sm:text-display">
-            {t.adminTreasuryTitle}
-          </h1>
-          <p className="mt-1 text-sm text-ink-muted">{t.adminTreasuryLead}</p>
-        </div>
+        <PageHeader title={t.adminTreasuryTitle} description={t.adminTreasuryLead} />
         <div className="flex gap-2">
           <Button href="/treasury/budgets" size="sm" variant="outline">
             {t.navBudgets}

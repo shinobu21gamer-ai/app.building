@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { ConcernFilters } from "@/components/cases/concern-filters";
+import { PageHeader } from "@/components/ui/page-header";
 import { listConcerns, parseConcernFilters } from "@/lib/cases/query";
 import { formatDate } from "@/lib/format";
 import { firstParam } from "@/lib/utils";
@@ -78,12 +79,15 @@ export default async function OfficialConcernsPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-title text-ink sm:text-display">{t.caseManagement}</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          {scopeLabel} {isOfficial ? t.manageOnly : ""}
-        </p>
-      </div>
+      <PageHeader
+        title={t.caseManagement}
+        description={
+          <>
+            {scopeLabel}
+            {isOfficial ? ` ${t.manageOnly}` : ""}
+          </>
+        }
+      />
 
       <Card title={t.searchListTitle} description={t.searchListDesc}>
         <ConcernFilters

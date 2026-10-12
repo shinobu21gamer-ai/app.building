@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, PriorityBadge, StatusBadge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -43,10 +44,7 @@ export default async function MyConcernsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-title text-ink sm:text-display">{t.myTitle}</h1>
-          <p className="mt-1 text-sm text-ink-muted">{t.myLead}</p>
-        </div>
+        <PageHeader title={t.myTitle} description={t.myLead} />
         <Button href="/resident/concerns/new" size="sm">
           {t.submit}
         </Button>

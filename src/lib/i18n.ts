@@ -22,6 +22,7 @@ const en = {
     dashboard: "Dashboard",
     notifications: "Notifications",
     alerts: "Alerts",
+    transparency: "Transparency",
   },
   footer: {
     blurb:
@@ -1762,6 +1763,7 @@ const fil: typeof en = {
     dashboard: "Dashboard",
     notifications: "Mga abiso",
     alerts: "Mga alerto",
+    transparency: "Transparansya",
   },
   footer: {
     blurb:
