@@ -22,6 +22,7 @@ export default async function TreasuryLayout({
           label: t.treasuryDesk.navDisbursements,
         },
         { href: "/treasury/ledger", label: t.treasuryDesk.navLedger },
+        { href: "/treasury/reports", label: t.reports.title },
         { href: "/treasury/codes", label: t.treasuryDesk.navCodes },
         { href: "/notifications", label: t.common.notifications },
       ]}

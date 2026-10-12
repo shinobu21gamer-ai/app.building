@@ -12,6 +12,7 @@ export default async function OfficialLayout({
   const items = [
     { href: "/official", label: t.navDashboard },
     { href: "/official/concerns", label: t.navConcerns },
+    { href: "/official/reports", label: copy[locale].revamp.reports.title },
     { href: "/notifications", label: t.navNotifications },
   ];
 

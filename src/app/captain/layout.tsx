@@ -17,6 +17,7 @@ export default async function CaptainLayout({
         { href: "/captain", label: t.captain.title },
         { href: "/captain/escalations", label: t.slaDesk.navEscalations },
         { href: "/captain/approvals", label: t.treasuryDesk.navApprovals },
+        { href: "/captain/reports", label: t.reports.title },
         { href: "/notifications", label: t.common.notifications },
       ]}
     >

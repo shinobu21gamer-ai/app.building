@@ -347,7 +347,7 @@ facade `src/lib/cases/service.ts` and the concern routes already called).*
 | Encryption at rest (application layer) | Phone numbers and ID numbers encrypted AES-256-GCM with `PII_ENCRYPTION_KEY` (HKDF-derived subkeys); lookup uses a keyed HMAC so no plaintext index is needed |
 | Masking for staff | `phoneLast4` / `idNumberLast4` are the only visible parts; unmasking a full value requires a reason and writes `PiiAccessLog` |
 | Rights of the data subject | `DataSubjectRequest` (access, rectification, erasure, portability, objection, complaint) with a 15-working-day `dueAt`; `ErasureExecution` records exactly what was deleted and what had to be retained (audit, treasury, tax) |
-| Retention & disposal | `RetentionPolicy` rows per data category, executed by the retention cron, logged in `RetentionRun` |
+| Retention & disposal | `RetentionPolicy` rows per data category, executed by `src/lib/privacy/retention.ts` — daily from `/api/v1/cron/retention` or on demand from `/admin/privacy` — logged in `RetentionRun`. An `ARCHIVE` policy (audit rows, PII access log, DSR records) counts its category and deletes nothing; a `DELETE`/`ANONYMISE` policy only touches rows older than its window, at most `RETENTION_MAX_ROWS` per run, so a backlog is worked off over several nights instead of one destructive sweep |
 | Transparency | Public page + map built from `PublicCaseRecord` (anonymous `BR-PUB-…` reference, coarse geohash, scrubbed title) |
 | Accountability | Hash-chained `Audit` + `PiiAccessLog` + `AuditVerificationRun` |
 
@@ -475,3 +475,47 @@ cover the pure parts; the visual result is the same shell in all six portals.*
   formatted for display only.
 - Money/time zone rules from the current codebase (`src/lib/cases/action-date.ts`)
   are reused rather than re-implemented.
+
+## 12. Reports and exports (stage 7)
+
+- **One document shape.** Every report — engineering, treasury, privacy and the
+  public transparency aggregates — returns a `ReportDocument`
+  (`src/lib/reports/document.ts`): `{ key, title, description?, generatedAt,
+  period, stats, sections }`. A section is a table of `columns` + `rows` with an
+  optional `bars` array for share visualisation. The screen
+  (`src/components/reports/report-view.tsx`), the print layout and the CSV writer
+  are therefore built once, and a new report is a new pure module plus its labels
+  — no new UI.
+- **Periods are vocabulary, not dates.** `?period=` accepts
+  `30d | 90d | ytd | 12m | custom | all`; `custom` needs `from`/`to`
+  (`YYYY-MM-DD`, Manila). Range maths lives in `src/lib/reports/period.ts` and is
+  unit-tested against the +08:00 calendar, because a "day" in this app means a
+  Manila day. An unknown or incomplete period falls back to 90 days rather than
+  erroring.
+- **Aggregates are pure.** Each report module exports pure functions
+  (`summarizeVolume`, `summarizeTurnaround`, `summarizeSla`, `summarizeCrew`,
+  `summarizeUtilisation`, `liquidationAging`, `summarizeRegister`, `summarizeDsr`,
+  `summarizeConsents`, `summarizeRetention`, `summarizePublic*`) over plain rows,
+  plus one loader that reads the database. The tests exercise the pure half; the
+  DB half is thin by construction. Money and large integers pass through the
+  formatters in `document.ts`, never through floating-point arithmetic.
+- **Exports are streamed.** `src/lib/reports/stream.ts` writes the CSV in
+  chunks of 250 rows (`X-Accel-Buffering: no`), byte-identical to the in-memory
+  writer so tests can compare the two. Cells are quoted and formula-guarded
+  (`src/lib/reports/csv.ts`): a value starting with `= + - @`, tab or CR gets an
+  apostrophe. Resident-supplied text reaches these files.
+- **Access is per report, and privacy reports count.** `GET
+  /api/v1/reports/[report]` resolves the caller's permission from
+  `src/lib/reports/catalog.ts`: engineering takes `report.view.all` or
+  `report.view.office` (an office actor is scoped to their own office; `-1` is the
+  empty scope), treasury takes `report.view.treasury` and reuses the office-scoped
+  query helpers, the privacy report takes `privacy.pii_access.view` and returns
+  **counts only — never a masked or raw value**, and the transparency report is
+  public by design because it reads `PublicCaseRecord` alone. Every non-public
+  export writes one `REPORT_EXPORTED` audit row.
+- **The retention sweep is a job with a desk.** `src/lib/privacy/retention.ts`
+  plans the due policies (`INACTIVE` / `RECENTLY_RUN 20 h` / `NOT_SELECTED`),
+  runs one handler per seeded category, and records a `RetentionRun` per policy
+  plus a `CronRun` for the sweep. A handler failure never throws the job: the run
+  is marked `FAILED` and `lastRunAt` is not advanced, so the next night retries.
+  `retentionDesk()` feeds the `/admin/privacy` card.

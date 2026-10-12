@@ -1,8 +1,9 @@
 # BarangayResolve — Complete Revamp
 
 Planning and delivery notes for the UI/UX, workflow, schema and module revamp.
-**Status: Stage 6 of 7 (design system + mobile-first role portals) is implemented on this branch.**
-Stage 7 is specified here and is delivered on your go-ahead.
+**Status: all seven stages are implemented on this branch.** Stage 7 (reports,
+dashboards and the retention sweep) closed the revamp; the frozen set is untouched
+and its contracts are unchanged.
 
 | Stage | Scope | State |
 |---|---|---|
@@ -12,12 +13,12 @@ Stage 7 is specified here and is delivered on your go-ahead.
 | 4 | Treasury (COA MOOE budgets, earmarks, disbursements, approvals, live balances) | **Delivered** (this branch) |
 | 5 | SLA (48-hour escalation via cron) and the hash-chained audit log | **Delivered** (this branch) |
 | 6 | UI revamp (design system + mobile-first role portals) | **Delivered** (this branch) |
-| 7 | Reports and dashboards | Specified, awaiting go-ahead |
+| 7 | Reports and dashboards (+ the retention sweep from decision 9) | **Delivered** (this branch) |
 
 Documents in this folder:
 
 - `README.md` — frozen set, rules, the full file inventory, decisions that need your sign-off.
-- `01-architecture.md` — module map, RBAC matrix, workflow state machine, manpower gate, treasury flow, SLA and audit design, privacy architecture, notification contract, design-system principles.
+- `01-architecture.md` — module map, RBAC matrix, workflow state machine, manpower gate, treasury flow, SLA and audit design, privacy architecture, notification contract, design-system principles, report conventions.
 - `02-data-model.md` — every new/changed table and column, with its invariants.
 - `03-migration-plan.md` — migration order, backfills, deployment per stage, rollback procedure, verification queries.
 
@@ -253,11 +254,10 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
   where the escalation job it describes belongs.
 - There is no `/api/v1/admin/escalations` group: the queue is rendered by the two
   desks and the single action route `PATCH /api/v1/sla/escalations/[id]`.
-- **Not delivered:** `src/lib/privacy/retention.ts` and `/api/v1/cron/retention`.
-  The `RetentionRun` model, the `CronRun` job enum value and the stage-2 privacy
-  helpers exist, but the sweep itself is still unbuilt — it is the one item from
-  the revamp brief ("retention rules") with nothing behind it yet. Now flagged as
-  an open item below rather than quietly dropped.
+- **The retention sweep was not in this stage** (`src/lib/privacy/retention.ts`
+  and `/api/v1/cron/retention`). Stage 5 built the SLA and audit jobs; the sweep
+  was held for stage 7, where "what was deleted, and when" is also a reportable
+  figure. It is delivered there — see decision 9.
 
 ### Stage 6 — UI revamp ✅
 
@@ -319,19 +319,60 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
   them. They will keep working, but they will look like the previous design until
   you want them migrated — that is a separate change with its own test pass.
 
-### Stage 7 — Reports
+### Stage 7 — Reports ✅
 
 | Path | | Purpose |
 |---|---|---|
-| `src/lib/reports/engineering.ts` | N | Volume, turnaround, SLA compliance, crew utilisation |
-| `src/lib/reports/treasury.ts` | N | MOOE utilisation, disbursement register, liquidation aging |
-| `src/lib/reports/privacy.ts` | N | DSR log, PII access summary, retention runs |
-| `src/lib/reports/transparency.ts` | N | Public aggregates (no PII) |
-| `src/lib/reports/csv.ts` | N | Streaming CSV export |
-| `src/app/api/v1/reports/**` | N/M | Report + export endpoints (extends `admin/reports/concerns`) |
-| `src/app/{admin,official,treasury,captain}/reports/**` | N | Report screens |
-| `src/components/reports/*` | N | Tables, chart wrappers, export buttons |
-| `src/lib/reports/*.test.ts` | N | Aggregate math against fixtures |
+| `src/lib/reports/period.ts` | N ✅ | Period vocabulary (`30d`/`90d`/`ytd`/`12m`/`custom`/`all`) resolved on Asia/Manila calendar days; month and day keys (20 tests) |
+| `src/lib/reports/document.ts` | N ✅ | The `ReportDocument` shape every report returns (`stats`, `sections`, `columns`, optional share bars) and the value formatters (`count`, `decimal`, `percent`, `sharePercent`, `peso`, `day`, `monthLabel`) |
+| `src/lib/reports/csv.ts` | N ✅ | Pure, formula-safe CSV cells/rows/files and the filename slug — no Next import, so scripts can use it too (16 tests) |
+| `src/lib/reports/stream.ts` | N ✅ | `streamDocumentCsv` / `streamSectionCsv`: 250 rows per chunk, byte-identical to the non-streaming writer, `X-Accel-Buffering: no` (14 tests) |
+| `src/lib/reports/catalog.ts` | N ✅ | Report keys, tab keys, per-report permissions, `reportTabs()` |
+| `src/lib/reports/labels.ts` | N ✅ | Labels the screens share: status text, period label, range, generated-at |
+| `src/lib/reports/engineering.ts` | N ✅ | Volume, turnaround (median/p90), SLA compliance, crew utilisation — percentile math, working-day conversion, and overlap detection reusing `cases/crew-rules` + loader (42 tests) |
+| `src/lib/reports/treasury.ts` | N ✅ | MOOE utilisation (CLOSED allocations excluded, as on the dashboard), disbursement register, liquidation aging + loader (12 tests) |
+| `src/lib/reports/privacy.ts` | N ✅ | DSR log with working-day lateness, consent counts, PII-access summary, retention-run report — counts only, never a value (19 tests) |
+| `src/lib/reports/transparency.ts` | N ✅ | Public aggregates computed over `PublicCaseRecord` only (15 tests) |
+| `src/app/api/v1/reports/[report]/route.ts` | N ✅ | One endpoint for all four reports: `?period&from&to&format=csv`, per-report permission, `REPORT_EXPORTED` audit row on export, 404 for an unknown report |
+| `src/components/reports/report-view.tsx` | N ✅ | `ReportPeriodPicker` (a GET form, so the URL is shareable), `ReportTabs`, section tables with CSS share bars |
+| `src/components/reports/report-screen.tsx` | N ✅ | `ReportScreen` + `reportsExportHref` — the one composition every report page uses |
+| `src/app/admin/reports/{page,engineering,treasury,privacy,transparency}/page.tsx` | N/M ✅ | The admin hub gains report tabs; the four new reports hang off it |
+| `src/app/{official,treasury,captain}/reports/page.tsx` | N ✅ | The same screens from the other desks (official is office-scoped by the query helpers) |
+| `src/lib/privacy/retention.ts` | N ✅ | The retention sweep: `planRetention`, one handler per seeded policy, `executeRetentionPolicy` (never throws; failure is a `FAILED` run), `runRetentionSweep`, and `retentionDesk()` for the admin card (19 tests) |
+| `src/app/api/v1/cron/retention/route.ts` | N ✅ | `CRON_SECRET`-guarded daily job (03:10 UTC = 11:10 Manila), bookkept in `CronRun` |
+| `src/app/api/v1/admin/privacy/retention/route.ts`, `src/lib/validations/retention.ts` | N ✅ | Manual run / dry run from the admin privacy desk |
+| `src/components/admin/retention-desk.tsx`, `src/app/admin/privacy/page.tsx` | N/M ✅ | "Run retention now" card: per-policy last run, next due, and what the last run affected |
+| `src/lib/loading/route-skeleton.ts`, `src/app/{official,treasury,captain}/layout.tsx`, `src/app/admin/reports/page.tsx` | M ✅ | Reports nav entries and loading skeletons for the four report surfaces |
+| `src/lib/i18n.ts` | M ✅ | `revamp.reports` (titles, stats, sections, columns, metrics, notes) and `revamp.adminDesk.retention*`, in en + fil |
+| `.github/workflows/sla-cron.yml` | M ✅ | The retention sweep joins the hourly escalation scan and the weekly audit verification; each job now runs on its own cron slot |
+
+**Where this diverged from the stage-7 plan** (deliberate, so the docs do not
+promise files that are not there):
+
+- **One report engine, not one code path per report.** Every report returns the
+  same `ReportDocument`, so the screen, the print layout and the CSV writer are
+  built once. `csv.ts` is the pure cell/row writer; `stream.ts` streams that same
+  document. The admin concern report's CSV route now uses the shared writer too.
+- **One endpoint** (`GET /api/v1/reports/[report]`) rather than a route per
+  report; the report key is the only variable, and permissions are looked up per
+  key. The pre-existing `/api/v1/admin/reports/concerns` export stays where it is.
+- **Four more report screens than planned**: `/official/reports`,
+  `/treasury/reports` and `/captain/reports` reuse the admin components. Residents
+  get no reports screen: every report is either barangay-wide, office-scoped or
+  privacy data.
+- **No chart library and no PDF writer.** Shares render as CSS bars and the print
+  stylesheet handles paper; adding either would be a dependency for a page that
+  already works.
+- **The retention sweep rides along here** (decision 9): `/admin/privacy` gained
+  the manual run, and the daily job went to `/api/v1/cron/retention`. ARCHIVE
+  policies count rows without deleting anything.
+
+**Known gaps, stated rather than hidden:** the four report loaders have no
+database-level tests — the sandbox has no PostgreSQL, so the aggregate math is
+covered by fixture tests and the loaders by types + a clean build. In
+`engineering.ts` a crew member's utilisation is derived from assignment windows;
+`treasury.ts` prints a worker's trade as blank because `CrewAssignment` carries no
+trade column (`CrewProfile.trade` is the column to join if that is wanted).
 
 ---
 
@@ -377,11 +418,14 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
    the mosaic and the app is back to the previous behaviour. Decided under "do
    what you think best"; say the word if you would rather stay static everywhere.
 
-9. **Retention sweep is the one unfinished control.** Stage 2 landed the retention
+9. **Retention sweep — delivered in stage 7.** Stage 2 landed the retention
    *policy* data (`RetentionRun`, consent records, the privacy helpers on
-   `/admin/privacy`) but no job that applies it. Stage 5 was the natural place to add
-   the sweep and it was deliberately left out of the delivered scope, so the brief's
-   "retention rules" is currently a written rule without an executor. My proposal:
-   build `src/lib/privacy/retention.ts` + `/api/v1/cron/retention` in stage 7 next to
-   the reports, where "what was deleted, and when" is also a reportable figure. Say
-   the word if you would rather have it in stage 6.
+   `/admin/privacy`) but no job that applies it. The sweep was held back from
+   stage 5 and built in stage 7 next to the reports, where "what was deleted, and
+   when" is also a reportable figure: `src/lib/privacy/retention.ts`,
+   `/api/v1/cron/retention` (daily, `CRON_SECRET`) and a manual run on
+   `/admin/privacy`. Each run writes a `RetentionRun` per policy and a `CronRun`
+   for the sweep; `ARCHIVE` categories are counted, never deleted; the admin card
+   shows the last run and its effect. The brief's "retention rules" now have an
+   executor. `/admin/privacy` and `/admin/reports/privacy` are the two places to
+   watch it.

@@ -11,6 +11,8 @@ import { ConcernFilters } from "@/components/cases/concern-filters";
 import { PrintButton } from "@/components/ui/print-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { parseConcernFilters } from "@/lib/cases/query";
+import { ReportTabs } from "@/components/reports/report-view";
+import { reportTabs } from "@/lib/reports/catalog";
 import { getConcernReport } from "@/lib/admin/reports";
 import { statusLabel } from "@/lib/cases/workflow";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -77,6 +79,18 @@ export default async function AdminReportsPage({
           </Button>
         </div>
       </div>
+
+      <ReportTabs
+        locale={locale}
+        tabs={reportTabs("/admin/reports", [
+          "concerns",
+          "engineering",
+          "treasury",
+          "privacy",
+          "transparency",
+        ])}
+        active="concerns"
+      />
 
       <div className="no-print">
         <Card title={t.filtersTitle} description={t.filtersDesc}>

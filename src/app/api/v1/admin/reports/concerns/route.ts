@@ -3,17 +3,9 @@ import { NextResponse } from "next/server";
 import { assertSameOrigin, withErrorBoundary } from "@/lib/api";
 import { requireApiRole } from "@/lib/auth/session";
 import { parseConcernFilters, buildConcernWhere } from "@/lib/cases/query";
+import { csvFilename, toCsv, type CsvValue } from "@/lib/reports/csv";
 
 export const runtime = "nodejs";
-
-function csvCell(value: unknown): string {
-  let text = value instanceof Date ? value.toISOString() : String(value ?? "");
-  // Formula injection: a value beginning with = + - @ (or a tab/line feed)
-  // is interpreted as a spreadsheet formula when the export is opened in
-  // Excel/Sheets. Neutralize the leading character so the cell renders as text.
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-  return `"${text.replaceAll('"', '""')}"`;
-}
 
 export const GET = withErrorBoundary(async (req: Request) => {
   assertSameOrigin(req);
@@ -31,6 +23,9 @@ export const GET = withErrorBoundary(async (req: Request) => {
     take: 5000,
   });
 
+  // Quoting, formula-guarding and the filename come from the shared CSV writer
+  // (`src/lib/reports/csv.ts`), so this export cannot drift from the report
+  // exports — resident-supplied titles and names reach these cells.
   const header = [
     "Case number",
     "Title",
@@ -45,9 +40,10 @@ export const GET = withErrorBoundary(async (req: Request) => {
     "SLA status",
     "Duplicate of",
   ];
-  const rows = concerns.map((concern) => {
+  const now = Date.now();
+  const rows: CsvValue[][] = concerns.map((concern) => {
     const active = concern.status !== "RESOLVED" && concern.status !== "CLOSED";
-    const overdue = active && concern.slaDueAt !== null && concern.slaDueAt.getTime() < Date.now();
+    const overdue = active && concern.slaDueAt !== null && concern.slaDueAt.getTime() < now;
     return [
       concern.caseNumber,
       concern.title,
@@ -61,13 +57,13 @@ export const GET = withErrorBoundary(async (req: Request) => {
       concern.slaDueAt,
       active ? (overdue ? "OVERDUE" : "OPEN") : "COMPLETE",
       concern.duplicateOfId,
-    ].map(csvCell).join(",");
+    ];
   });
 
-  return new NextResponse([header.map(csvCell).join(","), ...rows].join("\n"), {
+  return new NextResponse(toCsv(header, rows), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="barangayresolve-concerns-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "Content-Disposition": `attachment; filename="${csvFilename("concerns")}"`,
       "Cache-Control": "no-store",
     },
   });

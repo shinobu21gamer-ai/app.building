@@ -6,6 +6,7 @@ import {
   PiiRevealForm,
   VerificationGateToggle,
 } from "@/components/admin/privacy-desk";
+import { RetentionDesk } from "@/components/admin/retention-desk";
 import { requirePermission } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -16,6 +17,7 @@ import {
   recentPiiAccessLog,
 } from "@/lib/privacy/service";
 import { isIdentityGateEnabled } from "@/lib/identity/verification";
+import { retentionDesk } from "@/lib/privacy/retention";
 import { maskedPhoneDisplay } from "@/lib/privacy/phone-store";
 
 
@@ -32,11 +34,12 @@ export default async function AdminPrivacyPage() {
   const locale = await getLocale();
   const t = copy[locale].revamp.adminDesk;
 
-  const [requests, counts, accessLog, gateEnabled] = await Promise.all([
+  const [requests, counts, accessLog, gateEnabled, retention] = await Promise.all([
     listDataSubjectRequests(),
     dsrCounts(),
     recentPiiAccessLog(50),
     isIdentityGateEnabled(),
+    retentionDesk(),
   ]);
 
   return (
@@ -86,6 +89,24 @@ export default async function AdminPrivacyPage() {
             },
           }))}
           locale={locale}
+        />
+      </Card>
+
+      <Card title={t.retentionTitle} description={t.retentionLead}>
+        <RetentionDesk
+          locale={locale}
+          lastSweepAt={retention.lastSweepAt?.toISOString() ?? null}
+          rows={retention.rows.map((row) => ({
+            key: row.key,
+            dataCategory: row.dataCategory,
+            action: row.action,
+            retentionDays: row.retentionDays,
+            lastRunAt: row.lastRunAt?.toISOString() ?? null,
+            status: row.status,
+            scanned: row.scanned,
+            affected: row.affected,
+            due: retention.dueKeys.includes(row.key),
+          }))}
         />
       </Card>
 
