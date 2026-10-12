@@ -266,7 +266,16 @@ All seeded passwords: `BarangayResolve123!`
 | `official.peace@barangayresolve.dev` | Official — Peace and Order |
 | `official.secretary@barangayresolve.dev` | Official — Secretary |
 | `official.health@barangayresolve.dev` | Official — Health |
+| `official.social_services@barangayresolve.dev` | Official — Social Services / Assistance Committee |
+| `official.engineering@barangayresolve.dev` | Official — Maintenance Team / Engineering Office |
+| `official.treasury@barangayresolve.dev` | Official — Office of the Barangay Treasurer |
+| `treasurer@barangayresolve.dev` | Barangay Treasurer (treasury role) |
+| `captain@barangayresolve.dev` | Barangay Captain (approving official) |
+| `crew1@barangayresolve.dev` | Maintenance crew — masonry (crew profile) |
+| `crew2@barangayresolve.dev` | Maintenance crew — plumbing (crew profile) |
 | `resident@barangayresolve.dev` | Resident |
+
+Accounts are created by `npm run db:seed` (see `prisma/seed.ts`). The seed only inserts missing accounts (`upsert` with an empty `update`), so re-running it does not reset passwords.
 
 ## Database Schema
 
