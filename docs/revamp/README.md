@@ -1,8 +1,8 @@
 # BarangayResolve — Complete Revamp
 
 Planning and delivery notes for the UI/UX, workflow, schema and module revamp.
-**Status: Stage 4 of 7 (treasury) is implemented on this branch.**
-Stages 4–7 are specified here and are delivered one at a time, on your go-ahead.
+**Status: Stage 5 of 7 (SLA escalation + tamper-evident audit chain) is implemented on this branch.**
+Stages 6-7 are specified here and are delivered one at a time, on your go-ahead.
 
 | Stage | Scope | State |
 |---|---|---|
@@ -10,7 +10,7 @@ Stages 4–7 are specified here and are delivered one at a time, on your go-ahea
 | 2 | RBAC and auth (6 roles, ID verification, RA 10173 controls) | **Delivered** (this branch) |
 | 3 | Core workflow, including manpower planning and crew assignment | **Delivered** (this branch) |
 | 4 | Treasury (COA MOOE budgets, earmarks, disbursements, approvals, live balances) | **Delivered** (this branch) |
-| 5 | SLA (48-hour escalation via cron) and the hash-chained audit log | Specified, awaiting go-ahead |
+| 5 | SLA (48-hour escalation via cron) and the hash-chained audit log | **Delivered** (this branch) |
 | 6 | UI revamp (design system + mobile-first role portals) | Specified, awaiting go-ahead |
 | 7 | Reports and dashboards | Specified, awaiting go-ahead |
 
@@ -218,25 +218,46 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
 | `src/app/official/concerns/[id]/page.tsx` | M ✅ | Case funding panel for holders of `treasury.balance.view` |
 | `src/lib/treasury/{coa,ledger,desk,flows}.test.ts` | N ✅ | 56 tests: code rules, balance math, approval order, no overspend |
 
-### Stage 5 — SLA and audit
+### Stage 5 — SLA and audit ✅
 
 | Path | | Purpose |
 |---|---|---|
-| `src/lib/sla/policy.ts` | N | Policy resolution (type + priority + stage) |
-| `src/lib/sla/escalation.ts` | N | 48-hour scan, escalation rows, notifications via the existing service |
-| `src/lib/audit/chain.ts` | N | Canonical payload, SHA-256 chaining, locked append, verification |
-| `src/lib/audit.ts` | M | `recordAudit` appends through the chain |
-| `src/lib/audit/query.ts` | N | Audit explorer queries |
-| `src/lib/privacy/retention.ts` | N/M | Retention sweep (from stage 2 helpers) |
-| `scripts/audit-chain-backfill.ts` | N | Chains pre-existing audit rows |
-| `src/app/api/v1/cron/sla-escalations/route.ts` | N | `CRON_SECRET`-guarded escalation job |
-| `src/app/api/v1/cron/{retention,audit-verify}/route.ts` | N | Retention + chain verification jobs |
-| `src/app/api/v1/cron/email-deliveries/route.ts` | M | Wrapped in `CronRun` bookkeeping (behaviour unchanged) |
-| `src/app/api/v1/admin/{audit,sla,escalations,cron}/**` | N | Ops screens |
-| `src/app/admin/{audit,sla,cron}/page.tsx`, `captain/escalations/page.tsx` | N | UI |
-| `src/components/audit/*`, `src/components/sla/*` | N | Timeline, chain-verification badge, escalation queue |
-| `.github/workflows/sla-cron.yml` | N | Schedules the escalation job (alternative: Vercel crons) |
-| `src/lib/audit/*.test.ts`, `src/lib/sla/*.test.ts` | N | Chain tamper detection, escalation idempotency |
+| `src/lib/sla/policy.ts` | N ✅ | Pure SLA rules: policy specificity, window resolution, level, dedupe key, labels (21 tests) |
+| `src/lib/sla/escalation.ts` | N ✅ | The run (`runSlaEscalations`, `planEscalations`), the case clock (`resolveStageWindow`, `armCaseStageClock`), the queue/acknowledge/resolve desk, policy CRUD, overview (12 tests) |
+| `src/lib/audit/chain.ts` | N ✅ | Pure chain rules: canonical payload, `sha256` chaining, verification of a row range (20 tests) |
+| `src/lib/audit/store.ts` | N ✅ | Chained writer, verifier + `AuditVerificationRun`, explorer queries, facets, digest, legacy backfill, `serialize*` projections |
+| `src/lib/audit.ts` | M ✅ | `recordAudit(input, { tx?, actorRole? })` now appends through the chain; still never breaks the caller. All 70 call sites unchanged |
+| `src/lib/cases/sla.ts` | M ✅ | Thin facade over `runSlaEscalations` that keeps the existing `scanSlaBreaches(): Promise<number>` |
+| `src/lib/validations/sla.ts`, `audit.ts` | N ✅ | `slaPolicySaveSchema`, `slaPolicyToggleSchema`, `escalationActionSchema` (a resolve needs a note), `auditVerifySchema` |
+| `src/lib/cases/service.ts`, `src/app/api/v1/concerns/route.ts` | M ✅ | The case clock is armed/re-armed on every stage change and on submit (policy-resolved window, not `CASE_SLA_HOURS`) |
+| `src/app/api/v1/cron/sla-escalations/route.ts`, `cron/audit-verify/route.ts` | N ✅ | `CRON_SECRET`-guarded jobs (same pattern as `cron/email-deliveries`); `CronRun` + `AuditVerificationRun` bookkeeping |
+| `src/app/api/v1/admin/sla/policies/route.ts`, `policies/[id]/route.ts` | N ✅ | Policy list, create, full edit, activate/deactivate |
+| `src/app/api/v1/admin/sla/scan/route.ts` | N ✅ | Manual run from the SLA desk (`triggeredBy: "MANUAL"`) |
+| `src/app/api/v1/sla/escalations/[id]/route.ts` | N ✅ | Acknowledge / resolve an escalation (`sla.escalation.acknowledge`) |
+| `src/app/api/v1/admin/audit/route.ts`, `audit/verify/route.ts` | N ✅ | Explorer (filters + paging), printable digest, on-demand verification |
+| `src/app/admin/sla/page.tsx`, `captain/escalations/page.tsx` | N ✅ | SLA desk (queue, counts, policies, run history) and the Captain's queue |
+| `src/app/admin/audit/page.tsx` | N ✅ | Chain status, verify button, digest, filter + paging explorer |
+| `src/components/sla/{escalation-table,escalation-actions,run-scan-button,policy-form,policy-actions}.tsx` | N ✅ | Queue cards, ack/resolve, manual scan, policy create/edit/activate |
+| `src/components/audit/{verify-button,audit-table}.tsx` | N ✅ | Range verification with an OK/BROKEN report, sequence + hash columns |
+| `src/app/{admin,captain}/layout.tsx` | M ✅ | Nav entries for the SLA desk, audit trail and Captain queue |
+| `src/lib/i18n.ts` | M ✅ | `revamp.slaDesk` (59 keys) and `revamp.auditDesk` (45 keys) in en + fil, `slaNav`/`auditNav` inline labels |
+| `scripts/audit-chain-backfill.ts` | N ✅ | Chains pre-existing audit rows, dry run unless `--apply` (`npm run audit:chain-backfill`) |
+| `.github/workflows/sla-cron.yml` | N ✅ | Hourly escalation scan + weekly audit verification, both through the app's own cron routes |
+| `.env.example` | M ✅ | `CRON_SECRET` documented with the three jobs; the retired `CASE_SLA_HOURS` removed |
+
+**Where this diverged from the stage-5 plan** (deliberate, so the docs do not promise files that are not there):
+
+- The explorer queries live in `src/lib/audit/store.ts`; there is no separate
+  `src/lib/audit/query.ts`.
+- There is no `/admin/cron` page: the `CronRun` history is part of `/admin/sla`,
+  where the escalation job it describes belongs.
+- There is no `/api/v1/admin/escalations` group: the queue is rendered by the two
+  desks and the single action route `PATCH /api/v1/sla/escalations/[id]`.
+- **Not delivered:** `src/lib/privacy/retention.ts` and `/api/v1/cron/retention`.
+  The `RetentionRun` model, the `CronRun` job enum value and the stage-2 privacy
+  helpers exist, but the sweep itself is still unbuilt — it is the one item from
+  the revamp brief ("retention rules") with nothing behind it yet. Now flagged as
+  an open item below rather than quietly dropped.
 
 ### Stage 6 — UI revamp
 
@@ -304,3 +325,11 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
    anonymous reference (`BR-PUB-…`), never the real case number; coordinates are rounded
    to a coarse geohash. Historical cases are only projected after the consent review in
    stage 6 — the migration does not publish anything by itself.
+8. **Retention sweep is the one unfinished control.** Stage 2 landed the retention
+   *policy* data (`RetentionRun`, consent records, the privacy helpers on
+   `/admin/privacy`) but no job that applies it. Stage 5 was the natural place to add
+   the sweep and it was deliberately left out of the delivered scope, so the brief's
+   "retention rules" is currently a written rule without an executor. My proposal:
+   build `src/lib/privacy/retention.ts` + `/api/v1/cron/retention` in stage 7 next to
+   the reports, where "what was deleted, and when" is also a reportable figure. Say
+   the word if you would rather have it in stage 6.

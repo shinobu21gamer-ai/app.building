@@ -28,6 +28,11 @@ import {
   type WorkflowTargetStatus,
 } from "@/lib/cases/workflow";
 import { assertCrewGate } from "@/lib/cases/crew";
+import {
+  armCaseStageClock,
+  resolveEscalationsForCase,
+} from "@/lib/sla/escalation";
+import { isSlaOpenStage } from "@/lib/sla/policy";
 import { syncPublicRecord } from "@/lib/cases/public-record";
 
 type Tx = Prisma.TransactionClient;
@@ -382,6 +387,16 @@ export async function changeConcernStatus(
 
   await tx.concern.update({ where: { id: concern.id }, data });
 
+  // The clock belongs to the stage the case is in: re-arm it (and store which
+  // policy it is running against) every time the stage moves.
+  if (isSlaOpenStage(input.status)) {
+    await armCaseStageClock(tx, { concernId: concern.id, status: input.status, from: now });
+  }
+  // Work that is finished cannot stay in the escalation queue.
+  if (input.status === "RESOLVED" || input.status === "CLOSED") {
+    await resolveEscalationsForCase(tx, concern.id, now);
+  }
+
   const entryType =
     input.status === "RESOLVED"
       ? "RESOLUTION"
@@ -646,6 +661,9 @@ export async function validateConcern(
           ...(concern.status === "SUBMITTED" ? { stageEnteredAt: now } : {}),
         },
       });
+      if (concern.status === "SUBMITTED") {
+        await armCaseStageClock(tx, { concernId: concern.id, status: "ASSIGNED", from: now });
+      }
       routedOfficeName = office.name;
     }
   }

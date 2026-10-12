@@ -244,10 +244,21 @@ CoaAccount (verified object codes)  FundSource (GF, 20% DF, SEF, trust)
 
 ## 6. SLA and escalation (48 hours)
 
+*Delivered in stage 5: `src/lib/sla/policy.ts` (pure rules, 21 tests),
+`src/lib/sla/escalation.ts` (the run + the desks), `src/lib/cases/sla.ts` (the
+facade `src/lib/cases/service.ts` and the concern routes already called).*
+
 - `SlaPolicy` rows resolve per `(stage, typeId?, priorityLevel?)`; the most
-  specific active policy wins, and the resolved policy id is stored on the case
-  (`Concern.slaPolicyId`) so an escalation can be explained after the fact. The
-  default is **48 hours** for every open stage.
+  specific active policy wins (equal specificity → lowest id), and the resolved
+  policy id is stored on the case (`Concern.slaPolicyId`) so an escalation can be
+  explained after the fact. The default is **48 hours** (`SLA_DEFAULT_HOURS`) for
+  every open stage, so the system works before anybody writes a policy.
+- Two entry points build the clock: `resolveStageWindow(client, scope)` answers
+  "what window applies to this case right now", and `armCaseStageClock(tx, …)`
+  stores `Concern.slaDueAt` + `slaPolicyId` and re-arms whenever a case enters an
+  open stage (`armCaseStageClock` returns `null` for `RESOLVED`/`CLOSED`, and
+  re-arming also resolves the case's open escalations via
+  `resolveEscalationsForCase`).
 - The clock is `Concern.stageEnteredAt` (not `updatedAt`, which edits would move).
 - `/api/v1/cron/sla-escalations` (guarded by `CRON_SECRET`, same pattern as the
   existing `/api/v1/cron/email-deliveries`) scans open cases, and for each
@@ -255,36 +266,70 @@ CoaAccount (verified object codes)  FundSource (GF, 20% DF, SEF, trust)
   `"<concernId>:<stage>:<level>"` — the unique `dedupeKey` makes re-running the
   job harmless — plus a `CaseStatusHistory` entry (`ESCALATION`) and an
   `SLA_BREACHED` notification through the existing service contract.
-- Escalations go to `SlaPolicy.escalateToRole` (default `CAPTAIN`) and the roles
-  in `notifyRoles` (`ADMIN`, `TREASURER`); the Captain sees a queue with an
-  acknowledge action. Level 2 fires at 2× the window.
+- Escalations go to `SlaPolicy.escalateToRole` (default `CAPTAIN`, this is also
+  the row's `escalatedToRole`) and to the roles in `notifyRoles`; the Captain sees
+  a queue (`/captain/escalations`) with an acknowledge action, and a Captain can
+  only *resolve* an escalation with a note explaining what happened.
+- Levels are capped at 3 (`SLA_MAX_ESCALATION_LEVEL`): level 1 at the deadline,
+  level 2 at 2× the window, level 3 at 3×, and level 3 repeats no further because
+  the `dedupeKey` for that case/stage is already taken. `SLA_OPEN_STAGES` is the
+  five pre-`RESOLVED` statuses; only those stages can escalate.
 - Every run is recorded in `CronRun` (counts, duration, errors), so “did the job
   run?” is answerable in the UI instead of by reading logs.
-- Scheduling: `.github/workflows/sla-cron.yml` (hourly, `CRON_SECRET`) is the
-  default because it works on the current hosting tier; Vercel cron entries are
-  documented as the alternative.
+- The desks: `/admin/sla` (queue, counts, policy CRUD via
+  `GET|POST /api/v1/admin/sla/policies` and `PATCH …/policies/[id]`, a manual run
+  via `POST /api/v1/admin/sla/scan`, and the `CronRun` history) and the Captain's
+  queue. `PATCH /api/v1/sla/escalations/[id]` is the acknowledge/resolve action.
+- Scheduling: `.github/workflows/sla-cron.yml` runs the escalation job hourly on
+  the `20 * * * *` mark and the audit verification weekly (see §7), each calling
+  the app's own cron route with `CRON_SECRET` — the same shape as the existing
+  email-delivery cron. Vercel cron entries are the documented alternative.
 
 ---
 
 ## 7. Tamper-evident audit chain
 
+*Delivered in stage 5: `src/lib/audit/chain.ts` (pure hashing rules, 20 tests),
+`src/lib/audit/store.ts` (writer, verifier, explorer queries), a chain-aware
+`src/lib/audit.ts` — the 70 `recordAudit()` call sites are untouched.*
+
 - `Audit` gains `seq`, `prevHash`, `hash`, `chainVersion`, `actorRole`.
-- Append algorithm: lock the singleton `AuditChainState` row
-  (`SELECT … FOR UPDATE`), compute
-  `hash = sha256(prevHash || canonical(payload))` where the canonical payload is a
-  deterministic JSON of `(seq, action, resourceType, resourceId, userId, actorRole,
-  description, ip, createdAt)` with sorted keys, then insert the row and update the
-  tip — all in the caller's transaction, so an audited write and its audit row
-  either both land or neither does.
+- Append algorithm: `hash = sha256(prevHash + "\n" + canonical(payload))`, where
+  the canonical payload is a JSON array of `[field, value]` pairs in a fixed order
+  — `seq, action, resourceType, resourceId, userId, actorRole, description, ip,
+  createdAt` — so the hash does not depend on key order or on how a JSON
+  serializer happens to wander (`undefined` → `null`, `BigInt` → string, `Date` →
+  ISO). Genesis `prevHash` is `""`, and `chainVersion` is `1` so the canonical
+  form can evolve without invalidating old rows.
+- The append happens inside the caller's transaction
+  (`appendAuditEntry(tx, …)`), which bumps the singleton `AuditChainState`
+  (`id = 1`) `lastSeq`/`lastHash` in the same order: the `UPDATE` takes the row
+  lock, so two concurrent writers serialise instead of forking the chain. An
+  audited write and its audit row therefore either both land or neither does.
+  `appendAuditEntryStandalone()` (used where there is no transaction, e.g. cron
+  bookkeeping) retries `P2002`/`P2034`/`P2028` three times before giving up.
 - `recordAudit()` keeps its "never break the caller" contract: a failing audit
   write is logged and swallowed (as today), but a *successful* business write can
   no longer be committed without its chain row when they share a transaction.
-- Verification walks `seq` order, recomputes each hash and the links, and writes
-  an `AuditVerificationRun` (`OK`/`BROKEN` + `firstBrokenSeq`). A broken chain is a
-  critical escalation in the admin UI.
+- Verification (`verifyAuditChain`) walks `seq` order in 500-row batches,
+  recomputes every hash and every link, and writes an `AuditVerificationRun`
+  (`RUNNING` → `OK`/`BROKEN`/`FAILED`, with `firstBrokenSeq` and the reason). It
+  only advances `AuditChainState.lastVerifiedSeq` on `OK` over a complete walk, so
+  `auditChainStatus().healthy` means "the last run was `OK` and reached the tip" —
+  a broken chain shows as a red banner on `/admin/audit`. The weekly
+  `/api/v1/cron/audit-verify` job and the admin "verify now" button
+  (`POST /api/v1/admin/audit/verify`, optional `fromSeq`/`toSeq` range) both write
+  a run; `/api/v1/admin/audit?digest=1` returns `formatAuditDigest()` — the
+  printable, PII-free line an auditor compares against a copy taken earlier.
 - Pre-existing rows (no `seq`) are chained once by
-  `scripts/audit-chain-backfill.ts` in `(createdAt, id)` order; the verifier
-  reports the genesis boundary until that has run.
+  `npm run audit:chain-backfill` (`scripts/audit-chain-backfill.ts`, dry run
+  unless `--apply`) in `(createdAt, id)` order, preserving the original
+  `createdAt`; the explorer badges them `unchained` and the verifier reports the
+  genesis boundary until that has run. A verifier run limited to a range reports
+  `boundaryUnverified` instead of pretending the link into the window was checked.
+- BigInt is kept away from `NextResponse.json` (which throws on it) by the
+  `serialize*` projections in `src/lib/audit/store.ts`; the digest lines are built
+  from those strings.
 - Honest limitation, documented in the UI: a hash chain proves *internal*
   consistency and makes silent edits detectable; an attacker with write access to
   both the table and `AuditChainState` can still rewrite the whole chain, so the

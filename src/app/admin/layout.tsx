@@ -24,6 +24,8 @@ export default async function AdminLayout({
     { href: "/admin/privacy", label: revamp.privacyNav },
     { href: "/admin/roles", label: revamp.rolesNav },
     { href: "/admin/treasury", label: revamp.treasuryNav },
+    { href: "/admin/sla", label: revamp.slaNav },
+    { href: "/admin/audit", label: revamp.auditNav },
     { href: "/admin/settings", label: t.navSettings },
     { href: "/notifications", label: t.navNotifications },
   ];

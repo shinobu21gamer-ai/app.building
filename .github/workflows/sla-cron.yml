@@ -1,0 +1,63 @@
+name: Scheduled jobs
+
+# The jobs the app owes the resident on a clock:
+#   * the 48-hour escalation scan, hourly (20 minutes past the hour, so it never
+#     collides with the top-of-hour traffic of other schedulers);
+#   * the audit chain verification and digest, weekly on Sunday.
+#
+# Both call the app's own cron routes with CRON_SECRET, exactly like the email
+# retry job does, so the work happens inside the application (transactions,
+# audit chain, notifications) instead of in a shell script.
+#
+# Configuration:
+#   secret CRON_SECRET   — same value as the deployment's CRON_SECRET
+#   variable APP_BASE_URL — the public origin, e.g. https://barangayresolve.app
+# Without both, each job says so and exits green instead of failing every hour.
+
+on:
+  schedule:
+    - cron: "20 * * * *"
+    - cron: "40 1 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-jobs
+  cancel-in-progress: false
+
+jobs:
+  sla-escalations:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule != '40 1 * * 0'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run the escalation job
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ] || [ -z "$APP_BASE_URL" ]; then
+            echo "::warning::CRON_SECRET secret and/or APP_BASE_URL variable is not set — skipping the escalation job."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --max-time 120 \
+            -X POST "$APP_BASE_URL/api/v1/cron/sla-escalations" \
+            -H "Authorization: Bearer $CRON_SECRET"
+
+  audit-verify:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '40 1 * * 0'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify the audit chain
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ] || [ -z "$APP_BASE_URL" ]; then
+            echo "::warning::CRON_SECRET secret and/or APP_BASE_URL variable is not set — skipping the audit verification."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --max-time 300 \
+            -X POST "$APP_BASE_URL/api/v1/cron/audit-verify" \
+            -H "Authorization: Bearer $CRON_SECRET"
