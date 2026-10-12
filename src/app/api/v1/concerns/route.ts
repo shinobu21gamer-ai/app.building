@@ -27,6 +27,7 @@ import {
 import { loadPriorityConfig } from "@/lib/priority/config";
 import { holdForValidation } from "@/lib/routing/service";
 import { notifyConcernSubmitted } from "@/lib/notifications/service";
+import { assertConsent } from "@/lib/privacy/consent";
 import { listConcerns, parseConcernFilters } from "@/lib/cases/query";
 import { findLikelyDuplicate } from "@/lib/cases/duplicates";
 import { resolveStageWindow } from "@/lib/sla/escalation";
@@ -217,6 +218,11 @@ export const GET = withErrorBoundary(async (req: Request) => {
 export const POST = withErrorBoundary(async (req: Request) => {
   assertSameOrigin(req);
   const user = await requireApiRole(["RESIDENT"]);
+  await assertConsent(
+    user.id,
+    "DATA_PROCESSING",
+    "Your consent to process your data is missing, so this concern cannot be filed. Grant it on your Privacy page, then submit again."
+  );
 
   const form = await readCappedFormData(req);
 

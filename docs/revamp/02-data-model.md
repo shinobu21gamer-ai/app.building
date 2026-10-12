@@ -46,7 +46,7 @@ relation has a Prisma-level name when two models are linked more than once.
 |---|---|---|
 | `CaseAssessment` | `concernId` (unique), `status`, `eligibilityChecked`, `inspection*`, `resourcesVerified*`, `approval*`, `workersNeeded`, `estimatedDurationMinutes`, `scheduledStartAt/EndAt`, `equipmentNotes`, `laborCost`, `materialsCost`, `equipmentCost`, `otherCost`, `totalCost`, `laborCostBasisJson` | One per case; `workersNeeded ≥ 1`, duration and equipment notes are mandatory before the case leaves `UNDER_ASSESSMENT`; the cost snapshot keeps labor explainable |
 | `CrewAssignment` | `concernId`, `crewId`, `scheduledStartAt/EndAt`, `assignedAt`, `releasedAt`, `isActive` | Unique `(concernId, crewId)`; releasing flips `isActive` (the row is reused on re-assignment). Overlap checks use these windows |
-| `CaseWorkflowOverride` | `concernId`, `kind`, `reason` (required), `actorId`, `approvedById` | Append-only exception log; kinds `CREW_SHORTFALL`, `BUDGET_STAGE_SKIP`, `STATUS_FORCE`, `SLA_EXTENSION`, `VALIDATION_BYPASS`, `ASSESSMENT_BYPASS` |
+| `CaseWorkflowOverride` | `concernId`, `kind`, `reason` (required), `actorId`, `approvedById` | Append-only exception log; kinds `CREW_SHORTFALL`, `BUDGET_STAGE_SKIP` (retired: read-only, no longer creatable), `STATUS_FORCE`, `SLA_EXTENSION`, `VALIDATION_BYPASS`, `ASSESSMENT_BYPASS` |
 | `PublicCaseRecord` | `publicRef` (unique, `BR-PUB-…`), `concernId` (unique), `typeKey`, `categoryName`, `publicTitle`, `status`, `areaLabel`, `geohash`, `responseHours`, `published` | The **only** table public pages read; no names, no case number, no exact coordinates |
 
 ### SLA
@@ -95,7 +95,7 @@ relation has a Prisma-level name when two models are linked more than once.
 ## 3. Lifecycle values now in use
 
 `Concern.status`: `SUBMITTED → ASSIGNED → UNDER_ASSESSMENT → AWAITING_BUDGET`
-(skippable) `→ IN_PROGRESS → RESOLVED → CLOSED`. The previous five values are a
+(skipped only by DOCUMENTS, which need no money) `→ IN_PROGRESS → RESOLVED → CLOSED`. The previous five values are a
 subset, so existing rows remain valid; no data rewrite is required.
 
 `CaseStatusHistory.entryType` keeps its documented set and gains `ASSESSMENT`,

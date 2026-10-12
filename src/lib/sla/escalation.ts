@@ -5,7 +5,7 @@ import { HISTORY_ENTRY_SLA_BREACH } from "@/lib/cases/workflow";
 // The frozen notification service is *called*, never modified: the SLA_BREACHED
 // catalogue entry and the `Notification` rows it feeds are the same contract the
 // pre-revamp scanner used (docs/revamp/01-architecture.md §4).
-import { NOTIFICATION_TYPES } from "@/lib/notifications/service";
+import { notifySlaBreached } from "@/lib/notifications/service";
 import {
   SLA_MAX_ESCALATION_LEVEL,
   SLA_OPEN_STAGES,
@@ -305,26 +305,20 @@ async function escalateCase(
   const notified = new Set<number>();
   for (const recipient of recipients) {
     notified.add(recipient.id);
-    await tx.notification.create({
-      data: {
-        userId: recipient.id,
-        concernId: plan.concernId,
-        type: NOTIFICATION_TYPES.SLA_BREACHED,
-        title: "Case SLA breached",
-        message: `${plan.caseNumber} has been in ${plan.stage} for ${plan.hoursOverdue}h past its ${plan.hours}-hour window (${escalationLevelLabel(plan.level)}).`,
-      },
+    await notifySlaBreached(tx, {
+      userId: recipient.id,
+      concernId: plan.concernId,
+      title: "Case SLA breached",
+      message: `${plan.caseNumber} has been in ${plan.stage} for ${plan.hoursOverdue}h past its ${plan.hours}-hour window (${escalationLevelLabel(plan.level)}).`,
     });
   }
 
   if (plan.level === 1 && !notified.has(plan.residentUserId)) {
-    await tx.notification.create({
-      data: {
-        userId: plan.residentUserId,
-        concernId: plan.concernId,
-        type: NOTIFICATION_TYPES.SLA_BREACHED,
-        title: "Your concern is taking longer than expected",
-        message: `Concern ${plan.caseNumber} has passed its service deadline. It remains active and is being monitored.`,
-      },
+    await notifySlaBreached(tx, {
+      userId: plan.residentUserId,
+      concernId: plan.concernId,
+      title: "Your concern is taking longer than expected",
+      message: `Concern ${plan.caseNumber} has passed its service deadline. It remains active and is being monitored.`,
     });
   }
 

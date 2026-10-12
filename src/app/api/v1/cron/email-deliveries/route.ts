@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const sent = await retryPendingEmailDeliveries();
+    const sent = await retryPendingEmailDeliveries(undefined, { trigger: "CRON" });
     return NextResponse.json({ success: true, data: { sent } });
   } catch (error) {
     console.error("[cron] email delivery retry failed:", error);

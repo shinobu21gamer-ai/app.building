@@ -37,7 +37,7 @@ prisma/**                       Schema, migrations, rollbacks
 | `src/lib/reports/*` | new | Engineering, treasury, privacy and public reports |
 | `src/lib/cases/figures.ts` | new | The shared case figures: tallies, duration summaries, "finished" |
 | `src/lib/treasury/utilisation.ts` | new | MOOE utilisation, shared by the treasury dashboard and report |
-| `src/lib/notifications/*` | exists, **untouched** | Every notification in the system |
+| `src/lib/notifications/*` | exists; existing functions unchanged, two additive helpers added | Every notification in the system |
 
 **Authorization placement.** Route handlers authenticate and check a permission;
 services re-check the *rules that protect data* (office scoping, ownership, state)
@@ -117,8 +117,8 @@ only `idNumberLast4`.
                  └──────┬─────────────┘
                         │            requiresBudget (AYUDA/BUDGET/REPAIR)
                         ▼
-                 ┌────────────────────┐   skippable for DOCUMENTS with a reasoned
-                 │  AWAITING_BUDGET   │──► CaseWorkflowOverride(BUDGET_STAGE_SKIP)
+                 ┌────────────────────┐   required for money cases (no skip, no
+                 │  AWAITING_BUDGET   │    override); DOCUMENTS may skip
                  └──────┬─────────────┘
                         │ earmark approved + funds confirmed
                         ▼
@@ -143,11 +143,11 @@ Guards and effects (all enforced inside the transaction, never only in the UI):
 |---|---|---|
 | SUBMITTED → ASSIGNED | admin validation done (`validatedAt`), type + category + priority set | `CaseAssignment`, `AssignedAt`, status history `ASSIGNMENT`, notify office officials + resident |
 | ASSIGNED → UNDER_ASSESSMENT | assigned office matches actor (or ADMIN) | `stageEnteredAt` reset, SLA clock per `SlaPolicy` |
-| UNDER_ASSESSMENT → AWAITING_BUDGET | assessment `SUBMITTED` with `workersNeeded ≥ 1*`, duration, equipment notes; resources verified | `awaitingBudgetAt`, `CaseAssessment` rows audited, treasury sees the funding request |
-| UNDER_ASSESSMENT → IN_PROGRESS | `requiresBudget = false` **or** `BUDGET_STAGE_SKIP` override with reason* | override row, `budgetSkippedAt`, history `OVERRIDE` |
-| AWAITING_BUDGET → IN_PROGRESS | earmark approved + treasurer fund certification | ledger `EARMARK` reservation, disbursement draft may exist |
+| UNDER_ASSESSMENT → AWAITING_BUDGET | assessment `SUBMITTED` with `workersNeeded ≥ 1*`, duration, equipment notes; saved cost estimate `totalCost > 0` (labour included) for money cases | `awaitingBudgetAt`, `CaseAssessment` rows audited, treasury sees the funding request |
+| UNDER_ASSESSMENT → IN_PROGRESS | `requiresBudget = false` only (DOCUMENTS). Money cases cannot skip AWAITING_BUDGET; there is no override for this | history entry |
+| AWAITING_BUDGET → IN_PROGRESS | `requiresBudget = false`, or approved/released earmarks for this case whose total ≥ `totalCost`* | ledger `EARMARK` reservation, disbursement draft may exist |
 | IN_PROGRESS → RESOLVED | proof photo*, resolution record, crew releases | `ResolutionRecord`, notify resident, feedback request |
-| RESOLVED → CLOSED | verification step done (`verifiedAt`, `verificationStatus`) | `closedAt`, completion record, public projection refresh, notify resident |
+| RESOLVED → CLOSED | passing verification (`FIXED_VERIFIED` or `PARTIALLY_VERIFIED`, `verifiedAt` set); a `FAILED` or still-pending check needs a `STATUS_FORCE` override with reason | `closedAt`, completion record, public projection refresh, notify resident |
 
 Manpower rules (stage 3):
 
@@ -168,7 +168,9 @@ Manpower rules (stage 3):
   `CrewProfile.hourlyRate|dailyRate × estimatedDurationMinutes × workersNeeded`
   when a rate exists, otherwise entered manually; the derivation is snapshotted in
   `laborCostBasisJson` so an estimate can be explained later. `totalCost` sums
-  labor + materials + equipment + other.
+  labor + materials + equipment + other. With no crew rate on file and no labour
+  figure entered, labour is ₱0 (no crew, no payment) and the basis records it.
+  Entering the first assessment re-arms the 48-hour clock for UNDER_ASSESSMENT.
 - Every change to the plan, the crew list or the estimate writes a
   `CaseStatusHistory` entry (`MANPOWER_PLAN`, `CREW_ASSIGNMENT`,
   `CREW_PROGRESS`) **and** an `Audit` row.
@@ -181,7 +183,10 @@ flagged `no manpower plan recorded` in the UI.
 
 ## 4. Notification contract (existing service, called as-is)
 
-`src/lib/notifications/service.ts` is not modified. New events map onto its
+`src/lib/notifications/service.ts` keeps every existing function unchanged. Two
+additive functions were added for events that had no helper: `notifyCrewAssigned`
+(crew assignment) and `notifySlaBreached` (SLA escalation, staff and resident).
+No code writes a `Notification` row outside this module. New events map onto its
 existing helpers, and the machine-written rows keep the exported
 `NOTIFICATION_TYPES` contract exactly as the current SLA scanner uses it:
 
@@ -262,6 +267,16 @@ facade `src/lib/cases/service.ts` and the concern routes already called).*
   re-arming also resolves the case's open escalations via
   `resolveEscalationsForCase`).
 - The clock is `Concern.stageEnteredAt` (not `updatedAt`, which edits would move).
+- **Email retry** (`retryPendingEmailDeliveries`, used by the cron route and the
+  admin retry route): every batch that touches a row is written to the audit chain
+  as `EMAIL_RETRY_BATCH` with counts and row ids only (no addresses or bodies). A
+  row left in `SENDING` for more than 15 minutes by a run that died mid-send is put
+  back to `FAILED` for another attempt; its attempt is already counted, so the
+  five-attempt cap still holds. The trade-off: if the dead run had in fact sent the
+  email, the resident may receive a duplicate.
+- **Report row limits**: the treasury report reads one row past its 5,000-row limit
+  and shows the same warning as the engineering and privacy reports when a register
+  is cut short.
 - `/api/v1/cron/sla-escalations` (guarded by `CRON_SECRET`, same pattern as the
   existing `/api/v1/cron/email-deliveries`) scans open cases, and for each
   overdue case writes one `CaseEscalation` row keyed by

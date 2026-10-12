@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { labourStartBlock } from "@/lib/cases/labour";
 import { createApiError } from "@/lib/api";
 import {
   actionDateForDay,
@@ -22,7 +23,8 @@ import {
   canTransition,
   OVERRIDE_REASON_MIN,
   PROOF_REQUIRED_MESSAGE,
-  requiresBudgetSkipOverride,
+  budgetStageBlock,
+  isPassingVerification,
   type OverrideKind,
   type ResolutionType,
   type VerificationStatus,
@@ -30,6 +32,8 @@ import {
   type WorkflowTargetStatus,
 } from "@/lib/cases/workflow";
 import { assertCrewGate } from "@/lib/cases/crew";
+import { fieldCheckGateBlock } from "@/lib/cases/field-check-rules";
+import { fundingGateForConcern } from "@/lib/treasury/budget";
 import {
   armCaseStageClock,
   resolveEscalationsForCase,
@@ -252,7 +256,7 @@ function requestedStatusDay(input: StatusChangeInput): {
  *
  * Gates enforced here (not only in the route):
  *   * IN_PROGRESS - the planned crew must be assigned, or an override given
- *   * skipping AWAITING_BUDGET on a funded case - override required
+ *   * money cases - AWAITING_BUDGET cannot be skipped; estimate and funds required (budgetStageBlock)
  *   * CLOSED - the resolution must be verified, or an override given
  */
 export async function changeConcernStatus(
@@ -302,6 +306,39 @@ export async function changeConcernStatus(
   let overrideKind: OverrideKind | null = null;
   let crewProgressLabel: string | null = null;
 
+  // ---- gate: a requested field check must confirm the case before it continues ----
+  if (concern.status === "ASSIGNED" && input.status === "UNDER_ASSESSMENT") {
+    const checks = await tx.fieldCheck.findMany({
+      where: { concernId: concern.id },
+      select: { status: true, finding: true },
+    });
+    const fieldBlock = fieldCheckGateBlock(checks);
+    if (fieldBlock) throw createApiError.badRequest(fieldBlock);
+  }
+
+  // ---- gate: money cases wait in AWAITING_BUDGET, sized and funded ----
+  if (
+    concern.typeRequiresBudget &&
+    (input.status === "AWAITING_BUDGET" || input.status === "IN_PROGRESS")
+  ) {
+    const assessment = await tx.caseAssessment.findUnique({
+      where: { concernId: concern.id },
+      select: { totalCost: true },
+    });
+    const funding = await fundingGateForConcern(tx, concern.id);
+    const block = budgetStageBlock({
+      fromStatus: concern.status,
+      toStatus: input.status,
+      typeRequiresBudget: true,
+      estimatedCost:
+        assessment?.totalCost === null || assessment?.totalCost === undefined
+          ? null
+          : Number(assessment.totalCost),
+      fundedAmount: funding.total,
+    });
+    if (block) throw createApiError.badRequest(block);
+  }
+
   // ---- gate: starting work needs the planned crew on site -------------
   if (input.status === "IN_PROGRESS") {
     const progress = await assertCrewGate(tx, concern.id).catch((error: unknown) => {
@@ -317,20 +354,10 @@ export async function changeConcernStatus(
     }
   }
 
-  // ---- gate: skipping the money stage on a funded case ----------------
-  if (
-    requiresBudgetSkipOverride({
-      fromStatus: concern.status,
-      toStatus: input.status,
-      typeRequiresBudget: concern.typeRequiresBudget,
-    })
-  ) {
-    if (!overrideReason || overrideReason.length < OVERRIDE_REASON_MIN) {
-      throw createApiError.badRequest(
-        "This case needs funds, so it must pass through AWAITING_BUDGET. Move it there, or record a budget-skip override with a reason."
-      );
-    }
-    overrideKind = "BUDGET_STAGE_SKIP";
+  // ---- gate: starting work needs labour that is priced (no override) ---
+  if (input.status === "IN_PROGRESS") {
+    const labourBlock = await labourStartBlock(tx, concern.id);
+    if (labourBlock) throw createApiError.badRequest(labourBlock);
   }
 
   // ---- gate: a case may only close on a verified resolution -----------
@@ -342,7 +369,7 @@ export async function changeConcernStatus(
     const verified =
       resolution?.verifiedAt !== null &&
       resolution?.verifiedAt !== undefined &&
-      resolution.verificationStatus !== "PENDING";
+      isPassingVerification(resolution.verificationStatus);
     if (!verified) {
       if (!overrideReason || overrideReason.length < OVERRIDE_REASON_MIN) {
         throw createApiError.badRequest(

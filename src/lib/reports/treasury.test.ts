@@ -187,6 +187,7 @@ describe("the treasury report's liquidation figure", () => {
         register: summarizeRegister(vouchers, PERIOD, NOW),
         aging: liquidationAging(vouchers, NOW),
         allVouchers: vouchers,
+        truncated: false,
       },
       { locale: "en", period: PERIOD, actor: ACTOR }
     );
@@ -202,5 +203,33 @@ describe("the treasury report's liquidation figure", () => {
   it("leaves money that is merely recent uncoloured", () => {
     const fresh = voucher({ id: 3, releasedAt: new Date("2026-10-09T02:00:00Z") });
     expect(stat([fresh])?.tone).toBe("default");
+  });
+});
+
+describe("the treasury report's row limit", () => {
+  const PERIOD: ReportPeriod = { key: "all", from: null, to: null, days: null };
+  const ACTOR: Actor = { id: 1, roleKey: "TREASURER", officeId: null };
+
+  function build(truncated: boolean) {
+    return buildTreasuryDocument(
+      {
+        utilisation: summarizeUtilisation([allocation()]),
+        register: summarizeRegister([], PERIOD, NOW),
+        aging: liquidationAging([], NOW),
+        allVouchers: [],
+        truncated,
+      },
+      { locale: "en", period: PERIOD, actor: ACTOR }
+    );
+  }
+
+  it("says so on the report when the figures were cut short", () => {
+    const warning = build(true).stats.filter((entry) => entry.tone === "warning");
+    expect(warning).toHaveLength(1);
+    expect(warning[0].value).toBe("5,000");
+  });
+
+  it("carries no warning when every row was read", () => {
+    expect(build(false).stats.some((entry) => entry.tone === "warning")).toBe(false);
   });
 });

@@ -21,6 +21,7 @@
     "db:validate": "prisma validate",
     "db:bootstrap-rbac": "tsx scripts/bootstrap-rbac.ts",
     "privacy:pii-backfill": "tsx scripts/pii-backfill.ts",
+    "privacy:consent-notice": "tsx scripts/consent-notice.ts",
     "privacy:pii-rotate": "tsx scripts/pii-rotate.ts",
     "privacy:public-backfill": "tsx scripts/public-record-backfill.ts",
     "audit:chain-backfill": "tsx scripts/audit-chain-backfill.ts",

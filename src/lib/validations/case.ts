@@ -6,7 +6,7 @@ import {
   MIN_WORKERS_NEEDED,
 } from "@/lib/cases/manpower";
 import {
-  OVERRIDE_KINDS,
+  CREATABLE_OVERRIDE_KINDS,
   OVERRIDE_REASON_MIN,
   PRIORITY_LEVELS,
   RESOLUTION_TYPES,
@@ -76,8 +76,7 @@ export const statusChangeSchema = z
     // the resolution's own resolvedOn is used instead (see the service).
     occurredOn: optionalCalendarDay("Action date"),
     resolution: resolutionSchema.optional(),
-    // Written reason for bypassing a workflow rule (crew shortfall, skipping
-    // the budget stage, forcing a close). Stored as a CaseWorkflowOverride.
+    // Written reason for bypassing a workflow rule (crew shortfall, forcing a close). Stored as a CaseWorkflowOverride.
     overrideReason: z
       .string()
       .trim()
@@ -238,7 +237,7 @@ export type ConcernValidationBody = z.infer<typeof concernValidationSchema>;
 // ------------------------------------------------------------ overrides
 
 export const workflowOverrideSchema = z.object({
-  kind: z.enum(OVERRIDE_KINDS),
+  kind: z.enum(CREATABLE_OVERRIDE_KINDS),
   reason: z
     .string()
     .trim()

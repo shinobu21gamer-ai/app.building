@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { createApiError } from "@/lib/api";
 import { selectRoutingRule } from "@/lib/routing/engine";
 import {
+  notifyAdminsAwaitingValidation,
   notifyConcernAssigned,
   notifyConcernReassigned,
   notifyConcernUnrouted,
@@ -39,6 +40,10 @@ export async function holdForValidation(
       remarks: "Awaiting admin validation before assignment.",
       actorRole: "SYSTEM",
     },
+  });
+  await notifyAdminsAwaitingValidation(tx, {
+    concernId: concern.id,
+    caseNumber: concern.caseNumber,
   });
   return { routed: false, reason: "awaiting_validation" };
 }

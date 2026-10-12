@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from "nodemailer";
+import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 
 type ProgressEmailInput = {
@@ -129,22 +130,65 @@ export async function sendConcernProgressEmail(
   }
 }
 
-export async function retryPendingEmailDeliveries(limit = 25): Promise<number> {
+/** Deliveries claimed per run. */
+export const EMAIL_RETRY_BATCH = 25;
+/** A row left in SENDING this long was abandoned by a run that died mid-send. */
+export const EMAIL_SENDING_TIMEOUT_MS = 15 * 60 * 1000;
+/** Attempts after which a delivery is given up on. */
+export const EMAIL_MAX_ATTEMPTS = 5;
+
+/** Rows in SENDING last touched before this instant are considered abandoned. */
+export function stuckSendingCutoff(now: Date): Date {
+  return new Date(now.getTime() - EMAIL_SENDING_TIMEOUT_MS);
+}
+
+export type EmailRetryOptions = {
+  /** Who asked for the run: the cron scheduler, or an admin from the console. */
+  trigger?: "CRON" | "ADMIN";
+  actorId?: number | null;
+};
+
+/**
+ * Sends pending and failed emails. Every batch that touches a row is recorded
+ * in the audit chain, and rows a crashed run left in SENDING are put back in
+ * line for a retry (their attempt is already counted, so the cap still holds).
+ *
+ * Returns how many emails were sent. Without SMTP configured it does nothing
+ * and touches no rows.
+ */
+export async function retryPendingEmailDeliveries(
+  limit = EMAIL_RETRY_BATCH,
+  options: EmailRetryOptions = {}
+): Promise<number> {
   const mailer = getTransporter();
   const from = process.env.SMTP_FROM ?? process.env.SMTP_USER;
   if (!mailer || !from) return 0;
 
+  const now = new Date();
+  const trigger = options.trigger ?? "CRON";
+
+  const reset = await db.emailDelivery.updateMany({
+    where: { status: "SENDING", updatedAt: { lt: stuckSendingCutoff(now) } },
+    data: {
+      status: "FAILED",
+      lastError: "Left in SENDING by an interrupted run; reset for retry.",
+      nextAttemptAt: now,
+    },
+  });
+
   const deliveries = await db.emailDelivery.findMany({
     where: {
       status: { in: ["PENDING", "FAILED"] },
-      attempts: { lt: 5 },
-      OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: new Date() } }],
+      attempts: { lt: EMAIL_MAX_ATTEMPTS },
+      OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }],
     },
     orderBy: { createdAt: "asc" },
     take: limit,
   });
 
   let sent = 0;
+  const sentIds: number[] = [];
+  const failedIds: number[] = [];
   for (const delivery of deliveries) {
     const claimed = await db.emailDelivery.updateMany({
       where: { id: delivery.id, status: { in: ["PENDING", "FAILED"] } },
@@ -165,6 +209,7 @@ export async function retryPendingEmailDeliveries(limit = 25): Promise<number> {
         data: { status: "SENT", sentAt: new Date(), nextAttemptAt: null },
       });
       sent += 1;
+      sentIds.push(delivery.id);
     } catch (error) {
       await db.emailDelivery.update({
         where: { id: delivery.id },
@@ -174,7 +219,25 @@ export async function retryPendingEmailDeliveries(limit = 25): Promise<number> {
           nextAttemptAt: new Date(Date.now() + 15 * 60 * 1000),
         },
       });
+      failedIds.push(delivery.id);
     }
+  }
+
+  // The audit entry carries counts and row ids only: no addresses, no bodies.
+  if (reset.count > 0 || deliveries.length > 0) {
+    await recordAudit(
+      {
+        action: "EMAIL_RETRY_BATCH",
+        resourceType: "EmailDelivery",
+        description:
+          `${trigger} retry: ${deliveries.length} attempted, ${sent} sent` +
+          `, ${failedIds.length} failed, ${reset.count} reset from SENDING` +
+          (sentIds.length ? `. Sent ids: ${sentIds.join(",")}` : "") +
+          (failedIds.length ? `. Failed ids: ${failedIds.join(",")}` : ""),
+        userId: options.actorId ?? null,
+        actorRole: trigger === "CRON" ? "CRON" : "ADMIN",
+      }
+    );
   }
 
   return sent;

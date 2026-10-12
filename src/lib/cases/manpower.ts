@@ -57,7 +57,14 @@ export type LaborBasis = {
   hourlyRate: number | null;
   dailyRate: number | null;
   /** "hourly" | "daily" | "manual" — how the figure was produced. */
-  computedFrom: "hourly" | "daily" | "manual";
+  /**
+   * "hourly" | "daily" | "manual" | "no_crew" | "no_rate".
+   * no_crew: nobody is assigned, so labour is zero. no_rate: crew are assigned but no rate
+   * or figure exists, so labour is zero and the gap is recorded here.
+   */
+  computedFrom: "hourly" | "daily" | "manual" | "no_crew" | "no_rate";
+  /** The assessor's own labour figure, kept so a later recount can reuse it. */
+  manualFigure?: number | null;
   /** Sum of the crew members' own rates when they were used. */
   crewRatesUsed?: number;
 };

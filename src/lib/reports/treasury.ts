@@ -1,8 +1,10 @@
 import { db } from "@/lib/db";
 import { copy, type Locale } from "@/lib/i18n";
 import {
+  capRows,
   numericColumn,
   textColumn,
+  withRowLimitStat,
   type ReportDocument,
   type ReportRow,
 } from "@/lib/reports/document";
@@ -131,28 +133,46 @@ export interface TreasuryReportData {
   register: RegisterSummary;
   aging: LiquidationAgingRow[];
   allVouchers: DisbursementRow[];
+  /** True when allocations or vouchers were cut at REPORT_ROW_LIMIT. */
+  truncated: boolean;
 }
 
 export async function loadTreasuryData(
   input: TreasuryReportInput
 ): Promise<TreasuryReportData> {
   const now = input.now ?? new Date();
-  const [allocations, vouchers] = await Promise.all([
-    listAllocations(db, { actor: input.actor, take: REPORT_ROW_LIMIT }),
-    listDisbursements(db, { actor: input.actor, take: REPORT_ROW_LIMIT }),
+  // One row past the limit, so a cut-short register is detected and says so.
+  const [allocationsRead, vouchersRead] = await Promise.all([
+    listAllocations(db, { actor: input.actor, take: REPORT_ROW_LIMIT + 1 }),
+    listDisbursements(db, { actor: input.actor, take: REPORT_ROW_LIMIT + 1 }),
   ]);
+  const allocations = capRows(allocationsRead, REPORT_ROW_LIMIT);
+  const vouchers = capRows(vouchersRead, REPORT_ROW_LIMIT);
 
   return {
-    utilisation: summarizeUtilisation(allocations),
-    register: summarizeRegister(vouchers, input.period, now),
-    aging: liquidationAging(vouchers, now),
-    allVouchers: vouchers,
+    utilisation: summarizeUtilisation(allocations.rows),
+    register: summarizeRegister(vouchers.rows, input.period, now),
+    aging: liquidationAging(vouchers.rows, now),
+    allVouchers: vouchers.rows,
+    truncated: allocations.truncated || vouchers.truncated,
   };
 }
 
 /* ------------------------------------------------------------- the document */
 
 export function buildTreasuryDocument(
+  data: TreasuryReportData,
+  input: TreasuryReportInput
+): ReportDocument {
+  return withRowLimitStat(
+    buildTreasuryBody(data, input),
+    data.truncated,
+    copy[input.locale].revamp.reports,
+    REPORT_ROW_LIMIT
+  );
+}
+
+function buildTreasuryBody(
   data: TreasuryReportData,
   input: TreasuryReportInput
 ): ReportDocument {

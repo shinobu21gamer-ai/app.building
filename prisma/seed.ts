@@ -401,7 +401,7 @@ async function main() {
   }
 
   // Sample resident
-  await prisma.user.upsert({
+  const sampleResident = await prisma.user.upsert({
     where: { email: "resident@barangayresolve.dev" },
     update: {},
     create: {
@@ -415,6 +415,23 @@ async function main() {
       isActive: true,
     },
   });
+  // The consent signup would have recorded. Submitting a concern needs DATA_PROCESSING.
+  for (const purpose of ["DATA_PROCESSING", "PRIVACY_NOTICE"]) {
+    const existing = await prisma.consentRecord.findFirst({
+      where: { userId: sampleResident.id, purpose },
+    });
+    if (!existing) {
+      await prisma.consentRecord.create({
+        data: {
+          userId: sampleResident.id,
+          purpose,
+          status: "GRANTED",
+          policyVersion: "2026-10-12",
+          method: "WEB",
+        },
+      });
+    }
+  }
 
   // Demo staff for the revamp roles: a treasurer, the captain as approving
   // official, and two maintenance crew members with crew profiles.

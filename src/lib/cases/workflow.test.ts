@@ -6,7 +6,10 @@ import {
   canSubmitFeedback,
   canTransition,
   caseWorkflowFlags,
-  requiresBudgetSkipOverride,
+  budgetStageBlock,
+  CREATABLE_OVERRIDE_KINDS,
+  isPassingVerification,
+  OVERRIDE_KINDS,
   satisfactionForRating,
   statusLabel,
   statusPermissionFor,
@@ -45,28 +48,60 @@ describe("case workflow transitions", () => {
     expect(statusPermissionFor("SUBMITTED")).toBeNull();
   });
 
-  it("demands an override only when a funded case skips the budget stage", () => {
-    expect(
-      requiresBudgetSkipOverride({
-        fromStatus: "UNDER_ASSESSMENT",
-        toStatus: "IN_PROGRESS",
-        typeRequiresBudget: true,
-      })
-    ).toBe(true);
-    expect(
-      requiresBudgetSkipOverride({
-        fromStatus: "UNDER_ASSESSMENT",
-        toStatus: "IN_PROGRESS",
-        typeRequiresBudget: false,
-      })
-    ).toBe(false);
-    expect(
-      requiresBudgetSkipOverride({
+  describe("budgetStageBlock (money cases cannot skip AWAITING_BUDGET)", () => {
+    const base = { typeRequiresBudget: true, estimatedCost: 5000, fundedAmount: 5000 };
+
+    it("blocks a money case from skipping straight to IN_PROGRESS, with no override", () => {
+      expect(
+        budgetStageBlock({ ...base, fromStatus: "UNDER_ASSESSMENT", toStatus: "IN_PROGRESS" })
+      ).toMatch(/cannot skip/);
+    });
+
+    it("lets a case that needs no money skip the stage", () => {
+      expect(
+        budgetStageBlock({
+          fromStatus: "UNDER_ASSESSMENT",
+          toStatus: "IN_PROGRESS",
+          typeRequiresBudget: false,
+          estimatedCost: null,
+          fundedAmount: 0,
+        })
+      ).toBeNull();
+    });
+
+    it("needs a saved cost estimate before the case starts waiting for budget", () => {
+      expect(
+        budgetStageBlock({ ...base, estimatedCost: null, fromStatus: "UNDER_ASSESSMENT", toStatus: "AWAITING_BUDGET" })
+      ).toMatch(/cost estimate/);
+      expect(
+        budgetStageBlock({ ...base, estimatedCost: 0, fromStatus: "UNDER_ASSESSMENT", toStatus: "AWAITING_BUDGET" })
+      ).toMatch(/cost estimate/);
+      expect(
+        budgetStageBlock({ ...base, fromStatus: "UNDER_ASSESSMENT", toStatus: "AWAITING_BUDGET" })
+      ).toBeNull();
+    });
+
+    it("needs approved funds that cover the estimate before work starts", () => {
+      const short = budgetStageBlock({
+        ...base,
+        fundedAmount: 3000,
         fromStatus: "AWAITING_BUDGET",
         toStatus: "IN_PROGRESS",
-        typeRequiresBudget: true,
-      })
-    ).toBe(false);
+      });
+      expect(short).toMatch(/Only ₱3,000\.00 is set aside/);
+      expect(short).toMatch(/₱5,000\.00/);
+      expect(
+        budgetStageBlock({ ...base, fundedAmount: 0, fromStatus: "AWAITING_BUDGET", toStatus: "IN_PROGRESS" })
+      ).toMatch(/set aside/);
+      expect(
+        budgetStageBlock({ ...base, fundedAmount: 5000, fromStatus: "AWAITING_BUDGET", toStatus: "IN_PROGRESS" })
+      ).toBeNull();
+    });
+
+    it("the retired skip kind can no longer be created", () => {
+      expect(CREATABLE_OVERRIDE_KINDS).not.toContain("BUDGET_STAGE_SKIP");
+      expect(OVERRIDE_KINDS).toContain("BUDGET_STAGE_SKIP");
+    });
   });
 });
 
@@ -171,5 +206,14 @@ describe("statusLabel", () => {
   it("humanizes status keys", () => {
     expect(statusLabel("IN_PROGRESS")).toBe("In Progress");
     expect(statusLabel("PRIORITY_ASSESSED")).toBe("Priority Assessed");
+  });
+
+  it("closes only on a passing verification, never on FAILED or pending", () => {
+    expect(isPassingVerification("FIXED_VERIFIED")).toBe(true);
+    expect(isPassingVerification("PARTIALLY_VERIFIED")).toBe(true);
+    expect(isPassingVerification("FAILED")).toBe(false);
+    expect(isPassingVerification("PENDING_RESIDENT_CONFIRMATION")).toBe(false);
+    expect(isPassingVerification("PENDING")).toBe(false);
+    expect(isPassingVerification(null)).toBe(false);
   });
 });
