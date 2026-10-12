@@ -25,7 +25,7 @@ import {
   type PriorityEvaluation,
 } from "@/lib/priority/engine";
 import { loadPriorityConfig } from "@/lib/priority/config";
-import { routeConcern } from "@/lib/routing/service";
+import { holdForValidation } from "@/lib/routing/service";
 import { notifyConcernSubmitted } from "@/lib/notifications/service";
 import { listConcerns, parseConcernFilters } from "@/lib/cases/query";
 import { findLikelyDuplicate } from "@/lib/cases/duplicates";
@@ -135,11 +135,10 @@ async function createConcern(
           },
         });
 
-        const routing = await routeConcern(tx, {
+        // Admin validation comes first: the case is held, not assigned.
+        const routing = await holdForValidation(tx, {
           id: concern.id,
-          categoryId: input.categoryId,
           caseNumber,
-          typeId: input.typeId ?? null,
         });
 
         await notifyConcernSubmitted(tx, {
@@ -319,7 +318,7 @@ export const POST = withErrorBoundary(async (req: Request) => {
     resourceId: String(concern.id),
     description: routing.routed
       ? `Concern ${concern.caseNumber} submitted, assessed ${evaluation.level} (score ${evaluation.totalScore}), routed to ${routing.officeName}.`
-      : `Concern ${concern.caseNumber} submitted and assessed ${evaluation.level} (score ${evaluation.totalScore}); no active routing rule matched.`,
+      : `Concern ${concern.caseNumber} submitted and assessed ${evaluation.level} (score ${evaluation.totalScore}); awaiting admin validation.`,
     userId: user.id,
     ...meta,
   });

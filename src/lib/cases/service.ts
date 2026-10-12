@@ -10,7 +10,9 @@ import {
 } from "@/lib/cases/action-date";
 import {
   notifyCaseClosed,
+  notifyConcernAssigned,
   notifyFeedbackRequested,
+  notifyResidentAssigned,
   notifyResolutionRecorded,
   notifyStatusChanged,
 } from "@/lib/notifications/service";
@@ -574,6 +576,7 @@ export async function validateConcern(
       categoryId: true,
       priorityLevel: true,
       assignedOfficeId: true,
+      userId: true,
     },
   });
   if (!concern) throw createApiError.notFound("Concern not found.");
@@ -665,6 +668,21 @@ export async function validateConcern(
         await armCaseStageClock(tx, { concernId: concern.id, status: "ASSIGNED", from: now });
       }
       routedOfficeName = office.name;
+
+      // Same notifications as a direct routing: the office's officials and the resident.
+      await notifyConcernAssigned(tx, {
+        officeId: office.id,
+        concernId: concern.id,
+        caseNumber: concern.caseNumber,
+        officeName: office.name,
+      });
+      await notifyResidentAssigned(tx, {
+        userId: concern.userId,
+        concernId: concern.id,
+        caseNumber: concern.caseNumber,
+        officeName: office.name,
+        reassigned: false,
+      });
     }
   }
 
