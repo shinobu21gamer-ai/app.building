@@ -5,6 +5,8 @@ import {
   textColumn,
   type ReportDocument,
   type ReportRow,
+  capRows,
+  withRowLimitStat,
 } from "@/lib/reports/document";
 import { reportRangeLabel } from "@/lib/reports/labels";
 import { inReportPeriod, periodRange, type ReportPeriod } from "@/lib/reports/period";
@@ -320,6 +322,8 @@ export interface PrivacyReportData {
   piiByPurpose: AccessCounter[];
   piiTotal: number;
   retention: ReturnType<typeof summarizeRetention>;
+  /** True when at least one capped query had more rows than it was allowed to read. */
+  truncated: boolean;
 }
 
 export async function loadPrivacyData(
@@ -328,7 +332,9 @@ export async function loadPrivacyData(
   const now = input.now ?? new Date();
   const range = periodRange(input.period);
 
-  const [requests, consents, access, policies, runs] = await Promise.all([
+  // Capped queries read one row past the limit so a cut-off is visible, and
+  // each is ordered newest-first so the rows kept are the most recent ones.
+  const [requestsRead, consentsRead, accessRead, policies, runsRead] = await Promise.all([
     db.dataSubjectRequest.findMany({
       where: range ? { requestedAt: range } : {},
       select: {
@@ -339,19 +345,22 @@ export async function loadPrivacyData(
         dueAt: true,
         resolvedAt: true,
       },
-      take: REPORT_ROW_LIMIT,
+      orderBy: { requestedAt: "desc" },
+      take: REPORT_ROW_LIMIT + 1,
     }),
     db.consentRecord.findMany({
       where: range
         ? { OR: [{ grantedAt: range }, { withdrawnAt: range }] }
         : {},
       select: { purpose: true, status: true, grantedAt: true, withdrawnAt: true },
-      take: REPORT_ROW_LIMIT,
+      orderBy: { grantedAt: "desc" },
+      take: REPORT_ROW_LIMIT + 1,
     }),
     db.piiAccessLog.findMany({
       where: range ? { createdAt: range } : {},
       select: { field: true, purpose: true, createdAt: true },
-      take: REPORT_ROW_LIMIT,
+      orderBy: { createdAt: "desc" },
+      take: REPORT_ROW_LIMIT + 1,
     }),
     db.retentionPolicy.findMany({
       select: {
@@ -374,24 +383,36 @@ export async function loadPrivacyData(
         affected: true,
         policy: { select: { key: true } },
       },
-      take: REPORT_ROW_LIMIT,
+      orderBy: { startedAt: "desc" },
+      take: REPORT_ROW_LIMIT + 1,
     }),
   ]);
 
-  const accessRows: PiiAccessRow[] = access.filter((row) =>
+  const requestsCap = capRows(requestsRead, REPORT_ROW_LIMIT);
+  const consentsCap = capRows(consentsRead, REPORT_ROW_LIMIT);
+  const accessCap = capRows(accessRead, REPORT_ROW_LIMIT);
+  const runsCap = capRows(runsRead, REPORT_ROW_LIMIT);
+  const truncated =
+    requestsCap.truncated ||
+    consentsCap.truncated ||
+    accessCap.truncated ||
+    runsCap.truncated;
+
+  const accessRows: PiiAccessRow[] = accessCap.rows.filter((row) =>
     inReportPeriod(row.createdAt, input.period)
   );
 
 
   return {
-    dsr: summarizeDsr(requests, now),
-    consents: summarizeConsents(consents),
+    dsr: summarizeDsr(requestsCap.rows, now),
+    consents: summarizeConsents(consentsCap.rows),
     piiByField: countBy(accessRows, (row) => row.field),
     piiByPurpose: countBy(accessRows, (row) => row.purpose),
     piiTotal: accessRows.length,
+    truncated,
     retention: summarizeRetention(
       policies,
-      runs.map((run) => ({
+      runsCap.rows.map((run) => ({
         policyKey: run.policy?.key ?? null,
         job: run.job,
         status: run.status,
@@ -456,7 +477,7 @@ export function buildPrivacyDocument(
     status: row.status,
   }));
 
-  return {
+  const document: ReportDocument = {
     key: "privacy",
     title: tp.title,
     description: `${tp.description} ${t.lead.replace("{range}", reportRangeLabel(input.locale, input.period))}`,
@@ -546,6 +567,7 @@ export function buildPrivacyDocument(
       },
     ],
   };
+  return withRowLimitStat(document, data.truncated, t, REPORT_ROW_LIMIT);
 }
 
 export async function loadPrivacyReport(

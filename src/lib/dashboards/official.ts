@@ -97,11 +97,14 @@ export async function getOfficialDashboard(
   const casesWithCrew = {
     ...cases,
     concerns: cases.concerns.map((concern) => {
+      const required = plannedByCase.get(concern.id) ?? null;
       const coverage = crewCoverage({
-        required: plannedByCase.get(concern.id) ?? null,
+        required,
         assigned: assignedByCase.get(concern.id) ?? 0,
       });
-      return { ...concern, crew: coverage };
+      // `required` travels with the coverage so the page can tell a planned
+      // case (show "Crew: 1 of 3 assigned") from a legacy one (show nothing).
+      return { ...concern, crew: { required, ...coverage } };
     }),
   };
 

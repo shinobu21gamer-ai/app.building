@@ -1535,6 +1535,8 @@ const en = {
     reports: {
       title: "Reports",
       lead: "Volume, turnaround, SLA compliance and crew load for {range}.",
+      rowLimitLabel: "Row limit reached",
+      rowLimitHint: "Figures cover only the newest {limit} rows of this period.",
       generatedAt: "Generated {date}",
       period: "Period",
       apply: "Apply",
@@ -3494,6 +3496,8 @@ const fil: typeof en = {
     reports: {
       title: "Mga ulat",
       lead: "Dami ng kaso, tagal ng pagtugon, pagsunod sa SLA at karga ng mga crew para sa {range}.",
+      rowLimitLabel: "Naabot ang limitasyon ng hanay",
+      rowLimitHint: "Pinakabagong {limit} na hanay lamang ng panahong ito ang saklaw ng mga bilang.",
       generatedAt: "Nilikha {date}",
       period: "Panahon",
       apply: "Ilapat",
