@@ -570,7 +570,12 @@ export async function loadEngineeringReport(
 
   const volume = summarizeVolume(rows, monthKeysForPeriod(input.period));
   const turnaround = summarizeTurnaround(rows);
-  const sla = summarizeSla([...rows, ...openRows], escalations, now);
+  // An open case inside the window is in both lists, and "Open now" / "Overdue
+  // vs SLA" are statements about cases, not about rows: dedupe by id so a case
+  // that was submitted this period and is still open is counted once.
+  const slaRows = new Map<number, EngineeringCaseRow>();
+  for (const row of [...rows, ...openRows]) slaRows.set(row.id, row);
+  const sla = summarizeSla([...slaRows.values()], escalations, now);
   const crew = summarizeCrew(crewRows, input.period.days);
 
   const statusSection: ReportSection = {

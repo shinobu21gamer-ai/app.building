@@ -369,16 +369,16 @@ describe("the legal hold, against real rows", () => {
     });
     expect(fresh.idNumberEncrypted).toBe("v1.fresh.cipher");
 
-    const destroyed = await db.identityVerification.findMany({
-      where: { userId: freeUserId, status: "VERIFIED", idNumberLast4: "5678" },
+    // One verification per resident: the row survives, its number does not.
+    const destroyed = await db.identityVerification.findFirstOrThrow({
+      where: { userId: freeUserId },
     });
-    expect(destroyed).toHaveLength(1);
-    expect(destroyed[0].idNumberEncrypted).toBeNull();
-    expect(destroyed[0].idNumberLast4).toBeNull();
-    expect(destroyed[0].idImageUrl).toBeNull();
+    expect(destroyed.idNumberEncrypted).toBeNull();
+    expect(destroyed.idNumberLast4).toBeNull();
+    expect(destroyed.idImageUrl).toBeNull();
     // The decision itself is kept: the barangay can still show it verified the
     // resident, it just cannot show the number any more.
-    expect(destroyed[0].status).toBe("VERIFIED");
+    expect(destroyed.status).toBe("VERIFIED");
   });
 
   it("does not hold a revoked session token: it is an artefact, not personal data", async () => {
@@ -396,7 +396,9 @@ describe("the sweep", () => {
   let firstSweep: Awaited<ReturnType<typeof runRetentionSweep>>;
 
   it("runs every due policy once and files the run", async () => {
-    firstSweep = await runRetentionSweep({ now: NOW, triggerSource: "CRON" });
+    // Forced because the tests above already ran four of these policies, which
+    // is what advances `lastRunAt`. The guard itself is asserted next.
+    firstSweep = await runRetentionSweep({ now: NOW, force: true, triggerSource: "CRON" });
 
     expect(firstSweep.totals.policies).toBe(ACTIVE_KEYS.length);
     expect(firstSweep.totals.succeeded).toBe(ACTIVE_KEYS.length);
