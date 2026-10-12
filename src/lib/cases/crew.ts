@@ -286,6 +286,16 @@ export async function assignCrew(
       endAt: input.scheduledEndAt ?? null,
     };
 
+    // Serialise assignments per person: lock the crew members' user rows (in id
+    // order, so concurrent calls cannot deadlock) before reading their bookings.
+    // Without the lock, two officials booking the same person at the same moment
+    // could both pass the overlap check.
+    await tx.$queryRaw`
+      SELECT "id" FROM "User"
+      WHERE "id" = ANY(${incoming}::int[])
+      ORDER BY "id"
+      FOR UPDATE`;
+
     const bookings = await tx.crewAssignment.findMany({
       where: {
         crewId: { in: incoming },
