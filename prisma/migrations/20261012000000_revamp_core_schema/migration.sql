@@ -35,7 +35,7 @@ CREATE TABLE "Permission" (
     "description" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Permission_pkey" PRIMARY KEY ("id")
 );
@@ -48,7 +48,7 @@ CREATE TABLE "RolePermission" (
     "allowed" BOOLEAN NOT NULL DEFAULT true,
     "updatedById" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "RolePermission_pkey" PRIMARY KEY ("id")
 );
@@ -66,7 +66,7 @@ CREATE TABLE "ConcernType" (
     "displayOrder" INTEGER NOT NULL DEFAULT 0,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "ConcernType_pkey" PRIMARY KEY ("id")
 );
@@ -85,7 +85,7 @@ CREATE TABLE "CrewProfile" (
     "notes" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "CrewProfile_pkey" PRIMARY KEY ("id")
 );
@@ -109,7 +109,7 @@ CREATE TABLE "IdentityVerification" (
     "verifiedAt" TIMESTAMP(3),
     "expiresAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "IdentityVerification_pkey" PRIMARY KEY ("id")
 );
@@ -127,7 +127,7 @@ CREATE TABLE "ConsentRecord" (
     "notes" TEXT,
     "grantedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "withdrawnAt" TIMESTAMP(3),
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ConsentRecord_pkey" PRIMARY KEY ("id")
 );
@@ -149,7 +149,7 @@ CREATE TABLE "DataSubjectRequest" (
     "denialReason" TEXT,
     "attachmentUrl" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "DataSubjectRequest_pkey" PRIMARY KEY ("id")
 );
@@ -163,7 +163,7 @@ CREATE TABLE "ErasureExecution" (
     "scopeJson" TEXT,
     "retainedCategoriesJson" TEXT,
     "reportJson" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ErasureExecution_pkey" PRIMARY KEY ("id")
 );
@@ -181,7 +181,7 @@ CREATE TABLE "RetentionPolicy" (
     "lastRunAt" TIMESTAMP(3),
     "updatedById" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "RetentionPolicy_pkey" PRIMARY KEY ("id")
 );
@@ -198,7 +198,7 @@ CREATE TABLE "CronRun" (
     "error" TEXT,
     "triggerSource" TEXT NOT NULL DEFAULT 'CRON',
     "actorId" INTEGER,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CronRun_pkey" PRIMARY KEY ("id")
 );
@@ -217,7 +217,7 @@ CREATE TABLE "RetentionRun" (
     "error" TEXT,
     "triggeredById" INTEGER,
     "cronRunId" INTEGER,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "RetentionRun_pkey" PRIMARY KEY ("id")
 );
@@ -233,7 +233,7 @@ CREATE TABLE "PiiAccessLog" (
     "resourceId" TEXT,
     "ip" TEXT,
     "userAgent" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "PiiAccessLog_pkey" PRIMARY KEY ("id")
 );
@@ -273,7 +273,7 @@ CREATE TABLE "CaseAssessment" (
     "createdById" INTEGER,
     "updatedById" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "CaseAssessment_pkey" PRIMARY KEY ("id")
 );
@@ -293,7 +293,7 @@ CREATE TABLE "CrewAssignment" (
     "releaseReason" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "CrewAssignment_pkey" PRIMARY KEY ("id")
 );
@@ -310,7 +310,7 @@ CREATE TABLE "CaseWorkflowOverride" (
     "approvedById" INTEGER,
     "approvedAt" TIMESTAMP(3),
     "expiresAt" TIMESTAMP(3),
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CaseWorkflowOverride_pkey" PRIMARY KEY ("id")
 );
@@ -336,7 +336,7 @@ CREATE TABLE "PublicCaseRecord" (
     "published" BOOLEAN NOT NULL DEFAULT true,
     "anonymizedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "PublicCaseRecord_pkey" PRIMARY KEY ("id")
 );
@@ -355,7 +355,7 @@ CREATE TABLE "SlaPolicy" (
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdById" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "SlaPolicy_pkey" PRIMARY KEY ("id")
 );
@@ -374,7 +374,7 @@ CREATE TABLE "CaseEscalation" (
     "acknowledgedById" INTEGER,
     "resolvedAt" TIMESTAMP(3),
     "dedupeKey" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CaseEscalation_pkey" PRIMARY KEY ("id")
 );
@@ -398,7 +398,7 @@ CREATE TABLE "CoaAccount" (
     "createdById" INTEGER,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "CoaAccount_pkey" PRIMARY KEY ("id")
 );
@@ -417,7 +417,7 @@ CREATE TABLE "FundSource" (
     "createdById" INTEGER,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "FundSource_pkey" PRIMARY KEY ("id")
 );
@@ -433,7 +433,7 @@ CREATE TABLE "FiscalYear" (
     "closedAt" TIMESTAMP(3),
     "closedById" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "FiscalYear_pkey" PRIMARY KEY ("id")
 );
@@ -453,7 +453,7 @@ CREATE TABLE "BudgetAllocation" (
     "createdById" INTEGER,
     "notes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "BudgetAllocation_pkey" PRIMARY KEY ("id")
 );
@@ -476,7 +476,7 @@ CREATE TABLE "BudgetEarmark" (
     "cancelReason" TEXT,
     "notes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "BudgetEarmark_pkey" PRIMARY KEY ("id")
 );
@@ -509,7 +509,7 @@ CREATE TABLE "Disbursement" (
     "cancelledAt" TIMESTAMP(3),
     "cancelReason" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Disbursement_pkey" PRIMARY KEY ("id")
 );
@@ -524,7 +524,7 @@ CREATE TABLE "DisbursementApproval" (
     "decision" TEXT NOT NULL,
     "remarks" TEXT,
     "decidedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "DisbursementApproval_pkey" PRIMARY KEY ("id")
 );
@@ -544,7 +544,7 @@ CREATE TABLE "BudgetLedgerEntry" (
     "disbursedAfter" DECIMAL(14,2) NOT NULL,
     "availableAfter" DECIMAL(14,2) NOT NULL,
     "actorId" INTEGER,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "BudgetLedgerEntry_pkey" PRIMARY KEY ("id")
 );
@@ -555,7 +555,7 @@ CREATE TABLE "AuditChainState" (
     "lastSeq" BIGINT NOT NULL DEFAULT 0,
     "lastHash" TEXT NOT NULL DEFAULT '',
     "lastVerifiedSeq" BIGINT NOT NULL DEFAULT 0,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "AuditChainState_pkey" PRIMARY KEY ("id")
 );
@@ -573,7 +573,7 @@ CREATE TABLE "AuditVerificationRun" (
     "actorId" INTEGER,
     "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "finishedAt" TIMESTAMP(3),
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "AuditVerificationRun_pkey" PRIMARY KEY ("id")
 );
