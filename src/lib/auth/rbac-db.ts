@@ -15,40 +15,59 @@ import {
 } from "@/lib/auth/rbac";
 
 /**
- * Stored override rows for a role. A failing lookup must never lock staff out
- * of the system, so errors fall back to "no overrides" (the code matrix).
+ * Stored override rows for a role. Throws on a failing lookup: a revocation
+ * must never be silently ignored, so callers decide what an unknown answer means
+ * (see `effectivePermissions`, which denies).
  */
+async function fetchRolePermissionRows(
+  roleKey: string
+): Promise<PermissionOverrideRow[]> {
+  const role = await db.role.findUnique({
+    where: { key: roleKey },
+    select: {
+      permissions: {
+        select: { allowed: true, permission: { select: { key: true } } },
+      },
+    },
+  });
+  if (!role) return [];
+  return role.permissions.map(
+    (row: { allowed: boolean; permission: { key: string } }) => ({
+      key: row.permission.key,
+      allowed: row.allowed,
+    })
+  );
+}
+
+/**
+ * Effective permission set for a role: code matrix plus database overrides.
+ * If the override lookup fails, the role gets NO permissions. Failing open here
+ * would let a revoked capability come back during a database error. A database
+ * outage also breaks the session lookup, so nobody is locked out who could have
+ * got in anyway.
+ */
+export async function effectivePermissions(
+  roleKey: string
+): Promise<ReadonlySet<string>> {
+  try {
+    const rows = await fetchRolePermissionRows(roleKey);
+    return applyPermissionOverrides(permissionsForRole(roleKey), rows);
+  } catch (error) {
+    console.error("[rbac] failed to load role permissions; denying:", error);
+    return new Set<string>();
+  }
+}
+
+/** Stored override rows for a role (admin view); a failed lookup returns none. */
 export async function loadRolePermissionRows(
   roleKey: string
 ): Promise<PermissionOverrideRow[]> {
   try {
-    const role = await db.role.findUnique({
-      where: { key: roleKey },
-      select: {
-        permissions: {
-          select: { allowed: true, permission: { select: { key: true } } },
-        },
-      },
-    });
-    if (!role) return [];
-    return role.permissions.map(
-      (row: { allowed: boolean; permission: { key: string } }) => ({
-        key: row.permission.key,
-        allowed: row.allowed,
-      })
-    );
+    return await fetchRolePermissionRows(roleKey);
   } catch (error) {
-    console.error("[rbac] failed to load role permissions:", error);
+    console.error("[rbac] failed to load role permission rows:", error);
     return [];
   }
-}
-
-/** Effective permission set for a role: code matrix plus database overrides. */
-export async function effectivePermissions(
-  roleKey: string
-): Promise<ReadonlySet<string>> {
-  const rows = await loadRolePermissionRows(roleKey);
-  return applyPermissionOverrides(permissionsForRole(roleKey), rows);
 }
 
 /** Whether the role currently holds a permission (database overrides included). */

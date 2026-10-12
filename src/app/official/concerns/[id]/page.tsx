@@ -76,7 +76,6 @@ export default async function OfficialConcernDetailPage({
           firstName: true,
           lastName: true,
           email: true,
-          phone: true,
           address: true,
         },
       },
