@@ -7,6 +7,7 @@ import {
   HIGH_PRIORITY_LEVELS,
   PENDING_STATUSES,
 } from "@/lib/cases/figures";
+import { crewCoverage } from "@/lib/cases/manpower";
 
 /**
  * Official (office-scoped) dashboard statistics.
@@ -67,6 +68,46 @@ export async function getOfficialDashboard(
       listConcerns(scopedFilters),
     ]);
 
+  // Crew coverage per case ("2 of 3 assigned"), read in two grouped queries
+  // for the whole page rather than one query per row.
+  const caseIds = cases.concerns.map((concern) => concern.id);
+  const [crewRows, plans] =
+    caseIds.length === 0
+      ? ([[], []] as [
+          { concernId: number; _count: { _all: number } }[],
+          { concernId: number; workersNeeded: number | null }[],
+        ])
+      : await Promise.all([
+          db.crewAssignment.groupBy({
+            by: ["concernId"],
+            where: { concernId: { in: caseIds }, isActive: true },
+            _count: { _all: true },
+          }),
+          db.caseAssessment.findMany({
+            where: { concernId: { in: caseIds } },
+            select: { concernId: true, workersNeeded: true },
+          }),
+        ]);
+  const assignedByCase = new Map(
+    crewRows.map((row) => [row.concernId, row._count._all])
+  );
+  const plannedByCase = new Map(
+    plans.map((plan) => [plan.concernId, plan.workersNeeded])
+  );
+  const casesWithCrew = {
+    ...cases,
+    concerns: cases.concerns.map((concern) => {
+      const required = plannedByCase.get(concern.id) ?? null;
+      const coverage = crewCoverage({
+        required,
+        assigned: assignedByCase.get(concern.id) ?? 0,
+      });
+      // `required` travels with the coverage so the page can tell a planned
+      // case (show "Crew: 1 of 3 assigned") from a legacy one (show nothing).
+      return { ...concern, crew: { required, ...coverage } };
+    }),
+  };
+
   const statusCounts = new Map(
     statusRows.map((row) => [row.status, row._count._all])
   );
@@ -87,6 +128,6 @@ export async function getOfficialDashboard(
       inProgress: statusCounts.get("IN_PROGRESS") ?? 0,
     },
     recentlyResolved,
-    cases,
+    cases: casesWithCrew,
   };
 }

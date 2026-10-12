@@ -15,6 +15,10 @@ export const NOTIFICATION_TYPES = {
   FEEDBACK_REQUESTED: "FEEDBACK_REQUESTED",
   PRIORITY_CHANGED: "PRIORITY_CHANGED",
   SLA_BREACHED: "SLA_BREACHED",
+  CONSENT_REQUIRED: "CONSENT_REQUIRED",
+  FIELD_CHECK_ASSIGNED: "FIELD_CHECK_ASSIGNED",
+  FIELD_CHECK_SUBMITTED: "FIELD_CHECK_SUBMITTED",
+  FIELD_CHECK_REVIEWED: "FIELD_CHECK_REVIEWED",
 } as const;
 
 export type NotificationType =
@@ -256,3 +260,131 @@ export async function notifyConcernUnrouted(
   }
   return admins.length;
 }
+
+// ---- Crew and SLA events (added with the revamp) -----------------
+// Additive: these two wrap the same private writer as every event above, so the
+// crew and SLA jobs write their notifications through this module as well.
+
+/** Tells one crew member they were put on a case. `schedule` is pre-formatted text, possibly "". */
+export async function notifyCrewAssigned(
+  db: Db,
+  input: { userId: number; concernId: number; caseNumber: string; schedule: string }
+): Promise<void> {
+  await createNotification(db, {
+    userId: input.userId,
+    concernId: input.concernId,
+    type: NOTIFICATION_TYPES.CONCERN_ASSIGNED,
+    title: "Crew assignment",
+    message: `You have been assigned to case ${input.caseNumber} as crew.${input.schedule}`,
+  });
+}
+
+/** Tells a recipient (staff or the resident) that a case has passed its service window. */
+export async function notifySlaBreached(
+  db: Db,
+  input: { userId: number; concernId: number; title: string; message: string }
+): Promise<void> {
+  await createNotification(db, {
+    userId: input.userId,
+    concernId: input.concernId,
+    type: NOTIFICATION_TYPES.SLA_BREACHED,
+    title: input.title,
+    message: input.message,
+  });
+}
+
+/**
+ * Tells every active administrator that a newly received case is waiting for
+ * validation. Reuses the CONCERN_SUBMITTED type, so the notification contract is
+ * unchanged. Returns how many administrators were told.
+ */
+export async function notifyAdminsAwaitingValidation(
+  db: Db,
+  input: { concernId: number; caseNumber: string }
+): Promise<number> {
+  const admins = await db.user.findMany({
+    where: { isActive: true, role: { key: "ADMIN" } },
+    select: { id: true },
+  });
+  for (const admin of admins) {
+    await createNotification(db, {
+      userId: admin.id,
+      concernId: input.concernId,
+      type: NOTIFICATION_TYPES.CONCERN_SUBMITTED,
+      title: "New concern awaiting validation",
+      message: `Concern ${input.caseNumber} was received and is waiting for validation before it is assigned to an office.`,
+    });
+  }
+  return admins.length;
+}
+
+/**
+ * Asks a resident to grant data-processing consent, which is needed before a
+ * concern can be filed. Sent once per resident by the consent-notice script.
+ */
+export async function notifyConsentRequired(
+  db: Db,
+  input: { userId: number }
+): Promise<void> {
+  await createNotification(db, {
+    userId: input.userId,
+    concernId: null,
+    type: NOTIFICATION_TYPES.CONSENT_REQUIRED,
+    title: "Consent needed to file concerns",
+    message:
+      "To file a concern, please grant consent to process your data on your Privacy page. Your existing records are not affected.",
+  });
+}
+
+/** Tells the person given a field check what to confirm on site. */
+export async function notifyFieldCheckAssigned(
+  db: Db,
+  input: { userId: number; concernId: number; caseNumber: string }
+): Promise<void> {
+  await createNotification(db, {
+    userId: input.userId,
+    concernId: input.concernId,
+    type: NOTIFICATION_TYPES.FIELD_CHECK_ASSIGNED,
+    title: "Field check requested",
+    message: `Please confirm on site that case ${input.caseNumber} is real, then record your finding.`,
+  });
+}
+
+/** Tells every active administrator that a field-check finding is waiting for review. */
+export async function notifyFieldCheckSubmitted(
+  db: Db,
+  input: { concernId: number; caseNumber: string; finding: string }
+): Promise<number> {
+  const admins = await db.user.findMany({
+    where: { isActive: true, role: { key: "ADMIN" } },
+    select: { id: true },
+  });
+  for (const admin of admins) {
+    await createNotification(db, {
+      userId: admin.id,
+      concernId: input.concernId,
+      type: NOTIFICATION_TYPES.FIELD_CHECK_SUBMITTED,
+      title: "Field check finding to review",
+      message: `A field check on case ${input.caseNumber} was submitted (${input.finding.replaceAll("_", " ").toLowerCase()}). Review it before the case continues.`,
+    });
+  }
+  return admins.length;
+}
+
+/** Tells the person who did the check how the admin answered. */
+export async function notifyFieldCheckReviewed(
+  db: Db,
+  input: { userId: number; concernId: number; caseNumber: string; decision: string }
+): Promise<void> {
+  const recheck = input.decision === "REQUEST_RECHECK";
+  await createNotification(db, {
+    userId: input.userId,
+    concernId: input.concernId,
+    type: NOTIFICATION_TYPES.FIELD_CHECK_REVIEWED,
+    title: recheck ? "Field check sent back" : "Field check approved",
+    message: recheck
+      ? `The admin has asked you to check case ${input.caseNumber} again. See the note on the case.`
+      : `The admin approved your field check on case ${input.caseNumber}.`,
+  });
+}
+

@@ -92,6 +92,21 @@ export const PERMISSIONS = [
       "Move a case forward: UNDER_ASSESSMENT, AWAITING_BUDGET, IN_PROGRESS, RESOLVED.",
   },
   {
+    key: "case.fieldcheck.request",
+    category: "CASE",
+    description: "Ask an official or crew member to confirm a concern is real (field check).",
+  },
+  {
+    key: "case.fieldcheck.perform",
+    category: "CASE",
+    description: "Carry out a field check you were assigned and record the finding.",
+  },
+  {
+    key: "case.fieldcheck.review",
+    category: "CASE",
+    description: "Approve or send back a submitted field-check finding.",
+  },
+  {
     key: "case.status.close",
     category: "CASE",
     description: "Close a resolved case after verification.",
@@ -342,6 +357,8 @@ const OFFICIAL_PERMISSIONS = [
   "case.manpower.plan",
   "case.crew.assign",
   "case.status.progress",
+  "case.fieldcheck.request",
+  "case.fieldcheck.perform",
   "case.resolution.verify",
   "case.override.crew_shortfall",
   "case.override.budget_skip",
@@ -351,6 +368,7 @@ const OFFICIAL_PERMISSIONS = [
 
 const CREW_PERMISSIONS = [
   "case.view.assigned",
+  "case.fieldcheck.perform",
   "crew.job.view.own",
   "crew.job.update.own",
   "report.view.own",

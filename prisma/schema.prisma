@@ -242,6 +242,9 @@ model User {
   crewJobs                    CrewAssignment[]     @relation("CrewMember")
   crewAssignmentsMade         CrewAssignment[]     @relation("CrewAssigner")
   crewAssignmentsReleased     CrewAssignment[]     @relation("CrewReleaser")
+  fieldCheckAssignments       FieldCheck[]        @relation("FieldCheckAssignee")
+  fieldCheckRequests          FieldCheck[]        @relation("FieldCheckRequester")
+  fieldCheckReviews           FieldCheck[]        @relation("FieldCheckReviewer")
   workflowOverrides           CaseWorkflowOverride[] @relation("OverrideActor")
   workflowOverridesApproved   CaseWorkflowOverride[] @relation("OverrideApprover")
   escalationsReceived         CaseEscalation[]     @relation("EscalationRecipient")
@@ -552,6 +555,7 @@ model Concern {
   emailDeliveries EmailDelivery[]
   caseAssessment    CaseAssessment?
   crewAssignments   CrewAssignment[]
+  fieldChecks       FieldCheck[]
   workflowOverrides CaseWorkflowOverride[]
   escalations       CaseEscalation[]
   publicRecord      PublicCaseRecord?
@@ -782,6 +786,36 @@ model CrewAssignment {
   @@unique([concernId, crewId])
   @@index([crewId, isActive, scheduledStartAt])
   @@index([concernId, isActive])
+}
+
+// Field verification: an admin asks a staff member (official or crew) to confirm
+// that a concern is real before the case continues. The admin reviews the finding.
+//   status:  PENDING (assigned, not yet done) | SUBMITTED (finding in, awaiting admin)
+//            | APPROVED (admin accepted the finding)
+//   finding: CONFIRMED | NOT_CONFIRMED | CANNOT_VERIFY (set on submit)
+model FieldCheck {
+  id              Int       @id @default(autoincrement())
+  concernId       Int
+  concern         Concern   @relation(fields: [concernId], references: [id], onDelete: Cascade)
+  assigneeId      Int
+  assignee        User      @relation("FieldCheckAssignee", fields: [assigneeId], references: [id])
+  requestedById   Int
+  requestedBy     User      @relation("FieldCheckRequester", fields: [requestedById], references: [id])
+  instructions    String
+  status          String    @default("PENDING")
+  finding         String?
+  findingNotes    String?
+  findingPhotoUrl String?
+  submittedAt     DateTime?
+  reviewedById    Int?
+  reviewedBy      User?     @relation("FieldCheckReviewer", fields: [reviewedById], references: [id])
+  reviewedAt      DateTime?
+  reviewNote      String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([concernId, status])
+  @@index([assigneeId, status])
 }
 
 // An explicit, reasoned exception to a workflow rule (start work with fewer

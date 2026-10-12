@@ -7,15 +7,14 @@
 // stay workable: `legacyCaseNotice` tells the UI what is missing instead of
 // blocking the official.
 
+import { refreshCaseLabour } from "@/lib/cases/labour";
 import type { Prisma } from "@prisma/client";
 import { createApiError } from "@/lib/api";
+import { armCaseStageClock } from "@/lib/sla/escalation";
 import { canManageConcern, type WorkflowActor } from "@/lib/cases/workflow";
 import {
-  estimateLaborCost,
-  manualLaborEstimate,
   isValidDurationMinutes,
   isValidWorkersNeeded,
-  totalCostEstimate,
   type LaborBasis,
   type CostEstimate,
 } from "@/lib/cases/manpower";
@@ -79,77 +78,6 @@ function money(value: number | null | undefined): number {
   return typeof value === "number" && Number.isFinite(value) && value > 0
     ? value
     : 0;
-}
-
-/**
- * Picks the labour basis for a plan: the crew roster's average rate for the
- * case's office when one exists (the normal path), otherwise the assessor's own
- * figure. Refusing to guess is the point — an estimate without labour is not
- * written.
- */
-async function resolveLabor(
-  tx: Tx,
-  input: { workers: number; durationMinutes: number; officeId: number | null; manual: number }
-): Promise<{ cost: number; basis: LaborBasis }> {
-  const officeId = input.officeId;
-  const profiles = await tx.crewProfile.findMany({
-    where: {
-      isActive: true,
-      ...(officeId ? { officeId } : {}),
-      user: { isActive: true },
-      OR: [{ hourlyRate: { not: null } }, { dailyRate: { not: null } }],
-    },
-    select: { hourlyRate: true, dailyRate: true },
-    take: 50,
-  });
-
-  if (profiles.length > 0) {
-    const hourlyRates = profiles
-      .map((p) => (p.hourlyRate ? Number(p.hourlyRate) : null))
-      .filter((value): value is number => value !== null && value > 0);
-    const dailyRates = profiles
-      .map((p) => (p.dailyRate ? Number(p.dailyRate) : null))
-      .filter((value): value is number => value !== null && value > 0);
-
-    const hourlyRate =
-      hourlyRates.length > 0
-        ? hourlyRates.reduce((sum, value) => sum + value, 0) / hourlyRates.length
-        : null;
-    const dailyRate =
-      dailyRates.length > 0
-        ? dailyRates.reduce((sum, value) => sum + value, 0) / dailyRates.length
-        : null;
-
-    const estimate = estimateLaborCost({
-      workers: input.workers,
-      durationMinutes: input.durationMinutes,
-      hourlyRate,
-      dailyRate,
-    });
-
-    if (estimate) {
-      return {
-        cost: estimate.laborCost,
-        basis: {
-          ...estimate.basis,
-          crewRatesUsed: profiles.length,
-        },
-      };
-    }
-  }
-
-  if (input.manual > 0) {
-    const manual = manualLaborEstimate({
-      workers: input.workers,
-      durationMinutes: input.durationMinutes,
-      laborCost: input.manual,
-    });
-    return { cost: manual.laborCost, basis: manual.basis };
-  }
-
-  throw createApiError.badRequest(
-    "A labour cost is required: no crew rate is on file for this office, so enter the labour estimate yourself."
-  );
 }
 
 export type SaveAssessmentOutcome = {
@@ -230,20 +158,6 @@ export async function saveAssessment(
     }
   }
 
-  const labor = await resolveLabor(tx, {
-    workers: values.workersNeeded,
-    durationMinutes: values.estimatedDurationMinutes,
-    officeId: concern.assignedOfficeId,
-    manual: money(values.laborCost),
-  });
-
-  const cost = totalCostEstimate({
-    laborCost: labor.cost,
-    materialsCost: money(values.materialsCost),
-    equipmentCost: money(values.equipmentCost),
-    otherCost: money(values.otherCost),
-  });
-
   const now = new Date();
   const existing = concern.caseAssessment;
   const legacyCase = existing === null;
@@ -272,12 +186,9 @@ export async function saveAssessment(
     scheduledStartAt: values.scheduledStartAt ?? null,
     scheduledEndAt: values.scheduledEndAt ?? null,
     equipmentNotes: values.equipmentNotes.trim(),
-    laborCost: cost.laborCost,
-    materialsCost: cost.materialsCost,
-    equipmentCost: cost.equipmentCost,
-    otherCost: cost.otherCost,
-    totalCost: cost.totalCost,
-    laborCostBasisJson: JSON.stringify(labor.basis),
+    materialsCost: money(values.materialsCost),
+    equipmentCost: money(values.equipmentCost),
+    otherCost: money(values.otherCost),
     submittedAt: existing?.id ? undefined : now,
     updatedById: input.actor.id,
   };
@@ -288,12 +199,26 @@ export async function saveAssessment(
         data: { concernId: concern.id, createdById: input.actor.id, ...data },
       });
 
+  // Labour is priced from the crew actually on the case: no crew, no labour.
+  const priced = await refreshCaseLabour(tx, concern.id, {
+    manualFigure: money(values.laborCost) > 0 ? money(values.laborCost) : null,
+  });
+  if (!priced) throw new Error("The assessment was not saved.");
+  const cost = priced.cost;
+  const labor = { basis: priced.basis };
+
   // First assessment on an ASSIGNED case moves it into UNDER_ASSESSMENT.
   let fromStatus = concern.status;
   if (concern.status === "ASSIGNED") {
     await tx.concern.update({
       where: { id: concern.id },
       data: { status: "UNDER_ASSESSMENT", stageEnteredAt: now },
+    });
+    // A new stage gets its own deadline, not the rest of the ASSIGNED window.
+    await armCaseStageClock(tx, {
+      concernId: concern.id,
+      status: "UNDER_ASSESSMENT",
+      from: now,
     });
     fromStatus = "ASSIGNED";
     await tx.caseStatusHistory.create({

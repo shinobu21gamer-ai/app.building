@@ -45,8 +45,15 @@ export default async function AdminPage() {
   const locale = await getLocale();
   const t = copy[locale].admin;
   const dashboard = await getAdminDashboard();
-  const { totals, byStatus, byPriority, byCategory, byOffice, processingTime } =
-    dashboard;
+  const {
+    totals,
+    byStatus,
+    byPriority,
+    byCategory,
+    byOffice,
+    processingTime,
+    crew,
+  } = dashboard;
 
   return (
     <div className="space-y-8">
@@ -93,6 +100,16 @@ export default async function AdminPage() {
         <StatCard label={t.totalCases} value={totals.total} />
         <StatCard label={t.resolvedClosed} value={totals.resolved} />
         <StatCard label={t.unresolved} value={totals.unresolved} />
+        <StatCard
+          label={t.crewDeployed}
+          value={crew.crewDeployed}
+          hint={t.crewPlannedHint.replace("{planned}", String(crew.plannedCrew))}
+        />
+        <StatCard
+          label={t.crewShortfall}
+          value={crew.shortfallCases}
+          hint={t.crewShortfallHint.replace("{cases}", String(crew.plannedCases))}
+        />
         <StatCard
           label={t.avgProcessing}
           value={formatHours(processingTime.averageHours)}

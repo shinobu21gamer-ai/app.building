@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { createApiError } from "@/lib/api";
 import { selectRoutingRule } from "@/lib/routing/engine";
 import {
+  notifyAdminsAwaitingValidation,
   notifyConcernAssigned,
   notifyConcernReassigned,
   notifyConcernUnrouted,
@@ -18,7 +19,34 @@ export type RoutingOutcome =
       assignmentId: number;
       notifiedOfficials: number;
     }
-  | { routed: false; reason: "no_rule" };
+  | { routed: false; reason: "no_rule" | "awaiting_validation" };
+
+/**
+ * Submission no longer assigns a case. The case stays SUBMITTED until an admin
+ * validates it (type, category, priority); `validateConcern` then routes it to
+ * the type's default office. Writes the hold as a history entry so the timeline
+ * shows why the case has no office yet.
+ */
+export async function holdForValidation(
+  tx: Tx,
+  concern: { id: number; caseNumber: string }
+): Promise<RoutingOutcome> {
+  await tx.caseStatusHistory.create({
+    data: {
+      concernId: concern.id,
+      entryType: "REMARK",
+      fromStatus: "SUBMITTED",
+      toStatus: "SUBMITTED",
+      remarks: "Awaiting admin validation before assignment.",
+      actorRole: "SYSTEM",
+    },
+  });
+  await notifyAdminsAwaitingValidation(tx, {
+    concernId: concern.id,
+    caseNumber: concern.caseNumber,
+  });
+  return { routed: false, reason: "awaiting_validation" };
+}
 
 /**
  * Determines the responsible office and applies the assignment inside the

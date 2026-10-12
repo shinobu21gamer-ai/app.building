@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { CrewJobForm } from "@/components/cases/crew-job-form";
+import { FieldCheckSubmitForm } from "@/components/cases/field-check-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { listCrewJobs } from "@/lib/cases/crew";
 import { formatDateTime } from "@/lib/format";
@@ -27,10 +28,31 @@ export default async function CrewHomePage() {
   const t = copy[locale].revamp.workflow;
 
   const jobs = await listCrewJobs(db, user.id);
+  const fieldChecks = await db.fieldCheck.findMany({
+    where: { assigneeId: user.id, status: "PENDING" },
+    include: { concern: { select: { caseNumber: true, title: true } } },
+    orderBy: { createdAt: "desc" },
+  });
 
   return (
     <div className="space-y-6">
       <PageHeader title={t.jobTitle} description={t.jobDesc} />
+
+      {fieldChecks.length > 0 && (
+        <Card title={t.fieldCheck.forYou} description={t.fieldCheck.forYouDesc}>
+          <ul className="space-y-4">
+            {fieldChecks.map((check) => (
+              <li key={check.id} className="space-y-2 rounded-xl border border-line p-4">
+                <p className="text-sm font-medium text-ink">
+                  {t.fieldCheck.caseLabel} {check.concern.caseNumber} · {check.concern.title}
+                </p>
+                <p className="text-sm text-ink-subtle">{check.instructions}</p>
+                <FieldCheckSubmitForm checkId={check.id} locale={locale} />
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {jobs.length === 0 ? (
         <Card>

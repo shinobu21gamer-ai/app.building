@@ -17,6 +17,8 @@ import { CaseWorkflowForm } from "@/components/cases/case-workflow-form";
 import { CaseNoteForm } from "@/components/cases/case-note-form";
 import { ConcernMap } from "@/components/concern/concern-map";
 import { CrewPanel } from "@/components/cases/crew-panel";
+import { FieldCheckPanel } from "@/components/cases/field-check-panel";
+import { listFieldChecks } from "@/lib/cases/field-check";
 import { FundingPanel } from "@/components/treasury/funding-panel";
 import { ValidationForm } from "@/components/cases/validation-form";
 import { ResolutionVerifyForm } from "@/components/cases/resolution-verify-form";
@@ -76,7 +78,6 @@ export default async function OfficialConcernDetailPage({
           firstName: true,
           lastName: true,
           email: true,
-          phone: true,
           address: true,
         },
       },
@@ -181,13 +182,35 @@ export default async function OfficialConcernDetailPage({
     canAssignCrew,
     canVerifyResolution,
     canViewTreasury,
+    canRequestFieldCheck,
+    canReviewFieldCheck,
   ] = await Promise.all([
     userCan(user.role.key, "case.validate"),
     userCan(user.role.key, "case.assess"),
     userCan(user.role.key, "case.crew.assign"),
     userCan(user.role.key, "case.resolution.verify"),
     userCan(user.role.key, "treasury.balance.view"),
+    userCan(user.role.key, "case.fieldcheck.request"),
+    userCan(user.role.key, "case.fieldcheck.review"),
   ]);
+
+  const fieldChecks =
+    canRequestFieldCheck || canReviewFieldCheck
+      ? await listFieldChecks(db, numericId)
+      : [];
+  const fieldCheckRoster =
+    canRequestFieldCheck && concern.status === "ASSIGNED"
+      ? await db.user.findMany({
+          where: {
+            isActive: true,
+            role: { key: { in: ["OFFICIAL", "CREW"] } },
+            OR: [{ officeId: null }, { officeId: concern.assignedOfficeId }],
+          },
+          select: { id: true, firstName: true, lastName: true, role: { select: { key: true } } },
+          orderBy: { firstName: "asc" },
+          take: 100,
+        })
+      : [];
 
   const funding = canViewTreasury
     ? await caseFundingView(db, numericId)
@@ -565,6 +588,39 @@ export default async function OfficialConcernDetailPage({
                 concernId={concern.id}
                 locale={locale}
                 recordedById={resolution.officialId}
+              />
+            </Card>
+          )}
+
+          {(canRequestFieldCheck || canReviewFieldCheck) && canManage && (
+            <Card
+              title={copy[locale].revamp.workflow.fieldCheck.title}
+              description={copy[locale].revamp.workflow.fieldCheck.desc}
+            >
+              <FieldCheckPanel
+                concernId={concern.id}
+                locale={locale}
+                caseStatus={concern.status}
+                canRequest={canRequestFieldCheck}
+                canReview={canReviewFieldCheck}
+                currentUserId={user.id}
+                checks={fieldChecks.map((check) => ({
+                  id: check.id,
+                  status: check.status,
+                  instructions: check.instructions,
+                  finding: check.finding,
+                  findingNotes: check.findingNotes,
+                  findingPhotoUrl: check.findingPhotoUrl,
+                  reviewNote: check.reviewNote,
+                  assigneeId: check.assigneeId,
+                  assigneeName: `${check.assignee.firstName} ${check.assignee.lastName}`,
+                  requestedByName: `${check.requestedBy.firstName} ${check.requestedBy.lastName}`,
+                }))}
+                roster={fieldCheckRoster.map((person) => ({
+                  id: person.id,
+                  name: `${person.firstName} ${person.lastName}`,
+                  roleLabel: person.role.key === "CREW" ? "Crew" : "Official",
+                }))}
               />
             </Card>
           )}

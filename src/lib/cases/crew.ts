@@ -5,11 +5,12 @@
 //   * transaction-bound services used by the API routes
 // The module never imports `@/lib/db`, so the pure half stays testable.
 
+import { refreshCaseLabour } from "@/lib/cases/labour";
 import type { Prisma } from "@prisma/client";
 import { createApiError } from "@/lib/api";
 import { canManageConcern, type WorkflowActor } from "@/lib/cases/workflow";
 import { crewCoverage } from "@/lib/cases/manpower";
-import { NOTIFICATION_TYPES } from "@/lib/notifications/service";
+import { notifyCrewAssigned } from "@/lib/notifications/service";
 import { formatDateTime } from "@/lib/format";
 
 type Tx = Prisma.TransactionClient;
@@ -286,6 +287,16 @@ export async function assignCrew(
       endAt: input.scheduledEndAt ?? null,
     };
 
+    // Serialise assignments per person: lock the crew members' user rows (in id
+    // order, so concurrent calls cannot deadlock) before reading their bookings.
+    // Without the lock, two officials booking the same person at the same moment
+    // could both pass the overlap check.
+    await tx.$queryRaw`
+      SELECT "id" FROM "User"
+      WHERE "id" = ANY(${incoming}::int[])
+      ORDER BY "id"
+      FOR UPDATE`;
+
     const bookings = await tx.crewAssignment.findMany({
       where: {
         crewId: { in: incoming },
@@ -324,9 +335,9 @@ export async function assignCrew(
     }));
 
     // The candidate window is the assignment window; with none given it falls
-    // back to the case's planned window, and with neither it is open-ended,
-    // which is the conservative reading (a person without a finish time cannot
-    // be assumed free).
+    // back to the case's planned window. A booking must have both ends: an
+    // open-ended booking would block the person from every other case
+    // indefinitely, so it is refused rather than guessed at.
     const assessmentWindow = await tx.caseAssessment.findUnique({
       where: { concernId: concern.id },
       select: { scheduledStartAt: true, scheduledEndAt: true },
@@ -335,6 +346,11 @@ export async function assignCrew(
       startAt: window.startAt ?? assessmentWindow?.scheduledStartAt ?? null,
       endAt: window.endAt ?? assessmentWindow?.scheduledEndAt ?? null,
     };
+    if (!candidate.startAt || !candidate.endAt) {
+      throw createApiError.badRequest(
+        "Set the planned start and finish for this crew booking, or on the case's assessment, before assigning crew."
+      );
+    }
 
     const conflicts = findCrewConflicts({
       bookings: normalized,
@@ -411,14 +427,11 @@ export async function assignCrew(
       ? ` Scheduled ${formatDateTime(input.scheduledStartAt)}.`
       : "";
     for (const crewId of incoming) {
-      await tx.notification.create({
-        data: {
-          userId: crewId,
-          concernId: concern.id,
-          type: NOTIFICATION_TYPES.CONCERN_ASSIGNED,
-          title: "Crew assignment",
-          message: `You have been assigned to case ${concern.caseNumber} as crew.${schedule}`,
-        },
+      await notifyCrewAssigned(tx, {
+        userId: crewId,
+        concernId: concern.id,
+        caseNumber: concern.caseNumber,
+        schedule,
       });
     }
   }
@@ -428,6 +441,7 @@ export async function assignCrew(
     crewProgress(tx, concern.id),
   ]);
 
+  await refreshCaseLabour(tx, concern.id);
   return {
     concernId: concern.id,
     caseNumber: concern.caseNumber,
@@ -498,6 +512,7 @@ export async function releaseCrew(
     },
   });
 
+  await refreshCaseLabour(tx, concern.id);
   return {
     concernId: concern.id,
     caseNumber: concern.caseNumber,

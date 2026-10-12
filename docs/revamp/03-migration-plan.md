@@ -9,6 +9,7 @@ without a data restore.
 | Migration | Stage | Contents | Rollback |
 |---|---|---|---|
 | `20261012000000_revamp_core_schema` | 1 | 28 new tables, 34 new columns on 6 tables, 73 indexes/FKs, backfills, seed reference data | `prisma/rollbacks/20261012000000_revamp_core_schema_rollback.sql` |
+| `20261012120000_canonical_destination_offices` | follow-up | Ayuda and Repair routed to offices with no members. Adds `SOCIAL_SERVICES`, `ENGINEERING` and `SECRETARY` as canonical destinations, repoints references from the duplicate `SOCIAL` and `MAINTENANCE` offices, and deactivates those two (no deletes) | `prisma/rollbacks/20261012120000_canonical_destination_offices_rollback.sql` (restores routing config; moved rows stay moved) |
 | *(planned)* `…_rbac_and_privacy` | 2 | `AppSetting`-driven privacy notice version, any column tweaks found while wiring RBAC | same folder convention |
 | *(planned)* `…_treasury_refinements` | 4 | Only if the treasury build needs extra columns; the tables already exist | same |
 | *(planned)* `…_privacy_phone_drop` | 5 | Drops the legacy plaintext `User.phone` after the backfill is verified | re-adds the column, **data not restorable** (documented) |
@@ -243,3 +244,40 @@ the database suite (`npx vitest run --config vitest.db.config.mts`, which CI's
 `database` job runs against a `postgres:16` service container after `prisma
 migrate deploy`), and the smoke script (`scripts/smoke/run.ts`) against the
 deployment.
+
+## 9. Consent notice and crew booking rules (added 2026-10-12)
+
+- **Consent for existing residents.** Filing a concern now requires `DATA_PROCESSING`
+  consent on record. Residents who signed up before this rule have no record and are
+  blocked until they grant it on their Privacy page. No consent is backfilled.
+  After deploying, run `npm run privacy:consent-notice` (dry run), then with
+  `-- --apply`. It sends each such resident one `CONSENT_REQUIRED` notification
+  through the notification service. It is idempotent and writes nothing else.
+- **Crew bookings have dates.** An assignment needs a start and finish, either on the
+  booking or from the case assessment's planned window. Open-ended bookings are refused,
+  because they would block the person from every other case indefinitely.
+- **No crew, no payment.** Labour comes only from crew actively assigned to the case
+  (`CrewAssignment.isActive`). Each person is priced at their own rate, else the office
+  average of rated profiles. With nobody assigned, labour is zero, even if the roster has
+  rates and even if the assessor entered a manual figure. A manual figure is used only
+  when crew are assigned and no rate can be found. Labour is recounted on every save,
+  assignment and release, so the funding gate always checks the current total. A Repair or
+  Ayuda case with no materials therefore cannot reach AWAITING_BUDGET until crew are
+  assigned. The basis records `no_crew` or `no_rate` so the gap is visible.
+  Work cannot start (IN_PROGRESS) while crew are assigned and their labour is `no_rate`.
+  The block has no override. It clears when a crew member gets a rate or the assessor
+  enters a labour figure.
+
+## 10. Field checks (added 2026-10-12)
+
+- **What it is.** An admin, or the assigned office, can ask an official or crew member to
+  confirm on site that a concern is real. The finding is reviewed by an admin before the case
+  continues. Only the ASSIGNED → UNDER_ASSESSMENT step is gated, and only when a check was requested.
+- **Migration.** `prisma/migrations/20261012130000_field_checks/migration.sql` adds the
+  `FieldCheck` table. Rollback: `rollback.sql` in the same folder. It drops the table and loses
+  any findings in it, so export first if they matter. Audit entries are kept.
+- **Not-confirmed findings.** Approving one closes the case as unfounded. The finding needs written
+  notes and a photo, and the photo is stored as the closure's evidence. Crew on the case are released.
+  This is the only transition out of ASSIGNED that skips assessment.
+- **Who.** Requesting: admin and official. Recording: the assigned official or crew member, only
+  that person. Reviewing: admin. Assignees must belong to the case's office, or have no office.

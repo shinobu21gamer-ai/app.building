@@ -206,6 +206,15 @@ export default async function OfficialPage({
                     </td>
                     <td data-label={t.statusCol} className="py-3 pr-4">
                       <StatusBadge status={concern.status} />
+                      {concern.crew.required !== null && (
+                        <p
+                          className={`mt-1 text-xs ${
+                            concern.crew.satisfied ? "text-ink-muted" : "text-warning"
+                          }`}
+                        >
+                          Crew: {concern.crew.label}
+                        </p>
+                      )}
                     </td>
                     <td data-label={t.updatedCol} className="py-3 pr-4 text-ink-muted">
                       {formatDate(concern.updatedAt)}

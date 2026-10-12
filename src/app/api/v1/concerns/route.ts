@@ -25,8 +25,9 @@ import {
   type PriorityEvaluation,
 } from "@/lib/priority/engine";
 import { loadPriorityConfig } from "@/lib/priority/config";
-import { routeConcern } from "@/lib/routing/service";
+import { holdForValidation } from "@/lib/routing/service";
 import { notifyConcernSubmitted } from "@/lib/notifications/service";
+import { assertConsent } from "@/lib/privacy/consent";
 import { listConcerns, parseConcernFilters } from "@/lib/cases/query";
 import { findLikelyDuplicate } from "@/lib/cases/duplicates";
 import { resolveStageWindow } from "@/lib/sla/escalation";
@@ -135,11 +136,10 @@ async function createConcern(
           },
         });
 
-        const routing = await routeConcern(tx, {
+        // Admin validation comes first: the case is held, not assigned.
+        const routing = await holdForValidation(tx, {
           id: concern.id,
-          categoryId: input.categoryId,
           caseNumber,
-          typeId: input.typeId ?? null,
         });
 
         await notifyConcernSubmitted(tx, {
@@ -218,6 +218,11 @@ export const GET = withErrorBoundary(async (req: Request) => {
 export const POST = withErrorBoundary(async (req: Request) => {
   assertSameOrigin(req);
   const user = await requireApiRole(["RESIDENT"]);
+  await assertConsent(
+    user.id,
+    "DATA_PROCESSING",
+    "Your consent to process your data is missing, so this concern cannot be filed. Grant it on your Privacy page, then submit again."
+  );
 
   const form = await readCappedFormData(req);
 
@@ -319,7 +324,7 @@ export const POST = withErrorBoundary(async (req: Request) => {
     resourceId: String(concern.id),
     description: routing.routed
       ? `Concern ${concern.caseNumber} submitted, assessed ${evaluation.level} (score ${evaluation.totalScore}), routed to ${routing.officeName}.`
-      : `Concern ${concern.caseNumber} submitted and assessed ${evaluation.level} (score ${evaluation.totalScore}); no active routing rule matched.`,
+      : `Concern ${concern.caseNumber} submitted and assessed ${evaluation.level} (score ${evaluation.totalScore}); awaiting admin validation.`,
     userId: user.id,
     ...meta,
   });

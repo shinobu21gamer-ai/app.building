@@ -6,6 +6,8 @@ export const runtime = "nodejs";
 
 export const POST = withErrorBoundary(async (req: Request) => {
   assertSameOrigin(req);
-  await requireApiRole(["ADMIN"]);
-  return ok({ sent: await retryPendingEmailDeliveries() });
+  const admin = await requireApiRole(["ADMIN"]);
+  return ok({
+    sent: await retryPendingEmailDeliveries(undefined, { trigger: "ADMIN", actorId: admin.id }),
+  });
 });

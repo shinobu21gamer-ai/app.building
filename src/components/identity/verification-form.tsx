@@ -142,7 +142,7 @@ export function VerificationForm({
           {message && <FormMessage tone={message.tone}>{message.text}</FormMessage>}
 
           <div>
-            <Label htmlFor="identity-method">
+            <Label htmlFor="identity-method" required>
               {t.verification.method}
             </Label>
             <select
@@ -182,7 +182,7 @@ export function VerificationForm({
           )}
 
           <div>
-            <Label htmlFor="identity-number">
+            <Label htmlFor="identity-number" required>
               {t.verification.idNumber}
             </Label>
             <Input
@@ -200,7 +200,7 @@ export function VerificationForm({
           </div>
 
           <div>
-            <Label htmlFor="identity-image">
+            <Label htmlFor="identity-image" required>
               {t.verification.idPhoto}
             </Label>
             <input

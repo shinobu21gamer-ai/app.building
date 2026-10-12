@@ -6,7 +6,7 @@ import type { PermissionKey } from "@/lib/auth/rbac";
 /**
  * The seven-stage revamp lifecycle:
  *
- *   SUBMITTED -> ASSIGNED -> UNDER_ASSESSMENT -> AWAITING_BUDGET (skippable)
+ *   SUBMITTED -> ASSIGNED -> UNDER_ASSESSMENT -> AWAITING_BUDGET (money cases; skipped only by DOCUMENTS)
  *     -> IN_PROGRESS -> RESOLVED -> CLOSED
  *
  * SUBMITTED is reached by the resident. ASSIGNED is reached by the routing /
@@ -25,10 +25,9 @@ export const CASE_STATUSES = [
 
 export type CaseStatus = (typeof CASE_STATUSES)[number];
 
-// Allowed forward transitions. AWAITING_BUDGET is skippable: a case that does
-// not need money (DOCUMENTS) moves straight from UNDER_ASSESSMENT to
-// IN_PROGRESS, and a case that does need money may only skip the stage with a
-// recorded override reason (see BUDGET_STAGE_SKIP).
+// Allowed forward transitions. AWAITING_BUDGET is skippable only by a case that
+// does not need money (DOCUMENTS). A case whose type needs money must wait in
+// AWAITING_BUDGET until the treasury has funded it; see budgetStageBlock().
 export const STATUS_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
   SUBMITTED: ["ASSIGNED"],
   ASSIGNED: ["UNDER_ASSESSMENT"],
@@ -76,6 +75,7 @@ export const HISTORY_ENTRY_TYPES = [
   "OVERRIDE",
   "VERIFICATION",
   "CREW_PROGRESS",
+  "FIELD_CHECK",
 ] as const;
 
 export type HistoryEntryType = (typeof HISTORY_ENTRY_TYPES)[number];
@@ -92,6 +92,8 @@ export const HISTORY_VISIBILITIES = [
 export type HistoryVisibility = (typeof HISTORY_VISIBILITIES)[number];
 
 // CaseWorkflowOverride.kind values — every one of them demands a reason.
+// BUDGET_STAGE_SKIP stays in this list so older records still read correctly,
+// but it can no longer be created: money cases may not skip AWAITING_BUDGET.
 export const OVERRIDE_KINDS = [
   "CREW_SHORTFALL",
   "BUDGET_STAGE_SKIP",
@@ -101,6 +103,11 @@ export const OVERRIDE_KINDS = [
   "ASSESSMENT_BYPASS",
 ] as const;
 export type OverrideKind = (typeof OVERRIDE_KINDS)[number];
+
+/** The kinds a user may record now. A retired kind stays readable, not creatable. */
+export const CREATABLE_OVERRIDE_KINDS = OVERRIDE_KINDS.filter(
+  (kind) => kind !== "BUDGET_STAGE_SKIP"
+);
 
 export const OVERRIDE_LABELS: Record<OverrideKind, string> = {
   CREW_SHORTFALL: "Start work with fewer crew than planned",
@@ -133,6 +140,20 @@ export const VERIFICATION_STATUSES = [
   "PENDING_RESIDENT_CONFIRMATION",
 ] as const;
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
+
+/**
+ * The verification outcomes that let a resolved case close. A FAILED check or a
+ * resident confirmation still outstanding does not: those cases need a
+ * status-force override with a reason to close.
+ */
+export const PASSING_VERIFICATION_STATUSES: readonly VerificationStatus[] = [
+  "FIXED_VERIFIED",
+  "PARTIALLY_VERIFIED",
+];
+
+export function isPassingVerification(status: string | null | undefined): boolean {
+  return (PASSING_VERIFICATION_STATUSES as readonly string[]).includes(status ?? "");
+}
 
 export const PRIORITY_LEVELS = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 export type PriorityLevel = (typeof PRIORITY_LEVELS)[number];
@@ -191,18 +212,49 @@ export function statusPermissionFor(target: string): PermissionKey | null {
   }
 }
 
-/**
- * Whether leaving UNDER_ASSESSMENT for IN_PROGRESS skips the budget stage for a
- * case whose type says money is involved. The caller must then demand an
- * override reason.
- */
-export function requiresBudgetSkipOverride(input: {
+export type BudgetStageInput = {
   fromStatus: string;
   toStatus: string;
   typeRequiresBudget: boolean;
-}): boolean {
-  if (!input.typeRequiresBudget) return false;
-  return input.fromStatus === "UNDER_ASSESSMENT" && input.toStatus === "IN_PROGRESS";
+  /** Cost estimate from the assessment, labour included. Null when none is saved. */
+  estimatedCost: number | null;
+  /** Approved earmarks set aside for this case (the treasury's figure). */
+  fundedAmount: number;
+};
+
+function peso(value: number): string {
+  return `₱${value.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/**
+ * Why a status change is blocked by the money rules, or null when it may go ahead.
+ *
+ * A case whose type needs money (requiresBudget) must:
+ *   1. wait in AWAITING_BUDGET, never skip it (there is no override for this);
+ *   2. state how much it needs (a saved cost estimate) before it starts waiting;
+ *   3. have approved funds that cover that estimate before work starts.
+ * Cases that need no money are not affected.
+ */
+export function budgetStageBlock(input: BudgetStageInput): string | null {
+  if (!input.typeRequiresBudget) return null;
+  const estimate = input.estimatedCost;
+  const hasEstimate = estimate !== null && estimate > 0;
+
+  if (input.fromStatus === "UNDER_ASSESSMENT" && input.toStatus === "IN_PROGRESS") {
+    return "This case needs funds, so it must wait in AWAITING_BUDGET until the treasury has set money aside. It cannot skip that stage.";
+  }
+  if (input.toStatus === "AWAITING_BUDGET" && !hasEstimate) {
+    return "Save the cost estimate before the case waits for budget. The estimate is how the treasury knows how much to set aside.";
+  }
+  if (input.fromStatus === "AWAITING_BUDGET" && input.toStatus === "IN_PROGRESS") {
+    if (!hasEstimate) {
+      return "Save the cost estimate before work starts.";
+    }
+    if (input.fundedAmount + 0.005 < estimate) {
+      return `Only ${peso(input.fundedAmount)} is set aside for this case, but the estimate is ${peso(estimate)}. The treasury must approve an earmark for the rest before work starts.`;
+    }
+  }
+  return null;
 }
 
 export type WorkflowActor = {

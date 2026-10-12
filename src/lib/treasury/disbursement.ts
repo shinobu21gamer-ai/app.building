@@ -10,7 +10,7 @@ import type { Prisma } from "@prisma/client";
 import { createApiError } from "@/lib/api";
 import type { PermissionKey } from "@/lib/auth/rbac";
 import { codeUsable } from "@/lib/treasury/coa";
-import { allocationBalance, loadAllocationForActor, settleEarmarkPayment, writeLedgerEntry, type Actor } from "@/lib/treasury/budget";
+import { allocationBalance, loadAllocationForActor, lockAllocation, settleEarmarkPayment, writeLedgerEntry, type Actor } from "@/lib/treasury/budget";
 import {
   actionAllowed,
   approvalConflict,
@@ -174,6 +174,7 @@ export async function createDisbursement(tx: Tx, input: CreateVoucherInput) {
     }
     earmarkId = earmark.id;
   } else {
+    await lockAllocation(tx, allocation.id);
     const balance = await allocationBalance(tx, allocation.id);
     if (amount > balance.available) {
       throw createApiError.conflict(
@@ -306,6 +307,7 @@ export async function actOnDisbursement(tx: Tx, input: VoucherActionInput) {
       // Reserving the money is what "funds are available" means. A voucher
       // that draws on an approved earmark is already reserved by that earmark.
       if (voucher.earmarkId === null) {
+        await lockAllocation(tx, voucher.allocationId);
         const balance = await allocationBalance(tx, voucher.allocationId);
         if (amount > balance.available) {
           throw createApiError.conflict(

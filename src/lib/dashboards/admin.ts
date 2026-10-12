@@ -7,10 +7,19 @@ import {
   statusTallies,
   summarizeDurations,
 } from "@/lib/cases/figures";
+import { crewCoverage } from "@/lib/cases/manpower";
 
 // Cap the resolution-time sample so the dashboard query stays bounded; the
 // aggregate is computed with a linear scan so it cannot stack-overflow.
 const RESOLUTION_SAMPLE_LIMIT = 50_000;
+
+// Cases still being worked: the ones a crew can be on right now.
+const OPEN_CREW_STATUSES = [
+  "ASSIGNED",
+  "UNDER_ASSESSMENT",
+  "AWAITING_BUDGET",
+  "IN_PROGRESS",
+] as const;
 
 /**
  * Administrator dashboard aggregates. Every figure is a live database
@@ -91,6 +100,8 @@ export async function getAdminDashboard() {
     slowestHours: roundHours(durations.slowestHours),
   };
 
+  const crew = await openCrewFigures();
+
   return {
     totals: { total, resolved, unresolved: total - resolved },
     byStatus,
@@ -98,5 +109,50 @@ export async function getAdminDashboard() {
     byCategory,
     byOffice,
     processingTime,
+    crew,
   };
+}
+
+/**
+ * Crew coverage across open cases: how many people the plans call for, how many
+ * are booked, and how many open cases are still short. Uses the same coverage
+ * rule as the case page ("2 of 3 assigned"), so the two never disagree.
+ */
+export async function openCrewFigures() {
+  const [plans, bookings] = await Promise.all([
+    db.caseAssessment.findMany({
+      where: { concern: { status: { in: [...OPEN_CREW_STATUSES] } } },
+      select: { concernId: true, workersNeeded: true },
+    }),
+    db.crewAssignment.groupBy({
+      by: ["concernId"],
+      where: {
+        isActive: true,
+        concern: { status: { in: [...OPEN_CREW_STATUSES] } },
+      },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const bookedByCase = new Map(
+    bookings.map((row) => [row.concernId, row._count._all])
+  );
+
+  let plannedCrew = 0;
+  let shortfallCases = 0;
+  let plannedCases = 0;
+  for (const plan of plans) {
+    if (plan.workersNeeded === null) continue;
+    plannedCases += 1;
+    plannedCrew += plan.workersNeeded;
+    const coverage = crewCoverage({
+      required: plan.workersNeeded,
+      assigned: bookedByCase.get(plan.concernId) ?? 0,
+    });
+    if (!coverage.satisfied) shortfallCases += 1;
+  }
+
+  const crewDeployed = bookings.reduce((sum, row) => sum + row._count._all, 0);
+
+  return { plannedCases, plannedCrew, crewDeployed, shortfallCases };
 }

@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { retryPendingEmailDeliveries } from "@/lib/email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function isAuthorized(req: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const authorization = req.headers.get("authorization");
-  return authorization === `Bearer ${secret}`;
+  return isCronAuthorized(req);
 }
 
 export async function POST(req: Request) {
@@ -20,7 +18,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const sent = await retryPendingEmailDeliveries();
+    const sent = await retryPendingEmailDeliveries(undefined, { trigger: "CRON" });
     return NextResponse.json({ success: true, data: { sent } });
   } catch (error) {
     console.error("[cron] email delivery retry failed:", error);

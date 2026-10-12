@@ -18,6 +18,14 @@ import {
 import { createConcernSchema, trackConcernSchema } from "@/lib/validations/concern";
 import { slaPolicySaveSchema } from "@/lib/validations/sla";
 import { disbursementCreateSchema } from "@/lib/validations/treasury";
+import {
+  assessmentSchema,
+  concernValidationSchema,
+  resolutionSchema,
+} from "@/lib/validations/case";
+import { allocationCreateSchema, earmarkCreateSchema } from "@/lib/validations/treasury";
+import { priorityOverrideSchema } from "@/lib/validations/priority";
+import { dsrCreateSchema, identitySubmitSchema } from "@/lib/validations/privacy";
 
 type Pair = {
   /** Form component, relative to the repository root. */
@@ -38,6 +46,85 @@ type Pair = {
 };
 
 const PAIRS: Pair[] = [
+  {
+    file: "src/components/cases/assessment-form.tsx",
+    schema: assessmentSchema,
+    idMap: {
+      durationHours: "estimatedDurationMinutes",
+      scheduledStart: "scheduledStartAt",
+      scheduledEnd: "scheduledEndAt",
+    },
+  },
+  {
+    file: "src/components/cases/validation-form.tsx",
+    schema: concernValidationSchema,
+    idMap: {
+      "validation-type": "typeId",
+      "validation-category": "categoryId",
+      "validation-priority": "priorityLevel",
+      "validation-notes": "notes",
+    },
+  },
+  {
+    file: "src/components/cases/resolution-form.tsx",
+    schema: resolutionSchema,
+    idMap: {
+      "resolution-summary": "summary",
+      "resolution-actions": "actionsTaken",
+      "resolution-type": "resolutionType",
+      "resolution-on": "resolvedOn",
+    },
+    // Not in the resolution schema, but the form requires them: the remarks
+    // (the journal entry) and the proof photo (every status change needs one).
+    clientRequired: ["resolution-remarks", "resolution-attachment"],
+  },
+  {
+    file: "src/components/treasury/earmark-form.tsx",
+    schema: earmarkCreateSchema,
+    idMap: {
+      "earmark-purpose": "purpose",
+      "earmark-amount": "amount",
+      "earmark-allocation": "allocationId",
+      "earmark-case": "concernId",
+      "earmark-notes": "notes",
+    },
+  },
+  {
+    file: "src/components/treasury/allocation-form.tsx",
+    schema: allocationCreateSchema,
+    idMap: {
+      "allocation-label": "label",
+      "allocation-appropriation": "appropriation",
+      "allocation-fiscal-year": "fiscalYearId",
+      "allocation-fund-source": "fundSourceId",
+      "allocation-coa": "coaAccountId",
+      "allocation-office": "officeId",
+      "allocation-notes": "notes",
+    },
+  },
+  {
+    file: "src/components/priority/priority-override-form.tsx",
+    schema: priorityOverrideSchema,
+  },
+  {
+    file: "src/components/privacy/dsr-form.tsx",
+    schema: dsrCreateSchema,
+    idMap: {
+      "dsr-type": "type",
+      "dsr-details": "details",
+    },
+  },
+  {
+    file: "src/components/identity/verification-form.tsx",
+    schema: identitySubmitSchema,
+    idMap: {
+      "identity-method": "method",
+      "identity-type-label": "idTypeLabel",
+      "identity-number": "idNumber",
+    },
+    // The ID photo is required by the server (`idImage`), not by the schema.
+    clientRequired: ["identity-image"],
+  },
   {
     file: "src/components/concern/submit-concern-form.tsx",
     schema: createConcernSchema,

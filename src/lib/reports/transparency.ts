@@ -150,7 +150,10 @@ export interface TransparencyReportData {
 export async function loadTransparencyData(
   input: TransparencyReportInput
 ): Promise<TransparencyReportData> {
+  // Filter in the query, not in memory: the row limit must apply to published
+  // rows only, otherwise unpublished rows use up the limit and undercount.
   const rows = await db.publicCaseRecord.findMany({
+    where: { published: true },
     select: {
       status: true,
       typeKey: true,

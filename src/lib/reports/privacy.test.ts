@@ -291,6 +291,7 @@ describe("the privacy report's deadline figures", () => {
         piiByPurpose: [],
         piiTotal: 0,
         retention: summarizeRetention([], []),
+        truncated: false,
       },
       { locale: "en", period: PERIOD }
     );

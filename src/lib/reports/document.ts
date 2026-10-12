@@ -51,6 +51,44 @@ export interface ReportDocument {
   sections: ReportSection[];
 }
 
+/**
+ * A query that is capped at `limit` rows. Callers fetch `limit + 1` so they can
+ * tell "exactly at the limit" from "more rows exist than were read".
+ */
+export interface CappedRows<T> {
+  rows: T[];
+  truncated: boolean;
+}
+
+export function capRows<T>(rows: readonly T[], limit: number): CappedRows<T> {
+  return { rows: rows.slice(0, limit) as T[], truncated: rows.length > limit };
+}
+
+/**
+ * Says so on the report when a figure covers only part of the period. A total
+ * that silently stops at the limit looks complete, so it must carry a warning.
+ */
+export function withRowLimitStat(
+  document: ReportDocument,
+  truncated: boolean,
+  labels: { rowLimitLabel: string; rowLimitHint: string },
+  limit: number
+): ReportDocument {
+  if (!truncated) return document;
+  return {
+    ...document,
+    stats: [
+      ...document.stats,
+      {
+        label: labels.rowLimitLabel,
+        value: limit.toLocaleString("en-US"),
+        hint: labels.rowLimitHint.replace("{limit}", limit.toLocaleString("en-US")),
+        tone: "warning",
+      },
+    ],
+  };
+}
+
 /** A right-aligned numeric column, the common case in these tables. */
 export function numericColumn(key: string, label: string): ReportColumn {
   return { key, label, align: "right" };

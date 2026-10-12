@@ -20,6 +20,8 @@ import {
   textColumn,
   type ReportDocument,
   type ReportSection,
+  capRows,
+  withRowLimitStat,
 } from "@/lib/reports/document";
 import { reportLabels, reportRangeLabel, statusText } from "@/lib/reports/labels";
 import {
@@ -397,7 +399,8 @@ export async function loadEngineeringReport(
   const range = periodRange(input.period);
   const scope = input.officeId ? { assignedOfficeId: input.officeId } : {};
 
-  const concerns = await db.concern.findMany({
+  // Every query below reads one row past the limit, so a cut-off is visible.
+  const concernsRead = await db.concern.findMany({
     where: {
       ...scope,
       ...(range ? { submittedAt: range } : {}),
@@ -420,13 +423,15 @@ export async function loadEngineeringReport(
       },
     },
     orderBy: { submittedAt: "desc" },
-    take: REPORT_ROW_LIMIT,
+    take: REPORT_ROW_LIMIT + 1,
   });
+  const concerns = capRows(concernsRead, REPORT_ROW_LIMIT);
 
   // "Overdue right now" is a statement about today, not about the period, so
   // open cases are read separately rather than filtered out by the window.
-  const openCases = await db.concern.findMany({
+  const openRead = await db.concern.findMany({
     where: { ...scope, status: { notIn: ["RESOLVED", "CLOSED"] } },
+    orderBy: { submittedAt: "desc" },
     select: {
       id: true,
       caseNumber: true,
@@ -444,10 +449,11 @@ export async function loadEngineeringReport(
         select: { workersNeeded: true, estimatedDurationMinutes: true },
       },
     },
-    take: REPORT_ROW_LIMIT,
+    take: REPORT_ROW_LIMIT + 1,
   });
+  const openCases = capRows(openRead, REPORT_ROW_LIMIT);
 
-  const rows: EngineeringCaseRow[] = concerns.map((row) => ({
+  const rows: EngineeringCaseRow[] = concerns.rows.map((row) => ({
     id: row.id,
     caseNumber: row.caseNumber,
     status: row.status,
@@ -469,7 +475,7 @@ export async function loadEngineeringReport(
         : row.caseAssessment.estimatedDurationMinutes / 60,
   }));
 
-  const openRows: EngineeringCaseRow[] = openCases.map((row) => ({
+  const openRows: EngineeringCaseRow[] = openCases.rows.map((row) => ({
     id: row.id,
     caseNumber: row.caseNumber,
     status: row.status,
@@ -492,16 +498,19 @@ export async function loadEngineeringReport(
   }));
 
   const inPeriodIds = rows.map((row) => row.id);
-  const escalations = await db.caseEscalation.findMany({
+  const escalationsRead = await db.caseEscalation.findMany({
     where: {
       ...(inPeriodIds.length > 0 ? { concernId: { in: inPeriodIds } } : { concernId: -1 }),
       ...(range ? { createdAt: range } : {}),
     },
     select: { level: true, acknowledgedAt: true, resolvedAt: true, createdAt: true },
-    take: REPORT_ROW_LIMIT,
+    orderBy: { createdAt: "desc" },
+    take: REPORT_ROW_LIMIT + 1,
   });
+  const escalationsCap = capRows(escalationsRead, REPORT_ROW_LIMIT);
+  const escalations = escalationsCap.rows;
 
-  const assignments = await db.crewAssignment.findMany({
+  const assignmentsRead = await db.crewAssignment.findMany({
     where: {
       ...(range ? { assignedAt: range } : {}),
       ...(input.officeId ? { concern: { assignedOfficeId: input.officeId } } : {}),
@@ -525,8 +534,16 @@ export async function loadEngineeringReport(
         },
       },
     },
-    take: REPORT_ROW_LIMIT,
+    orderBy: { assignedAt: "desc" },
+    take: REPORT_ROW_LIMIT + 1,
   });
+  const assignmentsCap = capRows(assignmentsRead, REPORT_ROW_LIMIT);
+  const assignments = assignmentsCap.rows;
+  const truncated =
+    concerns.truncated ||
+    openCases.truncated ||
+    escalationsCap.truncated ||
+    assignmentsCap.truncated;
 
   const assessmentHours = new Map<number, number>();
   for (const row of rows) {
@@ -697,7 +714,7 @@ export async function loadEngineeringReport(
       row.slaDueAt.getTime() < now.getTime()
   ).length;
 
-  return {
+  const document: ReportDocument = {
     key: "engineering",
     title: t.engineering.title,
     description: `${t.engineering.description} ${t.lead.replace(
@@ -750,6 +767,7 @@ export async function loadEngineeringReport(
       crewSection,
     ],
   };
+  return withRowLimitStat(document, truncated, t, REPORT_ROW_LIMIT);
 }
 
 /** Hours as a short cell: "36 h", or "—" when nothing has been measured. */
