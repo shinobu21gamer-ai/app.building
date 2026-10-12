@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { SkeletonVariant } from "@/lib/loading/route-skeleton";
+import { Container } from "@/components/ui/container";
 import { Skeleton } from "./skeleton";
 
 /**
@@ -18,13 +19,22 @@ export function PageSkeleton({
   className?: string;
 }) {
   return (
-    <div
-      aria-hidden="true"
-      className={cn("mx-auto w-full max-w-6xl px-4 py-8 sm:px-6", className)}
-    >
-      {withNav ? <NavSkeleton /> : null}
-      <VariantBody variant={variant} />
-    </div>
+    // Same width primitive as the real page: a skeleton that is narrower than
+    // the content it stands in for makes the swap-in read as a layout jump.
+    <Container aria-hidden="true" className={cn("py-8", className)}>
+      {withNav ? (
+        // Mirrors `RoleShell`: a sidebar column from `md` up (and nothing below
+        // it, where the real app keeps its nav in the fixed bottom tab bar).
+        <div className="flex gap-6 xl:gap-10">
+          <NavSkeleton />
+          <div className="min-w-0 flex-1">
+            <VariantBody variant={variant} />
+          </div>
+        </div>
+      ) : (
+        <VariantBody variant={variant} />
+      )}
+    </Container>
   );
 }
 
@@ -52,12 +62,14 @@ function VariantBody({ variant }: { variant: SkeletonVariant }) {
 }
 
 function NavSkeleton() {
-  const widths = ["w-24", "w-28", "w-32", "w-24", "w-28"];
+  const widths = ["w-32", "w-40", "w-36", "w-28", "w-40", "w-32"];
   return (
-    <div className="mb-6 flex flex-wrap gap-1 border-b border-line pb-3">
-      {widths.map((width, index) => (
-        <Skeleton key={index} className={cn("h-8 rounded-control", width)} />
-      ))}
+    <div className="hidden md:block md:w-60 md:shrink-0 2xl:w-72">
+      <div className="grid gap-1">
+        {widths.map((width, index) => (
+          <Skeleton key={index} className={cn("h-9 rounded-control", width)} />
+        ))}
+      </div>
     </div>
   );
 }

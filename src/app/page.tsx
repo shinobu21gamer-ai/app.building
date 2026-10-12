@@ -75,7 +75,7 @@ export default async function Home() {
             size={18}
             aria-hidden="true"
           />
-          <p className="text-sm leading-relaxed text-red-950">
+          <p className="max-w-4xl text-sm leading-relaxed text-red-950">
             <span className="font-semibold">{t.emergency.heading}.</span>{" "}
             {t.emergency.body}{" "}
             {locale === "en" ? (

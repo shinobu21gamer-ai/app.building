@@ -93,7 +93,9 @@
     0 2px 6px -2px rgb(15 23 42 / 0.08);
   --shadow-tabbar: 0 -1px 0 rgb(15 23 42 / 0.06),
     0 -10px 24px -16px rgb(15 23 42 / 0.25);
-  --container-content: 72rem; /* the widest a portal column may get */
+  /* Optional cap for custom-width content. The shared page shell is now
+     unbounded; long copy, forms and print layouts set their own measure. */
+  --container-content: 124rem;
 
   /* Type scale v2 */
   --text-display: 2.125rem;

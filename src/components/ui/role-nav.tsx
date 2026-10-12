@@ -28,7 +28,7 @@ export function RoleNav({
   return (
     <nav
       aria-label={label}
-      className="no-print hidden md:block md:w-60 md:shrink-0"
+      className="no-print hidden md:block md:w-60 md:shrink-0 2xl:w-72"
     >
       <ul className="sticky top-20 grid gap-0.5">
         {items.map((item) => {
