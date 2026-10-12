@@ -224,7 +224,7 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
 |---|---|---|
 | `src/lib/sla/policy.ts` | N ✅ | Pure SLA rules: policy specificity, window resolution, level, dedupe key, labels (21 tests) |
 | `src/lib/sla/escalation.ts` | N ✅ | The run (`runSlaEscalations`, `planEscalations`), the case clock (`resolveStageWindow`, `armCaseStageClock`), the queue/acknowledge/resolve desk, policy CRUD, overview (12 tests) |
-| `src/lib/audit/chain.ts` | N ✅ | Pure chain rules: canonical payload, `sha256` chaining, verification of a row range (20 tests) |
+| `src/lib/audit/chain.ts` | N ✅ | Pure chain rules: canonical payload, `sha256` chaining, verification of a row range (12 tests) |
 | `src/lib/audit/store.ts` | N ✅ | Chained writer, verifier + `AuditVerificationRun`, explorer queries, facets, digest, legacy backfill, `serialize*` projections |
 | `src/lib/audit.ts` | M ✅ | `recordAudit(input, { tx?, actorRole? })` now appends through the chain; still never breaks the caller. All 70 call sites unchanged |
 | `src/lib/cases/sla.ts` | M ✅ | Thin facade over `runSlaEscalations` that keeps the existing `scanSlaBreaches(): Promise<number>` |
@@ -240,7 +240,7 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
 | `src/components/sla/{escalation-table,escalation-actions,run-scan-button,policy-form,policy-actions}.tsx` | N ✅ | Queue cards, ack/resolve, manual scan, policy create/edit/activate |
 | `src/components/audit/{verify-button,audit-table}.tsx` | N ✅ | Range verification with an OK/BROKEN report, sequence + hash columns |
 | `src/app/{admin,captain}/layout.tsx` | M ✅ | Nav entries for the SLA desk, audit trail and Captain queue |
-| `src/lib/i18n.ts` | M ✅ | `revamp.slaDesk` (59 keys) and `revamp.auditDesk` (45 keys) in en + fil, `slaNav`/`auditNav` inline labels |
+| `src/lib/i18n.ts` | M ✅ | `revamp.slaDesk` (70 keys) and `revamp.auditDesk` (50 keys) in en + fil, `slaNav`/`auditNav` inline labels |
 | `scripts/audit-chain-backfill.ts` | N ✅ | Chains pre-existing audit rows, dry run unless `--apply` (`npm run audit:chain-backfill`) |
 | `.github/workflows/sla-cron.yml` | N ✅ | Hourly escalation scan + weekly audit verification, both through the app's own cron routes |
 | `.env.example` | M ✅ | `CRON_SECRET` documented with the three jobs; the retired `CASE_SLA_HOURS` removed |
