@@ -418,7 +418,9 @@ describe("the engineering report", () => {
 describe("the transparency report", () => {
   it("reads the public projection only", async () => {
     const data = await loadTransparencyData({ locale: "en", period: PERIOD_90D });
-    expect(data.rows).toHaveLength(3);
+    // The unpublished record is excluded in the query itself, so it cannot reach the page.
+    expect(data.rows).toHaveLength(2);
+    expect(data.rows.every((row) => row.published)).toBe(true);
     expect(data.totals.published).toBe(2);
     expect(data.months.length).toBeGreaterThan(0);
     expect(data.truncated).toBe(false);
