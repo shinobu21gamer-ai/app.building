@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
-import { sortJournal } from "@/lib/cases/journal";
+import { sortJournal, type JournalEntryDates } from "@/lib/cases/journal";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { copy, type Copy, type Locale } from "@/lib/i18n";
 
@@ -25,18 +25,27 @@ export type ResolutionInfo = {
 };
 
 /** The short label for a journal entry, e.g. "Status changed: IN PROGRESS → CLOSED". */
+export type JournalEntryLike = {
+  entryType?: string | null;
+  fromStatus?: string | null;
+  toStatus?: string | null;
+};
+
 export function describeJournalEntry(
-  entry: Pick<HistoryEntry, "entryType" | "fromStatus" | "toStatus">,
+  // Print views sort rows whose entry fields are not part of the dating type,
+  // so the label helper accepts either shape and reads the fields it needs.
+  entry: JournalEntryLike | JournalEntryDates,
   t: Copy["desk"]
 ): string {
-  if (entry.entryType === "STATUS_CHANGE") {
-    if (entry.fromStatus && entry.toStatus) {
+  const row = entry as JournalEntryLike;
+  if (row.entryType === "STATUS_CHANGE") {
+    if (row.fromStatus && row.toStatus) {
       return t.entryStatusChange
-        .replace("{from}", entry.fromStatus)
-        .replace("{to}", entry.toStatus);
+        .replace("{from}", row.fromStatus)
+        .replace("{to}", row.toStatus);
     }
-    if (entry.toStatus) {
-      return t.entryStatusSet.replace("{status}", entry.toStatus);
+    if (row.toStatus) {
+      return t.entryStatusSet.replace("{status}", row.toStatus);
     }
     return t.entryStatus;
   }
@@ -48,8 +57,16 @@ export function describeJournalEntry(
     ACTION: t.entryAction,
     PRIORITY_OVERRIDE: t.entryOverride,
     SLA_BREACH: t.entrySla,
+    // Stage-3 workflow entries.
+    ASSESSMENT: t.entryAssessment,
+    MANPOWER_PLAN: t.entryManpower,
+    CREW_ASSIGNMENT: t.entryCrew,
+    CREW_PROGRESS: t.entryCrewProgress,
+    OVERRIDE: t.entryWorkflowOverride,
+    VERIFICATION: t.entryVerification,
+    BUDGET: t.entryBudget,
   };
-  return labels[entry.entryType] ?? t.entryUpdate;
+  return (row.entryType && labels[row.entryType]) || t.entryUpdate;
 }
 
 /**

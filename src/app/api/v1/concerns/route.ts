@@ -29,6 +29,7 @@ import { routeConcern } from "@/lib/routing/service";
 import { notifyConcernSubmitted } from "@/lib/notifications/service";
 import { listConcerns, parseConcernFilters } from "@/lib/cases/query";
 import { findLikelyDuplicate } from "@/lib/cases/duplicates";
+import { encodeGeohash } from "@/lib/cases/geo";
 
 export const runtime = "nodejs";
 
@@ -55,6 +56,13 @@ async function createConcern(
   evaluation: PriorityEvaluation,
   duplicateOfId: number | null
 ) {
+  // Internal precision (≈150 m) for clustering; the public projection coarsens
+  // this to a 5-character geohash before anything is published.
+  const locationGeohash =
+    input.locationLat !== undefined && input.locationLng !== undefined
+      ? encodeGeohash(input.locationLat, input.locationLng, 7)
+      : null;
+
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       return await db.$transaction(async (tx) => {
@@ -70,6 +78,11 @@ async function createConcern(
             locationAddress: input.locationAddress,
             locationLat: input.locationLat ?? null,
             locationLng: input.locationLng ?? null,
+            locationAccuracyM: input.locationAccuracyM ?? null,
+            locationSource: input.locationSource ?? null,
+            locationPurok: input.locationPurok ?? null,
+            locationGeohash,
+            typeId: input.typeId ?? null,
             imageUrl,
             status: "SUBMITTED",
             priorityLevel: evaluation.level,
@@ -121,6 +134,7 @@ async function createConcern(
           id: concern.id,
           categoryId: input.categoryId,
           caseNumber,
+          typeId: input.typeId ?? null,
         });
 
         await notifyConcernSubmitted(tx, {
@@ -209,7 +223,14 @@ export const POST = withErrorBoundary(async (req: Request) => {
     categoryId: form.get("categoryId"),
   };
 
-  for (const field of ["locationLat", "locationLng"] as const) {
+  for (const field of [
+    "locationLat",
+    "locationLng",
+    "locationAccuracyM",
+    "locationSource",
+    "locationPurok",
+    "typeId",
+  ] as const) {
     const value = form.get(field);
     if (typeof value === "string" && value.trim() !== "") raw[field] = value;
   }
@@ -233,6 +254,18 @@ export const POST = withErrorBoundary(async (req: Request) => {
   });
   if (!category || !category.isActive) {
     throw createApiError.badRequest("Select an active concern category.");
+  }
+
+  // A suggested service type drives routing; an admin still confirms it during
+  // validation, so a wrong suggestion costs a correction, not a misroute.
+  if (input.typeId !== undefined) {
+    const type = await db.concernType.findUnique({
+      where: { id: input.typeId },
+      select: { id: true, isActive: true },
+    });
+    if (!type || !type.isActive) {
+      throw createApiError.badRequest("Select an active concern type.");
+    }
   }
 
   const { factors, thresholds } = await loadPriorityConfig();
@@ -295,6 +328,8 @@ export const POST = withErrorBoundary(async (req: Request) => {
         priorityLevel: concern.priorityLevel,
         priorityScore: concern.priorityScore,
         assignedOfficeId: concern.assignedOfficeId,
+        typeId: concern.typeId,
+        locationPurok: concern.locationPurok,
       },
       priority: {
         totalScore: evaluation.totalScore,

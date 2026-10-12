@@ -6,11 +6,14 @@ import {
   ok,
   withErrorBoundary,
 } from "@/lib/api";
-import { requireApiRole } from "@/lib/auth/session";
+import { requireApiPermission } from "@/lib/auth/session";
 import { recordAudit, requestMeta } from "@/lib/audit";
 import { statusChangeSchema } from "@/lib/validations/case";
 import { changeConcernStatus } from "@/lib/cases/service";
-import { PROOF_REQUIRED_MESSAGE } from "@/lib/cases/workflow";
+import {
+  PROOF_REQUIRED_MESSAGE,
+  statusPermissionFor,
+} from "@/lib/cases/workflow";
 import {
   deleteConcernImage,
   imageUrlForFile,
@@ -38,9 +41,15 @@ function attachedFile(value: FormDataEntryValue | null): File | null {
 /**
  * POST /api/v1/concerns/[id]/status
  *
- * Moves a case to IN_PROGRESS, RESOLVED or CLOSED. Every status change must
- * carry a proof photo, so it is accepted only as multipart form data with the
- * image attached. JSON cannot carry a file and is refused.
+ * Moves a case through the seven-stage lifecycle: UNDER_ASSESSMENT,
+ * AWAITING_BUDGET (skippable), IN_PROGRESS, RESOLVED or CLOSED. Every status
+ * change must carry a proof photo, so it is accepted only as multipart form
+ * data with the image attached. JSON cannot carry a file and is refused.
+ *
+ * The permission depends on the target: driving a case forward needs
+ * `case.status.progress`; closing it needs `case.status.close` (the approving
+ * official). Starting work also needs the planned crew assigned, and skipping
+ * the budget stage on a funded case needs a written override reason.
  *
  * Optional `occurredOn` (YYYY-MM-DD) records the day the change happened; it
  * defaults to today (Asia/Manila). RESOLVED takes its date from `resolution`.
@@ -48,7 +57,6 @@ function attachedFile(value: FormDataEntryValue | null): File | null {
 export const POST = withErrorBoundary<[Request, RouteContext]>(
   async (req, ctx) => {
     assertSameOrigin(req);
-    const user = await requireApiRole(["OFFICIAL", "ADMIN"]);
 
     const { id } = await ctx.params;
     const concernId = Number(id);
@@ -82,7 +90,18 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
       remarks: form.get("remarks"),
       occurredOn: form.get("occurredOn") ?? undefined,
       resolution,
+      overrideReason: form.get("overrideReason") ?? undefined,
     });
+
+    // Authorization follows the target status, so the approving official can
+    // close a case without gaining the right to drive one forward.
+    const permission = statusPermissionFor(body.status);
+    if (!permission) {
+      throw createApiError.badRequest(
+        `A case cannot be moved to ${body.status} directly.`
+      );
+    }
+    const user = await requireApiPermission(permission);
 
     const proof = attachedFile(form.get("attachment"));
     if (!proof) {
@@ -106,6 +125,7 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
           remarks: body.remarks,
           occurredOn: body.occurredOn,
           proofUrl,
+          overrideReason: body.overrideReason,
           resolution: body.resolution
             ? {
                 summary: body.resolution.summary,
@@ -131,14 +151,20 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
         ? "CONCERN_RESOLVED"
         : outcome.status === "CLOSED"
           ? "CASE_CLOSED"
-          : "CONCERN_STATUS_CHANGED";
+          : outcome.status === "IN_PROGRESS"
+            ? "CASE_WORK_STARTED"
+            : "CONCERN_STATUS_CHANGED";
 
     const meta = requestMeta(req);
     await recordAudit({
       action,
       resourceType: "concern",
       resourceId: String(concernId),
-      description: `${outcome.caseNumber}: status ${outcome.fromStatus} → ${outcome.status}, action date ${outcome.actionDate}, proof photo attached. ${body.remarks}`,
+      description:
+        `${outcome.caseNumber}: status ${outcome.fromStatus} → ${outcome.status}, ` +
+        `action date ${outcome.actionDate}, proof photo attached.` +
+        (outcome.overrideKind ? ` Override: ${outcome.overrideKind}.` : "") +
+        ` ${body.remarks}`,
       userId: user.id,
       ...meta,
     });
@@ -157,6 +183,9 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
       status: outcome.status,
       actionDate: outcome.actionDate,
       proofUrl,
+      overrideKind: outcome.overrideKind,
+      crewProgressLabel: outcome.crewProgressLabel,
+      publicRecord: outcome.publicRecord,
       redirect: `/official/concerns/${concernId}`,
     });
   }

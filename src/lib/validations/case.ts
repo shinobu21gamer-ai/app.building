@@ -1,6 +1,14 @@
 import { z } from "zod";
 import { CALENDAR_DAY_RE, isValidCalendarDay } from "@/lib/cases/action-date";
 import {
+  MAX_DURATION_MINUTES,
+  MAX_WORKERS_NEEDED,
+  MIN_WORKERS_NEEDED,
+} from "@/lib/cases/manpower";
+import {
+  OVERRIDE_KINDS,
+  OVERRIDE_REASON_MIN,
+  PRIORITY_LEVELS,
   RESOLUTION_TYPES,
   WORKFLOW_TARGET_STATUSES,
 } from "@/lib/cases/workflow";
@@ -68,6 +76,18 @@ export const statusChangeSchema = z
     // the resolution's own resolvedOn is used instead (see the service).
     occurredOn: optionalCalendarDay("Action date"),
     resolution: resolutionSchema.optional(),
+    // Written reason for bypassing a workflow rule (crew shortfall, skipping
+    // the budget stage, forcing a close). Stored as a CaseWorkflowOverride.
+    overrideReason: z
+      .string()
+      .trim()
+      .min(
+        OVERRIDE_REASON_MIN,
+        `Give a reason of at least ${OVERRIDE_REASON_MIN} characters to override a workflow rule.`
+      )
+      .max(1000, "Override reason is too long.")
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
   })
   .refine((value) => value.status !== "RESOLVED" || value.resolution !== undefined, {
     message: "Resolution details are required when resolving a case.",
@@ -90,3 +110,164 @@ export type CaseNoteBody = z.infer<typeof caseNoteSchema>;
 export type ResolutionBody = z.infer<typeof resolutionSchema>;
 export type FeedbackBody = z.infer<typeof feedbackSchema>;
 export type SettingsBody = z.infer<typeof settingsSchema>;
+
+// ---------------------------------------------------------------- assessment
+// The UNDER_ASSESSMENT record: the four checks, the manpower plan and the
+// labour-inclusive cost estimate. Workers needed, the duration and the
+// equipment notes are mandatory — a plan without them is not a plan.
+
+const optionalMoney = (label: string) =>
+  z.preprocess(
+    (value) =>
+      value === null || (typeof value === "string" && value.trim() === "")
+        ? undefined
+        : value,
+    z.coerce
+      .number()
+      .min(0, `${label} cannot be negative.`)
+      .max(10_000_000, `${label} is too large.`)
+      .optional()
+  );
+
+const optionalText = (max: number, message: string) =>
+  z
+    .string()
+    .trim()
+    .max(max, message)
+    .optional()
+    .transform((value) => (value === "" ? undefined : value));
+
+const optionalInstant = (label: string) =>
+  z.preprocess(
+    (value) =>
+      typeof value === "string" && value.trim() === "" ? undefined : value,
+    z.coerce
+      .date({ message: `${label} is not a valid date and time.` })
+      .optional()
+  );
+
+export const assessmentSchema = z
+  .object({
+    // The four checks.
+    eligibilityChecked: z.boolean(),
+    eligibilityNotes: optionalText(1000, "Eligibility notes are too long."),
+    inspectionRequired: z.boolean(),
+    inspectionNotes: optionalText(1000, "Inspection notes are too long."),
+    inspectionCompleted: z.boolean().optional().default(false),
+    resourcesVerified: z.boolean(),
+    resourcesVerificationNotes: optionalText(
+      1000,
+      "Resource verification notes are too long."
+    ),
+    approvalRequired: z.boolean(),
+    approvalNotes: optionalText(1000, "Approval notes are too long."),
+    approved: z.boolean().optional().default(false),
+
+    // Manpower plan (mandatory).
+    workersNeeded: z.coerce
+      .number()
+      .int("Workers needed must be a whole number.")
+      .min(MIN_WORKERS_NEEDED, "At least one worker is required.")
+      .max(MAX_WORKERS_NEEDED, `At most ${MAX_WORKERS_NEEDED} workers.`),
+    estimatedDurationMinutes: z.coerce
+      .number()
+      .int("The estimated duration must be a whole number of minutes.")
+      .min(15, "The estimated duration must be at least 15 minutes.")
+      .max(
+        MAX_DURATION_MINUTES,
+        "The estimated duration cannot exceed 90 days."
+      ),
+    equipmentNotes: z
+      .string()
+      .trim()
+      .min(3, 'Equipment notes are required — write "none" if nothing is needed.')
+      .max(500, "Equipment notes are too long."),
+    scheduledStartAt: optionalInstant("Planned start"),
+    scheduledEndAt: optionalInstant("Planned finish"),
+
+    // Cost estimate. Labour is computed from crew rates when available.
+    laborCost: optionalMoney("Labour cost"),
+    materialsCost: optionalMoney("Materials cost"),
+    equipmentCost: optionalMoney("Equipment cost"),
+    otherCost: optionalMoney("Other cost"),
+  })
+  .refine(
+    (value) =>
+      !value.scheduledStartAt ||
+      !value.scheduledEndAt ||
+      value.scheduledEndAt.getTime() > value.scheduledStartAt.getTime(),
+    {
+      message: "The planned finish must be after the planned start.",
+      path: ["scheduledEndAt"],
+    }
+  )
+  .refine((value) => value.inspectionRequired || !value.inspectionCompleted, {
+    message: "An inspection cannot be completed when none was required.",
+    path: ["inspectionCompleted"],
+  });
+
+export type AssessmentBody = z.infer<typeof assessmentSchema>;
+
+// ------------------------------------------------------------ admin validation
+
+export const concernValidationSchema = z.object({
+  typeId: z.coerce
+    .number()
+    .int("Select a valid concern type.")
+    .positive("Select a valid concern type."),
+  categoryId: z.coerce
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .or(z.literal(0).transform(() => undefined)),
+  priorityLevel: z
+    .enum(PRIORITY_LEVELS)
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  notes: z
+    .string()
+    .trim()
+    .min(5, "Add a validation note (at least 5 characters).")
+    .max(1000, "Validation notes are too long."),
+  confirmPriority: z.boolean(),
+});
+
+export type ConcernValidationBody = z.infer<typeof concernValidationSchema>;
+
+// ------------------------------------------------------------ overrides
+
+export const workflowOverrideSchema = z.object({
+  kind: z.enum(OVERRIDE_KINDS),
+  reason: z
+    .string()
+    .trim()
+    .min(
+      OVERRIDE_REASON_MIN,
+      `A reason of at least ${OVERRIDE_REASON_MIN} characters is required.`
+    )
+    .max(1000, "Reason is too long."),
+  details: z.record(z.string(), z.unknown()).optional(),
+});
+
+export type WorkflowOverrideBody = z.infer<typeof workflowOverrideSchema>;
+
+// ------------------------------------------------------------ verification
+
+export const resolutionVerificationSchema = z.object({
+  verificationStatus: z.enum([
+    "FIXED_VERIFIED",
+    "PARTIALLY_VERIFIED",
+    "FAILED",
+    "PENDING_RESIDENT_CONFIRMATION",
+  ]),
+  notes: z
+    .string()
+    .trim()
+    .min(10, "Describe what was verified (at least 10 characters).")
+    .max(1000, "Verification notes are too long."),
+});
+
+export type ResolutionVerificationBody = z.infer<
+  typeof resolutionVerificationSchema
+>;

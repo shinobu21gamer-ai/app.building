@@ -1,8 +1,8 @@
 # BarangayResolve — Complete Revamp
 
 Planning and delivery notes for the UI/UX, workflow, schema and module revamp.
-**Status: Stage 2 of 7 (RBAC and auth) is implemented on this branch.**
-Stages 2–7 are specified here and are delivered one at a time, on your go-ahead.
+**Status: Stage 3 of 7 (core workflow, including manpower) is implemented on this branch.**
+Stages 4–7 are specified here and are delivered one at a time, on your go-ahead.
 
 | Stage | Scope | State |
 |---|---|---|
@@ -93,7 +93,7 @@ need a change in a frozen file, work stops there and the change is raised with y
 ## 3. Full change inventory (all seven stages)
 
 `N` = new file, `M` = modified, `D` = deleted (none planned).
-Stages 1 and 2 are marked ✅; everything else is the committed plan for that stage.
+Stages 1–3 are marked ✅; everything else is the committed plan for that stage.
 
 ### Stage 1 — Architecture and schema ✅
 
@@ -154,37 +154,45 @@ Stages 1 and 2 are marked ✅; everything else is the committed plan for that st
 | `src/components/ui/field.tsx` | M ✅ | `Label required` marker + `RequiredLegend` for the `*` rule |
 | `prisma/seed.ts` | M ✅ | Six roles, four concern types with office routing, crew profiles |
 | `package.json` | M ✅ | `db:bootstrap-rbac` and `privacy:pii-backfill` scripts |
-### Stage 3 — Core workflow (including manpower)
+### Stage 3 — Core workflow (including manpower) ✅
 
 | Path | | Purpose |
 |---|---|---|
-| `src/lib/cases/workflow.ts` | M | Seven statuses, transition guards, labels |
-| `src/lib/cases/service.ts` | M | Validation, assignment, status changes, closure |
-| `src/lib/cases/assessment.ts` | N | UNDER_ASSESSMENT record: eligibility, inspection, resources, approval |
-| `src/lib/cases/manpower.ts` | N | `workersNeeded*`, duration, equipment, labor-inclusive cost estimate |
-| `src/lib/cases/crew.ts` | N | Crew assignment, double-booking prevention, progress (`2 of 3`) |
-| `src/lib/cases/public-record.ts` | N | Writes the PII-free `PublicCaseRecord` projection |
+| `src/lib/cases/workflow.ts` | M ✅ | Seven statuses, transition guards, labels |
+| `src/lib/cases/service.ts` | M ✅ | Validation, assignment, status changes, closure |
+| `src/lib/cases/assessment.ts` | N ✅ | UNDER_ASSESSMENT record: eligibility, inspection, resources, approval |
+| `src/lib/cases/manpower.ts` | N ✅ | `workersNeeded*`, duration, equipment, labor-inclusive cost estimate |
+| `src/lib/cases/crew.ts` | N ✅ | Crew assignment, double-booking prevention, progress (`2 of 3`) |
+| `src/lib/cases/public-record.ts` | N ✅ | Writes the PII-free `PublicCaseRecord` projection |
 | `src/lib/cases/query.ts` | M | New status filters, crew counts, legacy-case flags |
-| `src/lib/routing/service.ts` | M | Type → office assignment from the new flow |
-| `src/lib/validations/case.ts` | M | Assessment/crew/override/closure schemas |
-| `src/lib/validations/concern.ts` | M | `typeId`, geotag fields, accuracy, purok |
-| `src/lib/validations/crew.ts` | N | Crew profile + assignment schemas |
-| `src/app/api/v1/concerns/route.ts` | M | Type + geotag on submit |
-| `src/app/api/v1/concerns/[id]/validation/route.ts` | N | Admin validate/categorize/prioritize |
-| `src/app/api/v1/concerns/[id]/assessment/route.ts` | N | Under-assessment record + manpower plan |
-| `src/app/api/v1/concerns/[id]/crew/route.ts` | N | Assign/release named crew |
-| `src/app/api/v1/concerns/[id]/overrides/route.ts` | N | Reasoned overrides |
-| `src/app/api/v1/concerns/[id]/status/route.ts` | M | New transitions + the crew gate |
-| `src/app/api/v1/concerns/[id]/resolutions/verify/route.ts` | N | Verification before closure |
-| `src/app/api/v1/admin/crew/route.ts` | N | Crew roster management |
+| `src/lib/routing/service.ts` | M ✅ | Type → office assignment from the new flow |
+| `src/lib/validations/case.ts` | M ✅ | Assessment/crew/override/closure schemas |
+| `src/lib/validations/concern.ts` | M ✅ | `typeId`, geotag fields, accuracy, purok |
+| `src/lib/validations/crew.ts` | N ✅ | Crew profile + assignment schemas |
+| `src/app/api/v1/concerns/route.ts` | M ✅ | Type + geotag on submit |
+| `src/app/api/v1/concerns/[id]/validation/route.ts` | N ✅ | Admin validate/categorize/prioritize |
+| `src/app/api/v1/concerns/[id]/assessment/route.ts` | N ✅ | Under-assessment record + manpower plan |
+| `src/app/api/v1/concerns/[id]/crew/route.ts` | N ✅ | Assign/release named crew |
+| `src/app/api/v1/concerns/[id]/overrides/route.ts` | N ✅ | Reasoned overrides |
+| `src/app/api/v1/concerns/[id]/status/route.ts` | M ✅ | New transitions + the crew gate |
+| `src/app/api/v1/concerns/[id]/resolutions/verify/route.ts` | N ✅ | Verification before closure |
+| `src/app/api/v1/admin/crew/route.ts` | N ✅ | Crew roster management |
 | `src/app/api/v1/concerns/track/route.ts`, `concerns/route.ts` | M | Public tracking stays PII-free |
 | `src/app/resident/**`, `src/app/official/**` | M | New statuses, timelines, crew progress |
-| `src/app/official/concerns/[id]/assessment/page.tsx` | N | Assessment + crew planning screen |
-| `src/app/crew/**` | N | Crew portal: today's jobs, my assignments |
-| `src/app/admin/validation/page.tsx` | N | Admin validation queue |
-| `src/components/cases/*` | M/N | Stepper, workflow form, assessment form, crew panel, override dialog |
-| `src/components/concern/{geotag-picker,concern-map}.tsx` | N | Map + geotag capture |
-| `src/lib/cases/*.test.ts` | N/M | Transition, gate, double-booking and cost tests |
+| `src/app/official/concerns/[id]/assessment/page.tsx` | N ✅ | Assessment + crew planning screen |
+| `src/app/crew/**` | N ✅ | Crew portal: today's jobs, my assignments |
+| `src/app/admin/validation/page.tsx` | N ✅ | Admin validation queue |
+| `src/components/cases/*` | M/N ✅ | Stepper, workflow form, assessment form, crew panel, override dialog |
+| `src/components/concern/{geotag-picker,concern-map}.tsx` | N ✅ | Map + geotag capture |
+| `src/lib/cases/*.test.ts` | N/M ✅ | Transition, gate, double-booking and cost tests |
+| `src/lib/cases/crew-rules.ts` | N ✅ | Pure double-booking, remaining-slot and coverage rules (`2 of 3 assigned`) |
+| `src/lib/cases/geo.ts` | N ✅ | Geohash encode, coordinate coarsening, public-title scrubbing |
+| `src/lib/cases/journal.ts` | M ✅ | Journal dating (`journalReachedAt`) used by the progress stepper |
+| `src/components/concern/case-timeline.tsx` | M ✅ | Labels for the nine new journal entry types |
+| `src/app/resident/concerns/new/page.tsx`, `src/components/concern/submit-concern-form.tsx` | M ✅ | Optional service-type picker and the geotag picker |
+| `src/app/resident/concerns/[id]/page.tsx`, `src/app/official/concerns/[id]/page.tsx` | M ✅ | Seven-stage stepper, crew progress, map card, desks |
+| `src/app/resident/concerns/[id]/print/page.tsx`, `src/app/official/concerns/[id]/print/page.tsx` | M ✅ | Journal labels on the printed case record |
+| `src/lib/i18n.ts` | M ✅ | en/fil copy for every new desk (assessment, manpower, crew, validation, verification) |
 
 ### Stage 4 — Treasury
 

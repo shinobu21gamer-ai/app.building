@@ -1,5 +1,24 @@
 import { z } from "zod";
 
+// How the pin was captured. GPS_PINNED uses the device's own location, which is
+// the only source whose accuracy we can trust enough to show on the map.
+export const LOCATION_SOURCES = [
+  "GPS_PINNED",
+  "MAP_PINNED",
+  "ADDRESS_GEOCODED",
+  "MANUAL",
+] as const;
+
+export type LocationSource = (typeof LOCATION_SOURCES)[number];
+
+const optionalText = (max: number, message: string) =>
+  z
+    .string()
+    .trim()
+    .max(max, message)
+    .optional()
+    .transform((value) => (value === "" ? undefined : value));
+
 export const createConcernSchema = z.object({
   title: z
     .string()
@@ -30,13 +49,46 @@ export const createConcernSchema = z.object({
     .min(-180, "Longitude is out of range.")
     .max(180, "Longitude is out of range.")
     .optional(),
+  // Geotag metadata. Optional on purpose: a resident may describe the location
+  // in words when the device cannot give a fix, and the office then verifies it.
+  locationAccuracyM: z.coerce
+    .number()
+    .min(0, "Accuracy cannot be negative.")
+    .max(50000, "Accuracy is out of range.")
+    .optional(),
+  locationSource: z.enum(LOCATION_SOURCES).optional(),
+  locationPurok: optionalText(100, "Purok is too long."),
+  // Service type. Residents may suggest one (the picker shows the four types);
+  // an admin confirms it during validation.
+  typeId: z.coerce
+    .number()
+    .int("Select a valid concern type.")
+    .positive("Select a valid concern type.")
+    .optional(),
   // Rule-engine factor inputs. Bounds are enforced by the engine against the
   // administrator-configured factor ranges, not hard-coded here.
   urgencyScore: z.coerce.number(),
   impactScore: z.coerce.number(),
   affectedPopulationScore: z.coerce.number(),
   safetyScore: z.coerce.number(),
-});
+})
+  .refine(
+    (value) =>
+      (value.locationLat === undefined) === (value.locationLng === undefined),
+    {
+      message: "Provide both a latitude and a longitude, or neither.",
+      path: ["locationLat"],
+    }
+  )
+  .refine(
+    (value) =>
+      value.locationAccuracyM === undefined ||
+      (value.locationLat !== undefined && value.locationLng !== undefined),
+    {
+      message: "An accuracy figure needs coordinates to describe.",
+      path: ["locationAccuracyM"],
+    }
+  );
 
 export type CreateConcernInput = z.infer<typeof createConcernSchema>;
 

@@ -43,6 +43,8 @@ export function CaseWorkflowForm({
 }) {
   const t = copy[locale].desk;
   const actionLabel: Record<string, string> = {
+    UNDER_ASSESSMENT: t.startAssessment,
+    AWAITING_BUDGET: t.moveToBudget,
     IN_PROGRESS: t.startProgress,
     CLOSED: t.closeCase,
   };
@@ -173,6 +175,17 @@ export function CaseWorkflowForm({
           className={fileStyles}
         />
         <p className="mt-1 text-xs text-slate-500">{t.proofPhotoHint}</p>
+      </div>
+
+      <div>
+        <Label htmlFor="workflow-override">{t.workflowOverrideLabel}</Label>
+        <Textarea
+          id="workflow-override"
+          name="overrideReason"
+          rows={2}
+          maxLength={1000}
+          placeholder={t.workflowOverridePlaceholder}
+        />
       </div>
 
       <div>

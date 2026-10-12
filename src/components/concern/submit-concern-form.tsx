@@ -26,9 +26,11 @@ import { apiRequest } from "@/lib/api-client";
 import { createConcernSchema } from "@/lib/validations/concern";
 import { cn } from "@/lib/utils";
 import { copy, type Locale } from "@/lib/i18n";
-import { openStreetMapUrl } from "@/lib/maps";
+import { GeotagPicker } from "@/components/concern/geotag-picker";
 
 type CategoryOption = { id: number; name: string };
+
+type TypeOption = { id: number; name: string };
 
 export type FactorOption = {
   key: string;
@@ -94,11 +96,13 @@ export function SubmitConcernForm({
   categories,
   factors,
   areas,
+  types,
   locale = "en",
 }: {
   categories: CategoryOption[];
   factors: FactorOption[];
   areas: string[];
+  types?: TypeOption[];
   locale?: Locale;
 }) {
   const t = copy[locale].submit;
@@ -111,11 +115,6 @@ export function SubmitConcernForm({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({});
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
-    null
-  );
-  const [geoError, setGeoError] = useState<string | null>(null);
-  const [geoLoading, setGeoLoading] = useState(false);
 
   useEffect(() => {
     if (!selectedFile) {
@@ -159,29 +158,6 @@ export function SubmitConcernForm({
 
     setFieldErrors((prev) => ({ ...prev, image: undefined }));
     setSelectedFile(file);
-  }
-
-  function pinLocation() {
-    if (!navigator.geolocation) {
-      setGeoError(t.geoUnsupported);
-      return;
-    }
-    setGeoLoading(true);
-    setGeoError(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setCoords({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-        setGeoLoading(false);
-      },
-      (error) => {
-        setGeoError(error.code === 1 ? t.geoDenied : t.geoFailed);
-        setGeoLoading(false);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60_000 }
-    );
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -246,14 +222,12 @@ export function SubmitConcernForm({
     payload.set("description", values.description.trim());
     payload.set("locationAddress", combinedLocation);
     payload.set("categoryId", values.categoryId);
+    const typeId = String(data.get("typeId") ?? "").trim();
+    if (typeId) payload.set("typeId", typeId);
     payload.set("urgencyScore", values.urgencyScore);
     payload.set("impactScore", values.impactScore);
     payload.set("affectedPopulationScore", values.affectedPopulationScore);
     payload.set("safetyScore", values.safetyScore);
-    if (coords) {
-      payload.set("locationLat", String(coords.lat));
-      payload.set("locationLng", String(coords.lng));
-    }
     if (selectedFile) payload.set("image", selectedFile);
 
     setSubmitting(true);
@@ -358,6 +332,24 @@ export function SubmitConcernForm({
       </div>
 
       <div>
+        <Label htmlFor="typeId">{t.typeLabel}</Label>
+        <p className="mb-1 text-xs text-slate-500">{t.typeHelp}</p>
+        <select
+          id="typeId"
+          name="typeId"
+          defaultValue=""
+          className={selectStyles(false)}
+        >
+          <option value="">{t.typeUnset}</option>
+          {(types ?? []).map((type) => (
+            <option key={type.id} value={type.id}>
+              {type.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
         <Label htmlFor="description">
           <span className="inline-flex items-center gap-1.5">
             <FileText size={14} className="text-slate-500" />
@@ -443,44 +435,8 @@ export function SubmitConcernForm({
           <MapPin size={14} className="text-slate-500" />
           {t.pin}
         </p>
-        <p className="mt-1 text-xs text-slate-500">{t.pinHelp}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={pinLocation}
-            disabled={geoLoading}
-          >
-            {geoLoading ? t.locating : t.useLocation}
-          </Button>
-          {coords ? (
-            <>
-              <a
-                href={openStreetMapUrl(coords.lat, coords.lng)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-semibold text-brand-700 hover:text-brand-800"
-              >
-                {t.openMap}
-              </a>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setCoords(null)}
-              >
-                {t.clearPin}
-              </Button>
-            </>
-          ) : null}
-        </div>
-        {coords ? (
-          <p className="mt-2 text-xs text-emerald-700">
-            {t.pinned}: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
-          </p>
-        ) : null}
-        {geoError ? <FieldError>{geoError}</FieldError> : null}
+        <p className="mb-3 mt-1 text-xs text-slate-500">{t.pinHelp}</p>
+        <GeotagPicker locale={locale} />
       </div>
 
       <fieldset className="rounded-lg border border-slate-200 p-4">

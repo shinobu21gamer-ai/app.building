@@ -17,7 +17,7 @@ export default async function NewConcernPage() {
   const locale = await getLocale();
   const t = copy[locale].submit;
 
-  const [categories, factors, areas] = await Promise.all([
+  const [categories, factors, areas, types] = await Promise.all([
     db.concernCategory.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
@@ -35,6 +35,11 @@ export default async function NewConcernPage() {
       },
     }),
     getBarangayAreas(db),
+    db.concernType.findMany({
+      where: { isActive: true },
+      orderBy: { displayOrder: "asc" },
+      select: { id: true, name: true },
+    }),
   ]);
 
   return (
@@ -62,6 +67,7 @@ export default async function NewConcernPage() {
             categories={categories}
             factors={factors}
             areas={areas}
+            types={types}
             locale={locale}
           />
         )}

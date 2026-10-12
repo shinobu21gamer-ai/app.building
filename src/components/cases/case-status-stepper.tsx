@@ -1,13 +1,12 @@
-import { CASE_STATUSES, type CaseStatus } from "@/lib/cases/workflow";
+import {
+  CASE_STATUSES,
+  STATUS_ORDER,
+  statusLabel as humanizeStatus,
+  type CaseStatus,
+} from "@/lib/cases/workflow";
 import { formatDate, formatDateTime } from "@/lib/format";
 
-const STATUS_INDEX: Record<CaseStatus, number> = {
-  SUBMITTED: 0,
-  ASSIGNED: 1,
-  IN_PROGRESS: 2,
-  RESOLVED: 3,
-  CLOSED: 4,
-};
+const STATUS_INDEX: Record<CaseStatus, number> = STATUS_ORDER;
 
 /**
  * When a step was reached. `dateOnly` is set when the moment is a recorded
@@ -87,7 +86,7 @@ export function CaseStatusStepper({
                   done ? "text-slate-900" : "text-slate-400"
                 }`}
               >
-                {status}
+                {humanizeStatus(status)}
               </span>
               {reachedDate ? (
                 <span className="text-xs tabular-nums text-slate-500">

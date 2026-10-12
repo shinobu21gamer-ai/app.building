@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { requireRole } from "@/lib/auth/session";
+import { requireRole, userCan } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, PriorityBadge, StatusBadge } from "@/components/ui/badge";
@@ -15,6 +15,10 @@ import { PriorityOverrideForm } from "@/components/priority/priority-override-fo
 import { ReassignForm } from "@/components/routing/reassign-form";
 import { CaseWorkflowForm } from "@/components/cases/case-workflow-form";
 import { CaseNoteForm } from "@/components/cases/case-note-form";
+import { ConcernMap } from "@/components/concern/concern-map";
+import { CrewPanel } from "@/components/cases/crew-panel";
+import { ValidationForm } from "@/components/cases/validation-form";
+import { ResolutionVerifyForm } from "@/components/cases/resolution-verify-form";
 import { ResolutionForm } from "@/components/cases/resolution-form";
 import { loadPriorityConfig } from "@/lib/priority/config";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -28,6 +32,7 @@ import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import {
   allowedTransitions,
   canManageConcern,
+  caseWorkflowFlags,
 } from "@/lib/cases/workflow";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -97,6 +102,8 @@ export default async function OfficialConcernDetailPage({
           official: { select: { firstName: true, lastName: true } },
         },
       },
+      type: { select: { id: true, name: true, key: true } },
+      caseAssessment: true,
     },
   });
   if (!concern) notFound();
@@ -163,6 +170,39 @@ export default async function OfficialConcernDetailPage({
     { submittedDay, lastStatusDay },
     { statusChange: false }
   );
+
+  // Permissions decide which desks this user sees on the case page.
+  const [canValidate, canAssess, canAssignCrew, canVerifyResolution] =
+    await Promise.all([
+      userCan(user.role.key, "case.validate"),
+      userCan(user.role.key, "case.assess"),
+      userCan(user.role.key, "case.crew.assign"),
+      userCan(user.role.key, "case.resolution.verify"),
+    ]);
+
+  const [concernTypes, allCategories, crewSummary] = await Promise.all([
+    canValidate
+      ? db.concernType.findMany({
+          where: { isActive: true },
+          orderBy: { displayOrder: "asc" },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve([]),
+    canValidate
+      ? db.concernCategory.findMany({
+          where: { isActive: true },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve([]),
+    db.crewAssignment.count({ where: { concernId: numericId, isActive: true } }),
+  ]);
+
+  const workflowFlags = caseWorkflowFlags({
+    status: concern.status,
+    workersNeeded: null,
+    activeCrew: crewSummary,
+  });
 
   const { factors, thresholds } = await loadPriorityConfig();
   const activeFactors = factors.filter((f) => f.isActive !== false);
@@ -460,6 +500,14 @@ export default async function OfficialConcernDetailPage({
           <Card title={desk.manageTitle} description={desk.manageDesc}>
             {canManage ? (
               <div className="space-y-6">
+                <div className="flex flex-wrap gap-2">
+                  {workflowFlags.crewProgressLabel && (
+                    <span className="self-center text-xs text-slate-500">
+                      {copy[locale].revamp.workflow.crewProgress}:{" "}
+                      {workflowFlags.crewProgressLabel}
+                    </span>
+                  )}
+                </div>
                 {canResolve && !resolution && (
                   <div>
                     <p className="mb-3 text-sm font-medium text-slate-700">
@@ -499,6 +547,116 @@ export default async function OfficialConcernDetailPage({
             ) : (
               <p className="text-sm text-slate-500">{desk.otherOffice}</p>
             )}
+          </Card>
+
+          {canVerifyResolution && resolution && concern.status === "RESOLVED" && (
+            <Card
+              title={copy[locale].revamp.workflow.verifyTitle}
+              description={copy[locale].revamp.workflow.verifyDesc}
+            >
+              <ResolutionVerifyForm
+                concernId={concern.id}
+                locale={locale}
+                recordedById={resolution.officialId}
+              />
+            </Card>
+          )}
+
+          {canAssignCrew && canManage && (
+            <Card
+              title={copy[locale].revamp.workflow.crewTitle}
+              description={copy[locale].revamp.workflow.crewDesc}
+            >
+              <CrewPanel
+                concernId={concern.id}
+                locale={locale}
+                canAssign={concern.status !== "RESOLVED" && concern.status !== "CLOSED"}
+                canOverrideShortfall
+              />
+            </Card>
+          )}
+
+          {canValidate && !isFinalized && (
+            <Card
+              title={copy[locale].revamp.workflow.validationTitle}
+              description={copy[locale].revamp.workflow.validationDesc}
+            >
+              <ValidationForm
+                concernId={concern.id}
+                locale={locale}
+                types={concernTypes.map((type) => ({ id: type.id, label: type.name }))}
+                categories={allCategories.map((category) => ({
+                  id: category.id,
+                  label: category.name,
+                }))}
+                currentTypeId={concern.typeId}
+                currentCategoryId={concern.categoryId}
+                currentPriority={concern.priorityLevel}
+              />
+            </Card>
+          )}
+
+          {canAssess && canManage && !isFinalized && (
+            <Card
+              title={copy[locale].revamp.workflow.assessmentTitle}
+              description={copy[locale].revamp.workflow.manpowerTitle}
+            >
+              {concern.caseAssessment ? (
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-slate-500">
+                      {copy[locale].revamp.workflow.workersNeeded}
+                    </dt>
+                    <dd className="font-medium text-slate-900">
+                      {concern.caseAssessment.workersNeeded ?? "—"}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-slate-500">
+                      {copy[locale].revamp.workflow.estimate}
+                    </dt>
+                    <dd className="font-medium tabular-nums text-slate-900">
+                      ₱{Number(concern.caseAssessment.totalCost ?? 0).toFixed(2)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-slate-500">
+                      {copy[locale].revamp.workflow.duration}
+                    </dt>
+                    <dd className="font-medium text-slate-900">
+                      {concern.caseAssessment.estimatedDurationMinutes ?? 0} min
+                    </dd>
+                  </div>
+                </dl>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  {copy[locale].revamp.workflow.assessmentRequired}
+                </p>
+              )}
+              <div className="mt-4">
+                <Button
+                  href={`/official/concerns/${concern.id}/assessment`}
+                  size="sm"
+                  variant="outline"
+                >
+                  {copy[locale].revamp.workflow.viewAssessment}
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          <Card
+            title={desk.location}
+            description={copy[locale].revamp.workflow.geotagDesc}
+          >
+            <ConcernMap
+              lat={concern.locationLat}
+              lng={concern.locationLng}
+              label={concern.locationAddress}
+              purok={concern.locationPurok}
+              title={desk.location}
+              hint={copy[locale].revamp.workflow.geotagMapHint}
+            />
           </Card>
 
           <Card title={desk.assignmentTitle} description={desk.assignmentDesc}>

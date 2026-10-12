@@ -18,6 +18,7 @@ import {
 } from "@/components/cases/case-status-stepper";
 import {
   canSubmitFeedback,
+  caseWorkflowFlags,
   isCaseStatus,
   type CaseStatus,
 } from "@/lib/cases/workflow";
@@ -33,6 +34,7 @@ import { formatDate, formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
+import { ConcernMap } from "@/components/concern/concern-map";
 
 export const metadata: Metadata = {
   title: "Case Details",
@@ -84,6 +86,9 @@ export default async function ConcernDetailPage({
         orderBy: { assignedAt: "desc" },
         take: 1,
       },
+      type: { select: { id: true, name: true } },
+      caseAssessment: { select: { workersNeeded: true, equipmentNotes: true } },
+      crewAssignments: { where: { isActive: true }, select: { id: true } },
       feedback: {
         take: 1,
         orderBy: { updatedAt: "desc" },
@@ -119,9 +124,10 @@ export default async function ConcernDetailPage({
     SUBMITTED: { at: concern.submittedAt, dateOnly: false },
   };
   for (const entry of sortJournal(concern.history)) {
-    if (!isStatusTransition(entry) || !entry.toStatus) continue;
-    if (!isCaseStatus(entry.toStatus) || reachedAt[entry.toStatus]) continue;
-    reachedAt[entry.toStatus] = journalReachedAt(entry);
+    const target: string | null = entry.toStatus ?? null;
+    if (!isStatusTransition(entry) || !target) continue;
+    if (!isCaseStatus(target) || reachedAt[target]) continue;
+    reachedAt[target] = journalReachedAt(entry);
   }
   if (!reachedAt.ASSIGNED && currentAssignment) {
     reachedAt.ASSIGNED = {
@@ -135,6 +141,12 @@ export default async function ConcernDetailPage({
   if (!reachedAt.CLOSED && concern.closedAt) {
     reachedAt.CLOSED = { at: concern.closedAt, dateOnly: false };
   }
+
+  const crewFlags = caseWorkflowFlags({
+    status: concern.status,
+    workersNeeded: concern.caseAssessment?.workersNeeded ?? null,
+    activeCrew: concern.crewAssignments.length,
+  });
 
   const resolutionInfo: ResolutionInfo | null = resolution
     ? {
@@ -190,6 +202,26 @@ export default async function ConcernDetailPage({
 
       <Card title={t.progress} description={t.progressDesc}>
         <CaseStatusStepper currentStatus={concern.status} reached={reachedAt} />
+        {crewFlags.crewProgressLabel ? (
+          <p className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+            {copy[locale].revamp.workflow.crewProgress}:{" "}
+            {crewFlags.crewProgressLabel}
+          </p>
+        ) : null}
+      </Card>
+
+      <Card
+        title={t.location}
+        description={copy[locale].revamp.workflow.geotagDesc}
+      >
+        <ConcernMap
+          lat={concern.locationLat}
+          lng={concern.locationLng}
+          label={concern.locationAddress}
+          purok={concern.locationPurok}
+          title={t.location}
+          hint={copy[locale].revamp.workflow.geotagMapHint}
+        />
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
