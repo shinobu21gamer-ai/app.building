@@ -9,6 +9,7 @@ export default async function AdminLayout({
 }) {
   const locale = await getLocale();
   const t = copy[locale].admin;
+  const revamp = copy[locale].revamp.adminDesk;
   const items = [
     { href: "/admin", label: t.navDashboard },
     { href: "/admin/reports", label: t.navReports },
@@ -18,6 +19,9 @@ export default async function AdminLayout({
     { href: "/admin/categories", label: t.navCategories },
     { href: "/admin/routing", label: t.navRouting },
     { href: "/admin/priority", label: t.navPriority },
+    { href: "/admin/verification", label: revamp.verificationNav },
+    { href: "/admin/privacy", label: revamp.privacyNav },
+    { href: "/admin/roles", label: revamp.rolesNav },
     { href: "/admin/settings", label: t.navSettings },
     { href: "/notifications", label: t.navNotifications },
   ];

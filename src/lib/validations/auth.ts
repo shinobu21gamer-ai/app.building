@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { booleanFlag } from "@/lib/validations/boolean";
+import { acknowledgment, phoneInputSchema } from "@/lib/validations/privacy";
 
 const emailSchema = z
   .string()
@@ -29,13 +31,31 @@ const optionalString = z
   .nullable()
   .optional();
 
+/**
+ * Registration.
+ *
+ * RA 10173 requires the resident to agree to the processing of their personal
+ * data before the account exists, so `consentDataProcessing` and
+ * `consentPrivacyNotice` are mandatory acknowledgements (see
+ * src/lib/privacy/catalog.ts). The other consents are optional and may be
+ * withdrawn later from the privacy page.
+ */
 export const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   firstName: nameSchema,
   lastName: nameSchema,
-  phone: optionalString,
+  phone: phoneInputSchema,
   address: optionalString,
+  consentDataProcessing: acknowledgment(
+    "Agree to the processing of your personal data to handle your concerns."
+  ),
+  consentPrivacyNotice: acknowledgment(
+    "Confirm that you have read the privacy notice."
+  ),
+  consentTransparencyPublication: booleanFlag.optional(),
+  consentNotifications: booleanFlag.optional(),
+  consentSms: booleanFlag.optional(),
 });
 
 export const loginSchema = z.object({
@@ -47,8 +67,11 @@ export const updateProfileSchema = z
   .object({
     firstName: nameSchema.optional(),
     lastName: nameSchema.optional(),
-    phone: optionalString,
+    // Omitted = "leave my number as it is". A posted value is normalised,
+    // encrypted and only ever read back masked.
+    phone: phoneInputSchema,
     address: optionalString,
+    position: optionalString,
   })
   .refine((v) => Object.keys(v).length > 0, {
     message: "At least one field must be provided.",

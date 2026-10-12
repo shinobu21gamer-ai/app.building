@@ -2,9 +2,15 @@ import { cn } from "@/lib/utils";
 
 export function Label({
   htmlFor,
+  required,
   children,
 }: {
   htmlFor: string;
+  /**
+   * Renders the mandatory-field marker. Every field the schema requires must
+   * set this, and every form shows a legend explaining it.
+   */
+  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -13,8 +19,18 @@ export function Label({
       className="mb-1 block text-sm font-medium text-slate-700"
     >
       {children}
+      {required ? (
+        <span aria-hidden="true" className="ml-0.5 text-red-600">
+          *
+        </span>
+      ) : null}
     </label>
   );
+}
+
+/** Legend that explains the `*` marker; place it once per form. */
+export function RequiredLegend({ children }: { children: React.ReactNode }) {
+  return <p className="text-xs text-slate-500">{children}</p>;
 }
 
 export function Input({

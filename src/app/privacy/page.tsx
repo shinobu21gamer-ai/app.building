@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import { PRIVACY_POLICY_VERSION } from "@/lib/privacy/catalog";
 
 export const metadata: Metadata = {
   title: "Privacy",
@@ -13,6 +15,7 @@ export const metadata: Metadata = {
 export default async function PrivacyPage() {
   const locale = await getLocale();
   const t = copy[locale].privacy;
+  const rights = copy[locale].revamp.privacyNotice;
 
   return (
     <Container className="py-12 sm:py-16">
@@ -38,6 +41,35 @@ export default async function PrivacyPage() {
       </div>
 
       <p className="mt-10 max-w-2xl text-sm text-slate-500">{t.footer}</p>
+
+      {/* RA 10173 rights and the self-service tools that implement them. */}
+      <Card
+        className="mt-8"
+        title={rights.title}
+        description={rights.lead}
+      >
+        <ul className="space-y-3">
+          {rights.items.map((item) => (
+            <li key={item.title}>
+              <p className="text-sm font-medium text-slate-900">{item.title}</p>
+              <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-slate-600">
+                {item.body}
+              </p>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-4 text-xs text-slate-500">
+          {rights.versionLabel}: v{PRIVACY_POLICY_VERSION}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Button href="/privacy/requests" size="sm">
+            {rights.cta}
+          </Button>
+          <Button href="/resident/verification" variant="outline" size="sm">
+            {rights.verificationCta}
+          </Button>
+        </div>
+      </Card>
 
       <div className="mt-6 flex flex-wrap gap-3">
         <Button href="/help" variant="outline">

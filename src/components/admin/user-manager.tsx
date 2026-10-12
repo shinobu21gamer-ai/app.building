@@ -38,8 +38,12 @@ export type AdminUserItem = {
   email: string;
   firstName: string;
   lastName: string;
+  /** Masked for display — staff never receive the full number. */
   phone: string | null;
+  phoneLast4?: string | null;
+  hasPhone?: boolean;
   address: string | null;
+  position?: string | null;
   isActive: boolean;
   createdAt: string;
   role: RoleOption;
@@ -95,6 +99,8 @@ export function UserManager({
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  // Masked value of the number already on file, shown as a hint only.
+  const [storedPhoneMask, setStoredPhoneMask] = useState<string | null>(null);
   const [address, setAddress] = useState("");
   const [password, setPassword] = useState("");
   const [roleKey, setRoleKey] = useState(fixedRole ?? roles[0]?.key ?? "RESIDENT");
@@ -178,7 +184,10 @@ export function UserManager({
     setFirstName(user.firstName);
     setLastName(user.lastName);
     setEmail(user.email);
-    setPhone(user.phone ?? "");
+    // The stored number is only ever shown masked, so the input starts empty:
+    // an untouched field must never write a masked string back to the server.
+    setPhone("");
+    setStoredPhoneMask(user.hasPhone ? (user.phone ?? null) : null);
     setAddress(user.address ?? "");
     setPassword("");
     setRoleKey(user.role.key);
@@ -232,12 +241,14 @@ export function UserManager({
       firstName,
       lastName,
       email,
-      phone,
       address,
       roleKey,
       officeId: showOffice && officeId ? Number(officeId) : null,
       isActive,
     };
+    // Only send a phone number when one was typed: the server encrypts it and
+    // an empty field must leave the stored number untouched.
+    if (phone.trim() !== "") payload.phone = phone.trim();
     if (password.trim()) payload.password = password;
 
     setBusy(true);
@@ -468,8 +479,14 @@ export function UserManager({
               id="user-phone"
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
-              placeholder={t.optional}
+              placeholder={storedPhoneMask ?? t.optional}
+              inputMode="tel"
             />
+            {storedPhoneMask && phone.trim() === "" && (
+              <p className="mt-1 text-xs text-slate-500">
+                {t.phoneUnchanged.replace("{phone}", storedPhoneMask)}
+              </p>
+            )}
           </div>
           <div>
             <Label htmlFor="user-password">

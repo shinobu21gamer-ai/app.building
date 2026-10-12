@@ -5,6 +5,10 @@ import { Prisma } from "@prisma/client";
 import { cache } from "react";
 import { db } from "@/lib/db";
 import { createApiError } from "@/lib/api";
+import { roleHome as roleHomeFor } from "@/lib/auth/roles";
+import { type PermissionKey } from "@/lib/auth/rbac";
+import { can, effectivePermissions } from "@/lib/auth/rbac-db";
+import { maskedPhoneDisplay, hasStoredPhone } from "@/lib/privacy/phone-store";
 
 export const SESSION_COOKIE = "br_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
@@ -120,10 +124,13 @@ export async function clearSessionCookie(): Promise<void> {
   store.set(SESSION_COOKIE, "", { ...sessionCookieOptions, maxAge: 0 });
 }
 
+/**
+ * Landing route for a role: `/admin`, `/official`, `/crew`, `/treasury`,
+ * `/captain` or `/resident`. The mapping lives in `@/lib/auth/roles` so the
+ * middleware and the session layer cannot drift apart.
+ */
 export function roleHome(roleKey: string): string {
-  if (roleKey === "ADMIN") return "/admin";
-  if (roleKey === "OFFICIAL") return "/official";
-  return "/resident";
+  return roleHomeFor(roleKey);
 }
 
 /** Loads the current signed-in user from the session cookie, or null. */
@@ -173,15 +180,70 @@ export async function requireApiRole(keys: string[]): Promise<AuthUser> {
   return user;
 }
 
-/** Safe, serializable representation of a user (never exposes the hash). */
+/**
+ * Effective permissions of a role: the code matrix plus any database override.
+ * Cached per request (the lookup runs at most once per role per render).
+ */
+export const getEffectivePermissions = cache(
+  async (roleKey: string): Promise<ReadonlySet<string>> =>
+    effectivePermissions(roleKey)
+);
+
+/** Whether a role currently holds a permission (database overrides included). */
+export async function userCan(
+  roleKey: string,
+  permission: PermissionKey
+): Promise<boolean> {
+  const effective = await getEffectivePermissions(roleKey);
+  return effective.has(permission);
+}
+
+/**
+ * RSC/page guard: requires a permission. A signed-in user who lacks it is sent
+ * to their own portal home instead of seeing a dead end.
+ */
+export async function requirePermission(
+  permission: PermissionKey
+): Promise<AuthUser> {
+  const user = await requireUser();
+  if (!(await can(user.role.key, permission))) {
+    redirect(roleHome(user.role.key));
+  }
+  return user;
+}
+
+/** API guard: requires a permission, otherwise throws 403. */
+export async function requireApiPermission(
+  permission: PermissionKey
+): Promise<AuthUser> {
+  const user = await requireApiUser();
+  if (!(await can(user.role.key, permission))) throw createApiError.forbidden();
+  return user;
+}
+
+/**
+ * Safe, serializable representation of a user.
+ *
+ * The phone number is personal data, so it is returned **masked** — never in
+ * full. Callers that need the real value must go through the audited unmasking
+ * path (`revealPhone` in `@/lib/privacy/service`), which requires
+ * `privacy.pii_access.view` and records the reason.
+ */
 export function publicUser(user: AuthUser) {
+  const maskedPhone = maskedPhoneDisplay(user);
   return {
     id: user.id,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
-    phone: user.phone,
+    phone: maskedPhone,
+    phoneMasked: maskedPhone,
+    phoneLast4: user.phoneLast4 ?? null,
+    hasPhone: hasStoredPhone(user),
+    phoneVerifiedAt: user.phoneVerifiedAt ?? null,
     address: user.address,
+    position: user.position ?? null,
+    roleId: user.roleId,
     role: user.role?.key ?? null,
     roleName: user.role?.name ?? null,
     office: user.office

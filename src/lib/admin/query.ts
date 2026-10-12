@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { ADMIN_ROLE_KEYS } from "@/lib/validations/admin";
+import { hasStoredPhone, maskedPhoneDisplay } from "@/lib/privacy/phone-store";
 
 type RawParams =
   | URLSearchParams
@@ -111,7 +112,11 @@ export async function countActiveAdmins(): Promise<number> {
 
 type AdminUserRow = Awaited<ReturnType<typeof listAdminUsers>>[number];
 
-/** Safe admin-facing user shape: never exposes the password hash. */
+/**
+ * Safe admin-facing user shape: never exposes the password hash and never the
+ * full phone number. Unmasking requires the audited reveal endpoint
+ * (POST /api/v1/admin/privacy/reveal) and the reason lands in PiiAccessLog.
+ */
 export function adminUserView(user: AdminUserRow) {
   const c = user._count;
   return {
@@ -119,8 +124,11 @@ export function adminUserView(user: AdminUserRow) {
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
-    phone: user.phone,
+    phone: maskedPhoneDisplay(user),
+    phoneLast4: user.phoneLast4 ?? null,
+    hasPhone: hasStoredPhone(user),
     address: user.address,
+    position: user.position ?? null,
     isActive: user.isActive,
     createdAt: user.createdAt.toISOString(),
     role: { id: user.role.id, key: user.role.key, name: user.role.name },

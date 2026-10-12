@@ -12,7 +12,8 @@ async function main() {
   console.log("Seeding BarangayResolve database...");
 
   // ---- Roles -----------------------------------------------------
-  const [resident, official, admin] = await Promise.all([
+  const [resident, official, admin, treasurer, captain, crew] =
+    await Promise.all([
     prisma.role.upsert({
       where: { key: "RESIDENT" },
       update: {},
@@ -40,8 +41,40 @@ async function main() {
         description: "System administrator with full configuration access.",
       },
     }),
+    prisma.role.upsert({
+      where: { key: "TREASURER" },
+      update: {},
+      create: {
+        key: "TREASURER",
+        name: "Barangay Treasurer",
+        description:
+          "Manages COA-coded budgets, earmarks, disbursements and approvals.",
+      },
+    }),
+    prisma.role.upsert({
+      where: { key: "CAPTAIN" },
+      update: {},
+      create: {
+        key: "CAPTAIN",
+        name: "Barangay Captain",
+        description:
+          "Approving official: budget approvals, escalations and overrides.",
+      },
+    }),
+    prisma.role.upsert({
+      where: { key: "CREW" },
+      update: {},
+      create: {
+        key: "CREW",
+        name: "Maintenance Crew",
+        description:
+          "Field worker assigned to cases; sees only their own assignments.",
+      },
+    }),
   ]);
-  console.log("  roles: RESIDENT, OFFICIAL, ADMIN");
+  console.log(
+    "  roles: RESIDENT, OFFICIAL, ADMIN, TREASURER, CAPTAIN, CREW"
+  );
 
   // ---- Offices ----------------------------------------------------
   const officeData = [
@@ -80,6 +113,30 @@ async function main() {
       headOfficer: "Councilor J. Garcia",
       contact: "0917-000-0005",
     },
+    // Revamp workflow destinations: Ayuda -> Social Services, Repair ->
+    // Maintenance/Engineering, Documents -> Secretary (above), Budget ->
+    // Treasurer / Authorized Approving Official.
+    {
+      code: "SOCIAL_SERVICES",
+      name: "Social Services / Assistance Committee",
+      description: "Financial and in-kind assistance to residents.",
+      headOfficer: "Councilor E. Bautista",
+      contact: "0917-000-0006",
+    },
+    {
+      code: "ENGINEERING",
+      name: "Maintenance Team / Engineering Office",
+      description: "Repairs, public works, and maintenance crews.",
+      headOfficer: "Engr. F. Aquino",
+      contact: "0917-000-0007",
+    },
+    {
+      code: "TREASURY",
+      name: "Office of the Barangay Treasurer",
+      description: "Budgets, disbursements, and financial reporting.",
+      headOfficer: "Treas. G. Mercado",
+      contact: "0917-000-0008",
+    },
   ];
 
   const offices = new Map<string, { id: number; name: string; code: string }>();
@@ -105,12 +162,91 @@ async function main() {
     { code: "OTHER", name: "Other Concern", description: "Concerns that do not fit existing categories." },
   ];
 
+  // ---- Concern types ----------------------------------------------
+  // The four service types and the office each one belongs to. AYUDA and
+  // BUDGET cases pass through AWAITING_BUDGET; REPAIR cases need a crew.
+  const typeData = [
+    {
+      key: "AYUDA",
+      name: "Assistance (Ayuda)",
+      description: "Financial or in-kind assistance to a resident.",
+      office: "SOCIAL_SERVICES",
+      requiresBudget: true,
+      requiresCrew: false,
+      displayOrder: 1,
+    },
+    {
+      key: "REPAIR",
+      name: "Repair / Public Works",
+      description: "Repairs and maintenance of public facilities.",
+      office: "ENGINEERING",
+      requiresBudget: true,
+      requiresCrew: true,
+      displayOrder: 2,
+    },
+    {
+      key: "DOCUMENTS",
+      name: "Documents and Records",
+      description: "Barangay documents, certificates, and records.",
+      office: "SECRETARY",
+      requiresBudget: false,
+      requiresCrew: false,
+      displayOrder: 3,
+    },
+    {
+      key: "BUDGET",
+      name: "Budget / Fund Release",
+      description: "Funded programs and budget releases.",
+      office: "TREASURY",
+      requiresBudget: true,
+      requiresCrew: false,
+      displayOrder: 4,
+    },
+  ];
+
+  const types = new Map<string, { id: number; key: string }>();
+  for (const t of typeData) {
+    const defaultOfficeId = offices.get(t.office)!.id;
+    const concernType = await prisma.concernType.upsert({
+      where: { key: t.key },
+      update: {},
+      create: {
+        key: t.key,
+        name: t.name,
+        description: t.description,
+        defaultOfficeId,
+        requiresBudget: t.requiresBudget,
+        requiresCrew: t.requiresCrew,
+        slaHours: 48,
+        displayOrder: t.displayOrder,
+      },
+    });
+    types.set(t.key, concernType);
+  }
+  console.log(`  concern types: ${typeData.length}`);
+
+  // Which service type each descriptive category rolls up to. NOISE and OTHER
+  // stay untyped (null) on purpose: the admin cleanup queue is where an
+  // untyped concern gets categorized before it can be routed.
+  const categoryType: Record<string, string | null> = {
+    ROAD: "REPAIR",
+    DRAINAGE: "REPAIR",
+    STREETLIGHT: "REPAIR",
+    WASTE: "REPAIR",
+    NOISE: null,
+    DOC_REQUEST: "DOCUMENTS",
+    HEALTH: "AYUDA",
+    OTHER: null,
+  };
+
   const categories = new Map<string, { id: number }>();
   for (const c of categoryData) {
+    const typeKey = categoryType[c.code] ?? null;
+    const typeId = typeKey ? types.get(typeKey)!.id : null;
     const category = await prisma.concernCategory.upsert({
       where: { code: c.code },
-      update: {},
-      create: c,
+      update: { typeId },
+      create: { ...c, typeId },
     });
     categories.set(c.code, category);
   }
@@ -279,6 +415,90 @@ async function main() {
     },
   });
 
+  // Demo staff for the revamp roles: a treasurer, the captain as approving
+  // official, and two maintenance crew members with crew profiles.
+  const treasurerUser = await prisma.user.upsert({
+    where: { email: "treasurer@barangayresolve.dev" },
+    update: {},
+    create: {
+      email: "treasurer@barangayresolve.dev",
+      passwordHash,
+      firstName: "Gloria",
+      lastName: "Mercado",
+      position: "Barangay Treasurer",
+      roleId: treasurer.id,
+      officeId: offices.get("TREASURY")!.id,
+      isActive: true,
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "captain@barangayresolve.dev" },
+    update: {},
+    create: {
+      email: "captain@barangayresolve.dev",
+      passwordHash,
+      firstName: "Ramon",
+      lastName: "Villanueva",
+      position: "Barangay Captain",
+      roleId: captain.id,
+      isActive: true,
+    },
+  });
+
+  const crewSeed = [
+    {
+      email: "crew1@barangayresolve.dev",
+      firstName: "Danilo",
+      lastName: "Soriano",
+      trade: "MASONRY",
+      employmentType: "JOB_ORDER",
+      dailyRate: 610,
+    },
+    {
+      email: "crew2@barangayresolve.dev",
+      firstName: "Ernesto",
+      lastName: "Padilla",
+      trade: "PLUMBING",
+      employmentType: "CASUAL",
+      dailyRate: 590,
+    },
+  ];
+
+  const engineeringOfficeId = offices.get("ENGINEERING")!.id;
+  for (const c of crewSeed) {
+    const crewUser = await prisma.user.upsert({
+      where: { email: c.email },
+      update: {},
+      create: {
+        email: c.email,
+        passwordHash,
+        firstName: c.firstName,
+        lastName: c.lastName,
+        position: "Maintenance Crew",
+        roleId: crew.id,
+        officeId: engineeringOfficeId,
+        isActive: true,
+      },
+    });
+    await prisma.crewProfile.upsert({
+      where: { userId: crewUser.id },
+      update: {},
+      create: {
+        userId: crewUser.id,
+        trade: c.trade,
+        employmentType: c.employmentType,
+        dailyRate: c.dailyRate,
+        availability: "AVAILABLE",
+        // Two so a repair case can demonstrate a 2-of-3 crew assignment.
+        maxConcurrentCases: 2,
+        officeId: engineeringOfficeId,
+        isActive: true,
+      },
+    });
+  }
+  console.log(`  demo treasurer: ${treasurerUser.email}`);
+
   // ---- App settings ---------------------------------------------
   await prisma.appSetting.upsert({
     where: { key: "feedback.resubmission_allowed" },
@@ -289,7 +509,20 @@ async function main() {
     },
   });
 
-  console.log("  demo users: 1 admin, 7 officials, 1 resident");
+  // Identity gate. The code treats a missing row as "on", so the seed writes
+  // it explicitly to make the current policy visible in the admin desk.
+  await prisma.appSetting.upsert({
+    where: { key: "resident.identity_verification_required" },
+    update: {},
+    create: {
+      key: "resident.identity_verification_required",
+      value: "true",
+    },
+  });
+
+  console.log(
+    "  demo users: 1 admin, 7 officials, 1 resident, 1 treasurer, 1 captain, 2 crew"
+  );
   console.log("Seeding complete.");
 }
 

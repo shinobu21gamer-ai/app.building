@@ -5,31 +5,23 @@ import {
   hashToken,
   verifySessionToken,
 } from "@/lib/auth/session";
+import { PORTAL_GUARDS, roleHome } from "@/lib/auth/roles";
 
 export const runtime = "nodejs";
 
-const ROLE_HOME: Record<string, string> = {
-  RESIDENT: "/resident",
-  OFFICIAL: "/official",
-  ADMIN: "/admin",
-};
-
-// Pages that require a signed-in session.
+// Pages that require a signed-in session: every role portal, plus the shared
+// account surfaces. `/alerts` and `/notifications` are shared by all roles and
+// keep their existing behaviour (the Android WebView depends on them).
 const PROTECTED_PREFIXES = [
-  "/resident",
-  "/official",
-  "/admin",
+  ...PORTAL_GUARDS.map((guard) => guard.prefix),
   "/profile",
   "/notifications",
   "/alerts",
+  "/privacy/requests",
 ];
 
 // Pages that are only for guests (signed-in users are redirected away).
 const GUEST_PAGES = ["/login", "/register", "/reset-password"];
-
-const ADMIN_ONLY_PREFIX = "/admin";
-const OFFICIAL_PREFIXES = ["/official"];
-const RESIDENT_ONLY_PREFIX = "/resident";
 
 const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
@@ -64,6 +56,10 @@ function redirectToLoginAndClearSession(url: URL): NextResponse {
 function addNoStoreHeaders(res: NextResponse): NextResponse {
   Object.entries(NO_STORE_HEADERS).forEach(([k, v]) => res.headers.set(k, v));
   return res;
+}
+
+function matchesPrefix(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
 /** Whether the given session token has been revoked server-side (logout). */
@@ -128,9 +124,7 @@ export async function middleware(request: NextRequest) {
     role = live?.role ?? null;
   }
 
-  const isProtected = PROTECTED_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`)
-  );
+  const isProtected = PROTECTED_PREFIXES.some((p) => matchesPrefix(pathname, p));
   const isGuestPage = GUEST_PAGES.includes(pathname);
 
   // Not signed in.
@@ -143,30 +137,16 @@ export async function middleware(request: NextRequest) {
 
   // Signed in: keep guests off the auth pages, send them to their home.
   if (isGuestPage) {
-    return redirectTo(url, ROLE_HOME[role] ?? "/", false);
+    return redirectTo(url, roleHome(role), false);
   }
 
-  // Role gates.
-  if (pathname === ADMIN_ONLY_PREFIX || pathname.startsWith(`${ADMIN_ONLY_PREFIX}/`)) {
-    if (role !== "ADMIN") {
-      return redirectTo(url, ROLE_HOME[role] ?? "/", false);
+  // Role gates: each portal lists the roles allowed inside it. A user who
+  // knocks on the wrong door is sent to their own portal, never to a dead end.
+  for (const guard of PORTAL_GUARDS) {
+    if (!matchesPrefix(pathname, guard.prefix)) continue;
+    if (!(guard.roles as readonly string[]).includes(role)) {
+      return redirectTo(url, roleHome(role), false);
     }
-  }
-
-  if (
-    OFFICIAL_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`)) &&
-    role !== "OFFICIAL" &&
-    role !== "ADMIN"
-  ) {
-    return redirectTo(url, ROLE_HOME[role] ?? "/", false);
-  }
-
-  if (
-    (pathname === RESIDENT_ONLY_PREFIX ||
-      pathname.startsWith(`${RESIDENT_ONLY_PREFIX}/`)) &&
-    role !== "RESIDENT"
-  ) {
-    return redirectTo(url, ROLE_HOME[role] ?? "/", false);
   }
 
   return addNoStoreHeaders(NextResponse.next());
@@ -177,9 +157,13 @@ export const config = {
     "/resident/:path*",
     "/official/:path*",
     "/admin/:path*",
+    "/treasury/:path*",
+    "/captain/:path*",
+    "/crew/:path*",
     "/profile/:path*",
     "/notifications",
     "/alerts",
+    "/privacy/requests/:path*",
     "/login",
     "/register",
     "/reset-password",

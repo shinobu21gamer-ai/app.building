@@ -19,6 +19,8 @@
     "db:check": "tsx scripts/db-check.ts",
     "db:studio": "prisma studio",
     "db:validate": "prisma validate",
+    "db:bootstrap-rbac": "tsx scripts/bootstrap-rbac.ts",
+    "privacy:pii-backfill": "tsx scripts/pii-backfill.ts",
     "email:retry": "tsx scripts/retry-email-deliveries.ts",
     "android:sync": "node scripts/build-android.mjs --sync-only",
     "android:apk": "node scripts/build-android.mjs",

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { requireRole, roleHome } from "@/lib/auth/session";
+import { ROLE_KEYS } from "@/lib/auth/roles";
 import {
   countUnreadNotifications,
   listNotifications,
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NotificationsPage() {
-  const user = await requireRole(["RESIDENT", "OFFICIAL", "ADMIN"]);
+  const user = await requireRole([...ROLE_KEYS]);
   const locale = await getLocale();
   const t = copy[locale].notifications;
 

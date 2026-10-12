@@ -1,5 +1,6 @@
 import { assertSameOrigin, ok, withErrorBoundary } from "@/lib/api";
 import { requireApiRole } from "@/lib/auth/session";
+import { ROLE_KEYS } from "@/lib/auth/roles";
 import {
   countUnreadNotifications,
   markAllNotificationsRead,
@@ -13,7 +14,7 @@ export const runtime = "nodejs";
  */
 export const POST = withErrorBoundary(async (req: Request) => {
   assertSameOrigin(req);
-  const user = await requireApiRole(["RESIDENT", "OFFICIAL", "ADMIN"]);
+  const user = await requireApiRole([...ROLE_KEYS]);
 
   const updated = await markAllNotificationsRead(user.id);
   const unreadCount = await countUnreadNotifications(user.id);

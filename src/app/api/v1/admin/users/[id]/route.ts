@@ -17,6 +17,8 @@ import {
   countActiveAdmins,
   countsForUser,
 } from "@/lib/admin/query";
+import { buildPhoneFields } from "@/lib/privacy/phone-store";
+import { assertPiiConfigured } from "@/lib/privacy/service";
 
 export const runtime = "nodejs";
 
@@ -84,17 +86,21 @@ export const PATCH = withErrorBoundary<[Request, RouteContext]>(
       roleId = role.id;
     }
 
+    // Office linkage: officials must belong to an office; the other hall roles
+    // (treasurer, captain, crew) may be linked as well; residents never are.
     let officeId: number | null = null;
-    if (newRoleKey === "OFFICIAL") {
+    if (newRoleKey !== "RESIDENT") {
       const desired = body.officeId !== undefined ? body.officeId : target.officeId;
-      if (!desired) {
+      if (newRoleKey === "OFFICIAL" && !desired) {
         throw createApiError.badRequest("Select an office for this official.");
       }
-      const office = await db.office.findUnique({ where: { id: desired } });
-      if (!office || !office.isActive) {
-        throw createApiError.badRequest("Select an active office.");
+      if (desired) {
+        const office = await db.office.findUnique({ where: { id: desired } });
+        if (!office || !office.isActive) {
+          throw createApiError.badRequest("Select an active office.");
+        }
+        officeId = office.id;
       }
-      officeId = office.id;
     }
 
     const data: Prisma.UserUpdateInput = {
@@ -108,7 +114,16 @@ export const PATCH = withErrorBoundary<[Request, RouteContext]>(
     if (body.email !== undefined) data.email = body.email;
     if (body.firstName !== undefined) data.firstName = body.firstName;
     if (body.lastName !== undefined) data.lastName = body.lastName;
-    if (body.phone !== undefined) data.phone = body.phone;
+    if (body.position !== undefined) data.position = body.position;
+    if (body.phone !== undefined) {
+      // Encrypted at rest; the plaintext column stays empty from now on.
+      if (body.phone !== null) assertPiiConfigured();
+      const phoneFields = buildPhoneFields(body.phone);
+      data.phone = null;
+      data.phoneEncrypted = phoneFields?.phoneEncrypted ?? null;
+      data.phoneHash = phoneFields?.phoneHash ?? null;
+      data.phoneLast4 = phoneFields?.phoneLast4 ?? null;
+    }
     if (body.address !== undefined) data.address = body.address;
     if (body.password !== undefined) {
       data.passwordHash = await hashPassword(body.password);
@@ -133,6 +148,31 @@ export const PATCH = withErrorBoundary<[Request, RouteContext]>(
         throw createApiError.conflict("An account with this email already exists.");
       }
       throw error;
+    }
+
+    // Crew members also carry a roster profile (trade, rates, availability).
+    if (body.crew) {
+      if (newRoleKey !== "CREW") {
+        throw createApiError.badRequest(
+          "Crew details can only be set for an account with the CREW role."
+        );
+      }
+      const crewData = {
+        trade: body.crew.trade ?? null,
+        employmentType: body.crew.employmentType ?? "JOB_ORDER",
+        hourlyRate: body.crew.hourlyRate ?? null,
+        dailyRate: body.crew.dailyRate ?? null,
+        availability: body.crew.availability ?? "AVAILABLE",
+        maxConcurrentCases: body.crew.maxConcurrentCases ?? 1,
+        officeId: body.crew.officeId ?? officeId,
+        notes: body.crew.notes ?? null,
+        isActive: body.crew.isActive ?? true,
+      };
+      await db.crewProfile.upsert({
+        where: { userId },
+        update: crewData,
+        create: { userId, ...crewData },
+      });
     }
 
     const statusOnly =
