@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
-import { sortJournal } from "@/lib/cases/journal";
+import { sortJournal, type JournalEntryDates } from "@/lib/cases/journal";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { copy, type Copy, type Locale } from "@/lib/i18n";
 
@@ -25,18 +25,27 @@ export type ResolutionInfo = {
 };
 
 /** The short label for a journal entry, e.g. "Status changed: IN PROGRESS → CLOSED". */
+export type JournalEntryLike = {
+  entryType?: string | null;
+  fromStatus?: string | null;
+  toStatus?: string | null;
+};
+
 export function describeJournalEntry(
-  entry: Pick<HistoryEntry, "entryType" | "fromStatus" | "toStatus">,
+  // Print views sort rows whose entry fields are not part of the dating type,
+  // so the label helper accepts either shape and reads the fields it needs.
+  entry: JournalEntryLike | JournalEntryDates,
   t: Copy["desk"]
 ): string {
-  if (entry.entryType === "STATUS_CHANGE") {
-    if (entry.fromStatus && entry.toStatus) {
+  const row = entry as JournalEntryLike;
+  if (row.entryType === "STATUS_CHANGE") {
+    if (row.fromStatus && row.toStatus) {
       return t.entryStatusChange
-        .replace("{from}", entry.fromStatus)
-        .replace("{to}", entry.toStatus);
+        .replace("{from}", row.fromStatus)
+        .replace("{to}", row.toStatus);
     }
-    if (entry.toStatus) {
-      return t.entryStatusSet.replace("{status}", entry.toStatus);
+    if (row.toStatus) {
+      return t.entryStatusSet.replace("{status}", row.toStatus);
     }
     return t.entryStatus;
   }
@@ -48,8 +57,16 @@ export function describeJournalEntry(
     ACTION: t.entryAction,
     PRIORITY_OVERRIDE: t.entryOverride,
     SLA_BREACH: t.entrySla,
+    // Stage-3 workflow entries.
+    ASSESSMENT: t.entryAssessment,
+    MANPOWER_PLAN: t.entryManpower,
+    CREW_ASSIGNMENT: t.entryCrew,
+    CREW_PROGRESS: t.entryCrewProgress,
+    OVERRIDE: t.entryWorkflowOverride,
+    VERIFICATION: t.entryVerification,
+    BUDGET: t.entryBudget,
   };
-  return labels[entry.entryType] ?? t.entryUpdate;
+  return (row.entryType && labels[row.entryType]) || t.entryUpdate;
 }
 
 /**
@@ -69,16 +86,16 @@ export function CaseTimeline({
   const t = copy[locale].desk;
 
   if (entries.length === 0) {
-    return <p className="text-sm text-slate-500">{t.noActivity}</p>;
+    return <p className="text-sm text-ink-subtle">{t.noActivity}</p>;
   }
 
   return (
     <ol className="space-y-5">
       {sortJournal(entries).map((entry) => (
-        <li key={entry.id} className="relative border-l border-slate-200 pl-4">
+        <li key={entry.id} className="relative border-l border-line pl-4">
           <span className="absolute top-1.5 -left-[5px] h-2.5 w-2.5 rounded-full bg-brand-600" />
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-slate-900">
+            <span className="text-sm font-medium text-ink">
               {describeJournalEntry(entry, t)}
             </span>
             {entry.actorRole && (
@@ -86,7 +103,7 @@ export function CaseTimeline({
             )}
           </div>
           {entry.remarks && (
-            <p className="mt-1 text-sm text-slate-600">{entry.remarks}</p>
+            <p className="mt-1 text-sm text-ink-muted">{entry.remarks}</p>
           )}
           {entry.entryType === "RESOLUTION" && resolution && (
             <div className="mt-2 space-y-1 rounded-md border border-emerald-100 bg-emerald-50 p-3 text-sm">
@@ -112,14 +129,14 @@ export function CaseTimeline({
                 width={800}
                 height={600}
                 unoptimized
-                className="h-auto w-full max-w-xs rounded-lg border border-slate-200"
+                className="h-auto w-full max-w-xs rounded-control border border-line"
               />
-              <figcaption className="mt-1 text-xs text-slate-500">
+              <figcaption className="mt-1 text-xs text-ink-subtle">
                 {t.proofPhotoCaption}
               </figcaption>
             </figure>
           )}
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-ink-faint">
             {entry.occurredOn
               ? t.actionDateLine
                   .replace("{date}", formatDate(entry.occurredOn))

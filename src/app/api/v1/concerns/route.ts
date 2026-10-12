@@ -29,6 +29,9 @@ import { routeConcern } from "@/lib/routing/service";
 import { notifyConcernSubmitted } from "@/lib/notifications/service";
 import { listConcerns, parseConcernFilters } from "@/lib/cases/query";
 import { findLikelyDuplicate } from "@/lib/cases/duplicates";
+import { resolveStageWindow } from "@/lib/sla/escalation";
+import { slaDueAt } from "@/lib/sla/policy";
+import { encodeGeohash } from "@/lib/cases/geo";
 
 export const runtime = "nodejs";
 
@@ -41,13 +44,6 @@ function isCaseNumberConflict(error: unknown): boolean {
   return false;
 }
 
-/** Sanitized SLA window in hours; falls back to 72h (3 days) for bad input. */
-function slaHours(): number {
-  const raw = Number(process.env.CASE_SLA_HOURS ?? 72);
-  if (!Number.isFinite(raw)) return 72;
-  return Math.min(Math.max(Math.round(raw), 1), 24 * 30);
-}
-
 async function createConcern(
   input: CreateConcernInput,
   userId: number,
@@ -55,10 +51,26 @@ async function createConcern(
   evaluation: PriorityEvaluation,
   duplicateOfId: number | null
 ) {
+  // Internal precision (≈150 m) for clustering; the public projection coarsens
+  // this to a 5-character geohash before anything is published.
+  const locationGeohash =
+    input.locationLat !== undefined && input.locationLng !== undefined
+      ? encodeGeohash(input.locationLat, input.locationLng, 7)
+      : null;
+
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       return await db.$transaction(async (tx) => {
         const caseNumber = await generateCaseNumber(tx);
+
+        // The 48-hour clock starts now, under the policy that governs the
+        // SUBMITTED stage for this type and priority (see src/lib/sla/).
+        const window = await resolveStageWindow(tx, {
+          stage: "SUBMITTED",
+          typeId: input.typeId ?? null,
+          priorityLevel: evaluation.level,
+        });
+        const dueAt = slaDueAt(new Date(), window.hours);
 
         const concern = await tx.concern.create({
           data: {
@@ -70,11 +82,17 @@ async function createConcern(
             locationAddress: input.locationAddress,
             locationLat: input.locationLat ?? null,
             locationLng: input.locationLng ?? null,
+            locationAccuracyM: input.locationAccuracyM ?? null,
+            locationSource: input.locationSource ?? null,
+            locationPurok: input.locationPurok ?? null,
+            locationGeohash,
+            typeId: input.typeId ?? null,
             imageUrl,
             status: "SUBMITTED",
             priorityLevel: evaluation.level,
             priorityScore: evaluation.totalScore,
-            slaDueAt: new Date(Date.now() + slaHours() * 60 * 60 * 1000),
+            slaPolicyId: window.policy?.id ?? null,
+            slaDueAt: dueAt,
             duplicateOfId,
           },
         });
@@ -121,6 +139,7 @@ async function createConcern(
           id: concern.id,
           categoryId: input.categoryId,
           caseNumber,
+          typeId: input.typeId ?? null,
         });
 
         await notifyConcernSubmitted(tx, {
@@ -209,7 +228,14 @@ export const POST = withErrorBoundary(async (req: Request) => {
     categoryId: form.get("categoryId"),
   };
 
-  for (const field of ["locationLat", "locationLng"] as const) {
+  for (const field of [
+    "locationLat",
+    "locationLng",
+    "locationAccuracyM",
+    "locationSource",
+    "locationPurok",
+    "typeId",
+  ] as const) {
     const value = form.get(field);
     if (typeof value === "string" && value.trim() !== "") raw[field] = value;
   }
@@ -233,6 +259,18 @@ export const POST = withErrorBoundary(async (req: Request) => {
   });
   if (!category || !category.isActive) {
     throw createApiError.badRequest("Select an active concern category.");
+  }
+
+  // A suggested service type drives routing; an admin still confirms it during
+  // validation, so a wrong suggestion costs a correction, not a misroute.
+  if (input.typeId !== undefined) {
+    const type = await db.concernType.findUnique({
+      where: { id: input.typeId },
+      select: { id: true, isActive: true },
+    });
+    if (!type || !type.isActive) {
+      throw createApiError.badRequest("Select an active concern type.");
+    }
   }
 
   const { factors, thresholds } = await loadPriorityConfig();
@@ -295,6 +333,8 @@ export const POST = withErrorBoundary(async (req: Request) => {
         priorityLevel: concern.priorityLevel,
         priorityScore: concern.priorityScore,
         assignedOfficeId: concern.assignedOfficeId,
+        typeId: concern.typeId,
+        locationPurok: concern.locationPurok,
       },
       priority: {
         totalScore: evaluation.totalScore,

@@ -107,7 +107,7 @@ export function LoginForm({
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
       <div>
-        <Label htmlFor="email">{t.email}</Label>
+        <Label htmlFor="email" required>{t.email}</Label>
         <Input
           id="email"
           name="email"
@@ -125,7 +125,7 @@ export function LoginForm({
       </div>
 
       <div>
-        <Label htmlFor="password">{t.password}</Label>
+        <Label htmlFor="password" required>{t.password}</Label>
         <div className="relative">
           <Input
             id="password"
@@ -142,7 +142,7 @@ export function LoginForm({
           />
           <button
             type="button"
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 hover:text-slate-800"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-ink-subtle hover:text-ink"
             onClick={() => setShowPassword((current) => !current)}
             aria-label={showPassword ? t.hidePassword : t.showPassword}
           >
@@ -166,7 +166,7 @@ export function LoginForm({
       </Button>
 
       {nextPath && (
-        <p className="text-xs text-slate-500 text-center">
+        <p className="text-xs text-ink-subtle text-center">
           {t.next} <span className="font-medium">{nextPath}</span> {t.after}
         </p>
       )}

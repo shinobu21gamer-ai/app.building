@@ -90,7 +90,7 @@ export function DonutChart({
           y="47%"
           textAnchor="middle"
           dominantBaseline="middle"
-          className="fill-slate-900 text-2xl font-bold"
+          className="fill-ink text-2xl font-bold"
         >
           {total}
         </text>
@@ -99,7 +99,7 @@ export function DonutChart({
           y="60%"
           textAnchor="middle"
           dominantBaseline="middle"
-          className="fill-slate-500 text-[10px] font-semibold uppercase tracking-wide"
+          className="fill-ink-subtle text-[10px] font-semibold uppercase tracking-wide"
         >
           {centerLabel}
         </text>
@@ -114,8 +114,8 @@ export function DonutChart({
                 backgroundColor: segment.color ?? PALETTE[index % PALETTE.length],
               }}
             />
-            <span className="text-slate-700">{segment.label}</span>
-            <span className="ml-auto font-semibold text-slate-900">
+            <span className="text-ink-muted">{segment.label}</span>
+            <span className="ml-auto font-semibold text-ink">
               {segment.value}
             </span>
           </li>

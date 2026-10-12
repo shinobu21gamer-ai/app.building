@@ -51,13 +51,13 @@ export function SiteHeader({
   }, [open]);
 
   return (
-    <header id="site-header" className="no-print border-b border-slate-200 bg-white">
+    <header id="site-header" className="no-print border-b border-line bg-surface">
       <Container className="flex min-h-16 items-center justify-between gap-3 py-2">
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-700 text-sm font-bold text-white">
+          <span className="flex h-8 w-8 items-center justify-center rounded-control bg-brand-700 text-sm font-bold text-white">
             BR
           </span>
-          <span className="text-lg font-semibold text-slate-900">
+          <span className="text-lg font-semibold text-ink">
             BarangayResolve
           </span>
         </Link>
@@ -78,7 +78,7 @@ export function SiteHeader({
           <LanguageToggle locale={locale} label={t.language} />
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-control text-ink-muted hover:bg-surface-sunken"
             aria-expanded={open}
             aria-controls="mobile-nav"
             onClick={() => setOpen((current) => !current)}
@@ -92,13 +92,13 @@ export function SiteHeader({
       {open ? (
         <div
           id="mobile-nav"
-          className="animate-drop-in border-t border-slate-200 bg-white md:hidden"
+          className="animate-drop-in border-t border-line bg-surface md:hidden"
         >
           <Container className="flex flex-col gap-2 py-3" aria-label="Mobile">
             {user ? (
               <>
                 <SignedInLinks user={user} labels={t.header} />
-                <p className="px-1 text-xs font-medium text-slate-400">
+                <p className="px-1 text-xs font-medium text-ink-faint">
                   {user.roleName}
                 </p>
               </>
@@ -126,6 +126,9 @@ function GuestLinks({
       <Button href="/help" variant="ghost" size="sm">
         <CircleQuestionMark size={15} aria-hidden="true" />
         {labels.help}
+      </Button>
+      <Button href="/transparency" variant="ghost" size="sm">
+        {labels.transparency}
       </Button>
       <Button href="/login" variant="ghost" size="sm">
         <LogIn size={15} aria-hidden="true" />
@@ -156,12 +159,20 @@ function SignedInLinks({
         label={labels.notifications}
       />
       <ActiveNavLink href="/alerts">{labels.alerts}</ActiveNavLink>
+      <Button
+        href="/transparency"
+        variant="ghost"
+        size="sm"
+        className="md:hidden"
+      >
+        {labels.transparency}
+      </Button>
       <ActiveNavLink href="/profile">{user.firstName}</ActiveNavLink>
       <Button href="/help" variant="ghost" size="sm" className="md:hidden">
         <CircleQuestionMark size={15} aria-hidden="true" />
         {labels.help}
       </Button>
-      <span className="hidden text-xs font-medium text-slate-400 lg:block">
+      <span className="hidden text-xs font-medium text-ink-subtle lg:block">
         {user.roleName}
       </span>
       <LogoutButton variant="ghost" size="sm" />

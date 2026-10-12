@@ -31,7 +31,7 @@ export default async function TrackPage({
             initialCaseNumber={initialCaseNumber}
             locale={locale}
           />
-          <div className="mt-6 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+          <div className="mt-6 flex flex-wrap gap-2 border-t border-line pt-4">
             <Button href="/login" variant="outline" size="sm">
               {t.signIn}
             </Button>

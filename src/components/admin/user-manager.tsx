@@ -38,8 +38,12 @@ export type AdminUserItem = {
   email: string;
   firstName: string;
   lastName: string;
+  /** Masked for display — staff never receive the full number. */
   phone: string | null;
+  phoneLast4?: string | null;
+  hasPhone?: boolean;
   address: string | null;
+  position?: string | null;
   isActive: boolean;
   createdAt: string;
   role: RoleOption;
@@ -55,7 +59,7 @@ export type AdminUserItem = {
 };
 
 const selectStyles =
-  "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
+  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
 type TouchedFields = {
   firstName: boolean;
@@ -95,6 +99,8 @@ export function UserManager({
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  // Masked value of the number already on file, shown as a hint only.
+  const [storedPhoneMask, setStoredPhoneMask] = useState<string | null>(null);
   const [address, setAddress] = useState("");
   const [password, setPassword] = useState("");
   const [roleKey, setRoleKey] = useState(fixedRole ?? roles[0]?.key ?? "RESIDENT");
@@ -178,7 +184,10 @@ export function UserManager({
     setFirstName(user.firstName);
     setLastName(user.lastName);
     setEmail(user.email);
-    setPhone(user.phone ?? "");
+    // The stored number is only ever shown masked, so the input starts empty:
+    // an untouched field must never write a masked string back to the server.
+    setPhone("");
+    setStoredPhoneMask(user.hasPhone ? (user.phone ?? null) : null);
     setAddress(user.address ?? "");
     setPassword("");
     setRoleKey(user.role.key);
@@ -232,12 +241,14 @@ export function UserManager({
       firstName,
       lastName,
       email,
-      phone,
       address,
       roleKey,
       officeId: showOffice && officeId ? Number(officeId) : null,
       isActive,
     };
+    // Only send a phone number when one was typed: the server encrypts it and
+    // an empty field must leave the stored number untouched.
+    if (phone.trim() !== "") payload.phone = phone.trim();
     if (password.trim()) payload.password = password;
 
     setBusy(true);
@@ -341,20 +352,20 @@ export function UserManager({
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <h2 className="inline-flex items-center gap-2 text-base font-semibold text-slate-900">
+        <h2 className="inline-flex items-center gap-2 text-base font-semibold text-ink">
           {editingId ? (
             <>
-              <Pencil size={16} className="text-slate-500" />
+              <Pencil size={16} className="text-ink-subtle" />
               {t.editAccount}
             </>
           ) : fixedRole === "OFFICIAL" ? (
             <>
-              <Shield size={16} className="text-slate-500" />
+              <Shield size={16} className="text-ink-subtle" />
               {t.addOfficial}
             </>
           ) : (
             <>
-              <Plus size={16} className="text-slate-500" />
+              <Plus size={16} className="text-ink-subtle" />
               {t.addAccount}
             </>
           )}
@@ -364,7 +375,7 @@ export function UserManager({
           <div>
             <Label htmlFor="user-first">
               <span className="inline-flex items-center gap-1.5">
-                <User size={14} className="text-slate-500" />
+                <User size={14} className="text-ink-subtle" />
                 {t.firstName}
               </span>
             </Label>
@@ -395,7 +406,7 @@ export function UserManager({
           <div>
             <Label htmlFor="user-last">
               <span className="inline-flex items-center gap-1.5">
-                <User size={14} className="text-slate-500" />
+                <User size={14} className="text-ink-subtle" />
                 {t.lastName}
               </span>
             </Label>
@@ -426,7 +437,7 @@ export function UserManager({
           <div>
             <Label htmlFor="user-email">
               <span className="inline-flex items-center gap-1.5">
-                <Mail size={14} className="text-slate-500" />
+                <Mail size={14} className="text-ink-subtle" />
                 {t.email}
               </span>
             </Label>
@@ -460,7 +471,7 @@ export function UserManager({
           <div>
             <Label htmlFor="user-phone">
               <span className="inline-flex items-center gap-1.5">
-                <Phone size={14} className="text-slate-500" />
+                <Phone size={14} className="text-ink-subtle" />
                 {t.phone}
               </span>
             </Label>
@@ -468,13 +479,19 @@ export function UserManager({
               id="user-phone"
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
-              placeholder={t.optional}
+              placeholder={storedPhoneMask ?? t.optional}
+              inputMode="tel"
             />
+            {storedPhoneMask && phone.trim() === "" && (
+              <p className="mt-1 text-xs text-ink-subtle">
+                {t.phoneUnchanged.replace("{phone}", storedPhoneMask)}
+              </p>
+            )}
           </div>
           <div>
             <Label htmlFor="user-password">
               <span className="inline-flex items-center gap-1.5">
-                <Lock size={14} className="text-slate-500" />
+                <Lock size={14} className="text-ink-subtle" />
                 {t.password} {editingId ? t.passwordKeep : ""}
               </span>
             </Label>
@@ -509,7 +526,7 @@ export function UserManager({
           <div>
             <Label htmlFor="user-address">
               <span className="inline-flex items-center gap-1.5">
-                <MapPin size={14} className="text-slate-500" />
+                <MapPin size={14} className="text-ink-subtle" />
                 {t.address}
               </span>
             </Label>
@@ -525,7 +542,7 @@ export function UserManager({
             <div>
               <Label htmlFor="user-role">
                 <span className="inline-flex items-center gap-1.5">
-                  <Shield size={14} className="text-slate-500" />
+                  <Shield size={14} className="text-ink-subtle" />
                   {t.role}
                 </span>
               </Label>
@@ -548,7 +565,7 @@ export function UserManager({
             <div>
               <Label htmlFor="user-office">
                 <span className="inline-flex items-center gap-1.5">
-                  <Building2 size={14} className="text-slate-500" />
+                  <Building2 size={14} className="text-ink-subtle" />
                   {t.office}
                 </span>
               </Label>
@@ -569,14 +586,14 @@ export function UserManager({
           )}
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-slate-700">
+        <label className="flex items-center gap-2 text-sm text-ink-muted">
           <input
             type="checkbox"
             checked={isActive}
             onChange={(event) => setIsActive(event.target.checked)}
-            className="h-4 w-4 rounded border-slate-300"
+            className="h-4 w-4 rounded border-line-strong"
           />
-          <ToggleLeft size={14} className="text-slate-500" />
+          <ToggleLeft size={14} className="text-ink-subtle" />
           {t.accountActive}
         </label>
 
@@ -609,14 +626,14 @@ export function UserManager({
       </form>
 
       <div>
-        <h2 className="mb-3 text-base font-semibold text-slate-900">
+        <h2 className="mb-3 text-base font-semibold text-ink">
           {(fixedRole === "OFFICIAL" ? t.officialsList : t.accountsList).replace(
             "{count}",
             String(users.length)
           )}
         </h2>
         {users.length === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-600">
+          <p className="py-6 text-center text-sm text-ink-muted">
             {t.noAccounts}
           </p>
         ) : (
@@ -626,7 +643,7 @@ export function UserManager({
                 {fixedRole === "OFFICIAL" ? t.officialsList.replace("{count}", String(users.length)) : t.accountsList.replace("{count}", String(users.length))}
               </caption>
               <thead>
-                <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-subtle">
                   <th scope="col" className="py-2 pr-4 font-semibold">
                     {t.colName}
                   </th>
@@ -650,27 +667,27 @@ export function UserManager({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {users.map((user) => {
                   const isSelf = user.id === currentUserId;
                   return (
-                    <tr key={user.id} className="hover:bg-slate-50">
-                      <td className="py-3 pr-4 font-medium text-slate-900">
+                    <tr key={user.id} className="hover:bg-surface-muted">
+                      <td className="py-3 pr-4 font-medium text-ink">
                         {user.firstName} {user.lastName}
                         {isSelf && (
-                          <span className="ml-2 text-xs text-slate-500">
+                          <span className="ml-2 text-xs text-ink-subtle">
                             {t.you}
                           </span>
                         )}
                       </td>
-                      <td className="py-3 pr-4 text-slate-600">{user.email}</td>
-                      <td className="py-3 pr-4 text-slate-600">
+                      <td className="py-3 pr-4 text-ink-muted">{user.email}</td>
+                      <td className="py-3 pr-4 text-ink-muted">
                         {user.role.name}
                       </td>
-                      <td className="py-3 pr-4 text-slate-600">
+                      <td className="py-3 pr-4 text-ink-muted">
                         {user.office ? user.office.name : "—"}
                       </td>
-                      <td className="py-3 pr-4 text-slate-600">
+                      <td className="py-3 pr-4 text-ink-muted">
                         {user.references.total}
                       </td>
                       <td className="py-3 pr-4">
@@ -694,7 +711,7 @@ export function UserManager({
                             type="button"
                             onClick={() => toggleActive(user)}
                             disabled={busy || isSelf}
-                            className="inline-flex items-center gap-1 text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-40"
+                            className="inline-flex items-center gap-1 text-sm font-semibold text-ink-muted hover:text-ink disabled:opacity-40"
                           >
                             {user.isActive ? (
                               <><PowerOff size={14} /> {t.disable}</>
@@ -733,7 +750,7 @@ export function UserManager({
                               description={t.resetDesc}
                               confirmLabel={t.generateCode}
                               disabled={busy}
-                              className="inline-flex items-center gap-1 text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-40"
+                              className="inline-flex items-center gap-1 text-sm font-semibold text-ink-muted hover:text-ink disabled:opacity-40"
                               onConfirm={() => resetPassword(user)}
                             />
                           )}
@@ -749,27 +766,27 @@ export function UserManager({
       </div>
     {resetResult && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="reset-code-title"
         >
-          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+          <div className="w-full max-w-md rounded-card bg-surface p-5 shadow-xl">
             <h2
               id="reset-code-title"
-              className="inline-flex items-center gap-2 text-base font-semibold text-slate-900"
+              className="inline-flex items-center gap-2 text-base font-semibold text-ink"
             >
-              <Key size={16} className="text-slate-500" />
+              <Key size={16} className="text-ink-subtle" />
               {t.resetCodeTitle.replace("{name}", resetResult.name)}
             </h2>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-ink-muted">
               {t.resetCodeBody.replace(
                 "{minutes}",
                 String(resetResult.expiresInMinutes)
               )}
             </p>
-            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-              <p className="break-all text-center font-mono text-lg font-bold tracking-widest text-slate-900">
+            <div className="mt-4 rounded-control border border-amber-200 bg-amber-50 px-4 py-3">
+              <p className="break-all text-center font-mono text-lg font-bold tracking-widest text-ink">
                 {resetResult.code}
               </p>
             </div>

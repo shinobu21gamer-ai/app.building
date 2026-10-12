@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { loadRoutingRules } from "@/lib/routing/config";
 import { RoutingRulesManager } from "@/components/admin/routing-rules-manager";
+import { PageHeader } from "@/components/ui/page-header";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 
@@ -32,10 +33,7 @@ export default async function AdminRoutingPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t.routingTitle}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-slate-600">{t.routingLead}</p>
-      </div>
+      <PageHeader title={t.routingTitle} description={t.routingLead} />
 
       <Card>
         <RoutingRulesManager

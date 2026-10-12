@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { booleanFlag } from "@/lib/validations/boolean";
+import { phoneInputSchema } from "@/lib/validations/privacy";
+import { ROLE_KEYS, type RoleKey } from "@/lib/auth/roles";
 
 // ---------------------------------------------------------------
 // Shared field schemas
@@ -53,8 +55,80 @@ const nullableId = z.preprocess(
   z.coerce.number().int().positive().nullable()
 );
 
-export const ADMIN_ROLE_KEYS = ["RESIDENT", "OFFICIAL", "ADMIN"] as const;
-export type AdminRoleKey = (typeof ADMIN_ROLE_KEYS)[number];
+export const ADMIN_ROLE_KEYS = ROLE_KEYS;
+/** Every role an administrator may assign (the six revamp roles). */
+export type AdminRoleKey = RoleKey;
+
+// --------------------------------------------------------- crew profiles
+
+export const CREW_TRADES = [
+  "ELECTRICAL",
+  "PLUMBING",
+  "MASONRY",
+  "CARPENTRY",
+  "GENERAL",
+  "DRIVER",
+  "OTHER",
+] as const;
+
+export const CREW_EMPLOYMENT_TYPES = [
+  "JOB_ORDER",
+  "CASUAL",
+  "PERMANENT",
+  "VOLUNTEER",
+] as const;
+
+export const CREW_AVAILABILITY = ["AVAILABLE", "ON_LEAVE", "UNAVAILABLE"] as const;
+
+export const CREW_TRADE_LABELS: Record<(typeof CREW_TRADES)[number], string> = {
+  ELECTRICAL: "Electrical",
+  PLUMBING: "Plumbing",
+  MASONRY: "Masonry",
+  CARPENTRY: "Carpentry",
+  GENERAL: "General labour",
+  DRIVER: "Driver / operator",
+  OTHER: "Other",
+};
+
+const moneySchema = z.coerce
+  .number()
+  .nonnegative("Enter a positive amount.")
+  .max(1_000_000, "Amount is unrealistically large.");
+
+export const crewProfileSchema = z.object({
+  trade: z.enum(CREW_TRADES).optional(),
+  employmentType: z.enum(CREW_EMPLOYMENT_TYPES).optional(),
+  hourlyRate: moneySchema.nullable().optional(),
+  dailyRate: moneySchema.nullable().optional(),
+  availability: z.enum(CREW_AVAILABILITY).optional(),
+  maxConcurrentCases: z.coerce
+    .number()
+    .int("Use a whole number.")
+    .min(1, "A crew member can hold at least one case.")
+    .max(10, "Keep this at 10 or fewer cases.")
+    .optional(),
+  officeId: nullableId.optional(),
+  notes: optionalText(500),
+  isActive: booleanFlag.optional(),
+});
+
+export type CrewProfileInput = z.infer<typeof crewProfileSchema>;
+
+// ------------------------------------------------- role permission overrides
+
+export const rolePermissionOverrideSchema = z.object({
+  roleKey: z.enum(ROLE_KEYS),
+  permissionKey: z
+    .string()
+    .trim()
+    .min(3, "Permission key is too short.")
+    .max(80, "Permission key is too long."),
+  allowed: booleanFlag,
+});
+
+export type RolePermissionOverrideInput = z.infer<
+  typeof rolePermissionOverrideSchema
+>;
 
 // ---------------------------------------------------------------
 // Users / officials
@@ -65,10 +139,12 @@ export const adminUserCreateSchema = z.object({
   password: passwordSchema,
   firstName: nameSchema,
   lastName: nameSchema,
-  phone: optionalText(40),
+  phone: phoneInputSchema,
   address: optionalText(255),
-  roleKey: z.enum(ADMIN_ROLE_KEYS),
+  position: optionalText(120),
+  roleKey: z.enum(ROLE_KEYS),
   officeId: nullableId.optional(),
+  crew: crewProfileSchema.optional(),
   isActive: booleanFlag.optional(),
 });
 
@@ -78,10 +154,12 @@ export const adminUserUpdateSchema = z
     password: passwordSchema.optional(),
     firstName: nameSchema.optional(),
     lastName: nameSchema.optional(),
-    phone: optionalText(40),
+    phone: phoneInputSchema,
     address: optionalText(255),
-    roleKey: z.enum(ADMIN_ROLE_KEYS).optional(),
+    position: optionalText(120),
+    roleKey: z.enum(ROLE_KEYS).optional(),
     officeId: nullableId.optional(),
+    crew: crewProfileSchema.optional(),
     isActive: booleanFlag.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {

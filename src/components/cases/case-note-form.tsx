@@ -14,7 +14,7 @@ import { formatCalendarDay } from "@/lib/format";
 import { copy, type Locale } from "@/lib/i18n";
 
 const selectStyles =
-  "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
+  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
 export function CaseNoteForm({
   concernId,
@@ -40,7 +40,7 @@ export function CaseNoteForm({
 
   if (disabled) {
     return (
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-ink-subtle">
         {t.closedLocked}
       </p>
     );
@@ -125,7 +125,7 @@ export function CaseNoteForm({
           max={today}
           className={selectStyles}
         />
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-ink-subtle">
           {t.actionDateHint.replace("{date}", formatCalendarDay(earliestDay))}
         </p>
       </div>

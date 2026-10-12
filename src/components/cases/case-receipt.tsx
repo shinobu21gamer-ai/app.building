@@ -12,7 +12,7 @@ export function CaseReceipt({
   return (
     <div
       role="status"
-      className="rounded-xl border border-emerald-200 bg-emerald-50 p-4"
+      className="rounded-card border border-emerald-200 bg-emerald-50 p-4"
     >
       <p className="text-sm font-semibold text-emerald-950">
         Concern submitted

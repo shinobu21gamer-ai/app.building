@@ -19,7 +19,7 @@ export default async function RegisterPage() {
       <div className="w-full max-w-lg">
         <Card title={t.title} description={t.description}>
           <RegisterForm locale={locale} />
-          <p className="mt-4 text-center text-sm text-slate-600">
+          <p className="mt-4 text-center text-sm text-ink-muted">
             {t.haveAccount}{" "}
             <Link
               href="/login"

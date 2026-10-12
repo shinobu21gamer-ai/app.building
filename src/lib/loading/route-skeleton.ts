@@ -16,7 +16,14 @@ export type SkeletonVariant =
   | "default";
 
 /** Role areas render their section nav in a shared layout. */
-const ROLE_PREFIXES = ["/resident", "/official", "/admin"] as const;
+const ROLE_PREFIXES = [
+  "/resident",
+  "/official",
+  "/admin",
+  "/treasury",
+  "/captain",
+  "/crew",
+] as const;
 
 /** Drops the query string, hash and any trailing slash (but keeps "/"). */
 export function normalizePathname(pathname: string): string {
@@ -76,6 +83,16 @@ export function routeSkeletonVariant(pathname: string): SkeletonVariant {
   if (root === "admin") {
     if (section === "priority" || section === "settings") return "form";
     return "table";
+  }
+
+  // Report screens are stat cards above tables, in every portal that has them.
+  if (
+    root === "official" ||
+    root === "treasury" ||
+    root === "captain" ||
+    root === "crew"
+  ) {
+    if (section === "reports") return "table";
   }
 
   return "default";

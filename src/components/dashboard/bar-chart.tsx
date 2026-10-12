@@ -22,7 +22,7 @@ const TONE_FILL: Record<BarTone, string> = {
   amber: "bg-amber-500",
   green: "bg-emerald-500",
   red: "bg-red-500",
-  slate: "bg-slate-400",
+  slate: "bg-ink-faint",
 };
 
 /**
@@ -38,7 +38,7 @@ export function BarChart({
   emptyLabel?: string;
 }) {
   if (items.length === 0) {
-    return <p className="py-6 text-center text-sm text-slate-500">{emptyLabel}</p>;
+    return <p className="py-6 text-center text-sm text-ink-subtle">{emptyLabel}</p>;
   }
 
   const max = Math.max(1, ...items.map((item) => item.value));
@@ -48,12 +48,12 @@ export function BarChart({
       {items.map((item, index) => (
         <li key={item.label}>
           <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="truncate text-slate-700">{item.label}</span>
-            <span className="font-semibold tabular-nums text-slate-900">
+            <span className="truncate text-ink-muted">{item.label}</span>
+            <span className="font-semibold tabular-nums text-ink">
               {item.value}
             </span>
           </div>
-          <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+          <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-surface-sunken">
             <div
               className={cn(
                 "bar-fill h-full rounded-full transition-[width]",

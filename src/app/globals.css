@@ -45,12 +45,124 @@
   --color-brand-800: #144775;
   --color-brand-900: #163c63;
   --color-brand-950: #0e2743;
+
+  /* ------------------------------------------------------------------
+     Design tokens v2 — semantic names.
+     Components use these instead of raw slate/emerald/... classes, so a
+     restyle is a token change and not a hunt through 40 files. The only
+     surface still on palette literals is the frozen alert stack
+     (`components/alerts/`, `app/alerts/`, the admin alert composer).
+     ------------------------------------------------------------------ */
+
+  /* Surfaces and ink */
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8fafc; /* page background behind cards */
+  --color-surface-sunken: #f1f5f9; /* table headers, inset panels */
+  --color-ink: #0f172a;
+  --color-ink-muted: #475569;
+  --color-ink-subtle: #64748b;
+  /* Quiet tier: separators, ghost/disabled affordances, chart neutrals.
+     Deliberately below AA — never for text the user has to read. */
+  --color-ink-faint: #94a3b8;
+  --color-line: #e2e8f0;
+  --color-line-strong: #cbd5e1;
+
+  /* Status colours (used by Badge, StatCard and the empty states) */
+  --color-success-50: #ecfdf5;
+  --color-success-100: #d1fae5;
+  --color-success-600: #059669;
+  --color-success-700: #047857;
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+  --color-info-50: #eff6ff;
+  --color-info-100: #dbeafe;
+  --color-info-600: #2563eb;
+  --color-info-700: #1d4ed8;
+
+  /* Radius, elevation, layout constants */
+  --radius-control: 0.625rem;
+  --radius-card: 0.875rem;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.05);
+  --shadow-raised: 0 6px 16px -6px rgb(15 23 42 / 0.18),
+    0 2px 6px -2px rgb(15 23 42 / 0.08);
+  --shadow-tabbar: 0 -1px 0 rgb(15 23 42 / 0.06),
+    0 -10px 24px -16px rgb(15 23 42 / 0.25);
+  --container-content: 72rem; /* the widest a portal column may get */
+
+  /* Type scale v2 */
+  --text-display: 2.125rem;
+  --text-display--line-height: 2.5rem;
+  --text-display--letter-spacing: -0.02em;
+  --text-display--font-weight: 700;
+  --text-title: 1.5rem;
+  --text-title--line-height: 2rem;
+  --text-title--letter-spacing: -0.01em;
+  --text-title--font-weight: 600;
+  --text-subtitle: 1.125rem;
+  --text-subtitle--line-height: 1.625rem;
+  --text-subtitle--font-weight: 600;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.5rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-caption--letter-spacing: 0.01em;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* The page background sits one step below the cards, which is what makes a
+   mobile layout readable in sunlight: the card edges do the separating. */
+body {
+  background: var(--color-surface-muted);
+}
+
+/* ------------------------------------------------------------------
+   Layout utilities for the mobile-first shell
+   ------------------------------------------------------------------ */
+
+/* Height of the bottom tab bar, so content can reserve room for it. */
+:root {
+  --tabbar-h: 4.25rem;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Reserved space at the end of a page that has a fixed tab bar. */
+.has-tabbar {
+  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .has-tabbar {
+    padding-bottom: 0;
+  }
+}
+
+/* Horizontal scrollers (filter chips, table overflow) that hide their bar. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Minimum comfortable target size for touch, per WCAG 2.5.8. */
+.tap-target {
+  min-height: 2.75rem;
 }
 
 /* Smooth focus transitions */
@@ -492,5 +604,54 @@ body {
 
   main {
     padding: 0 !important;
+  }
+}
+
+/* Phone layout for data tables. Mark a table with `data-stack` and give each
+   cell the column heading as `data-label`; below md the row becomes a small
+   card whose lines are "heading — value". Above md nothing changes. */
+@media (max-width: 767px) {
+  table[data-stack],
+  table[data-stack] tbody,
+  table[data-stack] tr {
+    display: block;
+  }
+  table[data-stack] {
+    min-width: 0;
+  }
+  table[data-stack] thead {
+    display: none;
+  }
+  table[data-stack] tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    background-color: var(--color-surface);
+    overflow: hidden;
+  }
+  table[data-stack] tr:last-child {
+    margin-bottom: 0;
+  }
+  table[data-stack] td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem !important;
+    text-align: left !important;
+    border-top: 1px solid var(--color-line);
+  }
+  table[data-stack] td:first-child {
+    border-top: 0;
+  }
+  table[data-stack] td[data-label]::before {
+    content: attr(data-label);
+    flex: none;
+    max-width: 55%;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-ink-subtle);
   }
 }

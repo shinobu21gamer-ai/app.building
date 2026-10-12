@@ -127,7 +127,7 @@ export function CategoryManager({
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <h2 className="text-base font-semibold text-slate-900">
+        <h2 className="text-base font-semibold text-ink">
           {editingId ? t.editCategory : t.addCategory}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -162,12 +162,12 @@ export function CategoryManager({
           </div>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-slate-700">
+        <label className="flex items-center gap-2 text-sm text-ink-muted">
           <input
             type="checkbox"
             checked={isActive}
             onChange={(event) => setIsActive(event.target.checked)}
-            className="h-4 w-4 rounded border-slate-300"
+            className="h-4 w-4 rounded border-line-strong"
           />
           {t.availableNew}
         </label>
@@ -185,14 +185,14 @@ export function CategoryManager({
       </form>
 
       <div>
-        <h2 className="mb-3 text-base font-semibold text-slate-900">
+        <h2 className="mb-3 text-base font-semibold text-ink">
           {t.categoriesList.replace("{count}", String(categories.length))}
         </h2>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left text-sm">
             <caption className="sr-only">Concern categories</caption>
             <thead>
-              <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+              <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-subtle">
                 <th scope="col" className="py-2 pr-4 font-semibold">
                   {t.name}
                 </th>
@@ -210,14 +210,14 @@ export function CategoryManager({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-line">
               {categories.map((category) => (
-                <tr key={category.id} className="hover:bg-slate-50">
-                  <td className="py-3 pr-4 font-medium text-slate-900">
+                <tr key={category.id} className="hover:bg-surface-muted">
+                  <td className="py-3 pr-4 font-medium text-ink">
                     {category.name}
                   </td>
-                  <td className="py-3 pr-4 text-slate-600">{category.code}</td>
-                  <td className="py-3 pr-4 text-slate-600">
+                  <td className="py-3 pr-4 text-ink-muted">{category.code}</td>
+                  <td className="py-3 pr-4 text-ink-muted">
                     {category.references.total}
                   </td>
                   <td className="py-3 pr-4">
@@ -240,7 +240,7 @@ export function CategoryManager({
                         type="button"
                         onClick={() => toggleActive(category)}
                         disabled={busy}
-                        className="text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-40"
+                        className="text-sm font-semibold text-ink-muted hover:text-ink disabled:opacity-40"
                       >
                         {category.isActive ? t.disable : t.enable}
                       </button>

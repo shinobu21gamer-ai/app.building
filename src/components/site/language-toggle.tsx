@@ -21,7 +21,7 @@ export function LanguageToggle({
     <div
       role="group"
       aria-label={label}
-      className="inline-flex rounded-lg border border-slate-200 p-0.5 text-xs font-semibold"
+      className="inline-flex rounded-control border border-line p-0.5 text-xs font-semibold"
     >
       {(["en", "fil"] as const).map((value) => (
         <button
@@ -32,7 +32,7 @@ export function LanguageToggle({
           className={
             locale === value
               ? "rounded-md bg-brand-700 px-2 py-1 text-white"
-              : "rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100"
+              : "rounded-md px-2 py-1 text-ink-muted hover:bg-surface-sunken"
           }
         >
           {value === "en" ? "EN" : "FIL"}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { requireRole, roleHome } from "@/lib/auth/session";
+import { ROLE_KEYS } from "@/lib/auth/roles";
 import {
   countUnreadNotifications,
   listNotifications,
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NotificationsPage() {
-  const user = await requireRole(["RESIDENT", "OFFICIAL", "ADMIN"]);
+  const user = await requireRole([...ROLE_KEYS]);
   const locale = await getLocale();
   const t = copy[locale].notifications;
 
@@ -29,8 +30,8 @@ export default async function NotificationsPage() {
     <Container className="py-8">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{t.title}</h1>
-          <p className="mt-1 text-sm text-slate-600">{t.lead}</p>
+          <h1 className="text-title text-ink sm:text-display">{t.title}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{t.lead}</p>
         </div>
         <Button href={roleHome(user.role.key)} variant="outline" size="sm">
           {t.back}

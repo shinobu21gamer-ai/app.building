@@ -1,20 +1,52 @@
+import { ChevronDown } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 export function Label({
   htmlFor,
+  required,
   children,
 }: {
   htmlFor: string;
+  /**
+   * Renders the mandatory-field marker. Every field the schema requires must
+   * set this, and every form shows a legend explaining it.
+   */
+  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-1 block text-sm font-medium text-slate-700"
+      className="mb-1 block text-sm font-medium text-ink-muted"
     >
       {children}
+      {required ? (
+        <span aria-hidden="true" className="ml-0.5 text-danger-600">
+          *
+        </span>
+      ) : null}
     </label>
   );
+}
+
+/** Legend that explains the `*` marker; place it once per form. */
+export function RequiredLegend({ children }: { children: React.ReactNode }) {
+  return <p className="text-caption text-ink-subtle">{children}</p>;
+}
+
+/** Short helper under a control: what to type, or why the field exists. */
+export function FieldHint({ children }: { children: React.ReactNode }) {
+  return <p className="mt-1 text-caption text-ink-subtle">{children}</p>;
+}
+
+const controlClass =
+  "w-full rounded-control border bg-surface text-sm text-ink placeholder:text-ink-subtle/70 focus:outline-none focus:ring-2 focus:ring-brand-600/30 disabled:bg-surface-muted disabled:text-ink-subtle";
+
+function controlBorder(invalid?: boolean) {
+  return invalid
+    ? "border-danger-600 focus:border-danger-600"
+    : "border-line-strong focus:border-brand-600";
 }
 
 export function Input({
@@ -25,15 +57,43 @@ export function Input({
   return (
     <input
       aria-invalid={invalid || undefined}
-      className={cn(
-        "h-10 w-full rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-600/30 disabled:bg-slate-50 disabled:text-slate-500",
-        invalid
-          ? "border-red-500 focus:border-red-500"
-          : "border-slate-300 focus:border-brand-600",
-        className
-      )}
+      className={cn(controlClass, "h-10 px-3", controlBorder(invalid), className)}
       {...props}
     />
+  );
+}
+
+/**
+ * Native select, styled. Native is deliberate: on a phone it opens the
+ * platform's own picker, which is faster and more accessible than any custom
+ * listbox we could write.
+ */
+export function Select({
+  className,
+  invalid,
+  children,
+  ...props
+}: React.SelectHTMLAttributes<HTMLSelectElement> & { invalid?: boolean }) {
+  return (
+    <div className="relative">
+      <select
+        aria-invalid={invalid || undefined}
+        className={cn(
+          controlClass,
+          "h-10 appearance-none pr-9 pl-3",
+          controlBorder(invalid),
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </select>
+      <ChevronDown
+        size={16}
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-ink-subtle"
+      />
+    </div>
   );
 }
 
@@ -46,10 +106,9 @@ export function Textarea({
     <textarea
       aria-invalid={invalid || undefined}
       className={cn(
-        "w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-600/30 disabled:bg-slate-50 disabled:text-slate-500",
-        invalid
-          ? "border-red-500 focus:border-red-500"
-          : "border-slate-300 focus:border-brand-600",
+        controlClass,
+        "px-3 py-2",
+        controlBorder(invalid),
         className
       )}
       {...props}
@@ -59,7 +118,7 @@ export function Textarea({
 
 export function FieldError({ children }: { children: React.ReactNode }) {
   return (
-    <p role="alert" className="mt-1 text-xs text-red-600">
+    <p role="alert" className="mt-1 text-caption text-danger-600">
       {children}
     </p>
   );
@@ -76,10 +135,10 @@ export function FormMessage({
     <p
       role={tone === "error" ? "alert" : "status"}
       className={cn(
-        "rounded-lg border px-3 py-2 text-sm",
+        "rounded-control border px-3 py-2 text-sm",
         tone === "error"
-          ? "border-red-200 bg-red-50 text-red-700"
-          : "border-emerald-200 bg-emerald-50 text-emerald-700"
+          ? "border-danger-100 bg-danger-50 text-danger-700"
+          : "border-success-100 bg-success-50 text-success-700"
       )}
     >
       {children}

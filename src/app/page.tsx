@@ -106,13 +106,13 @@ export default async function Home() {
               {t.home.badge}
             </Badge>
             <h1
-              className="animate-fade-up text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl"
+              className="animate-fade-up text-4xl font-bold tracking-tight text-ink sm:text-5xl"
               style={delay(80)}
             >
               {t.home.title}
             </h1>
             <p
-              className="mt-4 animate-fade-up text-lg leading-relaxed text-slate-600"
+              className="mt-4 animate-fade-up text-lg leading-relaxed text-ink-muted"
               style={delay(160)}
             >
               {t.home.lead}
@@ -139,7 +139,7 @@ export default async function Home() {
               </Button>
             </div>
             <dl
-              className="mt-8 grid animate-fade-up grid-cols-3 gap-4 border-t border-slate-200 pt-6"
+              className="mt-8 grid animate-fade-up grid-cols-3 gap-4 border-t border-line pt-6"
               style={delay(320)}
             >
               {t.home.stats.map((item) => (
@@ -147,7 +147,7 @@ export default async function Home() {
                   <dt className="text-2xl font-bold text-brand-800">
                     {item.value}
                   </dt>
-                  <dd className="mt-1 text-xs leading-snug text-slate-600">
+                  <dd className="mt-1 text-xs leading-snug text-ink-muted">
                     {item.label}
                   </dd>
                 </div>
@@ -162,9 +162,9 @@ export default async function Home() {
               width={1600}
               height={900}
               priority
-              className="h-auto w-full rounded-2xl border border-slate-200 object-cover shadow-lg"
+              className="h-auto w-full rounded-card border border-line object-cover shadow-lg"
             />
-            <p className="mt-3 text-center text-xs text-slate-500">
+            <p className="mt-3 text-center text-xs text-ink-subtle">
               {t.home.heroCaption}
             </p>
           </div>
@@ -173,10 +173,10 @@ export default async function Home() {
 
       <section>
         <Container className="py-12 sm:py-16">
-          <h2 className="reveal text-2xl font-semibold text-slate-900">
+          <h2 className="reveal text-2xl font-semibold text-ink">
             {t.home.workflowTitle}
           </h2>
-          <p className="reveal mt-2 max-w-2xl text-sm text-slate-600">
+          <p className="reveal mt-2 max-w-2xl text-sm text-ink-muted">
             {t.home.workflowLead}
           </p>
           <ol className="reveal-stagger mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -185,12 +185,12 @@ export default async function Home() {
               return (
                 <li
                   key={step.key}
-                  className="rounded-xl border border-slate-200 bg-white p-4 transition-[translate,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md"
+                  className="rounded-card border border-line bg-surface p-4 transition-[translate,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md"
                 >
                   <span className="inline-flex h-6 items-center rounded-md bg-brand-50 px-2 text-xs font-bold tabular-nums text-brand-700">
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <p className="mt-2 flex items-center gap-2 font-semibold text-slate-900">
+                  <p className="mt-2 flex items-center gap-2 font-semibold text-ink">
                     {Icon ? (
                       <Icon
                         size={16}
@@ -200,7 +200,7 @@ export default async function Home() {
                     ) : null}
                     {step.title}
                   </p>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                  <p className="mt-1 text-sm leading-relaxed text-ink-muted">
                     {step.description}
                   </p>
                 </li>
@@ -210,12 +210,12 @@ export default async function Home() {
         </Container>
       </section>
 
-      <section className="border-t border-slate-200 bg-slate-50">
+      <section className="border-t border-line bg-surface-muted">
         <Container className="py-12 sm:py-16">
-          <h2 className="reveal text-2xl font-semibold text-slate-900">
+          <h2 className="reveal text-2xl font-semibold text-ink">
             {t.home.reportTitle}
           </h2>
-          <p className="reveal mt-2 max-w-2xl text-sm text-slate-600">
+          <p className="reveal mt-2 max-w-2xl text-sm text-ink-muted">
             {t.home.reportLead}
           </p>
           <div className="reveal-stagger mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -226,7 +226,7 @@ export default async function Home() {
                   key={item.key}
                   className="transition-[translate,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-brand-200 hover:shadow-md"
                 >
-                  <p className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                  <p className="flex items-center gap-2 text-base font-semibold text-ink">
                     {Icon ? (
                       <Icon
                         size={18}
@@ -236,7 +236,7 @@ export default async function Home() {
                     ) : null}
                     {item.title}
                   </p>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  <p className="mt-2 text-sm leading-relaxed text-ink-muted">
                     {item.description}
                   </p>
                 </Card>
@@ -248,7 +248,7 @@ export default async function Home() {
 
       <section>
         <Container className="py-12 sm:py-16">
-          <h2 className="reveal text-2xl font-semibold text-slate-900">
+          <h2 className="reveal text-2xl font-semibold text-ink">
             {t.home.rolesTitle}
           </h2>
           <div className="reveal-stagger mt-6 grid gap-4 sm:grid-cols-3">
@@ -259,7 +259,7 @@ export default async function Home() {
                   key={role.key}
                   className="transition-[translate,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-brand-200 hover:shadow-md"
                 >
-                  <p className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                  <p className="flex items-center gap-2 text-base font-semibold text-ink">
                     {Icon ? (
                       <Icon
                         size={18}
@@ -269,7 +269,7 @@ export default async function Home() {
                     ) : null}
                     {role.title}
                   </p>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  <p className="mt-2 text-sm leading-relaxed text-ink-muted">
                     {role.body}
                   </p>
                 </Card>
@@ -279,14 +279,14 @@ export default async function Home() {
         </Container>
       </section>
 
-      <section className="border-t border-slate-200 bg-slate-50">
+      <section className="border-t border-line bg-surface-muted">
         <Container className="py-12 sm:py-16">
           <div className="reveal flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-2xl font-semibold text-slate-900">
+              <h2 className="text-2xl font-semibold text-ink">
                 {t.home.faqTitle}
               </h2>
-              <p className="mt-2 text-sm text-slate-600">{t.home.faqLead}</p>
+              <p className="mt-2 text-sm text-ink-muted">{t.home.faqLead}</p>
             </div>
             <Button href="/help" variant="outline" size="sm">
               {t.home.faqCta}
@@ -300,7 +300,7 @@ export default async function Home() {
 
       <section>
         <Container className="py-12 sm:py-16">
-          <div className="reveal relative overflow-hidden rounded-2xl bg-brand-800 px-6 py-10 text-white sm:px-10">
+          <div className="reveal relative overflow-hidden rounded-card bg-brand-800 px-6 py-10 text-white sm:px-10">
             <div
               aria-hidden="true"
               className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-brand-500/40 blur-3xl animate-float-slow"

@@ -56,11 +56,11 @@ export function FeedbackSettingsForm({
           type="checkbox"
           checked={enabled}
           onChange={(event) => setEnabled(event.target.checked)}
-          className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
+          className="mt-1 h-4 w-4 rounded border-line-strong text-brand-700 focus:ring-brand-600"
         />
-        <span className="text-sm text-slate-700">{t.feedbackAllow}</span>
+        <span className="text-sm text-ink-muted">{t.feedbackAllow}</span>
       </label>
-      <p className="text-xs text-slate-500">{t.feedbackHint}</p>
+      <p className="text-xs text-ink-subtle">{t.feedbackHint}</p>
       {message && <FormMessage tone={message.tone}>{message.text}</FormMessage>}
       <Button type="button" size="sm" disabled={submitting} onClick={save}>
         {submitting ? t.saving : t.saveSetting}

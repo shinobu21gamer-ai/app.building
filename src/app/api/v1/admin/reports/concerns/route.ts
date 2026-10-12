@@ -1,20 +1,24 @@
-import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+
 import { assertSameOrigin, withErrorBoundary } from "@/lib/api";
 import { requireApiRole } from "@/lib/auth/session";
-import { parseConcernFilters, buildConcernWhere } from "@/lib/cases/query";
+import { buildConcernWhere, parseConcernFilters } from "@/lib/cases/query";
+import { db } from "@/lib/db";
+import { textColumn, type ReportSection } from "@/lib/reports/document";
+import { csvStreamHeaders, streamSectionCsv } from "@/lib/reports/stream";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-function csvCell(value: unknown): string {
-  let text = value instanceof Date ? value.toISOString() : String(value ?? "");
-  // Formula injection: a value beginning with = + - @ (or a tab/line feed)
-  // is interpreted as a spreadsheet formula when the export is opened in
-  // Excel/Sheets. Neutralize the leading character so the cell renders as text.
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-  return `"${text.replaceAll('"', '""')}"`;
-}
-
+/**
+ * The case register as a CSV a spreadsheet can open.
+ *
+ * This is the pre-revamp export, so it keeps its own columns and its own
+ * filters — but not its own CSV writer. Cells go through the shared,
+ * formula-guarded `csv` module and the body streams in 250-row chunks
+ * (`src/lib/reports/stream.ts`), so a large register is never built as one
+ * string in memory.
+ */
 export const GET = withErrorBoundary(async (req: Request) => {
   assertSameOrigin(req);
   await requireApiRole(["ADMIN"]);
@@ -31,44 +35,48 @@ export const GET = withErrorBoundary(async (req: Request) => {
     take: 5000,
   });
 
-  const header = [
-    "Case number",
-    "Title",
-    "Category",
-    "Resident",
-    "Resident email",
-    "Status",
-    "Priority",
-    "Office",
-    "Submitted",
-    "SLA due",
-    "SLA status",
-    "Duplicate of",
-  ];
-  const rows = concerns.map((concern) => {
-    const active = concern.status !== "RESOLVED" && concern.status !== "CLOSED";
-    const overdue = active && concern.slaDueAt !== null && concern.slaDueAt.getTime() < Date.now();
-    return [
-      concern.caseNumber,
-      concern.title,
-      concern.category.name,
-      `${concern.user.firstName} ${concern.user.lastName}`,
-      concern.user.email,
-      concern.status,
-      concern.priorityLevel,
-      concern.assignedOffice?.name,
-      concern.createdAt,
-      concern.slaDueAt,
-      active ? (overdue ? "OVERDUE" : "OPEN") : "COMPLETE",
-      concern.duplicateOfId,
-    ].map(csvCell).join(",");
-  });
+  const now = Date.now();
+  const section: ReportSection = {
+    key: "concerns",
+    title: "Case register",
+    columns: [
+      textColumn("caseNumber", "Case number"),
+      textColumn("title", "Title"),
+      textColumn("category", "Category"),
+      textColumn("resident", "Resident"),
+      textColumn("residentEmail", "Resident email"),
+      textColumn("status", "Status"),
+      textColumn("priority", "Priority"),
+      textColumn("office", "Office"),
+      textColumn("submitted", "Submitted"),
+      textColumn("slaDue", "SLA due"),
+      textColumn("slaStatus", "SLA status"),
+      textColumn("duplicateOf", "Duplicate of"),
+    ],
+    rows: concerns.map((concern) => {
+      const active = concern.status !== "RESOLVED" && concern.status !== "CLOSED";
+      const overdue =
+        active && concern.slaDueAt !== null && concern.slaDueAt.getTime() < now;
+      return {
+        caseNumber: concern.caseNumber,
+        title: concern.title,
+        category: concern.category.name,
+        resident: `${concern.user.firstName} ${concern.user.lastName}`,
+        residentEmail: concern.user.email,
+        status: concern.status,
+        priority: concern.priorityLevel ?? "",
+        office: concern.assignedOffice?.name ?? "",
+        submitted: concern.createdAt.toISOString(),
+        slaDue: concern.slaDueAt ? concern.slaDueAt.toISOString() : "",
+        slaStatus: active ? (overdue ? "OVERDUE" : "OPEN") : "COMPLETE",
+        duplicateOf: concern.duplicateOfId === null ? "" : concern.duplicateOfId,
+      };
+    }),
+  };
 
-  return new NextResponse([header.map(csvCell).join(","), ...rows].join("\n"), {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="barangayresolve-concerns-${new Date().toISOString().slice(0, 10)}.csv"`,
-      "Cache-Control": "no-store",
-    },
+  return new NextResponse(streamSectionCsv(section), {
+    headers: csvStreamHeaders(
+      `concerns-${new Date().toISOString().slice(0, 10)}`
+    ),
   });
 });

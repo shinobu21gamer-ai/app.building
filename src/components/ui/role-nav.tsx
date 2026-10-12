@@ -2,43 +2,61 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+import { iconFor } from "@/components/ui/nav-icons";
+import { activeHrefFor, type NavItem } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
-export type RoleNavItem = { href: string; label: string };
+export type RoleNavItem = NavItem;
 
-export function RoleNav({ items }: { items: RoleNavItem[] }) {
+/**
+ * The desktop half of the role shell: a sticky vertical list of the role's
+ * destinations beside the content. Below `md` this disappears and
+ * `<MobileTabBar/>` takes over, which is why the layout reads as a phone app
+ * first and a desktop app second.
+ */
+export function RoleNav({
+  items,
+  label,
+}: {
+  items: RoleNavItem[];
+  label: string;
+}) {
   const pathname = usePathname();
-
-  const matches = items.filter(
-    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
-  );
-  const activeHref = matches
-    .slice()
-    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+  const activeHref = activeHrefFor(pathname, items);
 
   return (
     <nav
-      aria-label="Section"
-      className="no-print mb-6 flex flex-wrap gap-1 border-b border-slate-200 pb-3"
+      aria-label={label}
+      className="no-print hidden md:block md:w-60 md:shrink-0"
     >
-      {items.map((item) => {
-        const active = item.href === activeHref;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-sm font-medium transition-[background-color,color,box-shadow] duration-150",
-              active
-                ? "bg-brand-100 text-brand-900 shadow-sm ring-1 ring-brand-200"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            )}
-          >
-            {item.label}
-          </Link>
-        );
-      })}
+      <ul className="sticky top-20 grid gap-0.5">
+        {items.map((item) => {
+          const Icon = iconFor(item.href);
+          const active = item.href === activeHref;
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-control px-3 py-2 text-sm transition-colors",
+                  active
+                    ? "bg-brand-50 font-semibold text-brand-800 ring-1 ring-brand-100"
+                    : "font-medium text-ink-muted hover:bg-surface-sunken hover:text-ink"
+                )}
+              >
+                <Icon
+                  size={17}
+                  aria-hidden="true"
+                  className={active ? "text-brand-700" : "text-ink-subtle"}
+                />
+                <span className="line-clamp-1">{item.label}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </nav>
   );
 }

@@ -19,7 +19,7 @@ export default async function ResetPasswordPage() {
       <div className="w-full max-w-md">
         <Card title={t.title} description={t.description}>
           <ResetPasswordForm locale={locale} />
-          <p className="mt-4 text-center text-sm text-slate-600">
+          <p className="mt-4 text-center text-sm text-ink-muted">
             {t.remembered}{" "}
             <Link
               href="/login"

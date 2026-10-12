@@ -54,9 +54,9 @@ function VariantBody({ variant }: { variant: SkeletonVariant }) {
 function NavSkeleton() {
   const widths = ["w-24", "w-28", "w-32", "w-24", "w-28"];
   return (
-    <div className="mb-6 flex flex-wrap gap-1 border-b border-slate-200 pb-3">
+    <div className="mb-6 flex flex-wrap gap-1 border-b border-line pb-3">
       {widths.map((width, index) => (
-        <Skeleton key={index} className={cn("h-8 rounded-lg", width)} />
+        <Skeleton key={index} className={cn("h-8 rounded-control", width)} />
       ))}
     </div>
   );
@@ -75,14 +75,14 @@ function FieldSkeleton() {
   return (
     <div className="space-y-2">
       <Skeleton className="h-3 w-28" />
-      <Skeleton className="h-10 w-full rounded-lg" />
+      <Skeleton className="h-10 w-full rounded-control" />
     </div>
   );
 }
 
 function StatSkeleton() {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5">
+    <div className="rounded-card border border-line bg-surface p-5">
       <Skeleton className="h-3 w-24" />
       <Skeleton className="mt-4 h-8 w-20" />
       <Skeleton className="mt-3 h-3 w-36 max-w-full" />
@@ -92,7 +92,7 @@ function StatSkeleton() {
 
 function ToolbarSkeleton() {
   return (
-    <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 px-5 py-4">
+    <div className="flex flex-wrap items-end gap-3 border-b border-line px-5 py-4">
       <Skeleton className="h-10 min-w-[200px] flex-1" />
       <Skeleton className="h-10 w-36" />
       <Skeleton className="h-10 w-36" />
@@ -108,13 +108,13 @@ function CardSkeleton({
   toolbar?: boolean;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <div className="space-y-2 border-b border-slate-100 px-5 py-4">
+    <div className="overflow-hidden rounded-card border border-line bg-surface">
+      <div className="space-y-2 border-b border-line px-5 py-4">
         <Skeleton className="h-4 w-40" />
         <Skeleton className="h-3 w-64 max-w-full" />
       </div>
       {toolbar ? <ToolbarSkeleton /> : null}
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-line">
         {Array.from({ length: rows }, (_, index) => (
           <div
             key={index}
@@ -137,7 +137,7 @@ function DashboardSkeleton() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <Heading titleWidth="w-64" />
-        <Skeleton className="h-9 w-40 rounded-lg" />
+        <Skeleton className="h-9 w-40 rounded-control" />
       </div>
       <div className="stagger grid gap-4 sm:grid-cols-3">
         <StatSkeleton />
@@ -157,7 +157,7 @@ function ListSkeleton() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Heading />
-        <Skeleton className="h-9 w-36 rounded-lg" />
+        <Skeleton className="h-9 w-36 rounded-control" />
       </div>
       <CardSkeleton rows={6} toolbar />
     </div>
@@ -169,17 +169,17 @@ function TableSkeleton() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Heading />
-        <Skeleton className="h-9 w-36 rounded-lg" />
+        <Skeleton className="h-9 w-36 rounded-control" />
       </div>
-      <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className="rounded-card border border-line bg-surface p-3">
         <div className="flex flex-wrap items-end gap-3">
           <Skeleton className="h-10 min-w-[200px] flex-1" />
           <Skeleton className="h-10 w-36" />
           <Skeleton className="h-10 w-28" />
         </div>
       </div>
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <div className="grid grid-cols-3 gap-4 border-b border-slate-100 bg-slate-50 px-5 py-3 sm:grid-cols-4">
+      <div className="overflow-hidden rounded-card border border-line bg-surface">
+        <div className="grid grid-cols-3 gap-4 border-b border-line bg-surface-muted px-5 py-3 sm:grid-cols-4">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-3 w-24" />
           <Skeleton className="h-3 w-16" />
@@ -188,7 +188,7 @@ function TableSkeleton() {
         {Array.from({ length: 8 }, (_, row) => (
           <div
             key={row}
-            className="grid grid-cols-3 gap-4 border-b border-slate-100 px-5 py-4 last:border-b-0 sm:grid-cols-4"
+            className="grid grid-cols-3 gap-4 border-b border-line px-5 py-4 last:border-b-0 sm:grid-cols-4"
           >
             <Skeleton className="h-3.5 w-4/5" />
             <Skeleton className="h-3.5 w-3/5" />
@@ -216,7 +216,7 @@ function DetailSkeleton() {
       </div>
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-5">
+          <div className="space-y-3 rounded-card border border-line bg-surface p-5">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-3.5 w-full" />
             <Skeleton className="h-3.5 w-11/12" />
@@ -226,7 +226,7 @@ function DetailSkeleton() {
           <CardSkeleton rows={3} />
         </div>
         <div className="space-y-6">
-          <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-5">
+          <div className="space-y-5 rounded-card border border-line bg-surface p-5">
             <Skeleton className="h-4 w-32" />
             {Array.from({ length: 5 }, (_, step) => (
               <div key={step} className="flex items-center gap-3">
@@ -246,18 +246,18 @@ function FormSkeleton() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <Heading titleWidth="w-64" />
-      <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-6">
+      <div className="space-y-5 rounded-card border border-line bg-surface p-6">
         <FieldSkeleton />
         <FieldSkeleton />
         <FieldSkeleton />
         <FieldSkeleton />
         <div className="space-y-2">
           <Skeleton className="h-3 w-28" />
-          <Skeleton className="h-28 w-full rounded-lg" />
+          <Skeleton className="h-28 w-full rounded-control" />
         </div>
         <div className="flex gap-3 pt-2">
-          <Skeleton className="h-10 w-36 rounded-lg" />
-          <Skeleton className="h-10 w-24 rounded-lg" />
+          <Skeleton className="h-10 w-36 rounded-control" />
+          <Skeleton className="h-10 w-24 rounded-control" />
         </div>
       </div>
     </div>
@@ -267,14 +267,14 @@ function FormSkeleton() {
 function AuthSkeleton() {
   return (
     <div className="flex justify-center py-8 sm:py-12">
-      <div className="w-full max-w-md space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="w-full max-w-md space-y-5 rounded-card border border-line bg-surface p-6 shadow-card">
         <div className="space-y-2 text-center">
           <Skeleton className="mx-auto h-6 w-40" />
           <Skeleton className="mx-auto h-3.5 w-56 max-w-full" />
         </div>
         <FieldSkeleton />
         <FieldSkeleton />
-        <Skeleton className="h-10 w-full rounded-lg" />
+        <Skeleton className="h-10 w-full rounded-control" />
         <Skeleton className="mx-auto h-3 w-40" />
       </div>
     </div>
@@ -311,11 +311,11 @@ function LandingSkeleton() {
           <Skeleton className="h-4 w-11/12" />
           <Skeleton className="h-4 w-2/3" />
           <div className="flex flex-wrap gap-3 pt-2">
-            <Skeleton className="h-11 w-44 rounded-lg" />
-            <Skeleton className="h-11 w-32 rounded-lg" />
+            <Skeleton className="h-11 w-44 rounded-control" />
+            <Skeleton className="h-11 w-32 rounded-control" />
           </div>
         </div>
-        <Skeleton className="aspect-[4/3] w-full rounded-2xl" />
+        <Skeleton className="aspect-[4/3] w-full rounded-card" />
       </div>
       <div className="stagger grid gap-4 sm:grid-cols-3">
         <CardBlock />
@@ -328,8 +328,8 @@ function LandingSkeleton() {
 
 function CardBlock() {
   return (
-    <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-5">
-      <Skeleton className="h-10 w-10 rounded-lg" />
+    <div className="space-y-3 rounded-card border border-line bg-surface p-5">
+      <Skeleton className="h-10 w-10 rounded-control" />
       <Skeleton className="h-4 w-2/3" />
       <Skeleton className="h-3 w-full" />
       <Skeleton className="h-3 w-4/5" />

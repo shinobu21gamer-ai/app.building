@@ -1,13 +1,12 @@
-import { CASE_STATUSES, type CaseStatus } from "@/lib/cases/workflow";
+import {
+  CASE_STATUSES,
+  STATUS_ORDER,
+  statusLabel as humanizeStatus,
+  type CaseStatus,
+} from "@/lib/cases/workflow";
 import { formatDate, formatDateTime } from "@/lib/format";
 
-const STATUS_INDEX: Record<CaseStatus, number> = {
-  SUBMITTED: 0,
-  ASSIGNED: 1,
-  IN_PROGRESS: 2,
-  RESOLVED: 3,
-  CLOSED: 4,
-};
+const STATUS_INDEX: Record<CaseStatus, number> = STATUS_ORDER;
 
 /**
  * When a step was reached. `dateOnly` is set when the moment is a recorded
@@ -51,7 +50,7 @@ export function CaseStatusStepper({
                 aria-hidden
                 style={{ animationDelay: `${index * 120}ms` }}
                 className={`absolute left-[9px] top-5 h-full w-0.5 ${
-                  done ? "grow-y bg-brand-500" : "bg-slate-200"
+                  done ? "grow-y bg-brand-500" : "bg-line"
                 }`}
               />
             )}
@@ -60,7 +59,7 @@ export function CaseStatusStepper({
               className={`relative z-10 mt-1 flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full border-2 ${
                 done
                   ? "animate-scale-in border-brand-600 bg-brand-600 text-white"
-                  : "border-slate-300 bg-white"
+                  : "border-line-strong bg-surface"
               } ${isCurrent ? "ring-4 ring-brand-100" : ""}`}
             >
               {isCurrent && (
@@ -84,19 +83,19 @@ export function CaseStatusStepper({
             <div className="flex flex-1 items-baseline justify-between gap-3 pb-1">
               <span
                 className={`text-sm font-semibold ${
-                  done ? "text-slate-900" : "text-slate-400"
+                  done ? "text-ink" : "text-ink-faint"
                 }`}
               >
-                {status}
+                {humanizeStatus(status)}
               </span>
               {reachedDate ? (
-                <span className="text-xs tabular-nums text-slate-500">
+                <span className="text-xs tabular-nums text-ink-subtle">
                   {reachedDate.dateOnly
                     ? formatDate(reachedDate.at)
                     : formatDateTime(reachedDate.at)}
                 </span>
               ) : (
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-ink-faint">
                   {index > currentIndex ? "Pending" : "\u00a0"}
                 </span>
               )}

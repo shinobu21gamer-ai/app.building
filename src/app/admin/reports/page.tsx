@@ -9,7 +9,10 @@ import { Badge, PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ConcernFilters } from "@/components/cases/concern-filters";
 import { PrintButton } from "@/components/ui/print-button";
+import { PageHeader } from "@/components/ui/page-header";
 import { parseConcernFilters } from "@/lib/cases/query";
+import { ReportTabs } from "@/components/reports/report-view";
+import { reportTabs } from "@/lib/reports/catalog";
 import { getConcernReport } from "@/lib/admin/reports";
 import { statusLabel } from "@/lib/cases/workflow";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -67,12 +70,7 @@ export default async function AdminReportsPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">{t.reportsTitle}</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            {t.reportsLead.replace("{date}", generatedAt)}
-          </p>
-        </div>
+        <PageHeader title={t.reportsTitle} description={t.reportsLead.replace("{date}", generatedAt)} />
         <div className="no-print flex flex-wrap gap-2">
           <PrintButton label={t.print} />
           <Button href={csvHref} variant="secondary" size="sm">
@@ -81,6 +79,18 @@ export default async function AdminReportsPage({
           </Button>
         </div>
       </div>
+
+      <ReportTabs
+        locale={locale}
+        tabs={reportTabs("/admin/reports", [
+          "concerns",
+          "engineering",
+          "treasury",
+          "privacy",
+          "transparency",
+        ])}
+        active="concerns"
+      />
 
       <div className="no-print">
         <Card title={t.filtersTitle} description={t.filtersDesc}>
@@ -110,6 +120,7 @@ export default async function AdminReportsPage({
           label={t.slaOverdue}
           value={report.overdue}
           hint={t.slaHint}
+          tone={report.overdue > 0 ? "danger" : "default"}
         />
         <StatCard
           label={t.avgTime}
@@ -127,30 +138,30 @@ export default async function AdminReportsPage({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title={t.byStatus}>
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-line text-sm">
             {report.byStatus.map((row) => (
               <li
                 key={row.status}
                 className="flex items-center justify-between py-2"
               >
                 <StatusBadge status={row.status} />
-                <span className="font-semibold text-slate-900">{row.count}</span>
+                <span className="font-semibold text-ink">{row.count}</span>
               </li>
             ))}
           </ul>
         </Card>
         <Card title={t.byOffice}>
           {report.byOffice.length === 0 ? (
-            <p className="py-4 text-sm text-slate-600">{t.noCases}</p>
+            <p className="py-4 text-sm text-ink-muted">{t.noCases}</p>
           ) : (
-            <ul className="divide-y divide-slate-100 text-sm">
+            <ul className="divide-y divide-line text-sm">
               {report.byOffice.map((row) => (
                 <li
                   key={row.id ?? "none"}
                   className="flex items-center justify-between py-2"
                 >
-                  <span className="text-slate-700">{row.name}</span>
-                  <span className="font-semibold text-slate-900">{row.count}</span>
+                  <span className="text-ink-muted">{row.name}</span>
+                  <span className="font-semibold text-ink">{row.count}</span>
                 </li>
               ))}
             </ul>
@@ -169,15 +180,15 @@ export default async function AdminReportsPage({
         description={report.truncated ? t.truncated : t.newest}
       >
         {report.concerns.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-600">
+          <p className="py-8 text-center text-sm text-ink-muted">
             {t.noMatch}
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
+            <table data-stack className="w-full min-w-[720px] text-left text-sm">
               <caption className="sr-only">{t.reportsTitle}</caption>
               <thead>
-                <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-subtle">
                   <th scope="col" className="py-2 pr-3 font-semibold">
                     {t.caseCol}
                   </th>
@@ -198,10 +209,10 @@ export default async function AdminReportsPage({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {report.concerns.map((concern) => (
                   <tr key={concern.id}>
-                    <td className="py-2 pr-3 font-mono text-xs">
+                    <td data-label={t.caseCol} className="py-2 pr-3 font-mono text-xs">
                       <Link
                         href={`/official/concerns/${concern.id}`}
                         className="font-semibold text-brand-700 hover:text-brand-800"
@@ -209,21 +220,21 @@ export default async function AdminReportsPage({
                         {concern.caseNumber}
                       </Link>
                     </td>
-                    <td className="py-2 pr-3 text-slate-900">{concern.title}</td>
-                    <td className="py-2 pr-3 text-slate-600">
+                    <td data-label={t.titleCol} className="py-2 pr-3 text-ink">{concern.title}</td>
+                    <td data-label={t.officeCol} className="py-2 pr-3 text-ink-muted">
                       {concern.assignedOffice?.name ?? t.unassigned}
                     </td>
-                    <td className="py-2 pr-3">
+                    <td data-label={t.priorityCol} className="py-2 pr-3">
                       {concern.priorityLevel ? (
                         <PriorityBadge level={concern.priorityLevel} />
                       ) : (
                         <Badge tone="neutral">{statusLabel("UNASSESSED")}</Badge>
                       )}
                     </td>
-                    <td className="py-2 pr-3">
+                    <td data-label={t.statusCol} className="py-2 pr-3">
                       <StatusBadge status={concern.status} />
                     </td>
-                    <td className="py-2 text-slate-600">
+                    <td data-label={t.submittedCol} className="py-2 text-ink-muted">
                       {formatDate(concern.createdAt)}
                     </td>
                   </tr>

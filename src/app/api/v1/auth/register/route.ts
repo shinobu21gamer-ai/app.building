@@ -11,6 +11,7 @@ import { hashPassword } from "@/lib/auth/password";
 import {
   createSessionToken,
   publicUser,
+  roleHome,
   setSessionCookie,
 } from "@/lib/auth/session";
 import { registerSchema } from "@/lib/validations/auth";
@@ -20,6 +21,14 @@ import {
   clearRegistrationFailures,
   recordRegistrationFailure,
 } from "@/lib/rate-limit";
+import { buildPhoneFields } from "@/lib/privacy/phone-store";
+import { assertPiiConfigured } from "@/lib/privacy/service";
+import {
+  consentSummary,
+  currentConsents,
+  grantConsents,
+} from "@/lib/privacy/consent";
+import type { ConsentPurpose } from "@/lib/privacy/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +68,11 @@ export const POST = withErrorBoundary(async (req: Request) => {
 
   const passwordHash = await hashPassword(data.password);
 
+  // The phone number is personal data: it is stored encrypted with a keyed
+  // lookup hash and a readable last-four, never in the plaintext column.
+  if (data.phone) assertPiiConfigured();
+  const phoneFields = data.phone ? buildPhoneFields(data.phone) : null;
+
   let user;
   try {
     user = await db.user.create({
@@ -67,7 +81,8 @@ export const POST = withErrorBoundary(async (req: Request) => {
         passwordHash,
         firstName: data.firstName,
         lastName: data.lastName,
-        phone: data.phone ?? null,
+        phone: null,
+        ...(phoneFields ?? {}),
         address: data.address ?? null,
         roleId: residentRole.id,
       },
@@ -89,12 +104,30 @@ export const POST = withErrorBoundary(async (req: Request) => {
     throw error;
   }
 
+  const consentMeta = { method: "WEB" as const, ip, userAgent };
+  const optionalConsents: ConsentPurpose[] = [];
+  if (data.consentTransparencyPublication) {
+    optionalConsents.push("TRANSPARENCY_PUBLICATION");
+  }
+  if (data.consentNotifications) optionalConsents.push("NOTIFICATIONS");
+  if (data.consentSms) optionalConsents.push("SMS");
+
+  // RA 10173: the two mandatory acknowledgements plus whatever the resident
+  // opted into. Written as consent rows so the decision is provable later.
+  const granted = await grantConsents(
+    user.id,
+    ["DATA_PROCESSING", "PRIVACY_NOTICE", ...optionalConsents],
+    consentMeta
+  );
+
   await clearRegistrationFailures(ip);
   await recordAudit({
     action: "USER_REGISTERED",
     resourceType: "user",
     resourceId: String(user.id),
-    description: `Resident registered with email ${user.email}.`,
+    description: `Resident registered with email ${user.email}. Consents: ${granted
+      .map((consent) => consent.purpose)
+      .join(", ")}.`,
     userId: user.id,
     ip,
     userAgent,
@@ -109,5 +142,12 @@ export const POST = withErrorBoundary(async (req: Request) => {
   });
   await setSessionCookie(token);
 
-  return ok({ user: publicUser(user), redirect: "/resident" }, { status: 201 });
+  return ok(
+    {
+      user: publicUser(user),
+      consents: consentSummary(await currentConsents(user.id)),
+      redirect: roleHome(user.role.key),
+    },
+    { status: 201 }
+  );
 });

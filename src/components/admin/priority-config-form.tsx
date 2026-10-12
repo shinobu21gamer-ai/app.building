@@ -121,18 +121,18 @@ export function PriorityConfigForm({
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
       <section>
-        <h2 className="text-base font-semibold text-slate-900">
+        <h2 className="text-base font-semibold text-ink">
           {t.factorsTitle}
         </h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-ink-muted">
           {t.factorsLead.replace("{min}", range.min).replace("{max}", range.max)}
         </p>
         <div className="mt-4 space-y-3">
           {factors.map((factor, index) => (
             <div
               key={factor.key}
-              className={`grid grid-cols-2 items-end gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-6 ${
-                factor.isActive ? "" : "bg-slate-50 opacity-75"
+              className={`grid grid-cols-2 items-end gap-3 rounded-control border border-line p-3 sm:grid-cols-6 ${
+                factor.isActive ? "" : "bg-surface-muted opacity-75"
               }`}
             >
               <div className="col-span-2 sm:col-span-2">
@@ -201,7 +201,7 @@ export function PriorityConfigForm({
               </div>
               <div>
                 <Label htmlFor={`factor-active-${factor.key}`}>{t.active}</Label>
-                <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
+                <label className="flex h-10 items-center gap-2 text-sm text-ink-muted">
                   <input
                     id={`factor-active-${factor.key}`}
                     type="checkbox"
@@ -209,7 +209,7 @@ export function PriorityConfigForm({
                     onChange={(e) =>
                       updateFactor(index, { isActive: e.target.checked })
                     }
-                    className="h-4 w-4 rounded border-slate-300"
+                    className="h-4 w-4 rounded border-line-strong"
                   />
                   {t.used}
                 </label>
@@ -220,10 +220,10 @@ export function PriorityConfigForm({
       </section>
 
       <section>
-        <h2 className="text-base font-semibold text-slate-900">
+        <h2 className="text-base font-semibold text-ink">
           {t.thresholdsTitle}
         </h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-ink-muted">
           {t.thresholdsLead
             .replace("{min}", range.min)
             .replace("{max}", range.max)}
@@ -232,7 +232,7 @@ export function PriorityConfigForm({
           {thresholds.map((threshold, index) => (
             <div
               key={threshold.level}
-              className="grid grid-cols-2 items-end gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-4"
+              className="grid grid-cols-2 items-end gap-3 rounded-control border border-line p-3 sm:grid-cols-4"
             >
               <div>
                 <Label htmlFor={`threshold-level-${threshold.level}`}>

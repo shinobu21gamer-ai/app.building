@@ -33,7 +33,7 @@ export function FeedbackCard({
     return (
       <div className="space-y-3">
         {notice && <FormMessage tone="success">{notice}</FormMessage>}
-        <div className="space-y-1 text-sm text-slate-600">
+        <div className="space-y-1 text-sm text-ink-muted">
           <p>
             {t.youRated}{" "}
             <span className="font-semibold">{existing.rating}/5</span>
@@ -44,9 +44,9 @@ export function FeedbackCard({
             </span>
           </p>
           {existing.comment && (
-            <p className="text-slate-500">“{existing.comment}”</p>
+            <p className="text-ink-subtle">“{existing.comment}”</p>
           )}
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-ink-faint">
             {t.submitted.replace("{date}", formatDateTime(existing.updatedAt))}
           </p>
         </div>
@@ -59,7 +59,7 @@ export function FeedbackCard({
       {notice && <FormMessage tone="success">{notice}</FormMessage>}
       {existing && (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-muted">
             {t.current.replace("{rating}", String(existing.rating))}
           </p>
           {!showForm && (

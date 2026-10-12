@@ -3,6 +3,10 @@ import {
   listConcerns,
   type ConcernListFilters,
 } from "@/lib/cases/query";
+import {
+  HIGH_PRIORITY_LEVELS,
+  PENDING_STATUSES,
+} from "@/lib/cases/figures";
 
 /**
  * Official (office-scoped) dashboard statistics.
@@ -11,6 +15,11 @@ import {
  * their own office; administrators may pass `null` to see the whole system or
  * filter by an office through the search box. All values come from the
  * database on each request.
+ *
+ * The four figures are read from two grouped counts rather than four separate
+ * `count()` queries, and the two buckets that have a name — "pending" and
+ * "high priority" — are defined in `src/lib/cases/figures.ts`, so a desk and a
+ * report cannot mean different things by them.
  */
 export async function getOfficialDashboard(
   officeId: number | null,
@@ -27,16 +36,14 @@ export async function getOfficialDashboard(
     officeId: effectiveOfficeId,
   };
 
-  const [assigned, pending, highPriority, inProgress, recentlyResolved, cases] =
+  const [statusRows, priorityRows, recentlyResolved, cases] =
     await Promise.all([
-      db.concern.count({ where: scope }),
-      db.concern.count({
-        where: { ...scope, status: { in: ["SUBMITTED", "ASSIGNED"] } },
+      db.concern.groupBy({ by: ["status"], where: scope, _count: { _all: true } }),
+      db.concern.groupBy({
+        by: ["priorityLevel"],
+        where: scope,
+        _count: { _all: true },
       }),
-      db.concern.count({
-        where: { ...scope, priorityLevel: { in: ["HIGH", "CRITICAL"] } },
-      }),
-      db.concern.count({ where: { ...scope, status: "IN_PROGRESS" } }),
       db.concern.findMany({
         where: { ...scope, status: { in: ["RESOLVED", "CLOSED"] } },
         select: {
@@ -60,9 +67,25 @@ export async function getOfficialDashboard(
       listConcerns(scopedFilters),
     ]);
 
+  const statusCounts = new Map(
+    statusRows.map((row) => [row.status, row._count._all])
+  );
+  const priorityCounts = new Map(
+    priorityRows.map((row) => [row.priorityLevel, row._count._all])
+  );
+
+  const countOf = <T,>(names: readonly T[], source: ReadonlyMap<T, number>) =>
+    names.reduce((sum, name) => sum + (source.get(name) ?? 0), 0);
+
   return {
     officeId: effectiveOfficeId,
-    counts: { assigned, pending, highPriority, inProgress },
+    counts: {
+      // Every case in scope, whatever its status.
+      assigned: statusRows.reduce((sum, row) => sum + row._count._all, 0),
+      pending: countOf(PENDING_STATUSES, statusCounts),
+      highPriority: countOf(HIGH_PRIORITY_LEVELS, priorityCounts),
+      inProgress: statusCounts.get("IN_PROGRESS") ?? 0,
+    },
     recentlyResolved,
     cases,
   };

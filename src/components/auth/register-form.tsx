@@ -38,6 +38,15 @@ export function RegisterForm({ locale = "en" }: { locale?: Locale }) {
   const t = copy[locale].register;
   const router = useRouter();
   const [form, setForm] = useState<FormData>(initialForm);
+  // RA 10173 consents. The first two are mandatory: the API rejects the
+  // registration without them, so the form checks them before sending.
+  const [consents, setConsents] = useState({
+    dataProcessing: false,
+    privacyNotice: false,
+    transparency: false,
+    notifications: false,
+    sms: false,
+  });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +111,11 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
       return;
     }
 
+    if (!consents.dataProcessing || !consents.privacyNotice) {
+      setError(t.consentRequired);
+      return;
+    }
+
     const parsed = registerSchema.safeParse({
       email: form.email,
       password: form.password,
@@ -109,6 +123,11 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
       lastName: form.lastName,
       phone: form.phone,
       address: form.address,
+      consentDataProcessing: consents.dataProcessing,
+      consentPrivacyNotice: consents.privacyNotice,
+      consentTransparencyPublication: consents.transparency,
+      consentNotifications: consents.notifications,
+      consentSms: consents.sms,
     });
 
     if (!parsed.success) {
@@ -142,10 +161,11 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-4" autoComplete="off">
       {error && <FormMessage tone="error">{error}</FormMessage>}
+      <p className="text-xs text-ink-subtle">{t.requiredLegend}</p>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="firstName">{t.firstName}</Label>
+          <Label htmlFor="firstName" required>{t.firstName}</Label>
           <Input
             id="firstName"
             name="firstName"
@@ -159,7 +179,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
           {isInvalid("firstName") && <FieldError>{fieldErrors.firstName}</FieldError>}
         </div>
         <div>
-          <Label htmlFor="lastName">{t.lastName}</Label>
+          <Label htmlFor="lastName" required>{t.lastName}</Label>
           <Input
             id="lastName"
             name="lastName"
@@ -175,7 +195,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
       </div>
 
       <div>
-        <Label htmlFor="email">{t.email}</Label>
+        <Label htmlFor="email" required>{t.email}</Label>
         <Input
           id="email"
           name="email"
@@ -226,7 +246,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="password">{t.password}</Label>
+          <Label htmlFor="password" required>{t.password}</Label>
           <Input
             id="password"
             name="password"
@@ -240,12 +260,12 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
             required
           />
           {isInvalid("password") && <FieldError>{fieldErrors.password}</FieldError>}
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-ink-subtle">
             {t.passwordHint}
           </p>
         </div>
         <div>
-          <Label htmlFor="confirmPassword">{t.confirmPassword}</Label>
+          <Label htmlFor="confirmPassword" required>{t.confirmPassword}</Label>
           <Input
             id="confirmPassword"
             name="confirmPassword"
@@ -261,6 +281,50 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
           {isInvalid("confirmPassword") && <FieldError>{fieldErrors.confirmPassword}</FieldError>}
         </div>
       </div>
+
+      <fieldset className="space-y-3 rounded-control border border-line px-4 py-3">
+        <legend className="px-1 text-sm font-semibold text-ink">
+          {t.consentTitle}
+        </legend>
+        <p className="text-xs leading-relaxed text-ink-subtle">
+          {t.consentLegend}
+        </p>
+
+        {(
+          [
+            ["dataProcessing", t.consentDataProcessing, true],
+            ["privacyNotice", t.consentPrivacyNotice, true],
+            ["transparency", t.consentTransparency, false],
+            ["notifications", t.consentNotifications, false],
+            ["sms", t.consentSms, false],
+          ] as const
+        ).map(([key, label, required]) => (
+          <label
+            key={key}
+            className="flex items-start gap-2 text-sm text-ink-muted"
+          >
+            <input
+              type="checkbox"
+              checked={consents[key]}
+              aria-required={required || undefined}
+              onChange={(event) =>
+                setConsents((prev) => ({ ...prev, [key]: event.target.checked }))
+              }
+              className="mt-0.5 h-4 w-4 rounded border-line-strong"
+            />
+            <span>
+              {label}
+              {required ? (
+                <span aria-hidden="true" className="ml-0.5 text-danger-600">
+                  *
+                </span>
+              ) : null}
+            </span>
+          </label>
+        ))}
+      </fieldset>
+
+      <p className="text-xs text-ink-subtle">{t.requiredLegend}</p>
 
       <Button
         type="submit"

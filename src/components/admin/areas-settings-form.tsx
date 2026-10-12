@@ -59,7 +59,7 @@ export function AreasSettingsForm({
         value={value}
         onChange={(event) => setValue(event.target.value)}
       />
-      <p className="text-xs text-slate-500">{t.areasHint}</p>
+      <p className="text-xs text-ink-subtle">{t.areasHint}</p>
       {message && <FormMessage tone={message.tone}>{message.text}</FormMessage>}
       <Button type="button" size="sm" disabled={submitting} onClick={save}>
         {submitting ? t.saving : t.saveAreas}

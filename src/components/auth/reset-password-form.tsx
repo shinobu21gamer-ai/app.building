@@ -67,10 +67,10 @@ export function ResetPasswordForm({ locale = "en" }: { locale?: Locale }) {
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-4">
       {error && <FormMessage tone="error">{error}</FormMessage>}
-      <p className="text-sm leading-relaxed text-slate-600">{t.lead}</p>
+      <p className="text-sm leading-relaxed text-ink-muted">{t.lead}</p>
 
       <div>
-        <Label htmlFor="email">{t.email}</Label>
+        <Label htmlFor="email" required>{t.email}</Label>
         <Input
           id="email"
           name="email"
@@ -87,7 +87,7 @@ export function ResetPasswordForm({ locale = "en" }: { locale?: Locale }) {
       </div>
 
       <div>
-        <Label htmlFor="code">{t.code}</Label>
+        <Label htmlFor="code" required>{t.code}</Label>
         <Input
           id="code"
           name="code"
@@ -105,7 +105,7 @@ export function ResetPasswordForm({ locale = "en" }: { locale?: Locale }) {
       </div>
 
       <div>
-        <Label htmlFor="newPassword">{t.newPassword}</Label>
+        <Label htmlFor="newPassword" required>{t.newPassword}</Label>
         <Input
           id="newPassword"
           name="newPassword"

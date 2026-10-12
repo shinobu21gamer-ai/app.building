@@ -89,7 +89,7 @@ export function SettingsManager({
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <h2 className="text-base font-semibold text-slate-900">
+        <h2 className="text-base font-semibold text-ink">
           {editingKey ? t.editSetting : t.addSetting}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -128,11 +128,11 @@ export function SettingsManager({
       </form>
 
       <div>
-        <h2 className="mb-3 text-base font-semibold text-slate-900">
+        <h2 className="mb-3 text-base font-semibold text-ink">
           {t.settingsList.replace("{count}", String(settings.length))}
         </h2>
         {settings.length === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-600">
+          <p className="py-6 text-center text-sm text-ink-muted">
             {t.noSettings}
           </p>
         ) : (
@@ -140,7 +140,7 @@ export function SettingsManager({
             <table className="w-full min-w-[640px] text-left text-sm">
               <caption className="sr-only">{t.settingsCaption}</caption>
               <thead>
-                <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-subtle">
                   <th scope="col" className="py-2 pr-4 font-semibold">
                     {t.settingKey}
                   </th>
@@ -152,13 +152,13 @@ export function SettingsManager({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {settings.map((setting) => (
-                  <tr key={setting.key} className="hover:bg-slate-50">
-                    <td className="py-3 pr-4 font-mono text-xs text-slate-900">
+                  <tr key={setting.key} className="hover:bg-surface-muted">
+                    <td className="py-3 pr-4 font-mono text-xs text-ink">
                       {setting.key}
                     </td>
-                    <td className="py-3 pr-4 text-slate-600">
+                    <td className="py-3 pr-4 text-ink-muted">
                       {setting.value}
                     </td>
                     <td className="py-3">

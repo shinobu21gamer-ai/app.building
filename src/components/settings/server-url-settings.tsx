@@ -68,11 +68,11 @@ export function ServerUrlSettings({ onSaved }: { onSaved?: () => void }) {
   return (
     <form
       onSubmit={apply}
-      className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4"
+      className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4"
     >
       <div>
-        <h2 className="font-semibold text-slate-900">App server address</h2>
-        <p className="mt-1 text-xs text-slate-600">
+        <h2 className="font-semibold text-ink">App server address</h2>
+        <p className="mt-1 text-xs text-ink-muted">
           The public tunnel address changes each time it restarts. Update it here
           instead of rebuilding the app.
         </p>

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -70,12 +72,10 @@ export default async function OfficialPage({
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          {t.welcome.replace("{name}", user.firstName)}
-        </h1>
-        <p className="mt-1 text-sm text-slate-600">{scopeLabel}</p>
-      </div>
+      <PageHeader
+        title={t.welcome.replace("{name}", user.firstName)}
+        description={scopeLabel}
+      />
 
       <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
@@ -90,22 +90,20 @@ export default async function OfficialPage({
 
       <Card title={t.recentResolved} description={t.recentResolvedDesc}>
         {recentlyResolved.length === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-600">
-            {t.noResolved}
-          </p>
+          <EmptyState title={t.noResolved} />
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line">
             {recentlyResolved.map((concern) => (
               <li key={concern.id}>
                 <Link
                   href={`/official/concerns/${concern.id}`}
-                  className="flex flex-wrap items-center justify-between gap-2 py-3 hover:bg-slate-50"
+                  className="flex flex-wrap items-center justify-between gap-2 py-3 hover:bg-surface-muted"
                 >
                   <div>
-                    <p className="text-sm font-medium text-slate-900">
+                    <p className="text-sm font-medium text-ink">
                       {concern.title}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-ink-subtle">
                       {concern.caseNumber} · {concern.category.name} ·{" "}
                       {concern.user.firstName} {concern.user.lastName} ·{" "}
                       {concern.resolvedAt
@@ -161,15 +159,15 @@ export default async function OfficialPage({
         }
       >
         {cases.concerns.length === 0 ? (
-          <p className="py-10 text-center text-sm text-slate-600">
+          <p className="py-10 text-center text-sm text-ink-muted">
             {t.noMatch}
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
+            <table data-stack className="w-full min-w-[760px] text-left text-sm">
               <caption className="sr-only">Cases requiring attention</caption>
               <thead>
-                <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-subtle">
                   <th scope="col" className="py-2 pr-4 font-semibold">
                     {t.caseNo}
                   </th>
@@ -190,26 +188,26 @@ export default async function OfficialPage({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {cases.concerns.map((concern) => (
-                  <tr key={concern.id} className="hover:bg-slate-50">
-                    <td className="py-3 pr-4 font-mono text-xs text-slate-600">
+                  <tr key={concern.id} className="hover:bg-surface-muted">
+                    <td data-label={t.caseNo} className="py-3 pr-4 font-mono text-xs text-ink-muted">
                       {concern.caseNumber}
                     </td>
-                    <td className="py-3 pr-4 font-medium text-slate-900">
+                    <td data-label={t.titleCol} className="py-3 pr-4 font-medium text-ink">
                       {concern.title}
                     </td>
-                    <td className="py-3 pr-4">
+                    <td data-label={t.priorityCol} className="py-3 pr-4">
                       {concern.priorityLevel ? (
                         <PriorityBadge level={concern.priorityLevel} />
                       ) : (
-                        <span className="text-slate-400">{t.notAssessed}</span>
+                        <span className="text-ink-faint">{t.notAssessed}</span>
                       )}
                     </td>
-                    <td className="py-3 pr-4">
+                    <td data-label={t.statusCol} className="py-3 pr-4">
                       <StatusBadge status={concern.status} />
                     </td>
-                    <td className="py-3 pr-4 text-slate-600">
+                    <td data-label={t.updatedCol} className="py-3 pr-4 text-ink-muted">
                       {formatDate(concern.updatedAt)}
                     </td>
                     <td className="py-3 text-right">
@@ -226,7 +224,7 @@ export default async function OfficialPage({
             </table>
           </div>
         )}
-        <div className="mt-4 border-t border-slate-100 pt-4">
+        <div className="mt-4 border-t border-line pt-4">
           <Button href="/official/concerns" variant="outline" size="sm">
             {t.openFull}
           </Button>

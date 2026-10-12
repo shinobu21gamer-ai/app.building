@@ -17,6 +17,8 @@ import {
   listAdminUsers,
   parseUserFilters,
 } from "@/lib/admin/query";
+import { buildPhoneFields } from "@/lib/privacy/phone-store";
+import { assertPiiConfigured } from "@/lib/privacy/service";
 
 export const runtime = "nodejs";
 
@@ -50,21 +52,32 @@ export const POST = withErrorBoundary(async (req: Request) => {
   const role = await db.role.findUnique({ where: { key: body.roleKey } });
   if (!role) throw createApiError.internal("The selected role is not configured.");
 
+  // Office linkage: officials must belong to an office; treasurer, captain and
+  // crew may be linked as well; residents never are.
   let officeId: number | null = null;
-  if (body.roleKey === "OFFICIAL") {
-    if (!body.officeId) {
+  if (body.roleKey !== "RESIDENT") {
+    if (body.roleKey === "OFFICIAL" && !body.officeId) {
       throw createApiError.badRequest("Select an office for this official.");
     }
-    const office = await db.office.findUnique({ where: { id: body.officeId } });
-    if (!office || !office.isActive) {
-      throw createApiError.badRequest("Select an active office.");
+    if (body.officeId) {
+      const office = await db.office.findUnique({ where: { id: body.officeId } });
+      if (!office || !office.isActive) {
+        throw createApiError.badRequest("Select an active office.");
+      }
+      officeId = office.id;
     }
-    officeId = office.id;
-  } else if (body.officeId) {
-    throw createApiError.badRequest("Only officials can be linked to an office.");
+  }
+
+  if (body.crew && body.roleKey !== "CREW") {
+    throw createApiError.badRequest(
+      "Crew details can only be set for an account with the CREW role."
+    );
   }
 
   const passwordHash = await hashPassword(body.password);
+
+  if (body.phone) assertPiiConfigured();
+  const phoneFields = body.phone ? buildPhoneFields(body.phone) : null;
 
   let user;
   try {
@@ -74,11 +87,30 @@ export const POST = withErrorBoundary(async (req: Request) => {
         passwordHash,
         firstName: body.firstName,
         lastName: body.lastName,
-        phone: body.phone ?? null,
+        phone: null,
+        ...(phoneFields ?? {}),
         address: body.address ?? null,
+        position: body.position ?? null,
         roleId: role.id,
         officeId,
         isActive: body.isActive ?? true,
+        ...(body.roleKey === "CREW" && body.crew
+          ? {
+              crewProfile: {
+                create: {
+                  trade: body.crew.trade ?? null,
+                  employmentType: body.crew.employmentType ?? "JOB_ORDER",
+                  hourlyRate: body.crew.hourlyRate ?? null,
+                  dailyRate: body.crew.dailyRate ?? null,
+                  availability: body.crew.availability ?? "AVAILABLE",
+                  maxConcurrentCases: body.crew.maxConcurrentCases ?? 1,
+                  officeId: body.crew.officeId ?? officeId,
+                  notes: body.crew.notes ?? null,
+                  isActive: body.crew.isActive ?? true,
+                },
+              },
+            }
+          : {}),
       },
       include: {
         role: true,

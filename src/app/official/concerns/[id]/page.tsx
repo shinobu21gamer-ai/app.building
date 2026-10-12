@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { requireRole } from "@/lib/auth/session";
+import { requireRole, userCan } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, PriorityBadge, StatusBadge } from "@/components/ui/badge";
@@ -15,8 +15,15 @@ import { PriorityOverrideForm } from "@/components/priority/priority-override-fo
 import { ReassignForm } from "@/components/routing/reassign-form";
 import { CaseWorkflowForm } from "@/components/cases/case-workflow-form";
 import { CaseNoteForm } from "@/components/cases/case-note-form";
+import { ConcernMap } from "@/components/concern/concern-map";
+import { CrewPanel } from "@/components/cases/crew-panel";
+import { FundingPanel } from "@/components/treasury/funding-panel";
+import { ValidationForm } from "@/components/cases/validation-form";
+import { ResolutionVerifyForm } from "@/components/cases/resolution-verify-form";
 import { ResolutionForm } from "@/components/cases/resolution-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { loadPriorityConfig } from "@/lib/priority/config";
+import { caseFundingView } from "@/lib/treasury/query";
 import { formatDate, formatDateTime } from "@/lib/format";
 import {
   earliestActionDay,
@@ -28,6 +35,7 @@ import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import {
   allowedTransitions,
   canManageConcern,
+  caseWorkflowFlags,
 } from "@/lib/cases/workflow";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -97,6 +105,8 @@ export default async function OfficialConcernDetailPage({
           official: { select: { firstName: true, lastName: true } },
         },
       },
+      type: { select: { id: true, name: true, key: true } },
+      caseAssessment: true,
     },
   });
   if (!concern) notFound();
@@ -164,6 +174,49 @@ export default async function OfficialConcernDetailPage({
     { statusChange: false }
   );
 
+  // Permissions decide which desks this user sees on the case page.
+  const [
+    canValidate,
+    canAssess,
+    canAssignCrew,
+    canVerifyResolution,
+    canViewTreasury,
+  ] = await Promise.all([
+    userCan(user.role.key, "case.validate"),
+    userCan(user.role.key, "case.assess"),
+    userCan(user.role.key, "case.crew.assign"),
+    userCan(user.role.key, "case.resolution.verify"),
+    userCan(user.role.key, "treasury.balance.view"),
+  ]);
+
+  const funding = canViewTreasury
+    ? await caseFundingView(db, numericId)
+    : null;
+
+  const [concernTypes, allCategories, crewSummary] = await Promise.all([
+    canValidate
+      ? db.concernType.findMany({
+          where: { isActive: true },
+          orderBy: { displayOrder: "asc" },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve([]),
+    canValidate
+      ? db.concernCategory.findMany({
+          where: { isActive: true },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve([]),
+    db.crewAssignment.count({ where: { concernId: numericId, isActive: true } }),
+  ]);
+
+  const workflowFlags = caseWorkflowFlags({
+    status: concern.status,
+    workersNeeded: null,
+    activeCrew: crewSummary,
+  });
+
   const { factors, thresholds } = await loadPriorityConfig();
   const activeFactors = factors.filter((f) => f.isActive !== false);
   const levels = thresholds
@@ -194,52 +247,46 @@ export default async function OfficialConcernDetailPage({
         {desk.backConcerns}
       </Button>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="font-mono text-xs text-slate-500">
-            {concern.caseNumber}
-          </p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">
-            {concern.title}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {desk.submittedBy
-              .replace("{name}", userName(concern.user) ?? "")
-              .replace("{date}", formatDateTime(concern.submittedAt))}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            href={`/official/concerns/${concern.id}/print`}
-            variant="outline"
-            size="sm"
-            className="no-print"
-          >
-            {t.print}
-          </Button>
-          <StatusBadge status={concern.status} />
-          {concern.priorityLevel && (
-            <PriorityBadge level={concern.priorityLevel} />
-          )}
-          {latest?.isOverride && (
-            <span className="text-xs text-amber-700">{desk.overridden}</span>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        eyebrow={concern.caseNumber}
+        title={concern.title}
+        description={desk.submittedBy
+          .replace("{name}", userName(concern.user) ?? "")
+          .replace("{date}", formatDateTime(concern.submittedAt))}
+        actions={
+          <>
+            <Button
+              href={`/official/concerns/${concern.id}/print`}
+              variant="outline"
+              size="sm"
+              className="no-print"
+            >
+              {t.print}
+            </Button>
+            <StatusBadge status={concern.status} />
+            {concern.priorityLevel && (
+              <PriorityBadge level={concern.priorityLevel} />
+            )}
+            {latest?.isOverride && (
+              <span className="text-xs text-amber-700">{desk.overridden}</span>
+            )}
+          </>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card title={desk.detailsTitle}>
             <dl className="space-y-4 text-sm">
               <div>
-                <dt className="text-slate-500">{desk.category}</dt>
-                <dd className="mt-0.5 font-medium text-slate-900">
+                <dt className="text-ink-subtle">{desk.category}</dt>
+                <dd className="mt-0.5 font-medium text-ink">
                   {concern.category.name}
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">{desk.location}</dt>
-                <dd className="mt-0.5 font-medium text-slate-900">
+                <dt className="text-ink-subtle">{desk.location}</dt>
+                <dd className="mt-0.5 font-medium text-ink">
                   {concern.locationAddress}
                   {hasCoordinates(coordinates) ? (
                     <>
@@ -260,29 +307,29 @@ export default async function OfficialConcernDetailPage({
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">{desk.residentLabel}</dt>
-                <dd className="mt-0.5 font-medium text-slate-900">
+                <dt className="text-ink-subtle">{desk.residentLabel}</dt>
+                <dd className="mt-0.5 font-medium text-ink">
                   {userName(concern.user)} ({concern.user.email})
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">{desk.description}</dt>
-                <dd className="mt-0.5 whitespace-pre-wrap text-slate-700">
+                <dt className="text-ink-subtle">{desk.description}</dt>
+                <dd className="mt-0.5 whitespace-pre-wrap text-ink-muted">
                   {concern.description}
                 </dd>
               </div>
             </dl>
 
             {concern.imageUrl && (
-              <div className="mt-5 border-t border-slate-100 pt-5">
-                <p className="mb-2 text-slate-500">{desk.supportingImage}</p>
+              <div className="mt-5 border-t border-line pt-5">
+                <p className="mb-2 text-ink-subtle">{desk.supportingImage}</p>
                 <Image
                   src={concern.imageUrl}
                   alt={`Supporting image for ${concern.caseNumber}`}
                   width={800}
                   height={600}
                   unoptimized
-                  className="h-auto w-full max-w-md rounded-lg border border-slate-200"
+                  className="h-auto w-full max-w-md rounded-control border border-line"
                 />
               </div>
             )}
@@ -299,7 +346,7 @@ export default async function OfficialConcernDetailPage({
                 locale={locale}
               />
             ) : (
-              <p className="text-sm text-slate-500">{desk.noAutomated}</p>
+              <p className="text-sm text-ink-subtle">{desk.noAutomated}</p>
             )}
           </Card>
 
@@ -312,7 +359,7 @@ export default async function OfficialConcernDetailPage({
                 {overrides.map((override) => (
                   <div
                     key={override.id}
-                    className="rounded-lg border border-amber-200 bg-amber-50/40 p-4"
+                    className="rounded-control border border-amber-200 bg-amber-50/40 p-4"
                   >
                     <PriorityBreakdown
                       level={override.level}
@@ -340,18 +387,18 @@ export default async function OfficialConcernDetailPage({
             >
               <dl className="space-y-3 text-sm">
                 <div>
-                  <dt className="text-slate-500">{desk.summary}</dt>
-                  <dd className="mt-0.5 text-slate-700">
+                  <dt className="text-ink-subtle">{desk.summary}</dt>
+                  <dd className="mt-0.5 text-ink-muted">
                     {resolution.summary}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">{desk.actionsTaken}</dt>
-                  <dd className="mt-0.5 whitespace-pre-wrap text-slate-700">
+                  <dt className="text-ink-subtle">{desk.actionsTaken}</dt>
+                  <dd className="mt-0.5 whitespace-pre-wrap text-ink-muted">
                     {resolution.actionsTaken}
                   </dd>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-slate-500">
+                <div className="flex flex-wrap items-center gap-2 text-ink-subtle">
                   <span>
                     {desk.handledBy.replace(
                       "{name}",
@@ -363,7 +410,7 @@ export default async function OfficialConcernDetailPage({
                       resolution.resolutionType}
                   </Badge>
                 </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-1 text-slate-500">
+                <div className="flex flex-wrap gap-x-6 gap-y-1 text-ink-subtle">
                   <span>
                     {desk.resolvedOn.replace(
                       "{date}",
@@ -379,7 +426,7 @@ export default async function OfficialConcernDetailPage({
                 </div>
                 {resolution.attachmentUrl && (
                   <div>
-                    <dt className="text-slate-500">{desk.attachment}</dt>
+                    <dt className="text-ink-subtle">{desk.attachment}</dt>
                     <dd className="mt-2">
                       <Image
                         src={resolution.attachmentUrl}
@@ -387,7 +434,7 @@ export default async function OfficialConcernDetailPage({
                         width={800}
                         height={600}
                         unoptimized
-                        className="h-auto w-full max-w-md rounded-lg border border-slate-200"
+                        className="h-auto w-full max-w-md rounded-control border border-line"
                       />
                     </dd>
                   </div>
@@ -405,10 +452,10 @@ export default async function OfficialConcernDetailPage({
                 {concern.assignments.map((assignment) => (
                   <li
                     key={assignment.id}
-                    className="rounded-lg border border-slate-200 p-3"
+                    className="rounded-control border border-line p-3"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-slate-900">
+                      <span className="text-sm font-medium text-ink">
                         {assignment.office.name}
                         {assignment.official
                           ? ` · ${assignment.official.firstName} ${assignment.official.lastName}`
@@ -418,7 +465,7 @@ export default async function OfficialConcernDetailPage({
                         <Badge tone="green">{desk.currentBadge}</Badge>
                       )}
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-ink-subtle">
                       {assignment.assignedBy
                         ? desk.byPerson.replace(
                             "{name}",
@@ -428,7 +475,7 @@ export default async function OfficialConcernDetailPage({
                       · {formatDateTime(assignment.assignedAt)}
                     </p>
                     {assignment.reason && (
-                      <p className="mt-1 text-sm text-slate-600">
+                      <p className="mt-1 text-sm text-ink-muted">
                         {assignment.reason}
                       </p>
                     )}
@@ -460,9 +507,17 @@ export default async function OfficialConcernDetailPage({
           <Card title={desk.manageTitle} description={desk.manageDesc}>
             {canManage ? (
               <div className="space-y-6">
+                <div className="flex flex-wrap gap-2">
+                  {workflowFlags.crewProgressLabel && (
+                    <span className="self-center text-xs text-ink-subtle">
+                      {copy[locale].revamp.workflow.crewProgress}:{" "}
+                      {workflowFlags.crewProgressLabel}
+                    </span>
+                  )}
+                </div>
                 {canResolve && !resolution && (
                   <div>
-                    <p className="mb-3 text-sm font-medium text-slate-700">
+                    <p className="mb-3 text-sm font-medium text-ink-muted">
                       {desk.resolveCase}
                     </p>
                     <ResolutionForm
@@ -473,7 +528,7 @@ export default async function OfficialConcernDetailPage({
                     />
                   </div>
                 )}
-                <div className={canResolve && !resolution ? "border-t border-slate-100 pt-5" : ""}>
+                <div className={canResolve && !resolution ? "border-t border-line pt-5" : ""}>
                   <CaseWorkflowForm
                     concernId={concern.id}
                     currentStatus={concern.status}
@@ -483,8 +538,8 @@ export default async function OfficialConcernDetailPage({
                     earliestDay={statusEarliestDay}
                   />
                 </div>
-                <div className="border-t border-slate-100 pt-5">
-                  <p className="mb-3 text-sm font-medium text-slate-700">
+                <div className="border-t border-line pt-5">
+                  <p className="mb-3 text-sm font-medium text-ink-muted">
                     {desk.progressNotes}
                   </p>
                   <CaseNoteForm
@@ -497,30 +552,149 @@ export default async function OfficialConcernDetailPage({
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-slate-500">{desk.otherOffice}</p>
+              <p className="text-sm text-ink-subtle">{desk.otherOffice}</p>
             )}
+          </Card>
+
+          {canVerifyResolution && resolution && concern.status === "RESOLVED" && (
+            <Card
+              title={copy[locale].revamp.workflow.verifyTitle}
+              description={copy[locale].revamp.workflow.verifyDesc}
+            >
+              <ResolutionVerifyForm
+                concernId={concern.id}
+                locale={locale}
+                recordedById={resolution.officialId}
+              />
+            </Card>
+          )}
+
+          {canAssignCrew && canManage && (
+            <Card
+              title={copy[locale].revamp.workflow.crewTitle}
+              description={copy[locale].revamp.workflow.crewDesc}
+            >
+              <CrewPanel
+                concernId={concern.id}
+                locale={locale}
+                canAssign={concern.status !== "RESOLVED" && concern.status !== "CLOSED"}
+                canOverrideShortfall
+              />
+            </Card>
+          )}
+
+          {canViewTreasury && funding && (
+            <Card
+              title={copy[locale].revamp.treasuryDesk.fundingTitle}
+              description={copy[locale].revamp.treasuryDesk.fundingLead}
+            >
+              <FundingPanel funding={funding} locale={locale} />
+            </Card>
+          )}
+
+          {canValidate && !isFinalized && (
+            <Card
+              title={copy[locale].revamp.workflow.validationTitle}
+              description={copy[locale].revamp.workflow.validationDesc}
+            >
+              <ValidationForm
+                concernId={concern.id}
+                locale={locale}
+                types={concernTypes.map((type) => ({ id: type.id, label: type.name }))}
+                categories={allCategories.map((category) => ({
+                  id: category.id,
+                  label: category.name,
+                }))}
+                currentTypeId={concern.typeId}
+                currentCategoryId={concern.categoryId}
+                currentPriority={concern.priorityLevel}
+              />
+            </Card>
+          )}
+
+          {canAssess && canManage && !isFinalized && (
+            <Card
+              title={copy[locale].revamp.workflow.assessmentTitle}
+              description={copy[locale].revamp.workflow.manpowerTitle}
+            >
+              {concern.caseAssessment ? (
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-ink-subtle">
+                      {copy[locale].revamp.workflow.workersNeeded}
+                    </dt>
+                    <dd className="font-medium text-ink">
+                      {concern.caseAssessment.workersNeeded ?? "—"}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-ink-subtle">
+                      {copy[locale].revamp.workflow.estimate}
+                    </dt>
+                    <dd className="font-medium tabular-nums text-ink">
+                      ₱{Number(concern.caseAssessment.totalCost ?? 0).toFixed(2)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-ink-subtle">
+                      {copy[locale].revamp.workflow.duration}
+                    </dt>
+                    <dd className="font-medium text-ink">
+                      {concern.caseAssessment.estimatedDurationMinutes ?? 0} min
+                    </dd>
+                  </div>
+                </dl>
+              ) : (
+                <p className="text-sm text-ink-subtle">
+                  {copy[locale].revamp.workflow.assessmentRequired}
+                </p>
+              )}
+              <div className="mt-4">
+                <Button
+                  href={`/official/concerns/${concern.id}/assessment`}
+                  size="sm"
+                  variant="outline"
+                >
+                  {copy[locale].revamp.workflow.viewAssessment}
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          <Card
+            title={desk.location}
+            description={copy[locale].revamp.workflow.geotagDesc}
+          >
+            <ConcernMap
+              lat={concern.locationLat}
+              lng={concern.locationLng}
+              label={concern.locationAddress}
+              purok={concern.locationPurok}
+              title={desk.location}
+              hint={copy[locale].revamp.workflow.geotagMapHint}
+            />
           </Card>
 
           <Card title={desk.assignmentTitle} description={desk.assignmentDesc}>
             {currentAssignment ? (
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500">{t.officeCol}</dt>
-                  <dd className="font-medium text-slate-900">
+                  <dt className="text-ink-subtle">{t.officeCol}</dt>
+                  <dd className="font-medium text-ink">
                     {currentAssignment.office.name}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500">{desk.official}</dt>
-                  <dd className="font-medium text-slate-900">
+                  <dt className="text-ink-subtle">{desk.official}</dt>
+                  <dd className="font-medium text-ink">
                     {currentAssignment.official
                       ? `${currentAssignment.official.firstName} ${currentAssignment.official.lastName}`
                       : desk.officePool}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-slate-500">{desk.assigned}</dt>
-                  <dd className="text-slate-700">
+                  <dt className="text-ink-subtle">{desk.assigned}</dt>
+                  <dd className="text-ink-muted">
                     {formatDateTime(currentAssignment.assignedAt)}
                   </dd>
                 </div>
@@ -532,13 +706,13 @@ export default async function OfficialConcernDetailPage({
             )}
 
             {isFinalized ? (
-              <p className="mt-4 border-t border-slate-100 pt-4 text-sm text-slate-500">
+              <p className="mt-4 border-t border-line pt-4 text-sm text-ink-subtle">
                 {concern.status === "RESOLVED"
                   ? desk.cannotReassignResolved
                   : desk.cannotReassignClosed}
               </p>
             ) : canReassign ? (
-              <div className="mt-4 border-t border-slate-100 pt-4">
+              <div className="mt-4 border-t border-line pt-4">
                 <ReassignForm
                   concernId={concern.id}
                   offices={reassignOffices}
@@ -548,7 +722,7 @@ export default async function OfficialConcernDetailPage({
                 />
               </div>
             ) : (
-              <p className="mt-4 border-t border-slate-100 pt-4 text-sm text-slate-500">
+              <p className="mt-4 border-t border-line pt-4 text-sm text-ink-subtle">
                 {desk.otherOfficeReassign}
               </p>
             )}
@@ -556,7 +730,7 @@ export default async function OfficialConcernDetailPage({
 
           <Card title={desk.overrideTitle} description={desk.overrideDesc}>
             {isFinalized ? (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-ink-subtle">
                 {concern.status === "RESOLVED"
                   ? desk.cannotOverrideResolved
                   : desk.cannotOverrideClosed}
@@ -577,7 +751,7 @@ export default async function OfficialConcernDetailPage({
                 locale={locale}
               />
             ) : (
-              <p className="text-sm text-slate-500">{desk.otherOfficeOverride}</p>
+              <p className="text-sm text-ink-subtle">{desk.otherOfficeOverride}</p>
             )}
           </Card>
         </div>

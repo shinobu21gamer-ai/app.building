@@ -163,11 +163,11 @@ export function NotificationInbox({
       </div>
 
       {visible.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white py-12 text-center text-sm text-slate-600">
+        <p className="rounded-card border border-line bg-surface py-12 text-center text-sm text-ink-muted">
           {filter === "unread" ? t.emptyUnread : t.empty}
         </p>
       ) : (
-        <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
+        <ul className="divide-y divide-line rounded-card border border-line bg-surface">
           {visible.map((item) => {
             const unread = !item.isRead;
             return (
@@ -186,14 +186,14 @@ export function NotificationInbox({
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className="text-sm font-semibold text-ink">
                         {item.title}
                       </p>
                       {unread && <Badge tone="blue">{t.new}</Badge>}
                     </div>
-                    <p className="mt-1 text-sm text-slate-600">{item.message}</p>
+                    <p className="mt-1 text-sm text-ink-muted">{item.message}</p>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-subtle">
                       <span>{formatDateTime(item.createdAt)}</span>
                       {item.concern && (
                         <Link
@@ -211,7 +211,7 @@ export function NotificationInbox({
                           type="button"
                           onClick={() => markRead(item)}
                           disabled={busy}
-                          className="rounded-md px-2 py-1 text-xs font-semibold text-slate-600 transition-[background-color,color] duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:opacity-50"
+                          className="rounded-md px-2 py-1 text-xs font-semibold text-ink-muted transition-[background-color,color] duration-150 hover:bg-surface-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:opacity-50"
                         >
                           {t.markRead}
                         </button>

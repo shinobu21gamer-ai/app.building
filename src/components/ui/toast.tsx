@@ -85,9 +85,9 @@ function ToastItem({
         "relative flex items-start gap-3 overflow-hidden rounded-xl border px-4 py-3 shadow-lg transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:translate-x-0 motion-reduce:transition-opacity",
         visible ? "translate-x-0 opacity-100" : "translate-x-6 opacity-0",
         toast.tone === "success" &&
-          "border-emerald-200 bg-white text-slate-800",
-        toast.tone === "error" && "border-red-200 bg-white text-slate-800",
-        toast.tone === "warning" && "border-amber-200 bg-white text-slate-800"
+          "border-emerald-200 bg-surface text-ink",
+        toast.tone === "error" && "border-red-200 bg-surface text-ink",
+        toast.tone === "warning" && "border-amber-200 bg-surface text-ink"
       )}
     >
       {icons[toast.tone]}
@@ -98,7 +98,7 @@ function ToastItem({
           setVisible(false);
           setTimeout(() => onDismiss(toast.id), 200);
         }}
-        className="shrink-0 rounded-md p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+        className="shrink-0 rounded-md p-0.5 text-ink-faint hover:bg-surface-sunken hover:text-ink-muted"
       >
         <X className="h-4 w-4" />
       </button>

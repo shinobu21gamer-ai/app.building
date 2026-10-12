@@ -6,6 +6,7 @@ import {
   withErrorBoundary,
 } from "@/lib/api";
 import { requireApiRole } from "@/lib/auth/session";
+import { ROLE_KEYS } from "@/lib/auth/roles";
 import { notificationUpdateSchema } from "@/lib/validations/notification";
 import { markNotificationRead, notificationView } from "@/lib/notifications/query";
 
@@ -21,7 +22,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 export const PATCH = withErrorBoundary<[Request, RouteContext]>(
   async (req, ctx) => {
     assertSameOrigin(req);
-    const user = await requireApiRole(["RESIDENT", "OFFICIAL", "ADMIN"]);
+    const user = await requireApiRole([...ROLE_KEYS]);
 
     const { id } = await ctx.params;
     const notificationId = Number(id);

@@ -75,7 +75,7 @@ export function TrackCaseForm({
         {error ? <FormMessage tone="error">{error}</FormMessage> : null}
 
         <div>
-          <Label htmlFor="caseNumber">{t.caseNumber}</Label>
+          <Label htmlFor="caseNumber" required>{t.caseNumber}</Label>
           <Input
             id="caseNumber"
             name="caseNumber"
@@ -91,14 +91,14 @@ export function TrackCaseForm({
           {fieldErrors.caseNumber ? (
             <FieldError>{fieldErrors.caseNumber}</FieldError>
           ) : (
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-ink-subtle">
               {t.caseHint}
             </p>
           )}
         </div>
 
         <div>
-          <Label htmlFor="email">{t.email}</Label>
+          <Label htmlFor="email" required>{t.email}</Label>
           <Input
             id="email"
             name="email"
@@ -114,7 +114,7 @@ export function TrackCaseForm({
           {fieldErrors.email ? (
             <FieldError>{fieldErrors.email}</FieldError>
           ) : (
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-ink-subtle">
               {t.emailHint}
             </p>
           )}
@@ -131,13 +131,13 @@ export function TrackCaseForm({
       </form>
 
       {result ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="rounded-card border border-line bg-surface-muted p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="font-mono text-sm font-semibold text-slate-900">
+              <p className="font-mono text-sm font-semibold text-ink">
                 {result.caseNumber}
               </p>
-              <p className="mt-1 text-base font-semibold text-slate-900">
+              <p className="mt-1 text-base font-semibold text-ink">
                 {result.title}
               </p>
             </div>
@@ -145,7 +145,7 @@ export function TrackCaseForm({
           </div>
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
                 {t.status}
               </dt>
               <dd className="mt-1">
@@ -153,7 +153,7 @@ export function TrackCaseForm({
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
                 {t.priority}
               </dt>
               <dd className="mt-1">
@@ -165,37 +165,37 @@ export function TrackCaseForm({
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
                 {t.category}
               </dt>
-              <dd className="mt-1 text-slate-800">{result.category}</dd>
+              <dd className="mt-1 text-ink">{result.category}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
                 {t.office}
               </dt>
-              <dd className="mt-1 text-slate-800">
+              <dd className="mt-1 text-ink">
                 {result.assignedOffice ?? t.unassigned}
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
                 {t.submitted}
               </dt>
-              <dd className="mt-1 text-slate-800">
+              <dd className="mt-1 text-ink">
                 {formatDateTime(result.submittedAt)}
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
                 {t.updated}
               </dt>
-              <dd className="mt-1 text-slate-800">
+              <dd className="mt-1 text-ink">
                 {formatDateTime(result.lastUpdatedAt)}
               </dd>
             </div>
           </dl>
-          <p className="mt-4 text-xs text-slate-500">
+          <p className="mt-4 text-xs text-ink-subtle">
             {t.more}
           </p>
         </div>

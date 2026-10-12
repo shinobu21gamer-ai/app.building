@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, PriorityBadge, StatusBadge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -43,10 +44,7 @@ export default async function MyConcernsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">{t.myTitle}</h1>
-          <p className="mt-1 text-sm text-slate-600">{t.myLead}</p>
-        </div>
+        <PageHeader title={t.myTitle} description={t.myLead} />
         <Button href="/resident/concerns/new" size="sm">
           {t.submit}
         </Button>
@@ -55,28 +53,28 @@ export default async function MyConcernsPage() {
       <Card>
         {concerns.length === 0 ? (
           <div className="py-10 text-center">
-            <p className="text-sm text-slate-600">{t.empty}</p>
+            <p className="text-sm text-ink-muted">{t.empty}</p>
             <Button href="/resident/concerns/new" className="mt-3" size="sm">
               {t.first}
             </Button>
           </div>
         ) : (
           <>
-            <ul className="divide-y divide-slate-100 md:hidden">
+            <ul className="divide-y divide-line md:hidden">
               {concerns.map((concern) => (
                 <li key={concern.id}>
                   <Link
                     href={`/resident/concerns/${concern.id}`}
-                    className="block py-3 hover:bg-slate-50"
+                    className="block py-3 hover:bg-surface-muted"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium text-slate-900">{concern.title}</p>
+                      <p className="font-medium text-ink">{concern.title}</p>
                       <StatusBadge status={concern.status} />
                     </div>
-                    <p className="mt-1 font-mono text-xs text-slate-500">
+                    <p className="mt-1 font-mono text-xs text-ink-subtle">
                       {concern.caseNumber}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-ink-subtle">
                       {concern.category.name}
                       {concern.assignedOffice
                         ? ` · ${concern.assignedOffice.name}`
@@ -101,7 +99,7 @@ export default async function MyConcernsPage() {
             <table className="w-full min-w-[900px] text-left text-sm">
               <caption className="sr-only">My submitted concerns</caption>
               <thead>
-                <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-subtle">
                   <th scope="col" className="py-2 pr-4 font-semibold">
                     Case no.
                   </th>
@@ -131,16 +129,16 @@ export default async function MyConcernsPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {concerns.map((concern) => (
-                  <tr key={concern.id} className="hover:bg-slate-50">
-                    <td className="py-3 pr-4 font-mono text-xs text-slate-600">
+                  <tr key={concern.id} className="hover:bg-surface-muted">
+                    <td className="py-3 pr-4 font-mono text-xs text-ink-muted">
                       {concern.caseNumber}
                     </td>
-                    <td className="py-3 pr-4 font-medium text-slate-900">
+                    <td className="py-3 pr-4 font-medium text-ink">
                       {concern.title}
                     </td>
-                    <td className="py-3 pr-4 text-slate-600">
+                    <td className="py-3 pr-4 text-ink-muted">
                       {concern.category.name}
                     </td>
                     <td className="py-3 pr-4">
@@ -150,15 +148,15 @@ export default async function MyConcernsPage() {
                         <Badge tone="neutral">{t.pendingPriority}</Badge>
                       )}
                     </td>
-                    <td className="py-3 pr-4 text-slate-600">
+                    <td className="py-3 pr-4 text-ink-muted">
                       {concern.assignedOffice?.name ?? (
                         <span className="text-amber-700">{t.pendingRoute}</span>
                       )}
                     </td>
-                    <td className="py-3 pr-4 text-slate-600">
+                    <td className="py-3 pr-4 text-ink-muted">
                       {formatDate(concern.createdAt)}
                     </td>
-                    <td className="py-3 pr-4 text-slate-600">
+                    <td className="py-3 pr-4 text-ink-muted">
                       {formatDateTime(
                         lastUpdated(concern.updatedAt, concern.history[0] ?? null)
                       )}

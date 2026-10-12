@@ -1,5 +1,6 @@
 import { ok, withErrorBoundary } from "@/lib/api";
 import { requireApiRole } from "@/lib/auth/session";
+import { ROLE_KEYS } from "@/lib/auth/roles";
 import {
   countUnreadNotifications,
   listNotifications,
@@ -14,7 +15,7 @@ export const runtime = "nodejs";
  * Lists the signed-in user's notifications with the related case summary.
  */
 export const GET = withErrorBoundary(async (req: Request) => {
-  const user = await requireApiRole(["RESIDENT", "OFFICIAL", "ADMIN"]);
+  const user = await requireApiRole([...ROLE_KEYS]);
   const { searchParams } = new URL(req.url);
   const filters = parseNotificationFilters(searchParams);
 

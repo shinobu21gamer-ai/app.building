@@ -21,18 +21,91 @@ export type RoutingOutcome =
   | { routed: false; reason: "no_rule" };
 
 /**
- * Determines the responsible office from the administrator-configured routing
- * rules and applies the assignment inside the caller's transaction. Must be
- * called after the concern row exists (the case number is used in messages).
+ * Determines the responsible office and applies the assignment inside the
+ * caller's transaction. Must be called after the concern row exists (the case
+ * number is used in messages).
  *
- * When no active rule matches, the concern deliberately stays SUBMITTED and
- * administrators are notified so it can be routed manually — a missing rule
- * must never block a resident's submission.
+ * The revamp routes by service type first — Ayuda to Social Services, Repair to
+ * the Maintenance/Engineering office, Documents to the Secretary, Budget to the
+ * Treasurer — and falls back to the legacy per-category rules (by priority
+ * order) when the concern has no type or the type has no office. A concern that
+ * matches neither deliberately stays SUBMITTED and administrators are notified,
+ * so a missing rule never blocks a resident's submission.
  */
 export async function routeConcern(
   tx: Tx,
-  concern: { id: number; categoryId: number; caseNumber: string }
+  concern: {
+    id: number;
+    categoryId: number;
+    caseNumber: string;
+    typeId?: number | null;
+  }
 ): Promise<RoutingOutcome> {
+  // 1. Service-type default office.
+  if (concern.typeId) {
+    const type = await tx.concernType.findUnique({
+      where: { id: concern.typeId },
+      select: {
+        key: true,
+        name: true,
+        isActive: true,
+        defaultOffice: { select: { id: true, name: true, isActive: true } },
+      },
+    });
+
+    if (type?.isActive && type.defaultOffice?.isActive) {
+      const now = new Date();
+      const assignment = await tx.caseAssignment.create({
+        data: {
+          concernId: concern.id,
+          officeId: type.defaultOffice.id,
+          officialId: null,
+          assignedById: null,
+          isCurrent: true,
+          assignedAt: now,
+          reason: `Routed by service type (${type.name}).`,
+        },
+      });
+
+      await tx.concern.update({
+        where: { id: concern.id },
+        data: {
+          assignedOfficeId: type.defaultOffice.id,
+          assignedOfficialId: null,
+          status: "ASSIGNED",
+          stageEnteredAt: now,
+        },
+      });
+
+      await tx.caseStatusHistory.create({
+        data: {
+          concernId: concern.id,
+          entryType: "ASSIGNMENT",
+          fromStatus: "SUBMITTED",
+          toStatus: "ASSIGNED",
+          remarks: `Routed to ${type.defaultOffice.name} (service type: ${type.name}).`,
+          actorRole: "SYSTEM",
+        },
+      });
+
+      const notifiedOfficials = await notifyConcernAssigned(tx, {
+        officeId: type.defaultOffice.id,
+        concernId: concern.id,
+        caseNumber: concern.caseNumber,
+        officeName: type.defaultOffice.name,
+      });
+
+      return {
+        routed: true,
+        officeId: type.defaultOffice.id,
+        officeName: type.defaultOffice.name,
+        assignmentId: assignment.id,
+        notifiedOfficials,
+      };
+    }
+  }
+
+  // 2. Legacy category rules.
   const rules = await tx.routingRule.findMany({
     where: { categoryId: concern.categoryId },
     include: { office: { select: { id: true, name: true, isActive: true } } },
