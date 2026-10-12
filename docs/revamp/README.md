@@ -389,6 +389,16 @@ goes from 389 (stage 6) to 530 across 46 files.
   and anonymises the resident, recorded in the erasure report as
   `public_case_projection`. Before this the projection only refreshed on a case's
   *next status change*, so a withdrawn consent could sit published indefinitely.
+- **The sweep now honours a legal hold.** While a resident has a data-subject
+  request that is `RECEIVED`/`IN_REVIEW`, the four policies that delete or
+  overwrite personal data (`uploads.concern_images`, `pii.id_verification`,
+  `case.records`, `notification.inbox`) skip that resident's rows and count them
+  as `held`; the archival policies are untouched, everyone else is swept
+  on schedule, and the hold lifts on its own when the request is decided because
+  it is derived from the request rows rather than stored. Numbers reach the run
+  record (in the summary line), the API response (`outcomes[].held`,
+  `totals.held`) and the `/admin/privacy` card
+  (`{held} resident(s) have an open data-subject request`).
 - `scripts/public-record-backfill.ts` (decision 7) and `scripts/pii-rotate.ts`
   with its unit-tested core `src/lib/privacy/rotate.ts` (decision 3).
 - `.env.example` documents both scripts beside the secret they belong to.
@@ -467,7 +477,9 @@ row that misstates what it is. That is a decision, not an oversight.
    when" is also a reportable figure: `src/lib/privacy/retention.ts`,
    `/api/v1/cron/retention` (daily, `CRON_SECRET`) and a manual run on
    `/admin/privacy`. Each run writes a `RetentionRun` per policy and a `CronRun`
-   for the sweep; `ARCHIVE` categories are counted, never deleted; the admin card
-   shows the last run and its effect. The brief's "retention rules" now have an
+   for the sweep; `ARCHIVE` categories are counted, never deleted; a resident with
+   an open data-subject request is on **legal hold** and their rows are skipped by
+   the destructive policies (see the close-out additions); the admin card shows
+   the last run, its effect and who is currently held. The brief's "retention rules" now have an
    executor. `/admin/privacy` and `/admin/reports/privacy` are the two places to
    watch it.

@@ -4,12 +4,16 @@ import { describe, expect, it } from "vitest";
 
 import {
   ANONYMISED_CASE_NOTE,
+  HOLD_SCOPED_POLICY_KEYS,
+  OPEN_DSR_STATUSES,
   RETENTION_ACTIONS,
   RETENTION_HANDLERS,
   RETENTION_MAX_ROWS,
   RETENTION_MIN_INTERVAL_HOURS,
   RETENTION_POLICY_KEYS,
   cutoffFor,
+  holdFilter,
+  isHoldScoped,
   planRetention,
   type RetentionPolicyLike,
 } from "@/lib/privacy/retention";
@@ -179,5 +183,62 @@ describe("the sweep's published constants", () => {
 
   it("writes a recognisable tombstone into anonymised cases", () => {
     expect(ANONYMISED_CASE_NOTE).toMatch(/^\[anonymised:/);
+  });
+});
+
+/* --------------------------------------------------------------- legal hold */
+
+describe("the legal hold", () => {
+  it("holds exactly on a request that has not been decided", () => {
+    expect([...OPEN_DSR_STATUSES]).toEqual(["RECEIVED", "IN_REVIEW"]);
+    // A decided request lifts the hold by itself: nothing is stored to clear.
+    expect(OPEN_DSR_STATUSES as readonly string[]).not.toContain("COMPLETED");
+    expect(OPEN_DSR_STATUSES as readonly string[]).not.toContain("REJECTED");
+  });
+
+  it("protects the policies that delete or overwrite, and only those", () => {
+    expect(isHoldScoped("case.records")).toBe(true);
+    expect(isHoldScoped("pii.id_verification")).toBe(true);
+    expect(isHoldScoped("uploads.concern_images")).toBe(true);
+    expect(isHoldScoped("notification.inbox")).toBe(true);
+
+    // Archival policies delete nothing, so a hold has nothing to protect.
+    expect(isHoldScoped("audit.entries")).toBe(false);
+    expect(isHoldScoped("pii.pii_access_log")).toBe(false);
+    expect(isHoldScoped("dsr.records")).toBe(false);
+    // A security artefact, not the resident's personal data.
+    expect(isHoldScoped("session.revoked_tokens")).toBe(false);
+    // An unknown policy is not a guess.
+    expect(isHoldScoped("something.new")).toBe(false);
+  });
+
+  it("keeps every hold-scoped key a real, handled, destructive policy", () => {
+    for (const key of HOLD_SCOPED_POLICY_KEYS) {
+      expect(RETENTION_POLICY_KEYS as readonly string[]).toContain(key);
+      expect(RETENTION_HANDLERS[key]).toBeDefined();
+      expect(key).not.toMatch(/^audit\.|^dsr\.|^pii\.pii_access_log$/);
+    }
+  });
+
+  it("emits no filter when nobody is on hold", () => {
+    expect(holdFilter("case.records", [])).toEqual({});
+  });
+
+  it("emits no filter for a policy the hold does not cover", () => {
+    expect(holdFilter("audit.entries", [7, 8])).toEqual({});
+    expect(holdFilter("session.revoked_tokens", [7, 8])).toEqual({});
+  });
+
+  it("excludes the held residents from a destructive sweep", () => {
+    expect(holdFilter("case.records", [7, 8])).toEqual({
+      userId: { notIn: [7, 8] },
+    });
+  });
+
+  it("copies the ids, so a later mutation cannot change the filter", () => {
+    const ids = [1, 2];
+    const filter = holdFilter("notification.inbox", ids);
+    ids.push(3);
+    expect(filter).toEqual({ userId: { notIn: [1, 2] } });
   });
 });

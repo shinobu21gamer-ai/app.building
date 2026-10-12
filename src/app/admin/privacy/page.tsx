@@ -96,6 +96,7 @@ export default async function AdminPrivacyPage() {
         <RetentionDesk
           locale={locale}
           lastSweepAt={retention.lastSweepAt?.toISOString() ?? null}
+          heldResidents={retention.heldResidents}
           rows={retention.rows.map((row) => ({
             key: row.key,
             dataCategory: row.dataCategory,

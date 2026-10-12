@@ -1949,6 +1949,8 @@ const en = {
       retentionRunDone: "Sweep finished: {scanned} row(s) scanned, {affected} changed.",
       retentionRunFailed: "The sweep could not run: {message}",
       retentionPolicyLabel: "Policy",
+      retentionHoldNote:
+        "{held} resident(s) have an open data-subject request. Their rows are held out of the sweep until the request is decided — nothing of theirs is deleted or anonymised while the claim is live.",
     },
   },
 };
@@ -3898,6 +3900,8 @@ const fil: typeof en = {
       retentionRunDone: "Tapos na ang sweep: {scanned} hilerang sinuri, {affected} nabago.",
       retentionRunFailed: "Hindi tumakbo ang sweep: {message}",
       retentionPolicyLabel: "Patakaran",
+      retentionHoldNote:
+        "{held} residente ang may bukas na kahilingan sa datos. Hinahawakan ang kanilang mga hilerada palabas ng sweep hangga't hindi natatapos ang kahilingan — walang nabubura o naa-anonymise sa kanila habang buhay ang kahilingan.",
     },
   },
 };

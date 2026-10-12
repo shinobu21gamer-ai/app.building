@@ -37,10 +37,13 @@ export function RetentionDesk({
   locale,
   rows,
   lastSweepAt,
+  heldResidents,
 }: {
   locale: Locale;
   rows: RetentionDeskRow[];
   lastSweepAt: string | null;
+  /** Residents whose rows the next sweep will skip (open data-subject request). */
+  heldResidents: number;
 }) {
   const t = copy[locale].revamp.adminDesk;
   const [running, setRunning] = useState<string | null>(null);
@@ -90,6 +93,15 @@ export function RetentionDesk({
           {running === "ALL" ? t.retentionRunning : t.retentionRunAll}
         </Button>
       </div>
+
+      {heldResidents > 0 ? (
+        <p className="rounded-control bg-warning-50 px-3 py-2 text-caption text-warning-700">
+          {t.retentionHoldNote.replace(
+            "{held}",
+            heldResidents.toLocaleString("en-PH")
+          )}
+        </p>
+      ) : null}
 
       <div className="overflow-x-auto">
         <table data-stack className="w-full min-w-[720px] text-left text-sm">

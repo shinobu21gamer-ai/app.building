@@ -68,6 +68,62 @@ export const RETENTION_POLICY_KEYS = [
 
 export type RetentionPolicyKey = (typeof RETENTION_POLICY_KEYS)[number];
 
+/**
+ * A data-subject request that has not been decided yet is a **legal hold**.
+ *
+ * The resident is mid-claim — an access, rectification or erasure request is
+ * being handled — and the rows the sweep would delete or overwrite are exactly
+ * the evidence that request rests on. Deleting them while the request is open
+ * would make the barangay unable to answer it, so the sweep skips those
+ * residents' rows and reports how many it left alone.
+ *
+ * The hold is deliberately narrow:
+ *   * it covers the policies that destroy or overwrite personal data
+ *     (`HOLD_SCOPED_POLICY_KEYS`), not the archival ones — those delete nothing
+ *     to begin with;
+ *   * it is scoped to the requester, not the barangay: everyone else's rows are
+ *     still swept on schedule;
+ *   * it lifts by itself when the request is COMPLETED or REJECTED, because it is
+ *     derived from the request rows and never stored.
+ */
+export const OPEN_DSR_STATUSES = ["RECEIVED", "IN_REVIEW"] as const;
+
+/** Policies a hold protects: the ones whose handlers delete or overwrite. */
+export const HOLD_SCOPED_POLICY_KEYS = [
+  "uploads.concern_images",
+  "pii.id_verification",
+  "case.records",
+  "notification.inbox",
+] as const;
+
+export function isHoldScoped(policyKey: string): boolean {
+  return (HOLD_SCOPED_POLICY_KEYS as readonly string[]).includes(policyKey);
+}
+
+/**
+ * The fragment that keeps held residents out of a sweep. Every hold-scoped
+ * category is keyed by `userId` (concerns, verifications and notifications all
+ * carry one), so one fragment fits all four; anything not hold-scoped gets no
+ * fragment at all rather than an empty filter.
+ */
+export function holdFilter(
+  policyKey: string,
+  heldUserIds: readonly number[]
+): { userId?: { notIn: number[] } } {
+  if (heldUserIds.length === 0 || !isHoldScoped(policyKey)) return {};
+  return { userId: { notIn: [...heldUserIds] } };
+}
+
+/** Residents with an open data-subject request, i.e. the ones on hold. */
+export async function heldResidentIds(): Promise<number[]> {
+  const rows = await db.dataSubjectRequest.findMany({
+    where: { status: { in: [...OPEN_DSR_STATUSES] } },
+    select: { userId: true },
+    distinct: ["userId"],
+  });
+  return rows.map((row) => row.userId);
+}
+
 export interface RetentionPolicyLike {
   id: number;
   key: string;
@@ -150,6 +206,8 @@ export function planRetention(
 export interface RetentionHandlerResult {
   scanned: number;
   affected: number;
+  /** Rows the handler would have swept but left alone because of a hold. */
+  held: number;
   summary: string;
 }
 
@@ -157,6 +215,8 @@ export interface RetentionContext {
   policy: RetentionPolicyLike;
   cutoff: Date;
   now: Date;
+  /** Residents with an open data-subject request (see `heldResidentIds`). */
+  heldUserIds: readonly number[];
 }
 
 type RetentionHandler = (context: RetentionContext) => Promise<RetentionHandlerResult>;
@@ -165,16 +225,27 @@ function plural(count: number, noun: string): string {
   return `${count.toString()} ${noun}${count === 1 ? "" : "s"}`;
 }
 
-const uploadsConcernImages: RetentionHandler = async ({ cutoff }) => {
+const uploadsConcernImages: RetentionHandler = async ({
+  cutoff,
+  policy,
+  heldUserIds,
+}) => {
+  const where = {
+    status: "CLOSED",
+    closedAt: { not: null, lt: cutoff },
+    imageUrl: { not: null },
+  };
   const candidates = await db.concern.findMany({
-    where: {
-      status: "CLOSED",
-      closedAt: { not: null, lt: cutoff },
-      imageUrl: { not: null },
-    },
+    where: { ...where, ...holdFilter(policy.key, heldUserIds) },
     select: { id: true, imageUrl: true },
     take: RETENTION_MAX_ROWS,
   });
+  const held =
+    heldUserIds.length === 0
+      ? 0
+      : await db.concern.count({
+          where: { ...where, userId: { in: [...heldUserIds] } },
+        });
 
   let affected = 0;
   for (const concern of candidates) {
@@ -190,26 +261,38 @@ const uploadsConcernImages: RetentionHandler = async ({ cutoff }) => {
   return {
     scanned: candidates.length,
     affected,
-    summary: `${plural(affected, "closed case photo")} deleted`,
+    held,
+    summary: withHold(`${plural(affected, "closed case photo")} deleted`, held),
   };
 };
 
-const piiIdVerification: RetentionHandler = async ({ cutoff }) => {
+const piiIdVerification: RetentionHandler = async ({
+  cutoff,
+  policy,
+  heldUserIds,
+}) => {
+  const where = {
+    createdAt: { lt: cutoff },
+    // A submission still waiting for review is never swept: the reviewer
+    // cannot decide on documents that no longer exist.
+    status: { in: ["VERIFIED", "EXPIRED", "REJECTED"] },
+    OR: [
+      { idNumberEncrypted: { not: null } },
+      { idImageUrl: { not: null } },
+      { selfieUrl: { not: null } },
+    ],
+  };
   const candidates = await db.identityVerification.findMany({
-    where: {
-      createdAt: { lt: cutoff },
-      // A submission still waiting for review is never swept: the reviewer
-      // cannot decide on documents that no longer exist.
-      status: { in: ["VERIFIED", "EXPIRED", "REJECTED"] },
-      OR: [
-        { idNumberEncrypted: { not: null } },
-        { idImageUrl: { not: null } },
-        { selfieUrl: { not: null } },
-      ],
-    },
+    where: { ...where, ...holdFilter(policy.key, heldUserIds) },
     select: { id: true, idImageUrl: true, selfieUrl: true },
     take: RETENTION_MAX_ROWS,
   });
+  const held =
+    heldUserIds.length === 0
+      ? 0
+      : await db.identityVerification.count({
+          where: { ...where, userId: { in: [...heldUserIds] } },
+        });
 
   for (const verification of candidates) {
     for (const url of [verification.idImageUrl, verification.selfieUrl]) {
@@ -233,25 +316,40 @@ const piiIdVerification: RetentionHandler = async ({ cutoff }) => {
   return {
     scanned: candidates.length,
     affected: candidates.length,
-    summary: `${plural(candidates.length, "ID number and photo")} destroyed; the verification decision is kept`,
+    held,
+    summary: withHold(
+      `${plural(candidates.length, "ID number and photo")} destroyed; the verification decision is kept`,
+      held
+    ),
   };
 };
 
-const caseRecords: RetentionHandler = async ({ cutoff }) => {
+const caseRecords: RetentionHandler = async ({
+  cutoff,
+  policy,
+  heldUserIds,
+}) => {
+  const where = {
+    status: "CLOSED",
+    closedAt: { not: null, lt: cutoff },
+    OR: [
+      { locationLat: { not: null } },
+      { locationLng: { not: null } },
+      { imageUrl: { not: null } },
+      { description: { not: ANONYMISED_CASE_NOTE } },
+    ],
+  };
   const candidates = await db.concern.findMany({
-    where: {
-      status: "CLOSED",
-      closedAt: { not: null, lt: cutoff },
-      OR: [
-        { locationLat: { not: null } },
-        { locationLng: { not: null } },
-        { imageUrl: { not: null } },
-        { description: { not: ANONYMISED_CASE_NOTE } },
-      ],
-    },
+    where: { ...where, ...holdFilter(policy.key, heldUserIds) },
     select: { id: true, imageUrl: true },
     take: RETENTION_MAX_ROWS,
   });
+  const held =
+    heldUserIds.length === 0
+      ? 0
+      : await db.concern.count({
+          where: { ...where, userId: { in: [...heldUserIds] } },
+        });
 
   for (const concern of candidates) {
     await deleteConcernImage(concern.imageUrl?.split("/").pop() ?? null);
@@ -276,21 +374,37 @@ const caseRecords: RetentionHandler = async ({ cutoff }) => {
   return {
     scanned: candidates.length,
     affected: candidates.length,
-    summary: `${plural(candidates.length, "closed case")} anonymised`,
+    held,
+    summary: withHold(
+      `${plural(candidates.length, "closed case")} anonymised`,
+      held
+    ),
   };
 };
 
-const notificationInbox: RetentionHandler = async ({ cutoff }) => {
+const notificationInbox: RetentionHandler = async ({
+  cutoff,
+  policy,
+  heldUserIds,
+}) => {
   const where = {
     isRead: true,
     OR: [{ readAt: { lt: cutoff } }, { readAt: null, createdAt: { lt: cutoff } }],
   };
-  const scanned = await db.notification.count({ where });
-  const removed = await db.notification.deleteMany({ where });
+  const held =
+    heldUserIds.length === 0
+      ? 0
+      : await db.notification.count({
+          where: { ...where, userId: { in: [...heldUserIds] } },
+        });
+  const sweepWhere = { ...where, ...holdFilter(policy.key, heldUserIds) };
+  const scanned = await db.notification.count({ where: sweepWhere });
+  const removed = await db.notification.deleteMany({ where: sweepWhere });
   return {
     scanned,
     affected: removed.count,
-    summary: `${plural(removed.count, "read notification")} deleted`,
+    held,
+    summary: withHold(`${plural(removed.count, "read notification")} deleted`, held),
   };
 };
 
@@ -301,6 +415,9 @@ const revokedTokens: RetentionHandler = async ({ cutoff }) => {
   return {
     scanned,
     affected: removed.count,
+    // A revoked session token is a security artefact, not the resident's
+    // personal data: a hold on their records does not keep these alive.
+    held: 0,
     summary: `${plural(removed.count, "expired revoked token")} deleted`,
   };
 };
@@ -309,6 +426,12 @@ const revokedTokens: RetentionHandler = async ({ cutoff }) => {
  * `ARCHIVE` policies: the rows are counted and reported, and deliberately kept.
  * See rule 1 at the top of this file.
  */
+/** Adds the hold count to a summary line, so a run record says what it skipped. */
+function withHold(summary: string, held: number): string {
+  if (held === 0) return summary;
+  return `${summary}; ${plural(held, "row")} held by open data-subject requests`;
+}
+
 function archivalHandler(
   count: (context: RetentionContext) => Promise<number>,
   noun: string,
@@ -319,6 +442,8 @@ function archivalHandler(
     return {
       scanned,
       affected: 0,
+      // Archival policies delete nothing, so a hold has nothing to protect here.
+      held: 0,
       summary: `${plural(scanned, noun)} past the window, kept in place (${reason})`,
     };
   };
@@ -366,6 +491,8 @@ export interface RetentionOutcome {
   cutoff: Date;
   scanned: number;
   affected: number;
+  /** Rows left alone because their resident has an open data-subject request. */
+  held: number;
   summary: string | null;
   error: string | null;
 }
@@ -382,6 +509,7 @@ export interface RetentionSweepResult {
     skipped: number;
     scanned: number;
     affected: number;
+    held: number;
   };
 }
 
@@ -392,6 +520,7 @@ function describeTotals(totals: RetentionSweepResult["totals"]): string {
     totals.failed > 0 ? `${totals.failed.toString()} failed` : null,
     `${totals.scanned.toString()} scanned`,
     `${totals.affected.toString()} affected`,
+    totals.held > 0 ? `${totals.held.toString()} held` : null,
   ]
     .filter((part): part is string => part !== null)
     .join(", ");
@@ -441,8 +570,10 @@ export async function retentionDesk(now: Date = new Date()): Promise<{
   totals: { affected: number; runs: number; failures: number };
   dueKeys: string[];
   lastSweepAt: Date | null;
+  /** Residents whose rows the next sweep will skip (open data-subject request). */
+  heldResidents: number;
 }> {
-  const [policies, runs] = await Promise.all([
+  const [policies, runs, held] = await Promise.all([
     listRetentionPolicies(),
     db.retentionRun.findMany({
       orderBy: { startedAt: "desc" },
@@ -456,9 +587,11 @@ export async function retentionDesk(now: Date = new Date()): Promise<{
         policy: { select: { key: true } },
       },
     }),
+    heldResidentIds(),
   ]);
 
   const plan = planRetention(policies, now);
+  const heldResidents = held.length;
   const summary = summarizeRetention(
     policies,
     runs.map((run) => ({
@@ -480,6 +613,7 @@ export async function retentionDesk(now: Date = new Date()): Promise<{
     },
     dueKeys: plan.due.map((policy) => policy.key),
     lastSweepAt: runs[0]?.startedAt ?? null,
+    heldResidents,
   };
 }
 
@@ -490,11 +624,17 @@ export async function retentionDesk(now: Date = new Date()): Promise<{
  */
 export async function executeRetentionPolicy(
   policy: RetentionPolicyLike,
-  options: { now?: Date; cronRunId?: number | null } = {}
+  options: {
+    now?: Date;
+    cronRunId?: number | null;
+    /** Fetched once per sweep; a standalone call fetches its own list. */
+    heldUserIds?: readonly number[];
+  } = {}
 ): Promise<RetentionOutcome> {
   const now = options.now ?? new Date();
   const cutoff = cutoffFor(policy, now);
   const handler = RETENTION_HANDLERS[policy.key];
+  const heldUserIds = options.heldUserIds ?? (await heldResidentIds());
 
   const run = await db.retentionRun.create({
     data: {
@@ -524,13 +664,14 @@ export async function executeRetentionPolicy(
       cutoff,
       scanned: 0,
       affected: 0,
+      held: 0,
       summary,
       error: null,
     };
   }
 
   try {
-    const result = await handler({ policy, cutoff, now });
+    const result = await handler({ policy, cutoff, now, heldUserIds });
     await db.retentionRun.update({
       where: { id: run.id },
       data: {
@@ -538,6 +679,10 @@ export async function executeRetentionPolicy(
         finishedAt: new Date(),
         scanned: result.scanned,
         affected: result.affected,
+        // The held count travels in the summary text: it is part of what the
+        // run did, and the run record is where "what happened that night" is
+        // read from. (No schema change — the `RetentionRun` columns are the
+        // ones the migration seeded.)
         summary: result.summary,
       },
     });
@@ -554,6 +699,7 @@ export async function executeRetentionPolicy(
       cutoff,
       scanned: result.scanned,
       affected: result.affected,
+      held: result.held,
       summary: result.summary,
       error: null,
     };
@@ -575,6 +721,7 @@ export async function executeRetentionPolicy(
       cutoff,
       scanned: 0,
       affected: 0,
+      held: 0,
       summary: null,
       error: message,
     };
@@ -604,6 +751,8 @@ export async function runRetentionSweep(
     force: options.force,
     keys: options.keys,
   });
+  // One query for the whole sweep: who is on legal hold right now.
+  const heldUserIds = await heldResidentIds();
 
   const cronRun = await db.cronRun.create({
     data: {
@@ -617,7 +766,13 @@ export async function runRetentionSweep(
 
   const outcomes: RetentionOutcome[] = [];
   for (const policy of plan.due) {
-    outcomes.push(await executeRetentionPolicy(policy, { now, cronRunId: cronRun.id }));
+    outcomes.push(
+      await executeRetentionPolicy(policy, {
+        now,
+        cronRunId: cronRun.id,
+        heldUserIds,
+      })
+    );
   }
 
   const finishedAt = new Date();
@@ -629,6 +784,7 @@ export async function runRetentionSweep(
     skipped: skippedRuns,
     scanned: outcomes.reduce((sum, outcome) => sum + outcome.scanned, 0),
     affected: outcomes.reduce((sum, outcome) => sum + outcome.affected, 0),
+    held: outcomes.reduce((sum, outcome) => sum + outcome.held, 0),
   };
 
   const status =

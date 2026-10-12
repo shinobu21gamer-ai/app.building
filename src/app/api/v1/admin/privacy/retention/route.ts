@@ -44,6 +44,7 @@ export const POST = withErrorBoundary<[Request]>(async (req) => {
       cutoff: outcome.cutoff.toISOString(),
       scanned: outcome.scanned,
       affected: outcome.affected,
+      held: outcome.held,
       summary: outcome.summary,
       error: outcome.error,
     })),
