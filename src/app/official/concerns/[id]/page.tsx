@@ -17,10 +17,12 @@ import { CaseWorkflowForm } from "@/components/cases/case-workflow-form";
 import { CaseNoteForm } from "@/components/cases/case-note-form";
 import { ConcernMap } from "@/components/concern/concern-map";
 import { CrewPanel } from "@/components/cases/crew-panel";
+import { FundingPanel } from "@/components/treasury/funding-panel";
 import { ValidationForm } from "@/components/cases/validation-form";
 import { ResolutionVerifyForm } from "@/components/cases/resolution-verify-form";
 import { ResolutionForm } from "@/components/cases/resolution-form";
 import { loadPriorityConfig } from "@/lib/priority/config";
+import { caseFundingView } from "@/lib/treasury/query";
 import { formatDate, formatDateTime } from "@/lib/format";
 import {
   earliestActionDay,
@@ -172,13 +174,23 @@ export default async function OfficialConcernDetailPage({
   );
 
   // Permissions decide which desks this user sees on the case page.
-  const [canValidate, canAssess, canAssignCrew, canVerifyResolution] =
-    await Promise.all([
-      userCan(user.role.key, "case.validate"),
-      userCan(user.role.key, "case.assess"),
-      userCan(user.role.key, "case.crew.assign"),
-      userCan(user.role.key, "case.resolution.verify"),
-    ]);
+  const [
+    canValidate,
+    canAssess,
+    canAssignCrew,
+    canVerifyResolution,
+    canViewTreasury,
+  ] = await Promise.all([
+    userCan(user.role.key, "case.validate"),
+    userCan(user.role.key, "case.assess"),
+    userCan(user.role.key, "case.crew.assign"),
+    userCan(user.role.key, "case.resolution.verify"),
+    userCan(user.role.key, "treasury.balance.view"),
+  ]);
+
+  const funding = canViewTreasury
+    ? await caseFundingView(db, numericId)
+    : null;
 
   const [concernTypes, allCategories, crewSummary] = await Promise.all([
     canValidate
@@ -573,6 +585,15 @@ export default async function OfficialConcernDetailPage({
                 canAssign={concern.status !== "RESOLVED" && concern.status !== "CLOSED"}
                 canOverrideShortfall
               />
+            </Card>
+          )}
+
+          {canViewTreasury && funding && (
+            <Card
+              title={copy[locale].revamp.treasuryDesk.fundingTitle}
+              description={copy[locale].revamp.treasuryDesk.fundingLead}
+            >
+              <FundingPanel funding={funding} locale={locale} />
             </Card>
           )}
 

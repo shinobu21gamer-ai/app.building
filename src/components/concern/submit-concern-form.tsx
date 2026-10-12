@@ -222,6 +222,18 @@ export function SubmitConcernForm({
     payload.set("description", values.description.trim());
     payload.set("locationAddress", combinedLocation);
     payload.set("categoryId", values.categoryId);
+    // The geotag picker renders hidden inputs. The payload is rebuilt by hand,
+    // so the pin has to be carried across explicitly or it is silently lost.
+    for (const key of [
+      "locationLat",
+      "locationLng",
+      "locationAccuracyM",
+      "locationSource",
+      "locationPurok",
+    ]) {
+      const value = String(data.get(key) ?? "").trim();
+      if (value !== "") payload.set(key, value);
+    }
     const typeId = String(data.get("typeId") ?? "").trim();
     if (typeId) payload.set("typeId", typeId);
     payload.set("urgencyScore", values.urgencyScore);

@@ -15,6 +15,14 @@ export default async function TreasuryLayout({
       roles={["TREASURER", "ADMIN"]}
       items={[
         { href: "/treasury", label: t.treasury.title },
+        { href: "/treasury/budgets", label: t.treasuryDesk.navBudgets },
+        { href: "/treasury/earmarks", label: t.treasuryDesk.earmarksTitle },
+        {
+          href: "/treasury/disbursements",
+          label: t.treasuryDesk.navDisbursements,
+        },
+        { href: "/treasury/ledger", label: t.treasuryDesk.navLedger },
+        { href: "/treasury/codes", label: t.treasuryDesk.navCodes },
         { href: "/notifications", label: t.common.notifications },
       ]}
     >

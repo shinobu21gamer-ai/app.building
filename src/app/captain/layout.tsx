@@ -15,6 +15,7 @@ export default async function CaptainLayout({
       roles={["CAPTAIN", "ADMIN"]}
       items={[
         { href: "/captain", label: t.captain.title },
+        { href: "/captain/approvals", label: t.treasuryDesk.navApprovals },
         { href: "/notifications", label: t.common.notifications },
       ]}
     >

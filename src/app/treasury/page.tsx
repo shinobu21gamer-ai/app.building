@@ -1,38 +1,146 @@
-import { PortalIntro } from "@/components/portals/portal-intro";
-import { Container } from "@/components/ui/container";
-import {
-  getEffectivePermissions,
-  requirePermission,
-} from "@/lib/auth/session";
+import type { Metadata } from "next";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { BalanceCards } from "@/components/treasury/balance-cards";
+import { AgingBars, LedgerTable } from "@/components/treasury/ledger-table";
+import { db } from "@/lib/db";
+import { requirePermission } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import { treasuryDashboard } from "@/lib/treasury/query";
 
-/**
- * /treasury — treasurer portal landing.
- * Budget, earmark, voucher and ledger screens arrive with the treasury stage;
- * until then this page shows the role's effective permissions in place, which
- * is also how RBAC is verified on a real deployment.
- */
-export default async function TreasuryPage() {
-  const user = await requirePermission("treasury.balance.view");
-  const permissions = [...(await getEffectivePermissions(user.role.key))].sort();
-  const locale = await getLocale();
-  const t = copy[locale].revamp;
-
-  return (
-    <Container className="py-8">
-      <PortalIntro
-        title={t.treasury.title}
-        lead={t.treasury.lead}
-        permissions={permissions}
-        permissionsTitle={t.portal.permissionsTitle}
-        permissionsLead={t.portal.permissionsLead}
-        modulesTitle={t.portal.upcomingTitle}
-        modulesUnavailable={t.common.none}
-        modules={t.treasury.modules}
-      />
-    </Container>
-  );
-}
+export const metadata: Metadata = {
+  title: "Treasury",
+};
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Treasurer dashboard: the four live figures, the queues that explain them, how
+ * long the pending vouchers have been waiting, and the tail of the ledger.
+ */
+export default async function TreasuryDashboardPage() {
+  const user = await requirePermission("treasury.balance.view");
+  const locale = await getLocale();
+  const t = copy[locale].revamp.treasuryDesk;
+
+  const dashboard = await treasuryDashboard(db, {
+    actor: {
+      id: user.id,
+      roleKey: user.role.key,
+      officeId: user.officeId ?? null,
+    },
+  });
+
+  const pending = [
+    {
+      label: t.awaitingApprovalAllocations,
+      count: dashboard.counts.allocationsAwaitingApproval,
+      href: "/treasury/budgets",
+    },
+    {
+      label: t.awaitingApprovalEarmarks,
+      count: dashboard.counts.earmarksAwaitingApproval,
+      href: "/treasury/earmarks",
+    },
+    {
+      label: t.awaitingCertification,
+      count: dashboard.counts.vouchersAwaitingCertification,
+      href: "/treasury/disbursements",
+    },
+    {
+      label: t.awaitingApprovalVouchers,
+      count: dashboard.counts.vouchersAwaitingApproval,
+      href: "/captain/approvals",
+    },
+    {
+      label: t.awaitingRelease,
+      count: dashboard.counts.vouchersAwaitingRelease,
+      href: "/treasury/disbursements",
+    },
+    {
+      label: t.awaitingLiquidation,
+      count: dashboard.counts.vouchersAwaitingLiquidation,
+      href: "/treasury/disbursements",
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {t.dashboardTitle}
+          </h1>
+          <p className="mt-1 text-sm text-slate-600">{t.dashboardLead}</p>
+        </div>
+        <div className="flex gap-2">
+          <Button href="/treasury/budgets" size="sm" variant="outline">
+            {t.navBudgets}
+          </Button>
+          <Button href="/treasury/disbursements" size="sm" variant="outline">
+            {t.navDisbursements}
+          </Button>
+        </div>
+      </div>
+
+      <BalanceCards totals={dashboard.totals} locale={locale} />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card title={t.pendingTitle}>
+          <ul className="divide-y divide-slate-100">
+            {pending.map((entry) => (
+              <li
+                key={entry.label}
+                className="flex items-center justify-between gap-3 py-2"
+              >
+                <span className="text-sm text-slate-700">{entry.label}</span>
+                <span className="flex items-center gap-3">
+                  <span className="text-sm font-semibold tabular-nums text-slate-900">
+                    {entry.count}
+                  </span>
+                  <Button href={entry.href} size="sm" variant="ghost">
+                    {t.open}
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {(dashboard.counts.unverifiedCoaAccounts > 0 ||
+            dashboard.counts.unverifiedFundSources > 0) && (
+            <div className="mt-3 space-y-1 border-t border-slate-100 pt-3 text-xs text-amber-700">
+              {dashboard.counts.unverifiedCoaAccounts > 0 && (
+                <p>
+                  {t.unverifiedCodes}: {dashboard.counts.unverifiedCoaAccounts}
+                </p>
+              )}
+              {dashboard.counts.unverifiedFundSources > 0 && (
+                <p>
+                  {t.unverifiedFundSources}:{" "}
+                  {dashboard.counts.unverifiedFundSources}
+                </p>
+              )}
+            </div>
+          )}
+        </Card>
+
+        <Card title={t.agingTitle} description={t.agingLead}>
+          <AgingBars aging={dashboard.aging} locale={locale} />
+        </Card>
+      </div>
+
+      <Card title={t.ledgerTitle} description={t.ledgerLead}>
+        <LedgerTable
+          entries={dashboard.recentLedger}
+          locale={locale}
+          showAllocation
+        />
+        <div className="mt-3">
+          <Button href="/treasury/ledger" size="sm" variant="outline">
+            {t.navLedger}
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}

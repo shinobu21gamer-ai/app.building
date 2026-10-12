@@ -1,15 +1,15 @@
 # BarangayResolve — Complete Revamp
 
 Planning and delivery notes for the UI/UX, workflow, schema and module revamp.
-**Status: Stage 3 of 7 (core workflow, including manpower) is implemented on this branch.**
+**Status: Stage 4 of 7 (treasury) is implemented on this branch.**
 Stages 4–7 are specified here and are delivered one at a time, on your go-ahead.
 
 | Stage | Scope | State |
 |---|---|---|
 | 1 | Architecture and schema | **Delivered** (this branch) |
-| 2 | RBAC and auth (6 roles, ID verification, RA 10173 controls) | Specified, awaiting go-ahead |
-| 3 | Core workflow, including manpower planning and crew assignment | Specified, awaiting go-ahead |
-| 4 | Treasury (COA MOOE budgets, earmarks, disbursements, approvals, live balances) | Specified, awaiting go-ahead |
+| 2 | RBAC and auth (6 roles, ID verification, RA 10173 controls) | **Delivered** (this branch) |
+| 3 | Core workflow, including manpower planning and crew assignment | **Delivered** (this branch) |
+| 4 | Treasury (COA MOOE budgets, earmarks, disbursements, approvals, live balances) | **Delivered** (this branch) |
 | 5 | SLA (48-hour escalation via cron) and the hash-chained audit log | Specified, awaiting go-ahead |
 | 6 | UI revamp (design system + mobile-first role portals) | Specified, awaiting go-ahead |
 | 7 | Reports and dashboards | Specified, awaiting go-ahead |
@@ -93,7 +93,7 @@ need a change in a frozen file, work stops there and the change is raised with y
 ## 3. Full change inventory (all seven stages)
 
 `N` = new file, `M` = modified, `D` = deleted (none planned).
-Stages 1–3 are marked ✅; everything else is the committed plan for that stage.
+Stages 1–4 are marked ✅; everything else is the committed plan for that stage.
 
 ### Stage 1 — Architecture and schema ✅
 
@@ -107,7 +107,7 @@ Stages 1–3 are marked ✅; everything else is the committed plan for that stag
 | `prisma/migrations/20261012000000_revamp_core_schema/migration.sql` | N ✅ | The migration itself (additive only) |
 | `prisma/rollbacks/20261012000000_revamp_core_schema_rollback.sql` | N ✅ | Exact reverse of the above |
 
-### Stage 2 — RBAC and auth
+### Stage 2 — RBAC and auth ✅
 
 | Path | | Purpose |
 |---|---|---|
@@ -164,7 +164,7 @@ Stages 1–3 are marked ✅; everything else is the committed plan for that stag
 | `src/lib/cases/manpower.ts` | N ✅ | `workersNeeded*`, duration, equipment, labor-inclusive cost estimate |
 | `src/lib/cases/crew.ts` | N ✅ | Crew assignment, double-booking prevention, progress (`2 of 3`) |
 | `src/lib/cases/public-record.ts` | N ✅ | Writes the PII-free `PublicCaseRecord` projection |
-| `src/lib/cases/query.ts` | M | New status filters, crew counts, legacy-case flags |
+| `src/lib/cases/query.ts` | M ✅ | New status filters, crew counts, legacy-case flags |
 | `src/lib/routing/service.ts` | M ✅ | Type → office assignment from the new flow |
 | `src/lib/validations/case.ts` | M ✅ | Assessment/crew/override/closure schemas |
 | `src/lib/validations/concern.ts` | M ✅ | `typeId`, geotag fields, accuracy, purok |
@@ -177,8 +177,8 @@ Stages 1–3 are marked ✅; everything else is the committed plan for that stag
 | `src/app/api/v1/concerns/[id]/status/route.ts` | M ✅ | New transitions + the crew gate |
 | `src/app/api/v1/concerns/[id]/resolutions/verify/route.ts` | N ✅ | Verification before closure |
 | `src/app/api/v1/admin/crew/route.ts` | N ✅ | Crew roster management |
-| `src/app/api/v1/concerns/track/route.ts`, `concerns/route.ts` | M | Public tracking stays PII-free |
-| `src/app/resident/**`, `src/app/official/**` | M | New statuses, timelines, crew progress |
+| `src/app/api/v1/concerns/track/route.ts`, `concerns/route.ts` | M ✅ | Public tracking stays PII-free |
+| `src/app/resident/**`, `src/app/official/**` | M ✅ | New statuses, timelines, crew progress |
 | `src/app/official/concerns/[id]/assessment/page.tsx` | N ✅ | Assessment + crew planning screen |
 | `src/app/crew/**` | N ✅ | Crew portal: today's jobs, my assignments |
 | `src/app/admin/validation/page.tsx` | N ✅ | Admin validation queue |
@@ -194,22 +194,29 @@ Stages 1–3 are marked ✅; everything else is the committed plan for that stag
 | `src/app/resident/concerns/[id]/print/page.tsx`, `src/app/official/concerns/[id]/print/page.tsx` | M ✅ | Journal labels on the printed case record |
 | `src/lib/i18n.ts` | M ✅ | en/fil copy for every new desk (assessment, manpower, crew, validation, verification) |
 
-### Stage 4 — Treasury
+### Stage 4 — Treasury ✅
 
 | Path | | Purpose |
 |---|---|---|
-| `src/lib/treasury/coa.ts` | N | Code verification rules + provenance |
-| `src/lib/treasury/budget.ts` | N | Allocations, earmarks, ledger writes, live balances |
-| `src/lib/treasury/disbursement.ts` | N | Draft → treasurer certification → AAO approval → release → liquidation |
-| `src/lib/treasury/query.ts` | N | Balances, registers, aging |
-| `src/lib/validations/treasury.ts` | N | All treasury schemas |
-| `src/app/api/v1/treasury/**` | N | Disbursement, approval, balance endpoints |
-| `src/app/api/v1/admin/treasury/**` | N | COA accounts, fund sources, fiscal years, allocations, earmarks |
-| `src/app/treasury/**` | N | Treasurer portal (dashboard, budgets, earmarks, disbursements, ledger) |
-| `src/app/captain/approvals/**` | N | AAO approval queue |
-| `src/app/admin/treasury/**` | N | Admin treasury configuration + code verification |
-| `src/components/treasury/*` | N | Forms, tables, balance cards, verification UI |
-| `src/lib/treasury/*.test.ts` | N | Balance math, approval order, no-overspend tests |
+| `src/lib/treasury/coa.ts` | N ✅ | Code parsing/formatting, the "usable code" gate, provenance metadata |
+| `src/lib/treasury/ledger.ts` | N ✅ | Money helpers, append-only snapshots, no-overspend, voucher lifecycle, aging |
+| `src/lib/treasury/budget.ts` | N ✅ | Fiscal years, allocations, earmarks, ledger writes, the case funding gate |
+| `src/lib/treasury/disbursement.ts` | N ✅ | Draft → treasurer certification → AAO approval → release → liquidation |
+| `src/lib/treasury/query.ts` | N ✅ | Live balances, registers, aging summary, per-case funding view |
+| `src/lib/validations/treasury.ts` | N ✅ | Every treasury schema + the payee / mode-of-payment catalogues |
+| `src/app/api/v1/treasury/allocations/route.ts`, `allocations/[id]/route.ts` | N ✅ | Register + prepare, approve, adjust (admin memo), close |
+| `src/app/api/v1/treasury/earmarks/route.ts`, `earmarks/[id]/route.ts` | N ✅ | Propose, approve (reserve), cancel (release) |
+| `src/app/api/v1/treasury/disbursements/route.ts`, `disbursements/[id]/route.ts` | N ✅ | Prepare + the seven lifecycle actions, with separation of duties |
+| `src/app/api/v1/treasury/balances/route.ts` | N ✅ | Dashboard figures and pending-queue counts |
+| `src/app/api/v1/admin/treasury/accounts/**`, `fund-sources/**`, `fiscal-years/**` | N ✅ | COA catalogue, fund sources, fiscal years (verify / open / close) |
+| `src/app/treasury/{page,budgets,budgets/[id],earmarks,disbursements,disbursements/[id],ledger,codes}/page.tsx` | N ✅ | Treasurer portal: dashboard, budgets, earmarks, vouchers, ledger, verification desk |
+| `src/app/captain/approvals/page.tsx` | N ✅ | AAO approval queue (allocations, earmarks, certified vouchers) |
+| `src/app/admin/treasury/page.tsx` | N ✅ | Administrator view: fiscal years, fund sources, appropriation register |
+| `src/components/treasury/*` | N ✅ | Balance cards, ledger + aging table, five forms, verify form, funding panel |
+| `src/app/{treasury,captain,admin}/layout.tsx` | M ✅ | Nav entries for the new desks |
+| `src/lib/i18n.ts` | M ✅ | `revamp.treasuryDesk` copy (en + fil, key parity) |
+| `src/app/official/concerns/[id]/page.tsx` | M ✅ | Case funding panel for holders of `treasury.balance.view` |
+| `src/lib/treasury/{coa,ledger,desk,flows}.test.ts` | N ✅ | 56 tests: code rules, balance math, approval order, no overspend |
 
 ### Stage 5 — SLA and audit
 

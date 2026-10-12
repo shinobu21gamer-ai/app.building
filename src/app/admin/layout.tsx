@@ -19,9 +19,11 @@ export default async function AdminLayout({
     { href: "/admin/categories", label: t.navCategories },
     { href: "/admin/routing", label: t.navRouting },
     { href: "/admin/priority", label: t.navPriority },
+    { href: "/admin/validation", label: revamp.validationNav },
     { href: "/admin/verification", label: revamp.verificationNav },
     { href: "/admin/privacy", label: revamp.privacyNav },
     { href: "/admin/roles", label: revamp.rolesNav },
+    { href: "/admin/treasury", label: revamp.treasuryNav },
     { href: "/admin/settings", label: t.navSettings },
     { href: "/notifications", label: t.navNotifications },
   ];
