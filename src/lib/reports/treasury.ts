@@ -16,10 +16,10 @@ import {
   toMoney,
   type AgingBucket,
 } from "@/lib/treasury/ledger";
+import { summarizeUtilisation } from "@/lib/treasury/utilisation";
 import {
   listAllocations,
   listDisbursements,
-  type AllocationRow,
   type DisbursementRow,
 } from "@/lib/treasury/query";
 import type { Actor } from "@/lib/treasury/budget";
@@ -30,89 +30,13 @@ import { formatPeso } from "@/lib/cases/manpower";
  * released money has been waiting for its liquidation.
  *
  * The scoping rules are not re-implemented here — `listAllocations` and
- * `listDisbursements` already apply the office scope for the acting user, and
- * the aging buckets are the same ones the treasury dashboard shows, so the
- * report and the screen can never disagree about what "over 90 days" means.
+ * `listDisbursements` already apply the office scope for the acting user, the
+ * aging buckets are the same ones the treasury dashboard shows, and the
+ * utilisation arithmetic is `src/lib/treasury/utilisation.ts`, so the report and
+ * the screen cannot disagree about "over 90 days" or about a live balance.
  */
 
 export const REPORT_ROW_LIMIT = 5000;
-
-export interface UtilisationTotals {
-  appropriated: number;
-  reserved: number;
-  disbursed: number;
-  available: number;
-  allocations: number;
-  utilisation: number | null;
-}
-
-export interface UtilisationRow {
-  id: number;
-  label: string;
-  status: string;
-  coaCode: string;
-  coaName: string;
-  appropriation: number;
-  reserved: number;
-  disbursed: number;
-  available: number;
-  utilisation: number | null;
-}
-
-/** Disbursed as a share of the appropriation, to one decimal. */
-export function utilisationOf(
-  appropriation: number,
-  disbursed: number
-): number | null {
-  if (appropriation <= 0) return null;
-  return Math.round((disbursed / appropriation) * 1000) / 10;
-}
-
-/** Closed allocations are historical: they are excluded, exactly as the dashboard does. */
-export function summarizeUtilisation(
-  allocations: readonly AllocationRow[]
-): { totals: UtilisationTotals; rows: UtilisationRow[] } {
-  const rows = allocations.map((allocation) => ({
-    id: allocation.id,
-    label: allocation.label,
-    status: allocation.status,
-    coaCode: allocation.coaCode,
-    coaName: allocation.coaName,
-    appropriation: allocation.appropriation,
-    reserved: allocation.reserved,
-    disbursed: allocation.disbursed,
-    available: allocation.available,
-    utilisation: utilisationOf(allocation.appropriation, allocation.disbursed),
-  }));
-
-  const active = rows.filter((row) => row.status !== "CLOSED");
-  const totals = active.reduce<UtilisationTotals>(
-    (acc, row) => ({
-      appropriated: roundMoney(acc.appropriated + row.appropriation),
-      reserved: roundMoney(acc.reserved + row.reserved),
-      disbursed: roundMoney(acc.disbursed + row.disbursed),
-      available: roundMoney(acc.available + row.available),
-      allocations: acc.allocations + 1,
-      utilisation: null,
-    }),
-    {
-      appropriated: 0,
-      reserved: 0,
-      disbursed: 0,
-      available: 0,
-      allocations: 0,
-      utilisation: null,
-    }
-  );
-  totals.utilisation = utilisationOf(totals.appropriated, totals.disbursed);
-
-  return {
-    totals,
-    rows: rows.sort(
-      (a, b) => b.appropriation - a.appropriation || a.label.localeCompare(b.label)
-    ),
-  };
-}
 
 export interface LiquidationAgingRow {
   bucket: AgingBucket;

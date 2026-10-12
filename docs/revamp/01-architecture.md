@@ -35,6 +35,8 @@ prisma/**                       Schema, migrations, rollbacks
 | `src/lib/treasury/*` | new | COA codes, appropriations, earmarks, disbursements, ledger, balances |
 | `src/lib/audit.ts` + `src/lib/audit/*` | extend | Hash-chained, tamper-evident audit journal |
 | `src/lib/reports/*` | new | Engineering, treasury, privacy and public reports |
+| `src/lib/cases/figures.ts` | new | The shared case figures: tallies, duration summaries, "finished" |
+| `src/lib/treasury/utilisation.ts` | new | MOOE utilisation, shared by the treasury dashboard and report |
 | `src/lib/notifications/*` | exists, **untouched** | Every notification in the system |
 
 **Authorization placement.** Route handlers authenticate and check a permission;
@@ -509,6 +511,18 @@ cover the pure parts; the visual result is the same shell in all six portals.*
   plus one loader that reads the database. The tests exercise the pure half; the
   DB half is thin by construction. Money and large integers pass through the
   formatters in `document.ts`, never through floating-point arithmetic.
+- **One source for the figures.** Numbers a dashboard shows and a report prints
+  are computed once. `src/lib/cases/figures.ts` owns what "finished" means
+  (`isResolvedStatus`), the named buckets (`PENDING_STATUSES`,
+  `HIGH_PRIORITY_LEVELS`), `resolveHours`/`closeHours`, `summarizeDurations` and
+  the canonical status, priority and office tallies; `src/lib/treasury/utilisation.ts`
+  owns utilisation (`utilisationOf`, `summarizeUtilisation` and the rule that a
+  closed allocation is historical). The admin, official and treasury dashboards,
+  the admin concern report and the report library all consume those modules, so
+  "pending", "high priority", "how long a case takes" and "how much of the MOOE is
+  utilised" have one definition each. The clock is submission → resolution
+  everywhere — `Concern.submittedAt` is the field the SLA engine and the reports
+  already use, and it is the same instant as row creation in practice.
 - **Exports are streamed.** `src/lib/reports/stream.ts` writes the CSV in
   chunks of 250 rows (`X-Accel-Buffering: no`), byte-identical to the in-memory
   writer so tests can compare the two. Cells are quoted and formula-guarded

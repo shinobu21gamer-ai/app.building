@@ -4,9 +4,8 @@ import {
   buildTreasuryDocument,
   liquidationAging,
   summarizeRegister,
-  summarizeUtilisation,
-  utilisationOf,
 } from "@/lib/reports/treasury";
+import { summarizeUtilisation } from "@/lib/treasury/utilisation";
 import type { ReportPeriod } from "@/lib/reports/period";
 import type { AllocationRow, DisbursementRow } from "@/lib/treasury/query";
 import type { Actor } from "@/lib/treasury/budget";
@@ -79,47 +78,6 @@ const NINETY_DAYS: ReportPeriod = {
 };
 
 const NOW = new Date("2026-10-12T02:00:00Z");
-
-describe("utilisationOf", () => {
-  it("is the disbursed share of the appropriation, to one decimal", () => {
-    expect(utilisationOf(100_000, 40_000)).toBe(40);
-    expect(utilisationOf(30_000, 10_000)).toBe(33.3);
-  });
-
-  it("returns null rather than dividing by zero", () => {
-    expect(utilisationOf(0, 0)).toBeNull();
-    expect(utilisationOf(0, 500)).toBeNull();
-  });
-});
-
-describe("summarizeUtilisation", () => {
-  it("totals only the live allocations, matching the dashboard rule", () => {
-    const { totals, rows } = summarizeUtilisation([
-      allocation(),
-      allocation({ id: 2, status: "CLOSED", appropriation: 999_999, disbursed: 999_999 }),
-    ]);
-    expect(totals.allocations).toBe(1);
-    expect(totals.appropriated).toBe(100_000);
-    expect(totals.disbursed).toBe(40_000);
-    expect(totals.utilisation).toBe(40);
-    expect(rows).toHaveLength(2);
-  });
-
-  it("sorts the biggest appropriation first", () => {
-    const { rows } = summarizeUtilisation([
-      allocation({ id: 1, label: "Small", appropriation: 10_000 }),
-      allocation({ id: 2, label: "Large", appropriation: 500_000 }),
-    ]);
-    expect(rows.map((row) => row.label)).toEqual(["Large", "Small"]);
-  });
-
-  it("handles an empty scope", () => {
-    const { totals, rows } = summarizeUtilisation([]);
-    expect(rows).toEqual([]);
-    expect(totals.utilisation).toBeNull();
-    expect(totals.allocations).toBe(0);
-  });
-});
 
 describe("liquidationAging", () => {
   it("buckets released money by age since release", () => {

@@ -1,20 +1,26 @@
 import { db } from "@/lib/db";
-import { CASE_STATUSES, PRIORITY_LEVELS } from "@/lib/cases/workflow";
-
-const MS_PER_HOUR = 3_600_000;
+import {
+  officeTallies,
+  priorityTallies,
+  resolveHours,
+  roundHours,
+  statusTallies,
+  summarizeDurations,
+} from "@/lib/cases/figures";
 
 // Cap the resolution-time sample so the dashboard query stays bounded; the
 // aggregate is computed with a linear scan so it cannot stack-overflow.
 const RESOLUTION_SAMPLE_LIMIT = 50_000;
 
-function roundHours(ms: number): number {
-  return Math.round((ms / MS_PER_HOUR) * 10) / 10;
-}
-
 /**
  * Administrator dashboard aggregates. Every figure is a live database
  * calculation (counts and grouped counts), so it reflects record changes the
  * next time the dashboard is loaded.
+ *
+ * The arithmetic after the queries — status and priority order, office names,
+ * and "how long does a case take" — comes from `src/lib/cases/figures.ts`, the
+ * same module the report library uses, so the dashboard and the reports answer
+ * those questions with one definition.
  */
 export async function getAdminDashboard() {
   const [
@@ -36,7 +42,7 @@ export async function getAdminDashboard() {
     db.office.findMany({ select: { id: true, name: true } }),
     db.concern.findMany({
       where: { resolvedAt: { not: null } },
-      select: { createdAt: true, resolvedAt: true },
+      select: { submittedAt: true, resolvedAt: true },
       orderBy: { resolvedAt: "desc" },
       take: RESOLUTION_SAMPLE_LIMIT,
     }),
@@ -45,21 +51,12 @@ export async function getAdminDashboard() {
   const statusCounts = new Map(
     statusRows.map((row) => [row.status, row._count._all])
   );
-  const byStatus = CASE_STATUSES.map((status) => ({
-    status,
-    count: statusCounts.get(status) ?? 0,
-  }));
+  const byStatus = statusTallies(statusCounts);
 
   const priorityCounts = new Map(
     priorityRows.map((row) => [row.priorityLevel, row._count._all])
   );
-  const byPriority = [
-    ...PRIORITY_LEVELS.map((level) => ({
-      level,
-      count: priorityCounts.get(level) ?? 0,
-    })),
-    { level: "UNASSESSED", count: priorityCounts.get(null) ?? 0 },
-  ];
+  const byPriority = priorityTallies(priorityCounts);
 
   const categoryNames = new Map(categories.map((c) => [c.id, c.name]));
   const byCategory = categoryRows
@@ -71,47 +68,28 @@ export async function getAdminDashboard() {
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
   const officeNames = new Map(offices.map((o) => [o.id, o.name]));
-  const byOffice = officeRows
-    .map((row) => ({
-      id: row.assignedOfficeId,
-      name:
-        row.assignedOfficeId === null
-          ? "Unassigned"
-          : officeNames.get(row.assignedOfficeId) ?? "Unknown",
+  const byOffice = officeTallies(
+    officeRows.map((row) => ({
+      officeId: row.assignedOfficeId,
       count: row._count._all,
-    }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    })),
+    officeNames
+  );
 
   const resolved =
     (statusCounts.get("RESOLVED") ?? 0) + (statusCounts.get("CLOSED") ?? 0);
 
-  // Processing time is only meaningful where reliable timestamps exist:
-  // a case must have both a submission time and a recorded resolution time.
-  const durations = resolvedRows
-    .filter((row) => row.resolvedAt !== null)
-    .map((row) => row.resolvedAt!.getTime() - row.createdAt.getTime());
-
-  const processingTime =
-    durations.length === 0
-      ? { sampleSize: 0, averageHours: null, fastestHours: null, slowestHours: null }
-      : {
-          sampleSize: durations.length,
-          averageHours: roundHours(
-            durations.reduce((sum, value) => sum + value, 0) / durations.length
-          ),
-          fastestHours: roundHours(
-            durations.reduce(
-              (min, value) => Math.min(min, value),
-              Number.POSITIVE_INFINITY
-            )
-          ),
-          slowestHours: roundHours(
-            durations.reduce(
-              (max, value) => Math.max(max, value),
-              Number.NEGATIVE_INFINITY
-            )
-          ),
-        };
+  // Processing time is only meaningful where reliable timestamps exist: a case
+  // must have both a submission time and a recorded resolution time. The clock
+  // is the report library's — submission, not row creation — so the dashboard
+  // and the engineering report measure the same span.
+  const durations = summarizeDurations(resolveHours(resolvedRows));
+  const processingTime = {
+    sampleSize: durations.sampleSize,
+    averageHours: roundHours(durations.averageHours),
+    fastestHours: roundHours(durations.fastestHours),
+    slowestHours: roundHours(durations.slowestHours),
+  };
 
   return {
     totals: { total, resolved, unresolved: total - resolved },

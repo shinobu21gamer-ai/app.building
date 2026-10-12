@@ -1,6 +1,13 @@
 import { HOURS_PER_WORK_DAY } from "@/lib/cases/manpower";
 import { windowsOverlap } from "@/lib/cases/crew-rules";
-import { CASE_STATUSES } from "@/lib/cases/workflow";
+import {
+  average,
+  isResolvedStatus,
+  resolveHours,
+  closeHours,
+  statusTallies,
+  summarizeDurations,
+} from "@/lib/cases/figures";
 import { db } from "@/lib/db";
 import type { Locale } from "@/lib/i18n";
 import {
@@ -107,46 +114,21 @@ export type VolumeSummary = {
   byMonth: MonthRow[];
 };
 
-function hoursBetween(from: Date, to: Date): number | null {
-  const hours = (to.getTime() - from.getTime()) / MS_PER_HOUR;
-  return Number.isFinite(hours) && hours >= 0 ? hours : null;
-}
-
-function isResolved(status: string): boolean {
-  return status === "RESOLVED" || status === "CLOSED";
-}
-
-/** The nearest-rank percentile of an unsorted sample. */
-export function percentile(values: readonly number[], rank: number): number | null {
-  if (values.length === 0) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const index = Math.min(
-    sorted.length - 1,
-    Math.max(0, Math.ceil(rank * sorted.length) - 1)
-  );
-  return sorted[index] ?? null;
-}
-
-export function average(values: readonly number[]): number | null {
-  if (values.length === 0) return null;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
 export function summarizeVolume(
   rows: readonly EngineeringCaseRow[],
   months: readonly string[]
 ): VolumeSummary {
   const total = rows.length;
-  const open = rows.filter((row) => !isResolved(row.status)).length;
+  const open = rows.filter((row) => !isResolvedStatus(row.status)).length;
 
-  const byStatus = CASE_STATUSES.map((status) => {
-    const rowsWithStatus = rows.filter((row) => row.status === status);
-    return {
-      status,
-      count: rowsWithStatus.length,
-      share: sharePercent(rowsWithStatus.length, total) ?? 0,
-    };
-  });
+  const statusCounts = new Map<string, number>();
+  for (const row of rows) {
+    statusCounts.set(row.status, (statusCounts.get(row.status) ?? 0) + 1);
+  }
+  const byStatus = statusTallies(statusCounts).map((entry) => ({
+    ...entry,
+    share: sharePercent(entry.count, total) ?? 0,
+  }));
 
   const typeMap = new Map<string, TypeRow>();
   for (const row of rows) {
@@ -159,7 +141,7 @@ export function summarizeVolume(
       resolvedShare: 0,
     };
     existing.count += 1;
-    if (isResolved(row.status)) existing.resolved += 1;
+    if (isResolvedStatus(row.status)) existing.resolved += 1;
     typeMap.set(key, existing);
   }
   const byType = [...typeMap.values()]
@@ -174,7 +156,7 @@ export function summarizeVolume(
     const area = row.areaLabel?.trim() || "—";
     const existing = areaMap.get(area) ?? { area, count: 0, open: 0 };
     existing.count += 1;
-    if (!isResolved(row.status)) existing.open += 1;
+    if (!isResolvedStatus(row.status)) existing.open += 1;
     areaMap.set(area, existing);
   }
   const byArea = [...areaMap.values()].sort(
@@ -211,32 +193,16 @@ export type TurnaroundSummary = {
 export function summarizeTurnaround(
   rows: readonly EngineeringCaseRow[]
 ): TurnaroundSummary {
-  const resolveHours: number[] = [];
-  const closeHours: number[] = [];
-
-  for (const row of rows) {
-    if (row.resolvedAt) {
-      const hours = hoursBetween(row.submittedAt, row.resolvedAt);
-      if (hours !== null) resolveHours.push(hours);
-    }
-    if (row.closedAt) {
-      const hours = hoursBetween(row.submittedAt, row.closedAt);
-      if (hours !== null) closeHours.push(hours);
-    }
-  }
-
-  const averageResolve = average(resolveHours);
-  const medianResolve = percentile(resolveHours, 0.5);
-  const p90 = percentile(resolveHours, 0.9);
-  const averageClose = average(closeHours);
+  const resolved = summarizeDurations(resolveHours(rows));
+  const closureHours = closeHours(rows);
 
   return {
-    resolvedSample: resolveHours.length,
-    averageHours: averageResolve,
-    medianHours: medianResolve,
-    p90Hours: p90,
-    closedSample: closeHours.length,
-    averageCloseHours: averageClose,
+    resolvedSample: resolved.sampleSize,
+    averageHours: resolved.averageHours,
+    medianHours: resolved.medianHours,
+    p90Hours: resolved.p90Hours,
+    closedSample: closureHours.length,
+    averageCloseHours: average(closureHours),
   };
 }
 
@@ -265,7 +231,7 @@ export function summarizeSla(
   escalations: readonly EscalationRow[],
   now: Date
 ): SlaSummary {
-  const open = rows.filter((row) => !isResolved(row.status));
+  const open = rows.filter((row) => !isResolvedStatus(row.status));
   const overdue = open.filter(
     (row) => row.slaDueAt !== null && row.slaDueAt.getTime() < now.getTime()
   );
@@ -702,10 +668,10 @@ export async function loadEngineeringReport(
     })),
   };
 
-  const resolvedInPeriod = rows.filter((row) => isResolved(row.status)).length;
+  const resolvedInPeriod = rows.filter((row) => isResolvedStatus(row.status)).length;
   const overdueInPeriod = rows.filter(
     (row) =>
-      !isResolved(row.status) &&
+      !isResolvedStatus(row.status) &&
       row.slaDueAt !== null &&
       row.slaDueAt.getTime() < now.getTime()
   ).length;

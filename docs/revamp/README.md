@@ -417,6 +417,19 @@ goes from 389 (stage 6) to 530 across 46 files.
   deadline in the privacy report (amber while inside the three-working-day
   warning window, the same window the desk badges use), and money released more
   than ninety days ago and still unliquidated in the treasury report.
+- **A figure is now computed once, not once per screen.** The dashboards, the
+  admin concern report and the report library had three implementations of the
+  same ideas: what counts as finished, which cases are "pending" or "high
+  priority", how long a case takes (average, median, p90, fastest, slowest),
+  which office is busiest, and how much of the MOOE has been disbursed. The first
+  four now live in `src/lib/cases/figures.ts` and the last in
+  `src/lib/treasury/utilisation.ts`, and every surface reads them — the office
+  desk also reads its four figures from two grouped counts instead of four
+  separate queries. The duration clock is submission → resolution everywhere
+  (`Concern.submittedAt`; identical to row creation in practice, and the clock the
+  SLA engine already used), so the admin dashboard and the engineering report
+  cannot report different processing times. The `/captain` desk has no figures of
+  its own, so nothing changed there.
 - **The sweep now honours a legal hold.** While a resident has a data-subject
   request that is `RECEIVED`/`IN_REVIEW`, the four policies that delete or
   overwrite personal data (`uploads.concern_images`, `pii.id_verification`,

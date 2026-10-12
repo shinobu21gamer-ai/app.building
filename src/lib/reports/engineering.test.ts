@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   REPORT_ROW_LIMIT,
-  average,
-  percentile,
   summarizeCrew,
   summarizeSla,
   summarizeTurnaround,
@@ -50,26 +48,6 @@ function crewRow(overrides: Partial<CrewAssignmentRow> = {}): CrewAssignmentRow 
     ...overrides,
   };
 }
-
-describe("percentile and average", () => {
-  it("returns null for an empty sample", () => {
-    expect(percentile([], 0.5)).toBeNull();
-    expect(average([])).toBeNull();
-  });
-
-  it("uses nearest-rank for percentiles", () => {
-    const values = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    expect(percentile(values, 0.5)).toBe(5);
-    expect(percentile(values, 0.9)).toBe(9);
-    expect(percentile(values, 1)).toBe(10);
-  });
-
-  it("does not mutate the caller's array", () => {
-    const values = [3, 1, 2];
-    percentile(values, 0.5);
-    expect(values).toEqual([3, 1, 2]);
-  });
-});
 
 describe("summarizeVolume", () => {
   const months = ["2026-09", "2026-10"];

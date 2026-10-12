@@ -15,6 +15,7 @@ import {
   statusLabel,
   toMoney,
 } from "@/lib/treasury/ledger";
+import { summarizeUtilisation } from "@/lib/treasury/utilisation";
 
 type Tx = Prisma.TransactionClient;
 
@@ -404,19 +405,17 @@ export async function treasuryDashboard(
     take: 500,
   });
 
-  const activeAllocations = allocations.filter(
-    (allocation) => allocation.status !== "CLOSED"
-  );
-  const totals = activeAllocations.reduce(
-    (acc, allocation) => ({
-      appropriated: roundMoney(acc.appropriated + allocation.appropriation),
-      reserved: roundMoney(acc.reserved + allocation.reserved),
-      disbursed: roundMoney(acc.disbursed + allocation.disbursed),
-      available: roundMoney(acc.available + allocation.available),
-      allocations: acc.allocations + 1,
-    }),
-    { appropriated: 0, reserved: 0, disbursed: 0, available: 0, allocations: 0 }
-  );
+  // The same arithmetic the treasury report's utilisation table uses, from
+  // `summarizeUtilisation` — one definition of "live allocation" and of how a
+  // balance is rounded, so the dashboard and the report cannot drift apart.
+  const live = summarizeUtilisation(allocations).totals;
+  const totals = {
+    appropriated: live.appropriated,
+    reserved: live.reserved,
+    disbursed: live.disbursed,
+    available: live.available,
+    allocations: live.allocations,
+  };
 
   const [
     allocationsAwaitingApproval,
