@@ -207,6 +207,10 @@ beforeAll(async () => {
     data: {
       concernId: closedId,
       crewId: crewUserId,
+      // The report reads assignments by their own date, so a booking made
+      // "now" (the column default) would fall outside every period the tests
+      // report on.
+      assignedAt: daysBefore(NOW, 21),
       scheduledStartAt: daysBefore(NOW, 20),
       scheduledEndAt: daysBefore(NOW, 19),
     },
