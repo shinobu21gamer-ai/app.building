@@ -182,6 +182,7 @@ export function ReportView({
             label={stat.label}
             value={stat.value}
             hint={stat.hint}
+            tone={stat.tone ?? "default"}
           />
         ))}
       </div>

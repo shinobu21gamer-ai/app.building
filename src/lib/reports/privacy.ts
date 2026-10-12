@@ -469,6 +469,14 @@ export function buildPrivacyDocument(
         label: tp.dsrOverdue,
         value: data.dsr.overdue,
         hint: `${data.dsr.dueSoon.toString()} ${tp.dueSoonNote}`,
+        // Past the deadline is a finding; nothing past it but something inside
+        // the warning window is the heads-up the desk badges show too.
+        tone:
+          data.dsr.overdue > 0
+            ? "danger"
+            : data.dsr.dueSoon > 0
+              ? "warning"
+              : "default",
       },
       { label: tp.consentsWithdrawn, value: data.consents.withdrawn },
       { label: tp.piiReads, value: data.piiTotal },

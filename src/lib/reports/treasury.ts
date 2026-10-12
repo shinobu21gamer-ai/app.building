@@ -308,6 +308,12 @@ export function buildTreasuryDocument(
         label: tt.awaitingLiquidation,
         value: peso(data.register.awaitingLiquidation.amount),
         hint: String(data.register.awaitingLiquidation.count),
+        // Money released more than ninety days ago and still not liquidated is
+        // the one figure in this report that is a finding wherever it appears.
+        tone:
+          (data.aging.find((row) => row.bucket === "90+")?.count ?? 0) > 0
+            ? "danger"
+            : "default",
       },
     ],
     sections: [

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { copy } from "@/lib/i18n";
 import {
+  buildPrivacyDocument,
   countBy,
   isOpenDsr,
   summarizeConsents,
@@ -8,6 +10,8 @@ import {
   summarizeRetention,
   type DsrRow,
 } from "@/lib/reports/privacy";
+
+import type { ReportPeriod } from "@/lib/reports/period";
 
 const NOW = new Date("2026-10-12T02:00:00Z");
 
@@ -271,5 +275,48 @@ describe("summarizeRetention", () => {
     ]);
     expect(summary.rows.every((row) => row.scanned === 0)).toBe(true);
     expect(summary.runs).toBe(1);
+  });
+});
+
+describe("the privacy report's deadline figures", () => {
+  const PERIOD: ReportPeriod = { key: "all", from: null, to: null, days: null };
+  const tt = copy.en.revamp.reports.privacy;
+
+  function overdueStat(rows: readonly DsrRow[]) {
+    const document = buildPrivacyDocument(
+      {
+        dsr: summarizeDsr(rows, NOW),
+        consents: summarizeConsents([]),
+        piiByField: [],
+        piiByPurpose: [],
+        piiTotal: 0,
+        retention: summarizeRetention([], []),
+      },
+      { locale: "en", period: PERIOD }
+    );
+    return document.stats.find((stat) => stat.label === tt.dsrOverdue);
+  }
+
+  it("tints the deadline figure by what it means", () => {
+    // Past the deadline: a finding.
+    expect(
+      overdueStat([dsr({ dueAt: new Date("2026-10-05T01:00:00Z") })])?.tone
+    ).toBe("danger");
+
+    // Nothing past it, but one inside the warning window: a heads-up.
+    expect(
+      overdueStat([dsr({ dueAt: new Date("2026-10-15T01:00:00Z") })])?.tone
+    ).toBe("warning");
+
+    // Nothing to warn about.
+    expect(
+      overdueStat([dsr({ dueAt: new Date("2026-11-02T01:00:00Z") })])?.tone
+    ).toBe("default");
+  });
+
+  it("carries the due-soon count in the figure's hint", () => {
+    const stat = overdueStat([dsr({ dueAt: new Date("2026-10-15T01:00:00Z") })]);
+    expect(stat?.value).toBe(0);
+    expect(stat?.hint).toBe(`1 ${tt.dueSoonNote}`);
   });
 });

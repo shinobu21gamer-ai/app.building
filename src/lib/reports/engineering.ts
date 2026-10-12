@@ -726,6 +726,8 @@ export async function loadEngineeringReport(
         label: t.engineering.overdue,
         value: count(sla.overdueNow),
         hint: t.engineering.overdueNow,
+        // Any overdue case is the point of the number, so it is coloured.
+        tone: sla.overdueNow > 0 ? "danger" : "default",
       },
       { label: t.engineering.resolvedInPeriod, value: count(resolvedInPeriod) },
       {
@@ -736,6 +738,14 @@ export async function loadEngineeringReport(
       {
         label: t.engineering.compliance,
         value: percent(sla.complianceRate),
+        // The target is every case on time; below it is a warning, not a
+        // failure — the number is already the share that met the clock.
+        tone:
+          sla.complianceRate === null
+            ? "default"
+            : sla.complianceRate >= 100
+              ? "success"
+              : "warning",
       },
       {
         label: t.engineering.crewHours,

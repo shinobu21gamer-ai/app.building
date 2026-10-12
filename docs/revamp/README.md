@@ -405,6 +405,18 @@ goes from 389 (stage 6) to 530 across 46 files.
   admin composer) and `/notifications` keep their literals on purpose — they are
   the surfaces the Android WebView pins. Verified by compiling the Tailwind
   sheet and asserting every new utility class resolves to CSS.
+- **Figures can now say that a number is a problem.** Stat tiles gained one shared
+  tone vocabulary (`src/lib/design/tones.ts`): `default`, `brand`, `success`,
+  `warning`, `danger`, `info`, each a pair of design-token classes for the tile and
+  the value. `StatCard` accepts the whole set — dashboards previously knew only
+  `default`/`brand` — `ReportStat` (`src/lib/reports/document.ts`) carries the same
+  field, and `ReportView` passes it through, so "this figure is a finding" looks
+  the same on a dashboard and in a report. Tones are set where the number is
+  itself the finding, not as decoration: overdue cases and a below-target SLA
+  compliance rate in the engineering report, data-subject requests past their
+  deadline in the privacy report (amber while inside the three-working-day
+  warning window, the same window the desk badges use), and money released more
+  than ninety days ago and still unliquidated in the treasury report.
 - **The sweep now honours a legal hold.** While a resident has a data-subject
   request that is `RECEIVED`/`IN_REVIEW`, the four policies that delete or
   overwrite personal data (`uploads.concern_images`, `pii.id_verification`,

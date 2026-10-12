@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildTreasuryDocument,
   liquidationAging,
   summarizeRegister,
   summarizeUtilisation,
@@ -8,6 +9,8 @@ import {
 } from "@/lib/reports/treasury";
 import type { ReportPeriod } from "@/lib/reports/period";
 import type { AllocationRow, DisbursementRow } from "@/lib/treasury/query";
+import type { Actor } from "@/lib/treasury/budget";
+import { copy } from "@/lib/i18n";
 
 function allocation(overrides: Partial<AllocationRow> = {}): AllocationRow {
   return {
@@ -211,5 +214,35 @@ describe("summarizeRegister", () => {
       NOW
     );
     expect(summary.rows).toHaveLength(1);
+  });
+});
+
+describe("the treasury report's liquidation figure", () => {
+  const PERIOD: ReportPeriod = { key: "all", from: null, to: null, days: null };
+  const ACTOR: Actor = { id: 1, roleKey: "TREASURER", officeId: null };
+  const tt = copy.en.revamp.reports.treasury;
+
+  function stat(vouchers: DisbursementRow[]) {
+    const document = buildTreasuryDocument(
+      {
+        utilisation: summarizeUtilisation([allocation()]),
+        register: summarizeRegister(vouchers, PERIOD, NOW),
+        aging: liquidationAging(vouchers, NOW),
+        allVouchers: vouchers,
+      },
+      { locale: "en", period: PERIOD, actor: ACTOR }
+    );
+    return document.stats.find((entry) => entry.label === tt.awaitingLiquidation);
+  }
+
+  it("flags money released more than ninety days ago", () => {
+    const stale = voucher({ id: 2, releasedAt: new Date("2026-06-01T02:00:00Z") });
+    expect(stat([stale])?.tone).toBe("danger");
+    expect(stat([stale])?.hint).toBe("1");
+  });
+
+  it("leaves money that is merely recent uncoloured", () => {
+    const fresh = voucher({ id: 3, releasedAt: new Date("2026-10-09T02:00:00Z") });
+    expect(stat([fresh])?.tone).toBe("default");
   });
 });

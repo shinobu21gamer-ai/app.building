@@ -120,6 +120,7 @@ export default async function AdminReportsPage({
           label={t.slaOverdue}
           value={report.overdue}
           hint={t.slaHint}
+          tone={report.overdue > 0 ? "danger" : "default"}
         />
         <StatCard
           label={t.avgTime}

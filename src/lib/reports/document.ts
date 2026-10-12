@@ -1,3 +1,4 @@
+import type { StatTone } from "@/lib/design/tones";
 import { csvCell, csvFilename, toCsv, type CsvValue } from "@/lib/reports/csv";
 import type { ReportPeriod } from "@/lib/reports/period";
 
@@ -36,6 +37,8 @@ export interface ReportStat {
   label: string;
   value: string | number;
   hint?: string;
+  /** Set only where the number itself is a problem (overdue, off-target). */
+  tone?: StatTone;
 }
 
 export interface ReportDocument {

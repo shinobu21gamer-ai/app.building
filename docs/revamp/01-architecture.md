@@ -413,6 +413,12 @@ cover the pure parts; the visual result is the same shell in all six portals.*
   colour alone. Status *words* are translated too (`statusLabelFor()` +
   `revamp.common.statuses`), which the app previously printed in English inside
   Filipino pages.
+- **Figure colour contract.** `StatTone` (`src/lib/design/tones.ts`) is the one
+  vocabulary for stat tiles — `default`, `brand`, `success`, `warning`, `danger`,
+  `info` — shared by `StatCard` (dashboards) and `ReportStat`
+  (`src/lib/reports/document.ts`) and rendered by `ReportView`. A tone is set only
+  when the number is itself the finding (an overdue count, a compliance rate below
+  target, aged unliquidated money), never as decoration.
 - **Mobile-first, thumb-first.** One column on phones with a fixed bottom tab bar
   (`MobileTabBar`): the first four destinations of the role become tabs, the rest
   live behind a "More" sheet; `md` and up swaps to the sticky sidebar (`RoleNav`),
