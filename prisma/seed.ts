@@ -209,7 +209,8 @@ async function main() {
     const defaultOfficeId = offices.get(t.office)!.id;
     const concernType = await prisma.concernType.upsert({
       where: { key: t.key },
-      update: {},
+      // Re-running the seed corrects the destination office of existing types.
+      update: { defaultOfficeId },
       create: {
         key: t.key,
         name: t.name,
@@ -521,7 +522,7 @@ async function main() {
   });
 
   console.log(
-    "  demo users: 1 admin, 7 officials, 1 resident, 1 treasurer, 1 captain, 2 crew"
+    `  demo users: 1 admin, ${offices.size + extraOfficials.length} officials, 1 resident, 1 treasurer, 1 captain, 2 crew`
   );
   console.log("Seeding complete.");
 }

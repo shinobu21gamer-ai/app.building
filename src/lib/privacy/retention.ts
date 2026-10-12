@@ -1,3 +1,4 @@
+import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { summarizeRetention } from "@/lib/reports/privacy";
 import { deleteConcernImage } from "@/lib/uploads";
@@ -803,6 +804,16 @@ export async function runRetentionSweep(
       summary: describeTotals(totals),
       error: totals.failed > 0 ? `${totals.failed.toString()} policy(ies) failed` : null,
     },
+  });
+
+  // The sweep deletes and anonymises personal data, so the run itself goes into
+  // the hash chain, not just the CronRun log. Logged once per sweep, not per row.
+  await recordAudit({
+    action: "PRIVACY_RETENTION_SWEEP",
+    resourceType: "retention",
+    resourceId: String(cronRun.id),
+    description: `Retention sweep (${options.triggerSource ?? "CRON"}): ${describeTotals(totals)}`,
+    userId: options.actorId ?? null,
   });
 
   return {

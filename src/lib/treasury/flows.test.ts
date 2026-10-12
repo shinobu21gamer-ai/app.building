@@ -44,6 +44,7 @@ function makeTx(seed: { appropriation?: number; entries?: Row[]; earmarks?: Row[
     vouchers: [...(seed.vouchers ?? [])] as Row[],
     approvals: [] as Row[],
     nextId: 500,
+    locks: 0,
   };
 
   const balance = () => {
@@ -60,6 +61,12 @@ function makeTx(seed: { appropriation?: number; entries?: Row[]; earmarks?: Row[
   const round = (value: number) => Math.round(value * 100) / 100;
 
   const tx = {
+    // `lockAllocation` takes a row lock (SELECT ... FOR UPDATE). An in-memory
+    // fake has no concurrent writers, so the lock is recorded and then ignored.
+    $queryRaw: async () => {
+      state.locks += 1;
+      return [];
+    },
     budgetAllocation: {
       findUnique: async () => state.allocation,
       update: async ({ data }: { data: Row }) => {

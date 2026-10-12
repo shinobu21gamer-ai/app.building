@@ -9,6 +9,7 @@ without a data restore.
 | Migration | Stage | Contents | Rollback |
 |---|---|---|---|
 | `20261012000000_revamp_core_schema` | 1 | 28 new tables, 34 new columns on 6 tables, 73 indexes/FKs, backfills, seed reference data | `prisma/rollbacks/20261012000000_revamp_core_schema_rollback.sql` |
+| `20261012120000_canonical_destination_offices` | follow-up | Ayuda and Repair routed to offices with no members. Adds `SOCIAL_SERVICES`, `ENGINEERING` and `SECRETARY` as canonical destinations, repoints references from the duplicate `SOCIAL` and `MAINTENANCE` offices, and deactivates those two (no deletes) | `prisma/rollbacks/20261012120000_canonical_destination_offices_rollback.sql` (restores routing config; moved rows stay moved) |
 | *(planned)* `…_rbac_and_privacy` | 2 | `AppSetting`-driven privacy notice version, any column tweaks found while wiring RBAC | same folder convention |
 | *(planned)* `…_treasury_refinements` | 4 | Only if the treasury build needs extra columns; the tables already exist | same |
 | *(planned)* `…_privacy_phone_drop` | 5 | Drops the legacy plaintext `User.phone` after the backfill is verified | re-adds the column, **data not restorable** (documented) |
