@@ -329,10 +329,10 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
 | `src/lib/reports/stream.ts` | N ✅ | `streamDocumentCsv` / `streamSectionCsv`: 250 rows per chunk, byte-identical to the non-streaming writer, `X-Accel-Buffering: no` (14 tests) |
 | `src/lib/reports/catalog.ts` | N ✅ | Report keys, tab keys, per-report permissions, `reportTabs()` |
 | `src/lib/reports/labels.ts` | N ✅ | Labels the screens share: status text, period label, range, generated-at |
-| `src/lib/reports/engineering.ts` | N ✅ | Volume, turnaround (median/p90), SLA compliance, crew utilisation — percentile math, working-day conversion, and overlap detection reusing `cases/crew-rules` + loader (42 tests) |
+| `src/lib/reports/engineering.ts` | N ✅ | Volume, turnaround (median/p90), SLA compliance, crew utilisation — percentile math, working-day conversion, and overlap detection reusing `cases/crew-rules` + loader (30 tests) |
 | `src/lib/reports/treasury.ts` | N ✅ | MOOE utilisation (CLOSED allocations excluded, as on the dashboard), disbursement register, liquidation aging + loader (12 tests) |
-| `src/lib/reports/privacy.ts` | N ✅ | DSR log with working-day lateness, consent counts, PII-access summary, retention-run report — counts only, never a value (19 tests) |
-| `src/lib/reports/transparency.ts` | N ✅ | Public aggregates computed over `PublicCaseRecord` only (15 tests) |
+| `src/lib/reports/privacy.ts` | N ✅ | DSR log with working-day lateness, consent counts, PII-access summary, retention-run report — counts only, never a value (17 tests) |
+| `src/lib/reports/transparency.ts` | N ✅ | Public aggregates computed over `PublicCaseRecord` only (13 tests) |
 | `src/app/api/v1/reports/[report]/route.ts` | N ✅ | One endpoint for all four reports: `?period&from&to&format=csv`, per-report permission, `REPORT_EXPORTED` audit row on export, 404 for an unknown report |
 | `src/components/reports/report-view.tsx` | N ✅ | `ReportPeriodPicker` (a GET form, so the URL is shareable), `ReportTabs`, section tables with CSS share bars |
 | `src/components/reports/report-screen.tsx` | N ✅ | `ReportScreen` + `reportsExportHref` — the one composition every report page uses |
@@ -366,6 +366,10 @@ promise files that are not there):
 - **The retention sweep rides along here** (decision 9): `/admin/privacy` gained
   the manual run, and the daily job went to `/api/v1/cron/retention`. ARCHIVE
   policies count rows without deleting anything.
+
+**New tests in this stage: 141, in eight files** (period 20, csv 16, stream 14,
+engineering 30, treasury 12, privacy 17, transparency 13, retention 19) — the suite
+goes from 389 (stage 6) to 530 across 46 files.
 
 **Known gaps, stated rather than hidden:** the four report loaders have no
 database-level tests — the sandbox has no PostgreSQL, so the aggregate math is
