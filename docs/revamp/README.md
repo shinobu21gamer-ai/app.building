@@ -371,12 +371,29 @@ promise files that are not there):
 engineering 30, treasury 12, privacy 17, transparency 13, retention 19) — the suite
 goes from 389 (stage 6) to 530 across 46 files.
 
+**Close-out additions** (after the table above, all three from the same read-through):
+
+- **Crew members are now told when they are put on a case.**
+  `src/lib/cases/crew.ts` writes one notification row per newly assigned crew
+  member through the frozen service's own `NOTIFICATION_TYPES.CONCERN_ASSIGNED`
+  — a machine-written row exactly like the SLA job's, so no new type and no edit
+  to the frozen file. Before this, assignment wrote a case-history entry and
+  nothing else: a crew member who was not already looking at the portal was
+  never told.
+- `scripts/public-record-backfill.ts` (decision 7) and `scripts/pii-rotate.ts`
+  with its unit-tested core `src/lib/privacy/rotate.ts` (decision 3).
+- `.env.example` documents both scripts beside the secret they belong to.
+
 **Known gaps, stated rather than hidden:** the four report loaders have no
 database-level tests — the sandbox has no PostgreSQL, so the aggregate math is
 covered by fixture tests and the loaders by types + a clean build. In
 `engineering.ts` a crew member's utilisation is derived from assignment windows;
 `treasury.ts` prints a worker's trade as blank because `CrewAssignment` carries no
-trade column (`CrewProfile.trade` is the column to join if that is wanted).
+trade column (`CrewProfile.trade` is the column to join if that is wanted). Data
+subject requests show their working-day lateness on `/admin/privacy`, but there is
+no reminder job for them: the frozen notification contract has no staff-facing
+privacy type, so a reminder needs either a new type in a frozen file or a machine
+row that misstates what it is. That is a decision, not an oversight.
 
 ---
 
@@ -396,7 +413,12 @@ trade column (`CrewProfile.trade` is the column to join if that is wanted).
 3. **New env var: `PII_ENCRYPTION_KEY`.** One 32-byte secret; HKDF derives the AES-256-GCM
    key and the lookup-HMAC key. Documented in `.env.example` (which is edited — it is not
    a frozen env var). Losing this key makes encrypted phone numbers/ID numbers
-   unrecoverable; the plan includes a key-rotation note.
+   unrecoverable, so the rotation is built rather than described:
+   `npm run privacy:pii-rotate` (`scripts/pii-rotate.ts`, rules in
+   `src/lib/privacy/rotate.ts`) re-encrypts every ciphertext **and** re-derives
+   every lookup hash from `PII_ENCRYPTION_KEY_PREVIOUS` to `PII_ENCRYPTION_KEY`
+   in one pass — dry run first, idempotent if interrupted, and reversible by
+   swapping the two variables while the old key is still configured.
 4. **Resident ID verification gating.** Proposal: verification is required to submit
    `AYUDA` and `BUDGET` concerns (benefit-bearing), advisory for `REPAIR`/`DOCUMENTS`,
    and the whole rule is switchable by an admin setting (`resident.verification_required`).
@@ -410,8 +432,14 @@ trade column (`CrewProfile.trade` is the column to join if that is wanted).
    in the UI as “no manpower plan recorded”. Confirm that is the behaviour you want.
 7. **Public transparency page.** Published rows live in `PublicCaseRecord` and carry an
    anonymous reference (`BR-PUB-…`), never the real case number; coordinates are rounded
-   to a coarse geohash. Historical cases are only projected after the consent review in
-   stage 6 — the migration does not publish anything by itself.
+   to a coarse geohash. Historical cases are only projected after the consent review — the
+   migration does not publish anything by itself, and neither does the backfill:
+   `npm run privacy:public-backfill` (`scripts/public-record-backfill.ts`) walks the
+   existing cases and imports the live path's own `publicationDecision()`, so a case is
+   published only when the resident consented to `TRANSPARENCY_PUBLICATION` and the title
+   still says something after the resident's name is scrubbed out of it. Dry run by
+   default, `--apply` to write, safe to re-run: the `BR-PUB-…` reference is preserved and
+   a withdrawn consent flips `published` back off.
 8. **The case map is interactive on case pages and static in public.** Staff and
    resident case pages mount Leaflet over the same OpenStreetMap tiles, so the pin
    can be panned and zoomed while planning a repair; the public transparency page

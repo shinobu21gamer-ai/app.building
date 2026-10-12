@@ -21,6 +21,8 @@
     "db:validate": "prisma validate",
     "db:bootstrap-rbac": "tsx scripts/bootstrap-rbac.ts",
     "privacy:pii-backfill": "tsx scripts/pii-backfill.ts",
+    "privacy:pii-rotate": "tsx scripts/pii-rotate.ts",
+    "privacy:public-backfill": "tsx scripts/public-record-backfill.ts",
     "audit:chain-backfill": "tsx scripts/audit-chain-backfill.ts",
     "email:retry": "tsx scripts/retry-email-deliveries.ts",
     "android:sync": "node scripts/build-android.mjs --sync-only",

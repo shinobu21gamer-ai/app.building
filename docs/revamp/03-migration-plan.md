@@ -91,7 +91,8 @@ table rewrite. For a very large installation, run the two `UPDATE`s out of band
 | Categories left `NULL` (NOISE, OTHER) | admin triage queue | manually, after go-live |
 | `User.phoneEncrypted`/`phoneLast4`/`phoneHash` ← plaintext `phone` | `scripts/pii-backfill.ts` | stage 2, verified before the plaintext column is dropped in stage 5 |
 | `Audit.seq`/`prevHash`/`hash` for pre-revamp rows | `scripts/audit-chain-backfill.ts` | stage 5, before enabling the verification job |
-| `PublicCaseRecord` for historical cases | stage 6 backfill, gated on `ConsentRecord(TRANSPARENCY_PUBLICATION)` | stage 6, after the consent review |
+| `PublicCaseRecord` for historical cases | `scripts/public-record-backfill.ts`, gated on `ConsentRecord(TRANSPARENCY_PUBLICATION)` and a title that survives scrubbing — the script imports the live path's own `publicationDecision()`, so it can never publish what the app would not | after the consent review (stage 6/7, dry run first: `npm run privacy:public-backfill`) |
+| Re-encrypted PII after a key rotation | `scripts/pii-rotate.ts` (rules in `src/lib/privacy/rotate.ts`, unit tested) | whenever `PII_ENCRYPTION_KEY` changes; dry run, then `--apply`, then `--verify` |
 
 ## 4. Reference data seeded by the migration
 
@@ -158,6 +159,31 @@ and it is why step 2 (backup) is mandatory.
 Partial rollback during the revamp: if only stage 3 is being rolled back, do
 *not* run the stage-1 rollback; the schema stays and only the code reverts. The
 stage-1 rollback is for abandoning the revamp entirely.
+
+### PII key rotation (no schema change, still reversible)
+
+`PII_ENCRYPTION_KEY` is the one secret whose loss or change is unrecoverable
+without a script, so it gets a procedure of its own:
+
+```bash
+# 1. Set the NEW key in PII_ENCRYPTION_KEY and keep the old one as
+#    PII_ENCRYPTION_KEY_PREVIOUS (both are read only by the rotation script).
+npm run privacy:pii-rotate               # dry run: how many rows move, what fails
+npm run privacy:pii-rotate -- --apply     # re-encrypt + re-hash, row by row
+npm run privacy:pii-rotate -- --verify    # every row decrypts and its hash matches
+# 2. Only after --verify is clean, remove PII_ENCRYPTION_KEY_PREVIOUS.
+```
+
+Rotation is two moves per row and they cannot be split: the same secret derives
+the AES-256-GCM key **and** the lookup HMAC, so a row re-encrypted without
+re-hashing becomes unfindable, and one re-hashed without re-encrypting becomes
+unreadable. `src/lib/privacy/rotate.ts` returns both values or neither.
+
+The property that makes it safe to interrupt: each row is one update, a row
+already on the new key is detected and skipped (so re-running resumes instead of
+double-rotating), and while `PII_ENCRYPTION_KEY_PREVIOUS` is still set the
+rotation can be reversed by swapping the two variables and running `--apply`
+again — the same script, the same rules.
 
 ## 7. Risks and mitigations
 

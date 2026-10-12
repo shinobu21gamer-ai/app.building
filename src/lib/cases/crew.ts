@@ -9,6 +9,8 @@ import type { Prisma } from "@prisma/client";
 import { createApiError } from "@/lib/api";
 import { canManageConcern, type WorkflowActor } from "@/lib/cases/workflow";
 import { crewCoverage } from "@/lib/cases/manpower";
+import { NOTIFICATION_TYPES } from "@/lib/notifications/service";
+import { formatDateTime } from "@/lib/format";
 
 type Tx = Prisma.TransactionClient;
 
@@ -399,6 +401,26 @@ export async function assignCrew(
         actorRole: input.actor.roleKey,
       },
     });
+
+    // The assigned crew members are told through the existing notification
+    // contract — the same machine-written row the SLA job uses with the frozen
+    // `NOTIFICATION_TYPES` set, never a new type and never a free-form message.
+    // The crew portal lists the job, but someone who is not looking at the app
+    // has to be told they were put on it.
+    const schedule = input.scheduledStartAt
+      ? ` Scheduled ${formatDateTime(input.scheduledStartAt)}.`
+      : "";
+    for (const crewId of incoming) {
+      await tx.notification.create({
+        data: {
+          userId: crewId,
+          concernId: concern.id,
+          type: NOTIFICATION_TYPES.CONCERN_ASSIGNED,
+          title: "Crew assignment",
+          message: `You have been assigned to case ${concern.caseNumber} as crew.${schedule}`,
+        },
+      });
+    }
   }
 
   const [rows, progress] = await Promise.all([
