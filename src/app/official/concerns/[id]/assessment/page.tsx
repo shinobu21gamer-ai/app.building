@@ -151,13 +151,15 @@ export default async function AssessmentPage({ params }: PageProps) {
           {concern.caseAssessment && (
             <Card title={t.costTitle} description={t.costDesc}>
               <dl className="space-y-2 text-sm">
-                {[
-                  [t.labor, concern.caseAssessment.laborCost],
-                  [t.materials, concern.caseAssessment.materialsCost],
-                  [t.equipmentCost, concern.caseAssessment.equipmentCost],
-                  [t.other, concern.caseAssessment.otherCost],
-                  [t.estimate, concern.caseAssessment.totalCost],
-                ].map(([label, value]) => (
+                {(
+                  [
+                    [t.labor, concern.caseAssessment.laborCost],
+                    [t.materials, concern.caseAssessment.materialsCost],
+                    [t.equipmentCost, concern.caseAssessment.equipmentCost],
+                    [t.other, concern.caseAssessment.otherCost],
+                    [t.estimate, concern.caseAssessment.totalCost],
+                  ] as Array<[string, unknown]>
+                ).map(([label, value]) => (
                   <div key={String(label)} className="flex justify-between gap-3">
                     <dt className="text-slate-500">{label}</dt>
                     <dd className="font-medium tabular-nums text-slate-900">
