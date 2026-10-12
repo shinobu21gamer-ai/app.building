@@ -348,7 +348,7 @@ facade `src/lib/cases/service.ts` and the concern routes already called).*
 | Masking for staff | `phoneLast4` / `idNumberLast4` are the only visible parts; unmasking a full value requires a reason and writes `PiiAccessLog` |
 | Rights of the data subject | `DataSubjectRequest` (access, rectification, erasure, portability, objection, complaint) with a 15-working-day `dueAt`; `ErasureExecution` records exactly what was deleted and what had to be retained (audit, treasury, tax) |
 | Retention & disposal | `RetentionPolicy` rows per data category, executed by `src/lib/privacy/retention.ts` — daily from `/api/v1/cron/retention` or on demand from `/admin/privacy` — logged in `RetentionRun`. An `ARCHIVE` policy (audit rows, PII access log, DSR records) counts its category and deletes nothing; a `DELETE`/`ANONYMISE` policy only touches rows older than its window, at most `RETENTION_MAX_ROWS` per run, so a backlog is worked off over several nights instead of one destructive sweep |
-| Transparency | Public page + map built from `PublicCaseRecord` (anonymous `BR-PUB-…` reference, coarse geohash, scrubbed title) |
+| Transparency | Public page + map built from `PublicCaseRecord` (anonymous `BR-PUB-…` reference, coarse geohash, scrubbed title). Withdrawing the publication consent, and completing an erasure request, un-publish the resident's rows immediately (`unpublishResidentRecords`), because the projection is otherwise only refreshed on a case's next status change |
 | Accountability | Hash-chained `Audit` + `PiiAccessLog` + `AuditVerificationRun` |
 
 Encryption and masking live in one module (`src/lib/privacy/crypto.ts`,

@@ -355,7 +355,8 @@ promise files that are not there):
   document. The admin concern report's CSV route now uses the shared writer too.
 - **One endpoint** (`GET /api/v1/reports/[report]`) rather than a route per
   report; the report key is the only variable, and permissions are looked up per
-  key. The pre-existing `/api/v1/admin/reports/concerns` export stays where it is.
+  key. The pre-existing `/api/v1/admin/reports/concerns` export keeps its URL and its
+  columns, and now streams through the shared writer as well.
 - **Four more report screens than planned**: `/official/reports`,
   `/treasury/reports` and `/captain/reports` reuse the admin components. Residents
   get no reports screen: every report is either barangay-wide, office-scoped or
@@ -380,6 +381,14 @@ goes from 389 (stage 6) to 530 across 46 files.
   to the frozen file. Before this, assignment wrote a case-history entry and
   nothing else: a crew member who was not already looking at the portal was
   never told.
+- **Withdrawing the publication consent — and completing an erasure request —
+  takes the resident's cases off the public page at once.** Both paths now call
+  `unpublishResidentRecords()` (`cases/public-record.ts`): consent withdrawal from
+  `DELETE /api/v1/privacy/consents` (audited, with the count returned), erasure
+  from `executeErasure()` in the same transaction that withdraws the consent rows
+  and anonymises the resident, recorded in the erasure report as
+  `public_case_projection`. Before this the projection only refreshed on a case's
+  *next status change*, so a withdrawn consent could sit published indefinitely.
 - `scripts/public-record-backfill.ts` (decision 7) and `scripts/pii-rotate.ts`
   with its unit-tested core `src/lib/privacy/rotate.ts` (decision 3).
 - `.env.example` documents both scripts beside the secret they belong to.
@@ -439,7 +448,8 @@ row that misstates what it is. That is a decision, not an oversight.
    published only when the resident consented to `TRANSPARENCY_PUBLICATION` and the title
    still says something after the resident's name is scrubbed out of it. Dry run by
    default, `--apply` to write, safe to re-run: the `BR-PUB-…` reference is preserved and
-   a withdrawn consent flips `published` back off.
+   a withdrawn consent flips `published` back off. Withdrawal and erasure do not wait for
+   the backfill or for a status change — see the close-out additions below.
 8. **The case map is interactive on case pages and static in public.** Staff and
    resident case pages mount Leaflet over the same OpenStreetMap tiles, so the pin
    can be panned and zoomed while planning a repair; the public transparency page

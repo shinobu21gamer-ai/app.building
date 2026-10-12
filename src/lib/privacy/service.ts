@@ -16,6 +16,7 @@ import { db } from "@/lib/db";
 import { createApiError } from "@/lib/api";
 import { hasPiiKey } from "@/lib/privacy/crypto";
 import { readablePhone } from "@/lib/privacy/phone-store";
+import { unpublishResidentRecords } from "@/lib/cases/public-record";
 import {
   addWorkingDays,
   dsrReferencePrefix,
@@ -296,6 +297,14 @@ export async function executeErasure(
     data: { status: "WITHDRAWN", withdrawnAt: new Date() },
   });
 
+  // The resident is being anonymised, so nothing of theirs may stay on the
+  // public transparency page — the consent rows above are withdrawn in the same
+  // transaction, but a published projection would otherwise survive them.
+  const publicRecordsUnpublished = await unpublishResidentRecords(
+    tx,
+    subjectUserId
+  );
+
   const identities = await tx.identityVerification.updateMany({
     where: { userId: subjectUserId },
     data: {
@@ -342,9 +351,11 @@ export async function executeErasure(
       "position",
       "identity_document",
       "consents",
+      "public_case_projection",
     ],
     consentRowsWithdrawn: consents.count,
     identityRowsCleared: identities.count,
+    publicRecordsUnpublished,
     retainedCategories: RETAINED_CATEGORIES,
     executedAt: new Date().toISOString(),
   };

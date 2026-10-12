@@ -54,6 +54,32 @@ export function publicationDecision(
 }
 
 /**
+ * Takes every projected case of one resident off the public page.
+ *
+ * `syncPublicRecord` refreshes a projection on the next status change and reads
+ * the consent when it does, so a withdrawal and an erasure both need a path that
+ * does not wait for a case to move. Called from the consent-withdrawal route
+ * (RA 10173 §13: consent is withdrawable as easily as it is given) and from
+ * `executeErasure` (the resident is anonymised, so their cases cannot stay
+ * published).
+ *
+ * The title goes with `published` — it was derived from the resident's case and
+ * there is no reason to keep the text of a withdrawn publication. The row itself
+ * stays: the `BR-PUB-…` reference is never reused, so an old link keeps pointing
+ * at the same (now unpublished) record rather than at somebody else's case.
+ */
+export async function unpublishResidentRecords(
+  tx: Tx,
+  userId: number
+): Promise<number> {
+  const { count: unpublished } = await tx.publicCaseRecord.updateMany({
+    where: { published: true, concern: { userId } },
+    data: { published: false, publicTitle: null, anonymizedAt: new Date() },
+  });
+  return unpublished;
+}
+
+/**
  * Creates or refreshes the public projection for a case. Safe to call on every
  * status change: it is idempotent, keeps the existing public reference, and
  * flips `published` off when the resident withdraws the consent.

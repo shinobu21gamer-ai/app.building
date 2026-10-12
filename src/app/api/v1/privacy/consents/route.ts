@@ -13,6 +13,11 @@ import {
   type ConsentPurpose,
 } from "@/lib/privacy/catalog";
 import { currentConsents, grantConsent, withdrawConsent } from "@/lib/privacy/consent";
+import {
+  TRANSPARENCY_CONSENT_PURPOSE,
+  unpublishResidentRecords,
+} from "@/lib/cases/public-record";
+import { db } from "@/lib/db";
 
 export const runtime = "nodejs";
 
@@ -96,16 +101,27 @@ export const DELETE = withErrorBoundary(async (req: Request) => {
     throw createApiError.notFound("There is no active consent for that purpose.");
   }
 
+  // Withdrawing publication consent has to take the resident's cases off the
+  // public page now, not at the next status change: the projection is refreshed
+  // by a status move, and nothing guarantees one is coming.
+  const unpublished =
+    raw === TRANSPARENCY_CONSENT_PURPOSE
+      ? await db.$transaction((tx) => unpublishResidentRecords(tx, user.id))
+      : 0;
+
   await recordAudit({
     action: "CONSENT_WITHDRAWN",
     resourceType: "consent",
     resourceId: raw,
-    description: `Withdrew consent ${raw}.`,
+    description:
+      unpublished > 0
+        ? `Withdrew consent ${raw}; ${unpublished.toString()} public case record(s) unpublished.`
+        : `Withdrew consent ${raw}.`,
     userId: user.id,
     ...meta,
   });
 
-  return ok({ consent });
+  return ok({ consent, unpublishedPublicRecords: unpublished });
 });
 
 async function readPurposeBody(req: Request): Promise<ConsentPurpose> {
