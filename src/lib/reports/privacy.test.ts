@@ -44,6 +44,24 @@ describe("summarizeDsr", () => {
     expect(summary.byType.find((row) => row.type === "COMPLAINT")?.count).toBe(0);
   });
 
+  it("separates the requests that are about to run out of time", () => {
+    const summary = summarizeDsr(
+      [
+        // Due Thursday, looked at on Monday: inside the three-working-day window.
+        dsr({ referenceCode: "DSR-2026-0003", dueAt: new Date("2026-10-15T01:00:00Z") }),
+        // Due next month: nothing to warn about yet.
+        dsr({ referenceCode: "DSR-2026-0004", dueAt: new Date("2026-11-02T01:00:00Z") }),
+        // Already past: overdue, not due soon.
+        dsr({ referenceCode: "DSR-2026-0005", dueAt: new Date("2026-10-05T01:00:00Z") }),
+      ],
+      NOW
+    );
+
+    expect(summary.dueSoon).toBe(1);
+    expect(summary.overdue).toBe(1);
+    expect(summary.overdue + summary.dueSoon).toBe(2);
+  });
+
   it("flags requests past the statutory deadline and measures the lateness", () => {
     const summary = summarizeDsr(
       [

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { DsrDeadlineState } from "@/lib/privacy/dates";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,10 @@ type DsrRow = {
   details: string | null;
   resolutionNotes: string | null;
   denialReason: string | null;
-  overdue: boolean;
+  /** Where the request stands against its deadline (see `dsrDeadlineState`). */
+  deadline: DsrDeadlineState;
+  /** Working days until the deadline; negative once it has passed. */
+  workingDays: number | null;
   resident: {
     id: number;
     name: string;
@@ -124,7 +128,24 @@ export function DsrQueue({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {request.overdue && <Badge tone="red">{t.overdue}</Badge>}
+                {request.deadline === "late" && (
+                  <Badge tone="red">
+                    {t.lateDays.replace(
+                      "{days}",
+                      String(Math.abs(request.workingDays ?? 0))
+                    )}
+                  </Badge>
+                )}
+                {request.deadline === "due_soon" && (
+                  <Badge tone="amber">
+                    {(request.workingDays ?? 0) <= 0
+                      ? t.dueToday
+                      : t.dueSoonDays.replace(
+                          "{days}",
+                          String(request.workingDays ?? 0)
+                        )}
+                  </Badge>
+                )}
                 <Badge
                   tone={
                     request.status === "COMPLETED"

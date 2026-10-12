@@ -89,3 +89,54 @@ export function formatDsrReference(year: number, sequence: number): string {
 export function dsrDeadlineLabel(): string {
   return `${DSR_STATUTORY_WORKING_DAYS} working days`;
 }
+
+/* --------------------------------------------------------------- the warning */
+
+/**
+ * How many working days before the deadline the staff desks start warning.
+ *
+ * The deadline itself is a hard date; this is the "you will not have time if you
+ * start now" margin, expressed in the same working-day clock the IRR uses.
+ */
+export const DSR_WARNING_WORKING_DAYS = 3;
+
+export type DsrDeadlineState = "none" | "open" | "due_soon" | "late";
+
+/** Working days until the deadline; negative once it has passed, 0 on the day. */
+export function dsrWorkingDaysRemaining(
+  dueAt: Date,
+  now: Date = new Date(),
+  holidays: readonly string[] = []
+): number {
+  return workingDaysBetween(now, dueAt, holidays);
+}
+
+/**
+ * Where a request stands against its deadline.
+ *
+ * `none` means there is nothing to warn about — no deadline was recorded, or the
+ * request has already been decided. Otherwise the deadline *instant* decides
+ * lateness, exactly as the request queue, the counts and the report's overdue
+ * figure already do (one clock, one answer), and the working-day window decides
+ * whether it is close enough to warn about.
+ */
+export function dsrDeadlineState(input: {
+  dueAt: Date | null | undefined;
+  resolvedAt?: Date | null;
+  now?: Date;
+  warningWorkingDays?: number;
+  holidays?: readonly string[];
+}): DsrDeadlineState {
+  const dueAt = input.dueAt ?? null;
+  if (dueAt === null) return "none";
+  if (input.resolvedAt) return "none";
+
+  const now = input.now ?? new Date();
+  const warning = input.warningWorkingDays ?? DSR_WARNING_WORKING_DAYS;
+
+  if (dueAt.getTime() < now.getTime()) return "late";
+
+  const remaining = dsrWorkingDaysRemaining(dueAt, now, input.holidays ?? []);
+  if (remaining <= warning) return "due_soon";
+  return "open";
+}

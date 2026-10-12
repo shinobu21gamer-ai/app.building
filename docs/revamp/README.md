@@ -419,16 +419,22 @@ goes from 389 (stage 6) to 530 across 46 files.
   with its unit-tested core `src/lib/privacy/rotate.ts` (decision 3).
 - `.env.example` documents both scripts beside the secret they belong to.
 
-**Known gaps, stated rather than hidden:** the four report loaders have no
-database-level tests — the sandbox has no PostgreSQL, so the aggregate math is
-covered by fixture tests and the loaders by types + a clean build. In
-`engineering.ts` a crew member's utilisation is derived from assignment windows;
-`treasury.ts` prints a worker's trade as blank because `CrewAssignment` carries no
-trade column (`CrewProfile.trade` is the column to join if that is wanted). Data
-subject requests show their working-day lateness on `/admin/privacy`, but there is
-no reminder job for them: the frozen notification contract has no staff-facing
-privacy type, so a reminder needs either a new type in a frozen file or a machine
-row that misstates what it is. That is a decision, not an oversight.
+**Known gaps, stated rather than hidden:** in `engineering.ts` a crew member's
+utilisation is derived from assignment windows, and `treasury.ts` prints a
+worker's trade as blank because `CrewAssignment` carries no trade column
+(`CrewProfile.trade` is the column to join if that is wanted).
+
+The report loaders and the retention sweep now *do* have database-level tests:
+`tests/db/**` runs against the `postgres:16` service container in the `database`
+CI job (see "Verification" below), and the first run of it paid for itself by
+finding a double-counted open case in the engineering SLA figures.
+
+Data-subject request deadlines are warned about **in the desk, not by
+notification**: a request inside its last three working days is badged amber
+("Due in 2 working day(s)", "Due today") on `/admin/privacy`, and the privacy
+report carries the same count beside its overdue figure. A reminder job would
+need a staff-facing type in the frozen notification contract, so the badge is the
+honest version of the same warning — the decision, recorded.
 
 ---
 

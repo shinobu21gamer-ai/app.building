@@ -14,7 +14,7 @@ import {
   DSR_TYPES,
   type DsrType,
 } from "@/lib/privacy/catalog";
-import { workingDaysBetween } from "@/lib/privacy/dates";
+import { dsrDeadlineState, workingDaysBetween } from "@/lib/privacy/dates";
 
 /**
  * The barangay's own RA 10173 scorecard: what residents asked for, what they
@@ -83,6 +83,8 @@ export interface DsrSummary {
   received: number;
   open: number;
   overdue: number;
+  /** Open requests whose deadline falls inside the warning window. */
+  dueSoon: number;
   completed: number;
   averageHandlingDays: number | null;
   byType: { type: string; label: string; count: number; completed: number; overdue: number }[];
@@ -105,6 +107,14 @@ export function summarizeDsr(
       isOpenDsr(row.status) &&
       row.dueAt !== null &&
       row.dueAt.getTime() < now.getTime()
+  );
+
+  // The same third-of-a-week margin the privacy desk badges, so the report and
+  // the queue never disagree about which request is about to run out of time.
+  const dueSoon = rows.filter(
+    (row) =>
+      isOpenDsr(row.status) &&
+      dsrDeadlineState({ dueAt: row.dueAt, resolvedAt: row.resolvedAt, now }) === "due_soon"
   );
 
   const handled = rows.filter(
@@ -161,6 +171,7 @@ export function summarizeDsr(
     received: rows.length,
     open: rows.filter((row) => isOpenDsr(row.status)).length,
     overdue: overdue.length,
+    dueSoon: dueSoon.length,
     completed: handled.length,
     averageHandlingDays: averageDays,
     byType,
@@ -454,7 +465,11 @@ export function buildPrivacyDocument(
     stats: [
       { label: tp.dsrReceived, value: data.dsr.received },
       { label: tp.dsrOpen, value: data.dsr.open },
-      { label: tp.dsrOverdue, value: data.dsr.overdue },
+      {
+        label: tp.dsrOverdue,
+        value: data.dsr.overdue,
+        hint: `${data.dsr.dueSoon.toString()} ${tp.dueSoonNote}`,
+      },
       { label: tp.consentsWithdrawn, value: data.consents.withdrawn },
       { label: tp.piiReads, value: data.piiTotal },
       { label: tp.retentionAffected, value: data.retention.affected },

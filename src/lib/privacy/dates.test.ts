@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   DSR_STATUTORY_WORKING_DAYS,
+  DSR_WARNING_WORKING_DAYS,
   addWorkingDays,
+  dsrDeadlineState,
+  dsrWorkingDaysRemaining,
   dsrReferencePrefix,
   formatDsrReference,
   isWeekend,
@@ -79,5 +82,68 @@ describe("reference codes", () => {
     // 2026-12-31T16:30Z is already 2027 in Manila (UTC+8).
     expect(manilaYear(new Date("2026-12-31T16:30:00Z"))).toBe(2027);
     expect(manilaYear(new Date("2026-12-31T15:30:00Z"))).toBe(2026);
+  });
+});
+
+describe("dsrDeadlineState", () => {
+  const at = (iso: string) => new Date(`${iso}T09:00:00Z`);
+
+  it("warns three working days out, and only then", () => {
+    expect(DSR_WARNING_WORKING_DAYS).toBe(3);
+    // Monday → Thursday is three working days; Monday → Friday is four.
+    expect(dsrDeadlineState({ dueAt: at("2026-10-15"), now: MONDAY })).toBe("due_soon");
+    expect(dsrDeadlineState({ dueAt: at("2026-10-16"), now: MONDAY })).toBe("open");
+  });
+
+  it("treats the deadline day itself as due soon, not late", () => {
+    expect(dsrDeadlineState({ dueAt: at("2026-10-12"), now: MONDAY })).toBe("due_soon");
+    expect(dsrWorkingDaysRemaining(at("2026-10-12"), MONDAY)).toBe(0);
+  });
+
+  it("uses the deadline instant for lateness, so the card agrees with the counts", () => {
+    // Due at 00:30 today, looked at at 09:00: the deadline has passed, so this
+    // is late even though it is the same working day.
+    expect(
+      dsrDeadlineState({
+        dueAt: new Date("2026-10-12T00:30:00Z"),
+        now: MONDAY,
+      })
+    ).toBe("late");
+  });
+
+  it("is late the next working day, and skips the weekend counting", () => {
+    // Due Friday, looked at on Monday: one working day late, not three.
+    expect(
+      dsrDeadlineState({ dueAt: at("2026-10-16"), now: at("2026-10-19") })
+    ).toBe("late");
+    expect(dsrWorkingDaysRemaining(at("2026-10-16"), at("2026-10-19"))).toBe(-1);
+  });
+
+  it("says nothing when there is no deadline or the request is decided", () => {
+    expect(dsrDeadlineState({ dueAt: null, now: MONDAY })).toBe("none");
+    expect(
+      dsrDeadlineState({
+        dueAt: at("2026-10-05"),
+        resolvedAt: at("2026-10-04"),
+        now: MONDAY,
+      })
+    ).toBe("none");
+  });
+
+  it("accepts a caller's own warning window and holiday list", () => {
+    expect(
+      dsrDeadlineState({ dueAt: at("2026-10-16"), now: MONDAY, warningWorkingDays: 4 })
+    ).toBe("due_soon");
+    expect(
+      dsrDeadlineState({
+        dueAt: at("2026-10-15"),
+        now: MONDAY,
+        warningWorkingDays: 0,
+      })
+    ).toBe("open");
+    // A holiday inside the window shortens the remaining working days.
+    expect(
+      dsrWorkingDaysRemaining(at("2026-10-16"), MONDAY, ["2026-10-14"])
+    ).toBe(3);
   });
 });

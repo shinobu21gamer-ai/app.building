@@ -19,6 +19,7 @@ import {
 import { isIdentityGateEnabled } from "@/lib/identity/verification";
 import { retentionDesk } from "@/lib/privacy/retention";
 import { maskedPhoneDisplay } from "@/lib/privacy/phone-store";
+import { dsrDeadlineState, dsrWorkingDaysRemaining } from "@/lib/privacy/dates";
 
 
 export const metadata: Metadata = {
@@ -33,6 +34,8 @@ export default async function AdminPrivacyPage() {
   await requirePermission("privacy.dsr.handle");
   const locale = await getLocale();
   const t = copy[locale].revamp.adminDesk;
+
+  const now = new Date();
 
   const [requests, counts, accessLog, gateEnabled, retention] = await Promise.all([
     listDataSubjectRequests(),
@@ -77,10 +80,15 @@ export default async function AdminPrivacyPage() {
             details: request.details,
             resolutionNotes: request.resolutionNotes,
             denialReason: request.denialReason,
-            overdue:
-              request.dueAt !== null &&
-              request.resolvedAt === null &&
-              request.dueAt.getTime() < Date.now(),
+            deadline: dsrDeadlineState({
+              dueAt: request.dueAt,
+              resolvedAt: request.resolvedAt,
+              now,
+            }),
+            workingDays:
+              request.dueAt === null
+                ? null
+                : dsrWorkingDaysRemaining(request.dueAt, now),
             resident: {
               id: request.user.id,
               name: `${request.user.firstName} ${request.user.lastName}`.trim(),
