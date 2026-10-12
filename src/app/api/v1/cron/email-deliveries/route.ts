@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { retryPendingEmailDeliveries } from "@/lib/email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function isAuthorized(req: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const authorization = req.headers.get("authorization");
-  return authorization === `Bearer ${secret}`;
+  return isCronAuthorized(req);
 }
 
 export async function POST(req: Request) {

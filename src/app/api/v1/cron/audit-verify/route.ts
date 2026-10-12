@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { recordAudit } from "@/lib/audit";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { serializeAuditReport, verifyAuditChain } from "@/lib/audit/store";
 
 // Verifies the whole audit chain and records an AuditVerificationRun — the
@@ -9,10 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function isAuthorized(req: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const authorization = req.headers.get("authorization");
-  return authorization === `Bearer ${secret}`;
+  return isCronAuthorized(req);
 }
 
 async function handle(req: Request) {

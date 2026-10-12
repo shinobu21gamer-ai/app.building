@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { runSlaEscalations } from "@/lib/sla/escalation";
 
 // The 48-hour escalation job. Same guard as /api/v1/cron/email-deliveries: only
@@ -9,10 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function isAuthorized(req: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const authorization = req.headers.get("authorization");
-  return authorization === `Bearer ${secret}`;
+  return isCronAuthorized(req);
 }
 
 async function handle(req: Request) {

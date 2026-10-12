@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { recordAudit } from "@/lib/audit";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { RETENTION_JOB, runRetentionSweep } from "@/lib/privacy/retention";
 
 /**
@@ -24,9 +25,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function isAuthorized(req: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return req.headers.get("authorization") === `Bearer ${secret}`;
+  return isCronAuthorized(req);
 }
 
 function unauthorized(): NextResponse {

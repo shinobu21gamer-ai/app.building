@@ -2,7 +2,9 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import {
   AUDIT_CHAIN_VERSION,
+  AUDIT_CHAIN_VERSION_KEYED,
   AUDIT_GENESIS_PREV_HASH,
+  auditChainKey,
   checkAuditRows,
   computeAuditHash,
   formatAuditDigest,
@@ -81,7 +83,8 @@ export async function appendAuditEntry(
     ip: input.ip ?? null,
     createdAt,
   };
-  const hash = computeAuditHash({ prevHash, payload });
+  const key = auditChainKey();
+  const hash = computeAuditHash({ prevHash, payload, key });
 
   await tx.audit.create({
     data: {
@@ -97,7 +100,7 @@ export async function appendAuditEntry(
       seq,
       prevHash,
       hash,
-      chainVersion: AUDIT_CHAIN_VERSION,
+      chainVersion: key ? AUDIT_CHAIN_VERSION_KEYED : AUDIT_CHAIN_VERSION,
     },
   });
 
@@ -344,6 +347,7 @@ export async function verifyAuditChain(options: {
 
       const verdict: AuditChainCheck = checkAuditRows(rows.map(toVerificationRow), expectedPrev, {
         expectSeqFrom: expectedSeq,
+        key: auditChainKey(),
       });
 
       checkedCount += verdict.checked;
@@ -711,8 +715,10 @@ export async function chainLegacyAuditEntries(options?: {
         });
         const seq = state.lastSeq;
         const prevHash = state.lastHash;
+        const key = auditChainKey();
         const hash = computeAuditHash({
           prevHash,
+          key,
           payload: {
             seq,
             action: row.action,
@@ -729,7 +735,12 @@ export async function chainLegacyAuditEntries(options?: {
         });
         await tx.audit.update({
           where: { id: row.id },
-          data: { seq, prevHash, hash, chainVersion: AUDIT_CHAIN_VERSION },
+          data: {
+            seq,
+            prevHash,
+            hash,
+            chainVersion: key ? AUDIT_CHAIN_VERSION_KEYED : AUDIT_CHAIN_VERSION,
+          },
         });
         await tx.auditChainState.update({
           where: { id: AUDIT_CHAIN_STATE_ID },

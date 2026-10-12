@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 // Hash-chained audit log — pure rules.
 //
@@ -13,11 +13,39 @@ import { createHash } from "node:crypto";
 // and absent values are an explicit `null`, so two rows with the same payload
 // always produce the same bytes.
 //
-// What this proves and what it does not: a chain makes any silent edit,
-// deletion or reordering of the log detectable from the log alone. It does not
-// protect against an attacker who can rewrite `AuditChainState` as well — that
-// is what the periodically recorded `AuditVerificationRun` digest is for.
+// Two chain versions, chosen per row:
+//
+//   v1  SHA-256 over (prevHash, payload). Detects silent edits, deletions and
+//       reordering, but anyone who can write the database can recompute it.
+//   v2  HMAC-SHA256 keyed with AUDIT_CHAIN_KEY, a secret held outside the
+//       database. Rewriting the rows and the chain state is no longer enough to
+//       forge a valid chain: the attacker also needs the key.
+//
+// New rows are v2 whenever AUDIT_CHAIN_KEY is configured; otherwise they stay
+// v1 and `auditChainKeyed()` reports false, so the gap is visible rather than
+// silent. Existing v1 rows keep verifying unchanged.
 export const AUDIT_CHAIN_VERSION = 1;
+export const AUDIT_CHAIN_VERSION_KEYED = 2;
+
+/** Minimum key length in characters (a 256-bit key in hex or base64 is 32+). */
+export const AUDIT_CHAIN_KEY_MIN_LENGTH = 32;
+
+/**
+ * The configured chain key, or null. A key shorter than the minimum is treated
+ * as absent rather than used, so a weak key cannot silently produce v2 rows.
+ */
+export function auditChainKey(
+  env: Record<string, string | undefined> = process.env
+): string | null {
+  const key = env.AUDIT_CHAIN_KEY?.trim() ?? "";
+  return key.length >= AUDIT_CHAIN_KEY_MIN_LENGTH ? key : null;
+}
+
+export function auditChainKeyed(
+  env: Record<string, string | undefined> = process.env
+): boolean {
+  return auditChainKey(env) !== null;
+}
 
 /** The `prevHash` of the first chained row. */
 export const AUDIT_GENESIS_PREV_HASH = "";
@@ -91,13 +119,24 @@ export function auditHashInput(prevHash: string, canonical: string): string {
   return `${prevHash}\n${canonical}`;
 }
 
+/**
+ * Row hash. Without a key this is the v1 SHA-256 hash; with a key it is the v2
+ * HMAC. The same function serves writes and verification, so a row is always
+ * checked the way it was written.
+ */
 export function computeAuditHash(input: {
   prevHash: string;
   payload: AuditChainPayload;
+  key?: string | null;
 }): string {
-  return sha256Hex(
-    auditHashInput(input.prevHash, canonicalizeAuditPayload(input.payload))
+  const bytes = auditHashInput(
+    input.prevHash,
+    canonicalizeAuditPayload(input.payload)
   );
+  if (input.key) {
+    return createHmac("sha256", input.key).update(bytes, "utf8").digest("hex");
+  }
+  return sha256Hex(bytes);
 }
 
 /** A stored audit row, as far as the verifier is concerned. */
@@ -148,7 +187,7 @@ export type AuditChainCheck = {
 export function checkAuditRows(
   rows: AuditRowForVerification[],
   startPrevHash: string | null,
-  options: { expectSeqFrom?: bigint | null } = {}
+  options: { expectSeqFrom?: bigint | null; key?: string | null } = {}
 ): AuditChainCheck {
   let expectedPrev = startPrevHash;
   let expectedSeq = options.expectSeqFrom ?? null;
@@ -193,8 +232,24 @@ export function checkAuditRows(
       };
     }
 
+    // A keyed (v2) row can only be verified with the key. Without it the
+    // verdict is a failure, not a pass: an unverifiable row is not a clean row.
+    const keyed = row.chainVersion === AUDIT_CHAIN_VERSION_KEYED;
+    if (keyed && !options.key) {
+      return {
+        ok: false,
+        checked,
+        firstBrokenSeq: row.seq,
+        problem: `Row ${row.seq.toString()} is keyed (v2) but AUDIT_CHAIN_KEY is not configured, so it cannot be verified.`,
+        lastSeq: null,
+        lastHash: null,
+        boundaryUnverified: startPrevHash === null,
+      };
+    }
+
     const recomputed = computeAuditHash({
       prevHash: row.prevHash ?? "",
+      key: keyed ? options.key : null,
       payload: {
         seq: row.seq,
         action: row.action,
