@@ -5,6 +5,24 @@
 // allowed values documented in comments so the value sets stay
 // application-defined (Zod + domain services) rather than DB-enforced.
 // No raw SQL is used anywhere, so the schema is provider-agnostic.
+//
+// REVAMP (2026-10-12) - see docs/revamp/README.md
+//   * Lifecycle is now
+//       SUBMITTED -> ASSIGNED -> UNDER_ASSESSMENT -> AWAITING_BUDGET
+//       (skippable) -> IN_PROGRESS -> RESOLVED -> CLOSED.
+//   * Roles: RESIDENT | OFFICIAL | ADMIN | TREASURER | CAPTAIN | CREW.
+//   * New blocks in this file: RBAC, resident ID verification and RA 10173
+//     privacy controls, concern types and geotagging, the manpower/crew
+//     planning tables, the 48-hour SLA escalation tables, the COA/MOOE
+//     treasury tables (appropriations, earmarks, disbursements, ledger),
+//     and the tamper-evident audit chain.
+//
+// FROZEN (do not change without the Android WebView contract being
+// revisited): SystemAlert, SystemAlertAcknowledgement, SystemAlertReaction,
+// PushSubscription, NativePushToken and the Notification table. The alert
+// delivery code (src/lib/push.ts, src/lib/alerts.ts, src/lib/notifications/*,
+// src/app/api/v1/alerts/**, src/components/alerts/**, the admin alert
+// composer and android/) depends on these shapes.
 // ================================================================
 
 generator client {
@@ -27,12 +45,50 @@ datasource db {
 
 model Role {
   id          Int      @id @default(autoincrement())
-  key         String   @unique // RESIDENT | OFFICIAL | ADMIN
+  key         String   @unique // RESIDENT | OFFICIAL | ADMIN | TREASURER | CAPTAIN | CREW
   name        String
   description String?
   users       User[]
+  // Runtime RBAC overrides. The canonical matrix lives in code
+  // (src/lib/auth/rbac.ts) and is seeded into these rows; a row here is an
+  // explicit decision, so what the database says always wins at runtime.
+  permissions RolePermission[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// Permission catalogue. Keys are dotted, stable identifiers ("case.assign",
+// "treasury.disbursement.approve"). Rows are seeded from the code matrix.
+model Permission {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  category    String // CASE | TREASURY | PRIVACY | ADMIN | REPORT | CREW
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rolePermissions RolePermission[]
+
+  @@index([category])
+}
+
+// Per-role allow/deny for one permission. Deleting a row falls back to the
+// code default, so the system never ends up with a role that can do nothing.
+model RolePermission {
+  id           Int        @id @default(autoincrement())
+  roleId       Int
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId Int
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  allowed      Boolean    @default(true)
+  updatedById  Int?
+  updatedBy    User?      @relation("RolePermissionUpdater", fields: [updatedById], references: [id])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([roleId, permissionId])
+  @@index([permissionId])
 }
 
 model Office {
@@ -47,6 +103,12 @@ model Office {
   concerns     Concern[]        @relation("OfficeConcerns")
   assignments  CaseAssignment[]
   routingRules RoutingRule[]
+  // Concern types this office is the default destination for (Ayuda -> Social
+  // Services/Assistance Committee, Repair -> Maintenance Team/Engineering,
+  // Documents -> Barangay Secretary, Budget -> Treasurer/AAO).
+  concernTypes ConcernType[]    @relation("ConcernTypeDefaultOffice")
+  crewProfiles CrewProfile[]    @relation("CrewOffice")
+  budgetAllocations BudgetAllocation[]
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 }
@@ -56,15 +118,49 @@ model ConcernCategory {
   name         String
   code         String        @unique
   description  String?
+  // Concern type the category rolls up to. Nullable so the pre-revamp
+  // categories survive the migration; the app treats a null type as "still to
+  // be categorized" and shows it on the admin cleanup queue.
+  typeId       Int?
+  type         ConcernType?  @relation(fields: [typeId], references: [id])
   isActive     Boolean       @default(true)
   concerns     Concern[]
   routingRules RoutingRule[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+
+  @@index([typeId])
+}
+
+// Concern types are the "what kind of service is this" axis that decides the
+// office and the money path, separate from the descriptive category.
+// AYUDA (assistance) | REPAIR (works) | DOCUMENTS (records) | BUDGET (funds).
+model ConcernType {
+  id              Int      @id @default(autoincrement())
+  key             String   @unique
+  name            String
+  description     String?
+  defaultOfficeId Int?
+  defaultOffice   Office?  @relation("ConcernTypeDefaultOffice", fields: [defaultOfficeId], references: [id])
+  // AYUDA and BUDGET cases go through AWAITING_BUDGET; DOCUMENTS cases may
+  // skip it (the skip is recorded as a CaseWorkflowOverride).
+  requiresBudget  Boolean  @default(false)
+  requiresCrew    Boolean  @default(false)
+  slaHours        Int      @default(48)
+  displayOrder    Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  categories  ConcernCategory[]
+  concerns    Concern[]
+  slaPolicies SlaPolicy[]
+
+  @@index([defaultOfficeId])
 }
 
 // ----------------------------------------------------------------
-// Users
+// Users, crew profiles, resident identity verification
 // ----------------------------------------------------------------
 
 model User {
@@ -73,8 +169,24 @@ model User {
   passwordHash String
   firstName    String
   lastName     String
+  // RA 10173 (Data Privacy Act) phone handling.
+  //   phone          - LEGACY plaintext column. Kept during the two-phase
+  //                    migration only; nothing reads it once
+  //                    scripts/pii-backfill.ts has run (see
+  //                    docs/revamp/03-migration-plan.md). Dropped in the
+  //                    privacy migration of stage 5.
+  //   phoneEncrypted - AES-256-GCM ciphertext (PII_ENCRYPTION_KEY).
+  //   phoneLast4     - the only part staff may see; everything else is masked.
+  //   phoneHash      - keyed HMAC used for lookups/dedupe without decrypting.
   phone        String?
+  phoneEncrypted String?
+  phoneLast4     String?
+  phoneHash      String?
+  phoneVerifiedAt DateTime?
   address      String?
+  // e.g. "Barangay Captain", "Barangay Treasurer", "Barangay Secretary".
+  // Printed on reports and clearance documents.
+  position     String?
   roleId       Int
   role         Role     @relation(fields: [roleId], references: [id])
   officeId     Int?
@@ -88,12 +200,16 @@ model User {
 
   submittedConcerns     Concern[]            @relation("ConcernReporter")
   assignedOfficialFor   Concern[]            @relation("ConcernAssignedOfficial")
+  validatedConcerns     Concern[]            @relation("ConcernValidator")
+  priorityConfirmedConcerns Concern[]        @relation("ConcernPriorityConfirmer")
+  locationVerifiedConcerns  Concern[]        @relation("ConcernLocationVerifier")
   assignmentOfficial    CaseAssignment[]     @relation("AssignmentOfficial")
   assignmentsAssigned   CaseAssignment[]     @relation("AssignmentAssigner")
   assessmentsMade       PriorityAssessment[] @relation("AssessmentAssessedBy")
   assessmentsOverridden PriorityAssessment[] @relation("AssessmentOverriddenBy")
   historyEntries        CaseStatusHistory[]  @relation("HistoryActor")
   resolutionsRecorded   ResolutionRecord[]   @relation("ResolutionOfficial")
+  resolutionsVerified   ResolutionRecord[]   @relation("ResolutionVerifier")
   notifications         Notification[]
   feedback              Feedback[]
   auditEntries          Audit[]
@@ -104,6 +220,257 @@ model User {
   systemAlertsCreated   SystemAlert[] @relation("SystemAlertCreator")
   pushSubscriptions     PushSubscription[]
   nativePushTokens       NativePushToken[]
+
+  // Revamp relations
+  crewProfile                 CrewProfile?
+  identityVerification        IdentityVerification?  @relation("IdentitySubject")
+  identityVerificationsReviewed IdentityVerification[] @relation("IdentityReviewer")
+  consents                    ConsentRecord[]
+  dataSubjectRequests         DataSubjectRequest[] @relation("DsrRequester")
+  dataSubjectRequestsHandled  DataSubjectRequest[] @relation("DsrHandler")
+  erasureExecutions           ErasureExecution[]   @relation("ErasureExecutor")
+  retentionPoliciesUpdated    RetentionPolicy[]    @relation("RetentionPolicyUpdater")
+  retentionRunsTriggered      RetentionRun[]       @relation("RetentionRunTrigger")
+  piiAccessLogged             PiiAccessLog[]       @relation("PiiAccessActor")
+  piiAccessSubject            PiiAccessLog[]       @relation("PiiAccessSubject")
+  rolePermissionsUpdated      RolePermission[]     @relation("RolePermissionUpdater")
+  assessmentsCreated          CaseAssessment[]     @relation("AssessmentCreatedBy")
+  assessmentsUpdated          CaseAssessment[]     @relation("AssessmentUpdatedBy")
+  assessmentsInspected        CaseAssessment[]     @relation("AssessmentInspector")
+  assessmentsResourceVerified CaseAssessment[]     @relation("AssessmentResourceVerifier")
+  assessmentsApproved         CaseAssessment[]     @relation("AssessmentApprover")
+  crewJobs                    CrewAssignment[]     @relation("CrewMember")
+  crewAssignmentsMade         CrewAssignment[]     @relation("CrewAssigner")
+  crewAssignmentsReleased     CrewAssignment[]     @relation("CrewReleaser")
+  workflowOverrides           CaseWorkflowOverride[] @relation("OverrideActor")
+  workflowOverridesApproved   CaseWorkflowOverride[] @relation("OverrideApprover")
+  escalationsReceived         CaseEscalation[]     @relation("EscalationRecipient")
+  escalationsAcknowledged     CaseEscalation[]     @relation("EscalationAcknowledger")
+  slaPoliciesCreated          SlaPolicy[]          @relation("SlaPolicyCreator")
+  coaAccountsCreated          CoaAccount[]         @relation("CoaAccountCreator")
+  coaAccountsVerified         CoaAccount[]         @relation("CoaAccountVerifier")
+  fundSourcesCreated          FundSource[]         @relation("FundSourceCreator")
+  fundSourcesVerified         FundSource[]         @relation("FundSourceVerifier")
+  fiscalYearsClosed           FiscalYear[]         @relation("FiscalYearCloser")
+  allocationsCreated          BudgetAllocation[]   @relation("AllocationCreator")
+  allocationsApproved         BudgetAllocation[]   @relation("AllocationApprover")
+  earmarksPrepared            BudgetEarmark[]      @relation("EarmarkPreparer")
+  earmarksApproved            BudgetEarmark[]      @relation("EarmarkApprover")
+  disbursementsPrepared       Disbursement[]       @relation("DisbursementPreparer")
+  disbursementsReleased       Disbursement[]       @relation("DisbursementReleaser")
+  disbursementsPaidTo         Disbursement[]       @relation("DisbursementPayeeUser")
+  disbursementApprovals       DisbursementApproval[]
+  ledgerEntries               BudgetLedgerEntry[]  @relation("LedgerActor")
+  cronRunsTriggered           CronRun[]            @relation("CronActor")
+  auditVerificationsRun       AuditVerificationRun[] @relation("AuditVerificationActor")
+
+  @@index([phoneHash])
+  @@index([roleId, isActive])
+}
+
+// Manpower roster data that is not a login concern: trade, pay rate (used to
+// price labor in a case cost estimate) and how many cases one person may hold
+// at the same time.
+model CrewProfile {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // ELECTRICAL | PLUMBING | MASONRY | CARPENTRY | GENERAL | DRIVER | OTHER
+  trade              String?
+  // JOB_ORDER | CASUAL | PERMANENT | VOLUNTEER
+  employmentType     String   @default("JOB_ORDER")
+  // Rates are optional: a case can be costed with a manual labor figure, but
+  // when a rate exists the estimate is computed from it and snapshotted.
+  hourlyRate         Decimal? @db.Decimal(10, 2)
+  dailyRate          Decimal? @db.Decimal(10, 2)
+  // AVAILABLE | ON_LEAVE | UNAVAILABLE
+  availability       String   @default("AVAILABLE")
+  // Concurrent open cases this person can hold. 1 = no parallel bookings.
+  maxConcurrentCases Int      @default(1)
+  officeId           Int?
+  office             Office?  @relation("CrewOffice", fields: [officeId], references: [id])
+  notes              String?
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([availability, isActive])
+  @@index([officeId])
+}
+
+// Resident ID verification. One row per resident; a rejected or expired row is
+// re-opened (never duplicated) so the review history stays linear.
+model IdentityVerification {
+  id                Int       @id @default(autoincrement())
+  userId            Int       @unique
+  user              User      @relation("IdentitySubject", fields: [userId], references: [id], onDelete: Cascade)
+  // UNVERIFIED | PENDING | VERIFIED | REJECTED | EXPIRED
+  status            String    @default("UNVERIFIED")
+  // PHILSYS | UMID | DRIVERS_LICENSE | PASSPORT | BARANGAY_ID | OTHER
+  method            String?
+  idTypeLabel       String?
+  // The ID number is personal data: encrypted at rest, shown only as the last
+  // four characters, and hashed for duplicate detection.
+  idNumberEncrypted String?
+  idNumberLast4     String?
+  idNumberHash      String?
+  idImageUrl        String?
+  selfieUrl         String?
+  submittedAt       DateTime?
+  reviewedById      Int?
+  reviewedBy        User?     @relation("IdentityReviewer", fields: [reviewedById], references: [id])
+  reviewedAt        DateTime?
+  decisionReason    String?
+  verifiedAt        DateTime?
+  expiresAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([status, submittedAt])
+}
+
+// ----------------------------------------------------------------
+// RA 10173 privacy controls
+// ----------------------------------------------------------------
+
+// Append-only consent log. A withdrawal is a new row (status WITHDRAWN) so the
+// consent timeline can be reproduced exactly as it was at any point in time.
+model ConsentRecord {
+  id            Int       @id @default(autoincrement())
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // DATA_PROCESSING | PRIVACY_NOTICE | TRANSPARENCY_PUBLICATION | NOTIFICATIONS
+  // | SMS | ID_VERIFICATION
+  purpose       String
+  // GRANTED | WITHDRAWN
+  status        String    @default("GRANTED")
+  // Version of the privacy notice the resident agreed to.
+  policyVersion String
+  // WEB | ANDROID | ADMIN
+  method        String    @default("WEB")
+  ip            String?
+  userAgent     String?
+  notes         String?
+  grantedAt     DateTime  @default(now())
+  withdrawnAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId, purpose])
+  @@index([createdAt])
+}
+
+// Data subject request (access / rectify / erase / port / object).
+model DataSubjectRequest {
+  id              Int       @id @default(autoincrement())
+  // Human-readable reference handed to the resident, e.g. DSR-2026-0007.
+  referenceCode   String    @unique
+  userId          Int
+  user            User      @relation("DsrRequester", fields: [userId], references: [id])
+  // ACCESS | RECTIFICATION | ERASURE | PORTABILITY | OBJECTION | COMPLAINT
+  type            String
+  // RECEIVED | IN_REVIEW | COMPLETED | REJECTED
+  status          String    @default("RECEIVED")
+  details         String?
+  // Scope of the request (which data categories) as a JSON string.
+  scopeJson       String?
+  requestedAt     DateTime  @default(now())
+  // Statutory response deadline (15 working days under RA 10173 IRR).
+  dueAt           DateTime?
+  resolvedAt      DateTime?
+  handledById     Int?
+  handledBy       User?     @relation("DsrHandler", fields: [handledById], references: [id])
+  resolutionNotes String?
+  denialReason    String?
+  attachmentUrl   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  erasureExecution ErasureExecution?
+
+  @@index([status, dueAt])
+  @@index([userId])
+}
+
+// What an erasure request actually removed, and what had to be kept because
+// another law requires it (audit, treasury and tax records).
+model ErasureExecution {
+  id                    Int                @id @default(autoincrement())
+  requestId             Int                @unique
+  request               DataSubjectRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  executedById          Int?
+  executedBy            User?              @relation("ErasureExecutor", fields: [executedById], references: [id])
+  executedAt            DateTime           @default(now())
+  scopeJson             String?
+  retainedCategoriesJson String?
+  reportJson            String?
+  createdAt             DateTime           @default(now())
+}
+
+// Retention rules per data category. The cron job reads these rows; nothing in
+// the app may hard-code a retention window.
+model RetentionPolicy {
+  id            Int       @id @default(autoincrement())
+  key           String    @unique // e.g. "uploads.concern_images"
+  dataCategory  String
+  description   String?
+  retentionDays Int
+  // ANONYMIZE | DELETE | ARCHIVE
+  action        String    @default("ANONYMIZE")
+  legalBasis    String?
+  isActive      Boolean   @default(true)
+  lastRunAt     DateTime?
+  updatedById   Int?
+  updatedBy     User?     @relation("RetentionPolicyUpdater", fields: [updatedById], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  runs RetentionRun[]
+
+  @@index([isActive])
+}
+
+// One execution of the retention job for one policy (or for the whole sweep
+// when policyId is null).
+model RetentionRun {
+  id            Int              @id @default(autoincrement())
+  policyId      Int?
+  policy        RetentionPolicy? @relation(fields: [policyId], references: [id])
+  job           String           @default("RETENTION")
+  status        String           @default("RUNNING") // RUNNING | SUCCESS | FAILED
+  startedAt     DateTime         @default(now())
+  finishedAt    DateTime?
+  scanned       Int              @default(0)
+  affected      Int              @default(0)
+  summary       String?
+  error         String?
+  triggeredById Int?
+  triggeredBy   User?            @relation("RetentionRunTrigger", fields: [triggeredById], references: [id])
+  cronRunId     Int?
+  cronRun       CronRun?         @relation(fields: [cronRunId], references: [id])
+  createdAt     DateTime         @default(now())
+
+  @@index([policyId, startedAt])
+  @@index([status])
+}
+
+// Who looked at whose personal data, and why. Staff only ever see masked
+// values; viewing a full value requires a recorded reason.
+model PiiAccessLog {
+  id            Int      @id @default(autoincrement())
+  actorId       Int?
+  actor         User?    @relation("PiiAccessActor", fields: [actorId], references: [id])
+  subjectUserId Int
+  subjectUser   User     @relation("PiiAccessSubject", fields: [subjectUserId], references: [id], onDelete: Cascade)
+  field         String // "phone" | "idNumber" | "address" | ...
+  purpose       String
+  resourceType  String?
+  resourceId    String?
+  ip            String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+
+  @@index([subjectUserId, createdAt])
+  @@index([actorId, createdAt])
 }
 
 // ----------------------------------------------------------------
@@ -117,28 +484,61 @@ model Concern {
   user               User            @relation("ConcernReporter", fields: [userId], references: [id])
   categoryId         Int
   category           ConcernCategory @relation(fields: [categoryId], references: [id])
+  // Service type (AYUDA | REPAIR | DOCUMENTS | BUDGET). Null until an admin
+  // validates and categorizes the case.
+  typeId             Int?
+  type               ConcernType?    @relation(fields: [typeId], references: [id])
   title              String
   description        String
   locationAddress    String
   locationLat        Float?
   locationLng        Float?
+  // Geotag metadata: how precise the pin is, where it came from, and the
+  // coarse geohash used for map clustering and the public transparency page.
+  locationAccuracyM  Float?
+  // GPS_PINNED | MAP_PINNED | ADDRESS_GEOCODED | MANUAL
+  locationSource     String?
+  locationPurok      String?
+  locationGeohash    String?
+  locationVerifiedAt DateTime?
+  locationVerifiedById Int?
+  locationVerifiedBy User?          @relation("ConcernLocationVerifier", fields: [locationVerifiedById], references: [id])
   imageUrl           String?
-  // SUBMITTED => ASSIGNED => IN_PROGRESS => RESOLVED => CLOSED
+  // SUBMITTED => ASSIGNED => UNDER_ASSESSMENT => AWAITING_BUDGET (skippable)
+  //   => IN_PROGRESS => RESOLVED => CLOSED
   status             String          @default("SUBMITTED")
+  // When the case entered its current status. The 48-hour escalation job is
+  // driven by this column, not by updatedAt (which any edit would move).
+  stageEnteredAt     DateTime        @default(now())
   // LOW | MEDIUM | HIGH | CRITICAL
   priorityLevel      String?
   priorityScore      Int?
+  // Admin validation: "this is a real, correctly categorized concern".
+  validatedById      Int?
+  validatedBy        User?           @relation("ConcernValidator", fields: [validatedById], references: [id])
+  validatedAt        DateTime?
+  validationNotes    String?
+  // Admin confirmation of the priority shown to the public and to officials.
+  priorityConfirmedById Int?
+  priorityConfirmedBy   User?        @relation("ConcernPriorityConfirmer", fields: [priorityConfirmedById], references: [id])
+  priorityConfirmedAt   DateTime?
   assignedOfficeId   Int?
   assignedOffice     Office?         @relation("OfficeConcerns", fields: [assignedOfficeId], references: [id])
   assignedOfficialId Int?
   assignedOfficial   User?           @relation("ConcernAssignedOfficial", fields: [assignedOfficialId], references: [id])
   submittedAt        DateTime        @default(now())
+  // Assessment stage bookkeeping.
+  assessmentCompletedAt DateTime?
+  awaitingBudgetAt      DateTime?
+  awaitingBudgetResolvedAt DateTime?
   resolvedAt         DateTime?
   closedAt           DateTime?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
   slaDueAt           DateTime?
   slaBreachedAt      DateTime?
+  slaPolicyId        Int?
+  slaPolicy          SlaPolicy?      @relation(fields: [slaPolicyId], references: [id])
   duplicateOfId      Int?
   duplicateOf        Concern?        @relation("ConcernDuplicates", fields: [duplicateOfId], references: [id])
 
@@ -150,6 +550,13 @@ model Concern {
   feedback        Feedback[]
   duplicates      Concern[]            @relation("ConcernDuplicates")
   emailDeliveries EmailDelivery[]
+  caseAssessment    CaseAssessment?
+  crewAssignments   CrewAssignment[]
+  workflowOverrides CaseWorkflowOverride[]
+  escalations       CaseEscalation[]
+  publicRecord      PublicCaseRecord?
+  earmarks          BudgetEarmark[]
+  disbursements     Disbursement[]
 
   @@index([status])
   @@index([categoryId])
@@ -160,6 +567,10 @@ model Concern {
   @@index([duplicateOfId])
   // Officials' main filtered list: office + status then newest first.
   @@index([assignedOfficeId, status, createdAt])
+  // Escalation scan: which open cases have been sitting in a stage for a while.
+  @@index([status, stageEnteredAt])
+  @@index([typeId, status])
+  @@index([locationGeohash])
 }
 
 // Immutable assessment snapshots. The automated rule-based assessment is
@@ -221,7 +632,10 @@ model CaseStatusHistory {
   id         Int      @id @default(autoincrement())
   concernId  Int
   concern    Concern  @relation(fields: [concernId], references: [id])
-  // STATUS_CHANGE | REMARK | ACTION | ASSIGNMENT | PRIORITY_OVERRIDE | RESOLUTION | CLOSE | SLA_BREACH
+  // STATUS_CHANGE | REMARK | ACTION | ASSIGNMENT | PRIORITY_ASSESSED |
+  // PRIORITY_OVERRIDE | RESOLUTION | CLOSE | SLA_BREACH | ASSESSMENT |
+  // CREW_ASSIGNMENT | MANPOWER_PLAN | ESCALATION | BUDGET | DISBURSEMENT |
+  // OVERRIDE | VERIFICATION | CREW_PROGRESS
   entryType  String
   fromStatus String?
   toStatus   String?
@@ -233,14 +647,22 @@ model CaseStatusHistory {
   // Proof photo for a status change (JPEG/PNG/WebP, served through the
   // authenticated uploads endpoint with the same ownership rules).
   attachmentUrl String?
+  // Who may read this entry. RESIDENT_VISIBLE (default, preserves the current
+  // behaviour) | INTERNAL | SYSTEM.
+  visibility String   @default("RESIDENT_VISIBLE")
+  // Structured detail for machine-written entries (crew ids, cost breakdown,
+  // escalation level, ...). Kept as a JSON string, matching the repo
+  // convention of avoiding provider-specific JSON columns.
+  metadataJson String?
   actorId    Int?
   actor      User?    @relation("HistoryActor", fields: [actorId], references: [id])
-  // RESIDENT | OFFICIAL | ADMIN | SYSTEM
+  // RESIDENT | OFFICIAL | ADMIN | TREASURER | CAPTAIN | CREW | SYSTEM
   actorRole  String?
   createdAt  DateTime @default(now())
 
   @@index([concernId])
   @@index([createdAt])
+  @@index([concernId, visibility])
 }
 
 model ResolutionRecord {
@@ -259,8 +681,228 @@ model ResolutionRecord {
   // Optional supporting image attachment (JPEG/PNG/WebP, served via the
   // authenticated uploads endpoint, same rules as concern images).
   attachmentUrl  String?
+  // Step 5 of the workflow: "verification and closure". The recording official
+  // is not automatically the verifying one - a second person (or the resident)
+  // confirms the proof before the case is closed.
+  verifiedById   Int?
+  verifiedBy     User?    @relation("ResolutionVerifier", fields: [verifiedById], references: [id])
+  verifiedAt     DateTime?
+  verificationNotes String?
+  // FIXED_VERIFIED | PENDING_RESIDENT_CONFIRMATION | PARTIALLY_VERIFIED | FAILED
+  verificationStatus String @default("PENDING")
   resolvedAt     DateTime @default(now())
   createdAt      DateTime @default(now())
+}
+
+// The UNDER_ASSESSMENT record: eligibility check, inspection, resource
+// verification, approval, and the manpower plan. One row per case; every edit
+// is re-audited through CaseStatusHistory + Audit.
+model CaseAssessment {
+  id             Int      @id @default(autoincrement())
+  concernId      Int      @unique
+  concern        Concern  @relation(fields: [concernId], references: [id], onDelete: Cascade)
+  // DRAFT | SUBMITTED | VERIFIED | REJECTED
+  status         String   @default("DRAFT")
+
+  // ---- Evaluation and approval (the four checks) ----
+  eligibilityChecked      Boolean   @default(false)
+  eligibilityNotes        String?
+  inspectionRequired      Boolean   @default(false)
+  inspectionNotes         String?
+  inspectionCompletedAt   DateTime?
+  inspectedById           Int?
+  inspectedBy             User?     @relation("AssessmentInspector", fields: [inspectedById], references: [id])
+  resourcesVerified       Boolean   @default(false)
+  resourcesVerificationNotes String?
+  resourcesVerifiedAt     DateTime?
+  resourcesVerifiedById   Int?
+  resourcesVerifiedBy     User?     @relation("AssessmentResourceVerifier", fields: [resourcesVerifiedById], references: [id])
+  approvalRequired        Boolean   @default(false)
+  approvalNotes           String?
+  approvedAt              DateTime?
+  approvedById            Int?
+  approvedBy              User?     @relation("AssessmentApprover", fields: [approvedById], references: [id])
+
+  // ---- Manpower plan (mandatory once the assessment is submitted) ----
+  // workersNeeded must be >= 1, with an estimated duration and equipment notes.
+  workersNeeded           Int?
+  estimatedDurationMinutes Int?
+  // Planned work window. Drives the crew double-booking check.
+  scheduledStartAt        DateTime?
+  scheduledEndAt          DateTime?
+  equipmentNotes          String?
+
+  // ---- Cost estimate, labor included ----
+  laborCost        Decimal? @db.Decimal(14, 2)
+  materialsCost    Decimal? @db.Decimal(14, 2)
+  equipmentCost    Decimal? @db.Decimal(14, 2)
+  otherCost        Decimal? @db.Decimal(14, 2)
+  totalCost        Decimal? @db.Decimal(14, 2)
+  currency         String   @default("PHP")
+  // Frozen explanation of how laborCost was derived (rate, hours, people).
+  laborCostBasisJson String?
+
+  submittedAt    DateTime?
+  createdById    Int?
+  createdBy      User?    @relation("AssessmentCreatedBy", fields: [createdById], references: [id])
+  updatedById    Int?
+  updatedBy      User?    @relation("AssessmentUpdatedBy", fields: [updatedById], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([scheduledStartAt, scheduledEndAt])
+}
+
+// Named crew member on a case. Unique per (case, person); releasing sets
+// releasedAt + isActive=false and re-assigning reuses the same row, so a
+// person's booking history on a case is one line, not many.
+model CrewAssignment {
+  id               Int       @id @default(autoincrement())
+  concernId        Int
+  concern          Concern   @relation(fields: [concernId], references: [id], onDelete: Cascade)
+  crewId           Int
+  crew             User      @relation("CrewMember", fields: [crewId], references: [id])
+  taskNote         String?
+  // Effective window for this person. Defaults to the case assessment window;
+  // the double-booking check uses these columns.
+  scheduledStartAt DateTime?
+  scheduledEndAt   DateTime?
+  assignedById     Int?
+  assignedBy       User?     @relation("CrewAssigner", fields: [assignedById], references: [id])
+  assignedAt       DateTime  @default(now())
+  releasedAt       DateTime?
+  releasedById     Int?
+  releasedBy       User?     @relation("CrewReleaser", fields: [releasedById], references: [id])
+  releaseReason    String?
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([concernId, crewId])
+  @@index([crewId, isActive, scheduledStartAt])
+  @@index([concernId, isActive])
+}
+
+// An explicit, reasoned exception to a workflow rule (start work with fewer
+// crew than planned, skip AWAITING_BUDGET for a DOCUMENTS case, extend an SLA,
+// force a status). The reason is mandatory and the row is append-only.
+model CaseWorkflowOverride {
+  id           Int       @id @default(autoincrement())
+  concernId    Int
+  concern      Concern   @relation(fields: [concernId], references: [id], onDelete: Cascade)
+  // CREW_SHORTFALL | BUDGET_STAGE_SKIP | STATUS_FORCE | SLA_EXTENSION |
+  // VALIDATION_BYPASS | ASSESSMENT_BYPASS
+  kind         String
+  reason       String
+  detailsJson  String?
+  actorId      Int
+  actor        User      @relation("OverrideActor", fields: [actorId], references: [id])
+  actorRole    String
+  // Set when a different official (for example the Captain) has to countersign.
+  approvedById Int?
+  approvedBy   User?     @relation("OverrideApprover", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([concernId, kind])
+}
+
+// The public, PII-free projection behind /transparency. Nothing here may be
+// traced back to a resident: no case number, no name, no address, no exact
+// coordinates (only a coarse geohash + area label).
+model PublicCaseRecord {
+  id             Int       @id @default(autoincrement())
+  // Anonymous public reference, e.g. BR-PUB-8F3A21. Never the case number.
+  publicRef      String    @unique
+  concernId      Int       @unique
+  concern        Concern   @relation(fields: [concernId], references: [id], onDelete: Cascade)
+  typeKey        String?
+  categoryName   String?
+  // Title after PII scrubbing; null when nothing safe could be published.
+  publicTitle    String?
+  status         String
+  areaLabel      String?
+  // Coarse location for the public map (rounded, plus a geohash prefix).
+  geohash        String?
+  lat            Float?
+  lng            Float?
+  submittedAt    DateTime
+  resolvedAt     DateTime?
+  closedAt       DateTime?
+  // Working days/hours from submission to resolution, for the transparency
+  // dashboard. Null until the case is resolved.
+  responseHours  Int?
+  resolutionType String?
+  published      Boolean   @default(true)
+  anonymizedAt   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status, submittedAt])
+  @@index([typeKey])
+  @@index([geohash])
+}
+
+// ----------------------------------------------------------------
+// SLA policies and escalations (48-hour default)
+// ----------------------------------------------------------------
+
+model SlaPolicy {
+  id             Int         @id @default(autoincrement())
+  key            String      @unique
+  name           String
+  // Lifecycle status the clock applies to (ASSIGNED, UNDER_ASSESSMENT, ...).
+  stage          String
+  // Optional narrowing: a policy for one concern type / priority. The most
+  // specific active policy wins (see src/lib/sla/).
+  typeId         Int?
+  type           ConcernType? @relation(fields: [typeId], references: [id])
+  priorityLevel  String?
+  // Default 48 hours - the barangay's escalation window.
+  hours          Int         @default(48)
+  // Role that receives the escalation (CAPTAIN by default).
+  escalateToRole String      @default("CAPTAIN")
+  // Additional comma-separated roles to notify (ADMIN, TREASURER, ...).
+  notifyRoles    String?
+  isActive       Boolean     @default(true)
+  createdById    Int?
+  createdBy      User?       @relation("SlaPolicyCreator", fields: [createdById], references: [id])
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  concerns    Concern[]
+  escalations CaseEscalation[]
+
+  @@index([stage, isActive])
+  @@index([typeId])
+}
+
+model CaseEscalation {
+  id               Int        @id @default(autoincrement())
+  concernId        Int
+  concern          Concern    @relation(fields: [concernId], references: [id], onDelete: Cascade)
+  policyId         Int?
+  policy           SlaPolicy? @relation(fields: [policyId], references: [id])
+  stage            String
+  // 1 = first escalation at the policy deadline, 2 = second at 2x, ...
+  level            Int        @default(1)
+  hoursOverdue     Int
+  escalatedToRole  String
+  escalatedToUserId Int?
+  escalatedTo      User?      @relation("EscalationRecipient", fields: [escalatedToUserId], references: [id])
+  acknowledgedAt   DateTime?
+  acknowledgedById Int?
+  acknowledgedBy   User?      @relation("EscalationAcknowledger", fields: [acknowledgedById], references: [id])
+  resolvedAt       DateTime?
+  // Idempotency key "<concernId>:<stage>:<level>" so a re-run of the cron job
+  // can never escalate the same case twice.
+  dedupeKey        String     @unique
+  createdAt        DateTime   @default(now())
+
+  @@index([concernId, createdAt])
+  @@index([escalatedToUserId, acknowledgedAt])
 }
 
 // ----------------------------------------------------------------
@@ -309,6 +951,256 @@ model PriorityFactorConfig {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+// ----------------------------------------------------------------
+// Treasury (COA object codes, appropriations, earmarks, disbursements)
+// ----------------------------------------------------------------
+
+// Verified COA chart-of-accounts object codes (UACS). Codes are seeded from
+// the COA Government Accounting Manual and must be verified by the barangay
+// treasurer before money can be posted against them: `verificationStatus`
+// gates earmarks and disbursements in the treasury service.
+model CoaAccount {
+  id                 Int       @id @default(autoincrement())
+  code               String    @unique // "5-02-13-030"
+  name               String
+  // PS | MOOE | FEX | CO | OTHER (3rd digit of the 10-digit object code)
+  accountClass       String    @default("MOOE")
+  groupCode          String? // "13"
+  // Documented subsidiary ledgers for the code, comma separated.
+  subObjectCodes     String?
+  description        String?
+  isMooe             Boolean   @default(false)
+  // UNVERIFIED | VERIFIED | DEPRECATED
+  verificationStatus String    @default("UNVERIFIED")
+  verifiedAt         DateTime?
+  verifiedById       Int?
+  verifiedBy         User?     @relation("CoaAccountVerifier", fields: [verifiedById], references: [id])
+  verificationSource String?
+  verificationUrl    String?
+  verificationNotes  String?
+  createdById        Int?
+  createdBy          User?     @relation("CoaAccountCreator", fields: [createdById], references: [id])
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  allocations BudgetAllocation[]
+
+  @@index([accountClass, isActive])
+  @@index([verificationStatus])
+}
+
+// Funding source for an appropriation (barangay general fund, 20% Development
+// Fund, Special Education Fund, ...). Verified the same way as object codes.
+model FundSource {
+  id                 Int       @id @default(autoincrement())
+  code               String    @unique // GF | DF20 | SEF | TRUST | OTHER
+  name               String
+  description        String?
+  // UNVERIFIED | VERIFIED | DEPRECATED
+  verificationStatus String    @default("UNVERIFIED")
+  verifiedAt         DateTime?
+  verifiedById       Int?
+  verifiedBy         User?     @relation("FundSourceVerifier", fields: [verifiedById], references: [id])
+  verificationSource String?
+  verificationNotes  String?
+  createdById        Int?
+  createdBy          User?     @relation("FundSourceCreator", fields: [createdById], references: [id])
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  allocations BudgetAllocation[]
+
+  @@index([isActive])
+}
+
+model FiscalYear {
+  id          Int      @id @default(autoincrement())
+  year        Int      @unique
+  name        String
+  startsOn    DateTime
+  endsOn      DateTime
+  isClosed    Boolean  @default(false)
+  closedAt    DateTime?
+  closedById  Int?
+  closedBy    User?    @relation("FiscalYearCloser", fields: [closedById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  allocations BudgetAllocation[]
+}
+
+// An appropriation line: money the barangay has budgeted, per fiscal year,
+// fund source, COA object code and (optionally) office. Balances are derived
+// from BudgetLedgerEntry; the Decimal columns here are the opening figures.
+model BudgetAllocation {
+  id            Int         @id @default(autoincrement())
+  fiscalYearId  Int
+  fiscalYear    FiscalYear  @relation(fields: [fiscalYearId], references: [id])
+  fundSourceId  Int
+  fundSource    FundSource  @relation(fields: [fundSourceId], references: [id])
+  coaAccountId  Int
+  coaAccount    CoaAccount  @relation(fields: [coaAccountId], references: [id])
+  // Null = barangay-wide. Postgres treats NULLs as distinct in a unique
+  // index, so "one barangay-wide line per year/code" is enforced in the
+  // treasury service, not by the database.
+  officeId      Int?
+  office        Office?     @relation(fields: [officeId], references: [id])
+  label         String
+  appropriation Decimal     @db.Decimal(14, 2)
+  // DRAFT | APPROVED | ACTIVE | CLOSED
+  status        String      @default("DRAFT")
+  approvedById  Int?
+  approvedBy    User?       @relation("AllocationApprover", fields: [approvedById], references: [id])
+  approvedAt    DateTime?
+  createdById   Int?
+  createdBy     User?       @relation("AllocationCreator", fields: [createdById], references: [id])
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  earmarks      BudgetEarmark[]
+  disbursements Disbursement[]
+  ledgerEntries BudgetLedgerEntry[]
+
+  // Explicit short name: the inferred identifier would be 68 characters,
+  // and PostgreSQL silently truncates identifiers at 63.
+  @@unique([fiscalYearId, fundSourceId, coaAccountId, officeId], map: "BudgetAllocation_fy_fund_coa_key")
+  @@index([fiscalYearId, status])
+  @@index([officeId])
+}
+
+// A reservation of a slice of an appropriation for a purpose or a case,
+// before any money moves.
+model BudgetEarmark {
+  id             Int              @id @default(autoincrement())
+  allocationId   Int
+  allocation     BudgetAllocation @relation(fields: [allocationId], references: [id])
+  concernId      Int?
+  concern        Concern?         @relation(fields: [concernId], references: [id])
+  code           String?          @unique // e.g. EM-2026-0007
+  purpose        String
+  amount         Decimal          @db.Decimal(14, 2)
+  // PROPOSED | APPROVED | RESERVED | RELEASED | CANCELLED
+  status         String           @default("PROPOSED")
+  preparedById   Int?
+  preparedBy     User?            @relation("EarmarkPreparer", fields: [preparedById], references: [id])
+  preparedAt     DateTime         @default(now())
+  approvedById   Int?
+  approvedBy     User?            @relation("EarmarkApprover", fields: [approvedById], references: [id])
+  approvedAt     DateTime?
+  releasedAt     DateTime?
+  cancelledAt    DateTime?
+  cancelReason   String?
+  notes          String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  disbursements Disbursement[]
+
+  @@index([allocationId, status])
+  @@index([concernId])
+}
+
+// An actual payment or release (cash assistance, materials, crew labor).
+model Disbursement {
+  id             Int               @id @default(autoincrement())
+  voucherNumber  String?           @unique // DV-2026-0001
+  allocationId   Int
+  allocation     BudgetAllocation  @relation(fields: [allocationId], references: [id])
+  earmarkId      Int?
+  earmark        BudgetEarmark?    @relation(fields: [earmarkId], references: [id])
+  concernId      Int?
+  concern        Concern?          @relation(fields: [concernId], references: [id])
+  payee          String
+  // BENEFICIARY | SUPPLIER | CREW | OFFICE | UTILITY
+  payeeType      String            @default("SUPPLIER")
+  // Link to a resident beneficiary or a crew member when the payee is a user.
+  payeeUserId    Int?
+  payeeUser      User?             @relation("DisbursementPayeeUser", fields: [payeeUserId], references: [id])
+  amount         Decimal           @db.Decimal(14, 2)
+  currency       String            @default("PHP")
+  particulars    String
+  // CASH | CHECK | BANK_TRANSFER | GOODS | SERVICE
+  modeOfPayment  String?
+  // DRAFT | PENDING_APPROVAL | APPROVED | RELEASED | REJECTED | CANCELLED
+  status         String            @default("DRAFT")
+  preparedById   Int?
+  preparedBy     User?             @relation("DisbursementPreparer", fields: [preparedById], references: [id])
+  preparedAt     DateTime          @default(now())
+  submittedAt    DateTime?
+  releasedAt     DateTime?
+  releasedById   Int?
+  releasedBy     User?             @relation("DisbursementReleaser", fields: [releasedById], references: [id])
+  proofUrl       String?
+  liquidationDueAt DateTime?
+  // PENDING | SUBMITTED | LIQUIDATED | OVERDUE
+  liquidationStatus String?
+  liquidationNotes  String?
+  rejectionReason   String?
+  cancelledAt       DateTime?
+  cancelReason      String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  approvals     DisbursementApproval[]
+
+  @@index([allocationId, status])
+  @@index([concernId])
+  @@index([status, submittedAt])
+}
+
+// One signature per approver per level: the treasurer certifies that funds are
+// available, the Captain / Authorized Approving Official approves the release.
+model DisbursementApproval {
+  id             Int          @id @default(autoincrement())
+  disbursementId Int
+  disbursement   Disbursement @relation(fields: [disbursementId], references: [id], onDelete: Cascade)
+  approverId     Int
+  approver       User         @relation(fields: [approverId], references: [id])
+  approverRole   String
+  level          Int          @default(1)
+  // APPROVED | REJECTED | RETURNED
+  decision       String
+  remarks        String?
+  decidedAt      DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+
+  @@unique([disbursementId, level, approverId])
+  @@index([disbursementId])
+}
+
+// Append-only money ledger. One row per movement, each carrying the running
+// balances so "live balance" is a read of the newest row and any drift can be
+// proved by recomputing the deltas.
+model BudgetLedgerEntry {
+  id             Int              @id @default(autoincrement())
+  allocationId   Int
+  allocation     BudgetAllocation @relation(fields: [allocationId], references: [id])
+  // APPROPRIATION | EARMARK | EARMARK_RELEASE | DISBURSEMENT | RELEASE |
+  // REVERSAL | ADJUSTMENT | CLOSING
+  entryType      String
+  referenceType  String? // "BudgetEarmark" | "Disbursement" | "Concern"
+  referenceId    String?
+  memo           String?
+  amount         Decimal          @db.Decimal(14, 2)
+  // Signed changes to each bucket. Reserve is money committed but not yet paid;
+  // disbursed is money out the door.
+  reservedDelta  Decimal          @default(0) @db.Decimal(14, 2)
+  disbursedDelta Decimal          @default(0) @db.Decimal(14, 2)
+  // Snapshots after this entry, so a balance is a single-row read.
+  reservedAfter  Decimal          @db.Decimal(14, 2)
+  disbursedAfter Decimal          @db.Decimal(14, 2)
+  availableAfter Decimal          @db.Decimal(14, 2)
+  actorId        Int?
+  actor          User?            @relation("LedgerActor", fields: [actorId], references: [id])
+  createdAt      DateTime         @default(now())
+
+  @@index([allocationId, createdAt])
+  @@index([referenceType, referenceId])
 }
 
 // ----------------------------------------------------------------
@@ -483,6 +1375,11 @@ model UploadRecord {
   @@index([userId, createdAt])
 }
 
+// Tamper-evident audit journal. Each row carries a SHA-256 hash over its own
+// canonical payload chained to the previous row's hash, so deleting or editing
+// history is detectable (see docs/revamp/05-audit-and-sla.md and
+// src/lib/audit/chain.ts). Rows written before the chain existed have a null
+// seq/hash and are reported separately by the verifier.
 model Audit {
   id           Int      @id @default(autoincrement())
   userId       Int?
@@ -493,10 +1390,74 @@ model Audit {
   description  String?
   ip           String?
   userAgent    String?
+  // USER | SYSTEM | CRON | ADMIN
+  actorRole    String?
+  // Chain columns. seq is assigned from AuditChainState inside the same
+  // transaction that appends the row.
+  seq          BigInt?  @unique
+  prevHash     String?
+  hash         String?
+  chainVersion Int?     @default(1)
   createdAt    DateTime @default(now())
 
   @@index([resourceType, resourceId])
   @@index([createdAt])
+  @@index([action, createdAt])
+}
+
+// Singleton (id = 1) holding the tip of the audit chain. Writers lock this row
+// (SELECT ... FOR UPDATE) so two concurrent appends cannot fork the chain.
+model AuditChainState {
+  id              Int      @id @default(1)
+  lastSeq         BigInt   @default(0)
+  lastHash        String   @default("")
+  lastVerifiedSeq BigInt   @default(0)
+  updatedAt       DateTime @updatedAt
+}
+
+// Result of one chain verification pass (cron or manual).
+model AuditVerificationRun {
+  id             Int       @id @default(autoincrement())
+  status         String    @default("RUNNING") // RUNNING | OK | BROKEN | FAILED
+  fromSeq        BigInt
+  toSeq          BigInt
+  checkedCount   Int       @default(0)
+  firstBrokenSeq BigInt?
+  detailsJson    String?
+  triggeredBy    String    @default("CRON") // CRON | MANUAL | ADMIN
+  actorId        Int?
+  actor          User?     @relation("AuditVerificationActor", fields: [actorId], references: [id])
+  startedAt      DateTime  @default(now())
+  finishedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([startedAt])
+  @@index([status])
+}
+
+// One row per scheduled job execution (escalations, retention, audit verify,
+// email retry). Gives the admin an answer to "did the 48-hour job actually
+// run last night?" without reading server logs.
+model CronRun {
+  id            Int       @id @default(autoincrement())
+  // SLA_ESCALATION | RETENTION | AUDIT_VERIFY | EMAIL_DELIVERIES
+  job           String
+  status        String    @default("RUNNING") // RUNNING | SUCCESS | FAILED | SKIPPED
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  processed     Int       @default(0)
+  summary       String?
+  error         String?
+  // CRON | MANUAL | ADMIN
+  triggerSource String    @default("CRON")
+  actorId       Int?
+  actor         User?     @relation("CronActor", fields: [actorId], references: [id])
+  createdAt     DateTime  @default(now())
+
+  retentionRuns RetentionRun[]
+
+  @@index([job, startedAt])
+  @@index([status])
 }
 
 model EmailDelivery {
