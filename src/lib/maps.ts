@@ -40,6 +40,14 @@ export function hasCoordinates(
 
 /** Tile server. Attribution is required by the OSM tile usage policy. */
 export const OSM_TILE_BASE = "https://tile.openstreetmap.org";
+/**
+ * The tile URL template used by the interactive map (Leaflet substitutes
+ * `{s}`, `{z}`, `{x}`, `{y}`). Kept in one place with the static preview so a
+ * change of tile provider only ever touches this module.
+ */
+export const OSM_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+/** Tile zoom ceiling for OpenStreetMap's raster tiles. */
+export const OSM_MAX_ZOOM = 19;
 export const OSM_COPYRIGHT_URL = "https://www.openstreetmap.org/copyright";
 export const OSM_ATTRIBUTION = "© OpenStreetMap contributors";
 

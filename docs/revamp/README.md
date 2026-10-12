@@ -274,8 +274,9 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
 | `src/components/ui/role-nav.tsx` | M ✅ | Now the sticky desktop sidebar (same active logic as the tab bar) |
 | `src/components/role-shell.tsx` | M ✅ | One column + tab bar on phones, sidebar + content from `md` up; the six portals inherit it unchanged |
 | `src/components/ui/{card,badge,button,field}.tsx` | M ✅ | Token colours, `Card` actions/flush, new `Select`/`FieldHint`, `StatusBadge` for all seven stages |
-| `src/components/ui/map-frame.tsx` | N ✅ | OSM tile mosaic with marker, attribution and an external link (replaces the CSP-blocked iframe) |
-| `src/components/concern/concern-map.tsx` | M ✅ | Wraps `MapFrame`; same props, so case pages were untouched |
+| `src/components/ui/map-frame.tsx` | N ✅ | Static OSM tile mosaic with marker, attribution and an external link — the "open map" fallback and the public transparency preview |
+| `src/components/ui/leaflet-map.tsx` | N ✅ | Interactive Leaflet view (bundled, `dynamic`-imported) for staff/resident case pages, with the static mosaic as its loading and failure state |
+| `src/components/concern/concern-map.tsx` | M ✅ | Case-location panel: interactive map when the case has coordinates, the same props as before so the call sites were untouched |
 | `next.config.ts` | M ✅ | OSM tile hosts added to `img-src` only; `connect-src` stays `'self'` |
 | `src/lib/nav.ts` + `nav.test.ts` | N ✅ | Active-href rule, tab partitioning, icon keys (15 tests) |
 | `src/lib/maps.ts` + `maps.test.ts` | M ✅ | Slippy-map tile maths, mosaic and marker placement (18 tests) |
@@ -303,13 +304,15 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
 - `role-shell.tsx` renders a sidebar from `md` up (not only from `lg`), and the
   tab bar carries the first four destinations rather than a fixed global set —
   each portal decides its own order.
-- **The case map changed from an embedded iframe to tiles.** It is now a static
-  preview plus an "open in OpenStreetMap" link, and it works in production. This
-  is the decision kept from the first pass: an interactive map would mean either a
-  third-party script on every case page plus a `frame-src` hole in the CSP, or a
-  keyed tile/SDK service. The static preview needs neither, keeps `connect-src`
-  at `'self'`, and the link hands the resident off to the real map when they want
-  to pan around.
+- **The case map changed from an embedded iframe to tiles, and then to Leaflet
+  on the pages that need it.** The iframe was blocked by the production CSP, so
+  the first pass replaced it with a static 3×2 mosaic. Case pages now go one step
+  further and mount Leaflet (installed from npm, imported only on pages that show
+  a map) over the same tile host, so staff can actually pan and zoom to plan a
+  repair. The public transparency page keeps the static mosaic: it shows a coarse
+  location and should not load a map library for every anonymous visitor. Neither
+  path adds a `frame-src` exemption or an API key, and `connect-src` stays
+  `'self'`.
 - **Two frozen surfaces are still on the old markup.** `/alerts` (the page, its
   diagnostics and the alert composer) and `/notifications` were left out of the
   token migration and the header sweep on purpose: the Android WebView depends on
@@ -364,14 +367,17 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
    anonymous reference (`BR-PUB-…`), never the real case number; coordinates are rounded
    to a coarse geohash. Historical cases are only projected after the consent review in
    stage 6 — the migration does not publish anything by itself.
-9. **The case map is a tile preview, not an embedded map.** It cannot be panned
-   or zoomed in place any more: it shows the pin, the coordinates and a link that
-   opens the real map. The embedded `openstreetmap.org` iframe was blocked by the
-   production CSP (and would have needed `frame-src` for a third party, plus their
-   JavaScript on every case page). If you would rather have an interactive map on
-   the case page, the options are widening the CSP for the embed, or paying for a
-   tile/SDK service with an API key — say the word and I will price it in.
-8. **Retention sweep is the one unfinished control.** Stage 2 landed the retention
+8. **The case map is interactive on case pages and static in public.** Staff and
+   resident case pages mount Leaflet over the same OpenStreetMap tiles, so the pin
+   can be panned and zoomed while planning a repair; the public transparency page
+   keeps the static mosaic, because it publishes a deliberately coarse location
+   and there is no reason to load a map library for an anonymous visitor. Leaflet
+   is bundled with the app (no third-party script tag, no API key, no per-view
+   cost) and its removal is a one-file change — `concern-map.tsx` falls back to
+   the mosaic and the app is back to the previous behaviour. Decided under "do
+   what you think best"; say the word if you would rather stay static everywhere.
+
+9. **Retention sweep is the one unfinished control.** Stage 2 landed the retention
    *policy* data (`RetentionRun`, consent records, the privacy helpers on
    `/admin/privacy`) but no job that applies it. Stage 5 was the natural place to add
    the sweep and it was deliberately left out of the delivered scope, so the brief's

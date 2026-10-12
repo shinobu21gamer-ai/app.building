@@ -362,19 +362,26 @@ and one way it is read.
   `locationGeohash` for clustering. Residents can submit without a pin (text
   address only); the UI marks the pin as required for `REPAIR` cases, where an
   exact location is operationally necessary.
-- No third-party map SDK is introduced. **Delivered in stage 6** as
-  `src/components/ui/map-frame.tsx`: a 3×2 mosaic of plain OpenStreetMap `<img>`
-  tiles, a marker positioned by the fractional tile coordinates
-  (`src/lib/maps.ts`, unit-tested), the OSM attribution, and an "open in
-  OpenStreetMap" link. No iframe, no API key, no per-view cost, and no
-  third-party JavaScript.
+- **Delivered in stage 6**, in two tiers, both over the same OpenStreetMap tile
+  host (`src/lib/maps.ts`, unit-tested):
+  - `src/components/ui/map-frame.tsx` — a 3×2 mosaic of plain `<img>` tiles with a
+    marker positioned by the fractional tile coordinates, the OSM attribution and
+    an "open in OpenStreetMap" link. No iframe, no API key, no per-view cost.
+    Used as the public transparency preview (zoom 14 over the coarse coordinates,
+    so the exact pin is never published) and as the fallback below.
+  - `src/components/ui/leaflet-map.tsx` — the interactive view for the staff and
+    resident case pages (zoom 16). Leaflet is a dependency installed from npm and
+    `import`ed inside the component's effect, so it ships in the app's own bundle,
+    only on the pages that show a map, and never on the server. It is configured
+    without plugins, workers or remote stylesheets; tiles are still plain `<img>`
+    requests. If the chunk or the map fails to initialise, the component renders
+    the mosaic above instead — a slow connection never loses the location.
   - It also fixes a production bug: the previous map was an iframe to
     `openstreetmap.org`, and the CSP (`default-src 'self'`, so `frame-src` was
     `'self'`) blocked it — every case page showed an empty box. Tiles need
-    `img-src` only, which `next.config.ts` now allows for the tile hosts;
-    `connect-src` stays `'self'`.
-  - Case pages use zoom 16; the public transparency map uses zoom 14 over the
-    coarse coordinates, so the exact pin is never published.
+    `img-src` only, which `next.config.ts` allows for the tile hosts; `connect-src`
+    stays `'self'` and `frame-src` stays `'self'`, because Leaflet's script is the
+    app's own bundle rather than a third-party origin.
 - `locationVerifiedAt/ById` records staff confirmation of the pin (a `REPAIR`
   case assignment to a crew is blocked until the location is confirmed or the
   override path is used).
