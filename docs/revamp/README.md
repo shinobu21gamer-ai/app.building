@@ -1,7 +1,7 @@
 # BarangayResolve — Complete Revamp
 
 Planning and delivery notes for the UI/UX, workflow, schema and module revamp.
-**Status: Stage 1 of 7 (Architecture and schema) is implemented on this branch.**
+**Status: Stage 2 of 7 (RBAC and auth) is implemented on this branch.**
 Stages 2–7 are specified here and are delivered one at a time, on your go-ahead.
 
 | Stage | Scope | State |
@@ -93,7 +93,7 @@ need a change in a frozen file, work stops there and the change is raised with y
 ## 3. Full change inventory (all seven stages)
 
 `N` = new file, `M` = modified, `D` = deleted (none planned).
-Stage 1 items are marked ✅; everything else is the committed plan for that stage.
+Stages 1 and 2 are marked ✅; everything else is the committed plan for that stage.
 
 ### Stage 1 — Architecture and schema ✅
 
@@ -111,36 +111,49 @@ Stage 1 items are marked ✅; everything else is the committed plan for that sta
 
 | Path | | Purpose |
 |---|---|---|
-| `src/lib/auth/rbac.ts` | N | Permission catalogue + role matrix + `can()` + office scoping |
-| `src/lib/auth/roles.ts` | N | The six role keys, labels, home routes |
-| `src/lib/auth/session.ts` | M | `requirePermission`/`requireApiPermission`, role homes, masked `publicUser` |
-| `src/middleware.ts` | M | Route guards for `/treasury`, `/captain`, `/crew` (alerts/notifications untouched) |
-| `src/lib/privacy/crypto.ts` | N | AES-256-GCM field encryption + keyed lookup hash (HKDF from one key) |
-| `src/lib/privacy/phone.ts` | N | Mask/unmask policy and formatting |
-| `src/lib/privacy/consent.ts` | N | Consent grant/withdraw + `requireConsent` |
-| `src/lib/privacy/service.ts` | N | DSR intake/handling/erasure, PII access logging |
-| `src/lib/identity/verification.ts` | N | Resident ID submission + review workflow |
-| `src/lib/validations/auth.ts` | M | Registration with consent + phone field |
-| `src/lib/validations/admin.ts` | M | Six role keys, permission/admin schemas |
-| `src/lib/validations/privacy.ts` | N | Consent, DSR, verification schemas |
-| `scripts/bootstrap-rbac.ts` | N | Seeds the permission catalogue from code |
-| `scripts/pii-backfill.ts` | N | Encrypts existing `User.phone` values (phase 1 of 2) |
-| `src/app/api/v1/auth/{register,profile,me}/route.ts` | M | Consent, masking, role exposure |
-| `src/app/api/v1/identity/route.ts` | N | Resident submits ID for verification |
-| `src/app/api/v1/admin/identity/[id]/route.ts` | N | Verify/reject a resident |
-| `src/app/api/v1/admin/roles/route.ts`, `admin/permissions/route.ts` | N | RBAC administration |
-| `src/app/api/v1/privacy/{consents,requests}/route.ts`, `admin/privacy/requests/[id]/route.ts` | N | RA 10173 endpoints |
-| `src/app/api/v1/admin/users/[id]/route.ts`, `users/route.ts` | M | Create/edit the new roles, crew profiles |
-| `.env.example` | M | Documents the new `PII_ENCRYPTION_KEY` (frozen alert env vars are left exactly as they are) |
-| `src/app/{treasury,captain,crew}/layout.tsx` | N | Role portals |
-| `src/app/resident/verification/page.tsx` | N | ID upload + status |
-| `src/app/privacy/page.tsx` | M | Full privacy notice, rights, consent history |
-| `src/app/privacy/requests/page.tsx` | N | Access/correction/erasure requests |
-| `src/app/admin/{roles,privacy}/page.tsx` | N | RBAC matrix, DSR queue, PII access log |
-| `src/components/admin/permission-matrix.tsx`, `verification-review.tsx`, `privacy/*` | N | UI |
-| `src/components/auth/register-form.tsx` | M | Consent checkboxes, phone, `*` markers |
-| `src/lib/auth/rbac.test.ts`, `src/lib/privacy/crypto.test.ts` | N | Tests |
+| `src/lib/auth/rbac.ts` | N ✅ | Permission catalogue + role matrix + `can()` + office scoping |
+| `src/lib/auth/roles.ts` | N ✅ | The six role keys, labels, home routes |
+| `src/lib/auth/session.ts` | M ✅ | `requirePermission`/`requireApiPermission`, role homes, masked `publicUser` |
+| `src/middleware.ts` | M ✅ | Route guards for `/treasury`, `/captain`, `/crew` (alerts/notifications untouched) |
+| `src/lib/privacy/crypto.ts` | N ✅ | AES-256-GCM field encryption + keyed lookup hash (HKDF from one key) |
+| `src/lib/privacy/phone.ts` | N ✅ | Mask/unmask policy and formatting |
+| `src/lib/privacy/consent.ts` | N ✅ | Consent grant/withdraw + `requireConsent` |
+| `src/lib/privacy/service.ts` | N ✅ | DSR intake/handling/erasure, PII access logging |
+| `src/lib/identity/verification.ts` | N ✅ | Resident ID submission + review workflow |
+| `src/lib/validations/auth.ts` | M ✅ | Registration with consent + phone field |
+| `src/lib/validations/admin.ts` | M ✅ | Six role keys, permission/admin schemas |
+| `src/lib/validations/privacy.ts` | N ✅ | Consent, DSR, verification schemas |
+| `scripts/bootstrap-rbac.ts` | N ✅ | Seeds the permission catalogue from code |
+| `scripts/pii-backfill.ts` | N ✅ | Encrypts existing `User.phone` values (phase 1 of 2) |
+| `src/app/api/v1/auth/{register,profile,me}/route.ts` | M ✅ | Consent, masking, role exposure |
+| `src/app/api/v1/identity/route.ts` | N ✅ | Resident submits ID for verification |
+| `src/app/api/v1/admin/identity/[id]/route.ts` | N ✅ | Verify/reject a resident |
+| `src/app/api/v1/admin/roles/route.ts`, `admin/permissions/route.ts` | N ✅ | RBAC administration |
+| `src/app/api/v1/privacy/{consents,requests}/route.ts`, `admin/privacy/requests/[id]/route.ts` | N ✅ | RA 10173 endpoints |
+| `src/app/api/v1/admin/users/[id]/route.ts`, `users/route.ts` | M ✅ | Create/edit the new roles, crew profiles |
+| `.env.example` | M ✅ | Documents the new `PII_ENCRYPTION_KEY` (frozen alert env vars are left exactly as they are) |
+| `src/app/{treasury,captain,crew}/layout.tsx` | N ✅ | Role portals |
+| `src/app/resident/verification/page.tsx` | N ✅ | ID upload + status |
+| `src/app/privacy/page.tsx` | M ✅ | Full privacy notice, rights, consent history |
+| `src/app/privacy/requests/page.tsx` | N ✅ | Access/correction/erasure requests |
+| `src/app/admin/{roles,privacy}/page.tsx` | N ✅ | RBAC matrix, DSR queue, PII access log |
+| `src/components/admin/permission-matrix.tsx`, `verification-review.tsx`, `privacy/*` | N ✅ | UI |
+| `src/components/auth/register-form.tsx` | M ✅ | Consent checkboxes, phone, `*` markers |
+| `src/lib/auth/rbac.test.ts`, `src/lib/privacy/crypto.test.ts` | N ✅ | Tests |
 
+| `src/lib/privacy/dates.ts` | N ✅ | Statutory working-day arithmetic (15 days) and `DSR-YYYY-NNNN` references |
+| `src/lib/privacy/phone-store.ts` | N ✅ | Encrypt/lookup/mask a phone column, with the legacy-plaintext fallback |
+| `src/lib/privacy/catalog.ts` | N ✅ | Consent + DSR catalogues and the privacy-notice version |
+| `src/lib/identity/policy.ts` | N ✅ | ID statuses/methods and the AYUDA/BUDGET gate decision |
+| `src/lib/auth/rbac-db.ts` | N ✅ | DB-authoritative permission lookup (RolePermission rows override code) |
+| `src/app/api/v1/admin/privacy/{reveal,access-log}/route.ts` | N ✅ | Audited phone reveal + the PII access log |
+| `src/app/admin/verification/page.tsx` | N ✅ | ID review queue |
+| `src/components/identity/verification-form.tsx`, `components/privacy/*` | N ✅ | Resident verification + privacy-center UI |
+| `src/components/portals/portal-intro.tsx`, `src/app/{treasury,captain,crew}/page.tsx`, `src/app/admin/layout.tsx`, `src/app/resident/layout.tsx` | N/M ✅ | Role portal landings and navigation |
+| `src/lib/admin/query.ts`, `src/components/admin/user-manager.tsx` | M ✅ | Six-role user administration with masked phone numbers |
+| `src/components/ui/field.tsx` | M ✅ | `Label required` marker + `RequiredLegend` for the `*` rule |
+| `prisma/seed.ts` | M ✅ | Six roles, four concern types with office routing, crew profiles |
+| `package.json` | M ✅ | `db:bootstrap-rbac` and `privacy:pii-backfill` scripts |
 ### Stage 3 — Core workflow (including manpower)
 
 | Path | | Purpose |
