@@ -51,6 +51,19 @@ export type AllocationBalance = {
  * and the deltas are re-added as an independent check. A mismatch means rows
  * were tampered with outside the ledger path, which the caller surfaces.
  */
+/**
+ * Serialises every reserve/disburse decision on one allocation. Call it inside
+ * the transaction, BEFORE reading the balance: two approvals that both read the
+ * same remaining funds would otherwise both reserve them (a classic lost update).
+ * The lock is held until the transaction commits.
+ */
+export async function lockAllocation(tx: Tx, allocationId: number): Promise<void> {
+  await tx.$queryRaw`
+    SELECT "id" FROM "BudgetAllocation"
+    WHERE "id" = ${allocationId}
+    FOR UPDATE`;
+}
+
 export async function allocationBalance(
   tx: Tx,
   allocationId: number
@@ -500,7 +513,16 @@ export async function approveEarmark(
     throw createApiError.conflict("The allocation behind this earmark is not approved.");
   }
 
+  // Segregation of duties: whoever proposed the earmark may not approve it.
+  // (Admin holds every treasury permission, so this rule must be enforced here.)
+  if (earmark.preparedById !== null && earmark.preparedById === input.actor.id) {
+    throw createApiError.conflict(
+      "The person who proposed this earmark cannot approve it. Ask another approver."
+    );
+  }
+
   const amount = toMoney(earmark.amount);
+  await lockAllocation(tx, earmark.allocationId);
   const balance = await allocationBalance(tx, earmark.allocationId);
   const check = checkAvailability({
     available: balance.available,
