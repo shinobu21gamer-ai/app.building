@@ -77,7 +77,7 @@ export function DsrRequestForm({ locale = "en" }: { locale?: Locale }) {
       {message && <FormMessage tone={message.tone}>{message.text}</FormMessage>}
 
       <div>
-        <Label htmlFor="dsr-type">
+        <Label htmlFor="dsr-type" required>
           {t.requestType}
         </Label>
         <select

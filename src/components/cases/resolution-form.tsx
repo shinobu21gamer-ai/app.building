@@ -116,7 +116,7 @@ export function ResolutionForm({
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
 
       <div>
-        <Label htmlFor="resolution-summary">{t.resolutionDescription}</Label>
+        <Label htmlFor="resolution-summary" required>{t.resolutionDescription}</Label>
         <Textarea
           id="resolution-summary"
           name="summary"
@@ -127,7 +127,7 @@ export function ResolutionForm({
       </div>
 
       <div>
-        <Label htmlFor="resolution-actions">{t.actionTaken}</Label>
+        <Label htmlFor="resolution-actions" required>{t.actionTaken}</Label>
         <Textarea
           id="resolution-actions"
           name="actionsTaken"
@@ -139,7 +139,7 @@ export function ResolutionForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="resolution-type">{t.resolutionType}</Label>
+          <Label htmlFor="resolution-type" required>{t.resolutionType}</Label>
           <select
             id="resolution-type"
             name="resolutionType"
@@ -170,7 +170,7 @@ export function ResolutionForm({
       </div>
 
       <div>
-        <Label htmlFor="resolution-attachment">{t.proofPhoto}</Label>
+        <Label htmlFor="resolution-attachment" required>{t.proofPhoto}</Label>
         <Input
           id="resolution-attachment"
           name="attachment"
@@ -182,7 +182,7 @@ export function ResolutionForm({
       </div>
 
       <div>
-        <Label htmlFor="resolution-remarks">{t.remarks}</Label>
+        <Label htmlFor="resolution-remarks" required>{t.remarks}</Label>
         <Textarea
           id="resolution-remarks"
           name="remarks"

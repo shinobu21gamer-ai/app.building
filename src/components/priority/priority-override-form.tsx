@@ -168,7 +168,7 @@ export function PriorityOverrideForm({
       </div>
 
       <div>
-        <Label htmlFor="reason">{t.overrideReason}</Label>
+        <Label htmlFor="reason" required>{t.overrideReason}</Label>
         <Textarea
           id="reason"
           name="reason"
