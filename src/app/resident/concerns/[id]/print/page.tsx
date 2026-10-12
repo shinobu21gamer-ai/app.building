@@ -71,7 +71,7 @@ export default async function CasePrintPage({
           this number and your account email.
         </p>
 
-        <p className="mt-6 font-mono text-3xl font-bold tracking-wide text-slate-950">
+        <p className="mt-6 font-mono text-3xl font-bold tracking-wide text-ink">
           {concern.caseNumber}
         </p>
         <div className="no-print mt-3">

@@ -201,7 +201,7 @@ export default async function OfficialPage({
                       {concern.priorityLevel ? (
                         <PriorityBadge level={concern.priorityLevel} />
                       ) : (
-                        <span className="text-slate-400">{t.notAssessed}</span>
+                        <span className="text-ink-faint">{t.notAssessed}</span>
                       )}
                     </td>
                     <td data-label={t.statusCol} className="py-3 pr-4">

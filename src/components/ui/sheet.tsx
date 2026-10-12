@@ -56,7 +56,7 @@ export function Sheet({
         type="button"
         aria-label={closeLabel}
         onClick={onClose}
-        className="absolute inset-0 h-full w-full cursor-default bg-slate-900/40"
+        className="absolute inset-0 h-full w-full cursor-default bg-ink/40"
       />
       <div
         ref={panelRef}

@@ -176,7 +176,7 @@ export function PermissionMatrix({ locale = "en" }: { locale?: Locale }) {
                             {granted && <Badge tone="sky">{t.overrideGranted}</Badge>}
                             {revoked && <Badge tone="red">{t.overrideRevoked}</Badge>}
                             {!granted && !revoked && (
-                              <span className="text-[10px] text-slate-400">
+                              <span className="text-[10px] text-ink-faint">
                                 {codeAllows ? t.codeDefault : t.fixedByCode}
                               </span>
                             )}

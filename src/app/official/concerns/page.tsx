@@ -231,7 +231,7 @@ export default async function OfficialConcernsPage({
                       {concern.priorityLevel ? (
                         <PriorityBadge level={concern.priorityLevel} />
                       ) : (
-                        <span className="text-slate-400">{t.notAssessed}</span>
+                        <span className="text-ink-faint">{t.notAssessed}</span>
                       )}
                     </td>
                     <td className="py-3 pr-4">
@@ -247,13 +247,13 @@ export default async function OfficialConcernsPage({
                           </span>
                         )
                       ) : (
-                        <span className="text-slate-400">{t.complete}</span>
+                        <span className="text-ink-faint">{t.complete}</span>
                       )}
                     </td>
                     {showOfficeScope && (
                       <td className="py-3 pr-4 text-ink-muted">
                         {concern.assignedOffice?.name ?? (
-                          <span className="text-slate-400">{t.unassigned}</span>
+                          <span className="text-ink-faint">{t.unassigned}</span>
                         )}
                       </td>
                     )}

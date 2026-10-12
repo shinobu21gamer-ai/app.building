@@ -71,7 +71,7 @@ export function AuditTable({
                 {row.user
                   ? `${row.user.firstName} ${row.user.lastName}`.trim()
                   : row.actorRole ?? "—"}
-                <p className="text-[11px] text-slate-400">{row.actorRole ?? ""}</p>
+                <p className="text-[11px] text-ink-faint">{row.actorRole ?? ""}</p>
               </td>
               <td className="px-2 py-2 font-mono text-[11px] text-ink-subtle">
                 {shortHash(row.hash)}

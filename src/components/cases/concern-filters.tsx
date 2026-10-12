@@ -12,7 +12,7 @@ export type FilterOffice = { id: number; name: string };
 const selectStyles =
   "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 const inputStyles =
-  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
+  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-ink-faint focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
 export function ConcernFilters({
   action,

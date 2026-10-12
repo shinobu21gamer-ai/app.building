@@ -50,7 +50,7 @@ export function CaseStatusStepper({
                 aria-hidden
                 style={{ animationDelay: `${index * 120}ms` }}
                 className={`absolute left-[9px] top-5 h-full w-0.5 ${
-                  done ? "grow-y bg-brand-500" : "bg-slate-200"
+                  done ? "grow-y bg-brand-500" : "bg-line"
                 }`}
               />
             )}
@@ -83,7 +83,7 @@ export function CaseStatusStepper({
             <div className="flex flex-1 items-baseline justify-between gap-3 pb-1">
               <span
                 className={`text-sm font-semibold ${
-                  done ? "text-ink" : "text-slate-400"
+                  done ? "text-ink" : "text-ink-faint"
                 }`}
               >
                 {humanizeStatus(status)}
@@ -95,7 +95,7 @@ export function CaseStatusStepper({
                     : formatDateTime(reachedDate.at)}
                 </span>
               ) : (
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-ink-faint">
                   {index > currentIndex ? "Pending" : "\u00a0"}
                 </span>
               )}

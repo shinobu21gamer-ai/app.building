@@ -48,9 +48,10 @@
 
   /* ------------------------------------------------------------------
      Design tokens v2 — semantic names.
-     Components should prefer these to raw slate/emerald/... classes so a
-     restyle is a token change, not a hunt through 60 files. The palette
-     literals above stay for the pages that already use them.
+     Components use these instead of raw slate/emerald/... classes, so a
+     restyle is a token change and not a hunt through 40 files. The only
+     surface still on palette literals is the frozen alert stack
+     (`components/alerts/`, `app/alerts/`, the admin alert composer).
      ------------------------------------------------------------------ */
 
   /* Surfaces and ink */
@@ -60,6 +61,9 @@
   --color-ink: #0f172a;
   --color-ink-muted: #475569;
   --color-ink-subtle: #64748b;
+  /* Quiet tier: separators, ghost/disabled affordances, chart neutrals.
+     Deliberately below AA — never for text the user has to read. */
+  --color-ink-faint: #94a3b8;
   --color-line: #e2e8f0;
   --color-line-strong: #cbd5e1;
 

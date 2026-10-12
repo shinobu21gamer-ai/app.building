@@ -129,7 +129,7 @@ export function PriorityBreakdown({
         </p>
       )}
 
-      <p className="text-xs text-slate-400">{footer}</p>
+      <p className="text-xs text-ink-faint">{footer}</p>
     </div>
   );
 }

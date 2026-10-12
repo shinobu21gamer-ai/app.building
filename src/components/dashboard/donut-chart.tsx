@@ -90,7 +90,7 @@ export function DonutChart({
           y="47%"
           textAnchor="middle"
           dominantBaseline="middle"
-          className="fill-slate-900 text-2xl font-bold"
+          className="fill-ink text-2xl font-bold"
         >
           {total}
         </text>
@@ -99,7 +99,7 @@ export function DonutChart({
           y="60%"
           textAnchor="middle"
           dominantBaseline="middle"
-          className="fill-slate-500 text-[10px] font-semibold uppercase tracking-wide"
+          className="fill-ink-subtle text-[10px] font-semibold uppercase tracking-wide"
         >
           {centerLabel}
         </text>

@@ -114,7 +114,7 @@ export default async function ResidentPage() {
                     <span
                       className={
                         notification.isRead
-                          ? "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-slate-200"
+                          ? "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-line"
                           : "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-600"
                       }
                       aria-hidden
@@ -126,7 +126,7 @@ export default async function ResidentPage() {
                       <p className="text-xs text-ink-muted">
                         {notification.message}
                       </p>
-                      <p className="mt-0.5 text-xs text-slate-400">
+                      <p className="mt-0.5 text-xs text-ink-faint">
                         {formatDateTime(notification.createdAt)}
                       </p>
                     </div>

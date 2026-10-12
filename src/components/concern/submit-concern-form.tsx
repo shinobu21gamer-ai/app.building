@@ -518,7 +518,7 @@ export function SubmitConcernForm({
           onChange={handleFileChange}
           onBlur={() => handleBlur("image")}
           className={cn(
-            "block w-full cursor-pointer rounded-control border bg-surface text-sm text-ink-muted file:mr-3 file:rounded-l-lg file:border-0 file:bg-surface-sunken file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink-muted hover:file:bg-slate-200",
+            "block w-full cursor-pointer rounded-control border bg-surface text-sm text-ink-muted file:mr-3 file:rounded-l-lg file:border-0 file:bg-surface-sunken file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink-muted hover:file:bg-line",
             fieldErrors.image && !selectedFile
               ? "border-red-500"
               : "border-line-strong"

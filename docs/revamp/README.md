@@ -372,7 +372,7 @@ promise files that are not there):
 engineering 30, treasury 12, privacy 17, transparency 13, retention 19) — the suite
 goes from 389 (stage 6) to 530 across 46 files.
 
-**Close-out additions** (after the table above, all three from the same read-through):
+**Close-out additions** (after the table above):
 
 - **Crew members are now told when they are put on a case.**
   `src/lib/cases/crew.ts` writes one notification row per newly assigned crew
@@ -389,6 +389,22 @@ goes from 389 (stage 6) to 530 across 46 files.
   and anonymises the resident, recorded in the erasure report as
   `public_case_projection`. Before this the projection only refreshed on a case's
   *next status change*, so a withdrawn consent could sit published indefinitely.
+- **The last palette literals are gone from every migrated surface.**
+  `slate-*` and `bg-white` were swept out of `src/app/**` and
+  `src/components/**` onto the semantic tokens: `surface`/`surface-muted`/
+  `surface-sunken`, `ink`/`ink-muted`/`ink-subtle`, `line`/`line-strong`. The
+  mapping is exact for `slate-50/100/200/300/500/600/900` and `bg-white`, so the
+  pass is a rename and not a restyle; the darker text literals
+  (`slate-700`/`800`/`950`, 19 call sites) collapse onto `ink`, a shade darker
+  than they were. The one new rung is `--color-ink-faint` (#94a3b8),
+  the quiet tier the old `text-slate-400` calls meant: separators, ghost and
+  disabled affordances, chart neutrals — deliberately below AA, so it must never
+  carry text a user has to read. The two keyboard-focus outlines that were
+  `outline-slate-400/500` now use `outline-brand-600`, the same focus colour the
+  form controls use. The frozen alert stack (`/alerts`, the diagnostics, the
+  admin composer) and `/notifications` keep their literals on purpose — they are
+  the surfaces the Android WebView pins. Verified by compiling the Tailwind
+  sheet and asserting every new utility class resolves to CSS.
 - **The sweep now honours a legal hold.** While a resident has a data-subject
   request that is `RECEIVED`/`IN_REVIEW`, the four policies that delete or
   overwrite personal data (`uploads.concern_images`, `pii.id_verification`,

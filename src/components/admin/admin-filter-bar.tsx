@@ -80,7 +80,7 @@ export function AdminFilterBar({
           value={q}
           onChange={(event) => setQ(event.target.value)}
           placeholder={qPlaceholder}
-          className="h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
+          className="h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-ink-faint focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
         />
       </div>
 

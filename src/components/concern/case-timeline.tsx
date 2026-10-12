@@ -136,7 +136,7 @@ export function CaseTimeline({
               </figcaption>
             </figure>
           )}
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-ink-faint">
             {entry.occurredOn
               ? t.actionDateLine
                   .replace("{date}", formatDate(entry.occurredOn))

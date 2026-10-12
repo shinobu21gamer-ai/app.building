@@ -81,7 +81,7 @@ export function LedgerTable({
                 <Badge tone={ENTRY_TONES[entry.entryType] ?? "neutral"}>
                   {entry.entryLabel}
                 </Badge>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-ink-faint">
                   {formatDateTime(entry.createdAt)}
                 </p>
               </td>

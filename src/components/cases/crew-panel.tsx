@@ -273,7 +273,7 @@ export function CrewPanel({
                 <li key={member.id}>
                   <label
                     className={`flex items-start gap-2 text-sm ${
-                      selectable ? "text-ink-muted" : "text-slate-400"
+                      selectable ? "text-ink-muted" : "text-ink-faint"
                     }`}
                   >
                     <input

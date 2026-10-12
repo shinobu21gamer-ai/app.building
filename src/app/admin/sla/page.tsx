@@ -157,7 +157,7 @@ export default async function AdminSlaPage({ searchParams }: PageProps) {
                         {policy.notifyRoles ? ` (+${policy.notifyRoles})` : ""} ·{" "}
                         {t.openCount.replace("{count}", String(policy.openEscalations))}
                       </p>
-                      <p className="mt-0.5 font-mono text-[11px] text-slate-400">
+                      <p className="mt-0.5 font-mono text-[11px] text-ink-faint">
                         {policy.key} · {t.updated} {formatDateTime(policy.updatedAt)}
                       </p>
                     </div>

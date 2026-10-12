@@ -98,7 +98,7 @@ export function SiteHeader({
             {user ? (
               <>
                 <SignedInLinks user={user} labels={t.header} />
-                <p className="px-1 text-xs font-medium text-slate-400">
+                <p className="px-1 text-xs font-medium text-ink-faint">
                   {user.roleName}
                 </p>
               </>

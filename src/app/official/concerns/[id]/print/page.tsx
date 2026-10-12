@@ -85,7 +85,7 @@ export default async function OfficialCasePrintPage({
           BarangayResolve · Official copy
         </p>
         <h1 className="mt-1 text-ink text-title sm:text-display">Case sheet</h1>
-        <p className="mt-6 font-mono text-3xl font-bold tracking-wide text-slate-950">
+        <p className="mt-6 font-mono text-3xl font-bold tracking-wide text-ink">
           {concern.caseNumber}
         </p>
         <h2 className="mt-2 text-lg font-semibold text-ink">

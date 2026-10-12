@@ -82,7 +82,7 @@ export function EscalationTable({
                   {row.policyName ? ` · ${row.policyName}` : ""}
                   {row.assignedOfficeName ? ` · ${row.assignedOfficeName}` : ""}
                 </p>
-                <p className="mt-0.5 text-xs text-slate-400">
+                <p className="mt-0.5 text-xs text-ink-faint">
                   {t.raised} {formatDateTime(row.createdAt)}
                   {row.acknowledgedAt
                     ? ` · ${t.acknowledgedBy} ${row.acknowledgedByName ?? ""} ${formatDateTime(row.acknowledgedAt)}`

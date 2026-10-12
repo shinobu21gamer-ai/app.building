@@ -102,7 +102,7 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
           <p className="mt-1 text-2xl font-bold text-ink">
             {status.state.lastSeq.toString()}
           </p>
-          <p className="mt-1 font-mono text-[11px] text-slate-400">
+          <p className="mt-1 font-mono text-[11px] text-ink-faint">
             {shortHash(status.state.lastHash)}
           </p>
         </Card>

@@ -46,7 +46,7 @@ export function FeedbackCard({
           {existing.comment && (
             <p className="text-ink-subtle">“{existing.comment}”</p>
           )}
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-ink-faint">
             {t.submitted.replace("{date}", formatDateTime(existing.updatedAt))}
           </p>
         </div>

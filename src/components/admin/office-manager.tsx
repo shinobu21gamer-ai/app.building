@@ -304,7 +304,7 @@ export function OfficeManager({
                     </div>
                     <p className="mt-1 text-sm font-medium text-ink-muted">
                       {office.code}
-                      <span className="px-2 text-slate-300" aria-hidden="true">·</span>
+                      <span className="px-2 text-line-strong" aria-hidden="true">·</span>
                       {t.linkedRecords.replace(
                         "{count}",
                         String(office.references.total)

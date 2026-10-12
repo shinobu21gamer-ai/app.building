@@ -143,7 +143,7 @@ export default async function TreasuryBudgetsPage() {
                       >
                         {allocation.label}
                       </Button>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-ink-faint">
                         FY {allocation.fiscalYear}
                         {allocation.consistent ? "" : " · ledger check needed"}
                       </p>

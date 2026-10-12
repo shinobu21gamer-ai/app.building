@@ -395,12 +395,16 @@ and one way it is read.
 cover the pure parts; the visual result is the same shell in all six portals.*
 
 - **Tokens first.** `globals.css` keeps Tailwind v4 `@theme` and adds semantic
-  tokens: `--color-surface*`, `--color-ink*`, `--color-line*`,
-  `--color-{success,warning,danger,info}-*`, `--radius-control|card`,
-  `--shadow-card|raised|tabbar`, `--container-content` and a `--text-*` scale
-  (`display`, `title`, `subtitle`, `body`, `caption`). The palette values mirror
-  the slate/emerald/amber/red shades they replace, so the change is a rename that
-  makes a rebrand one file — and 119 components were migrated to those names.
+  tokens: `--color-surface*`, `--color-ink*` (`ink`, `-muted`, `-subtle`, plus the
+  deliberately below-AA `-faint` tier for separators, disabled affordances and
+  chart neutrals), `--color-line*`, `--color-{success,warning,danger,info}-*`,
+  `--radius-control|card`, `--shadow-card|raised|tabbar`, `--container-content`
+  and a `--text-*` scale (`display`, `title`, `subtitle`, `body`, `caption`). The
+  palette values mirror the slate/emerald/amber/red shades they replace, so the
+  change is a rename that makes a rebrand one file — and every migrated component
+  now uses those names. The only literals left in the tree are the two surfaces
+  kept on the old markup on purpose: `/alerts` (with its diagnostics and the
+  admin composer) and `/notifications`.
 - **Status colour contract.** One tone per workflow stage, ordered the way a list
   is scanned: `SUBMITTED` sky, `ASSIGNED` violet, `UNDER_ASSESSMENT` blue,
   `AWAITING_BUDGET` amber, `IN_PROGRESS` orange, `RESOLVED` green, `CLOSED` grey —

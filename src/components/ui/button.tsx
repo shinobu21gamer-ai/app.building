@@ -21,13 +21,13 @@ const variantStyles: Record<Variant, string> = {
   secondary:
     "bg-brand-50 text-brand-800 hover:bg-brand-100 focus-visible:outline-brand-700",
   outline:
-    "border border-line-strong bg-surface text-ink-muted hover:bg-surface-muted hover:text-ink focus-visible:outline-slate-400",
+    "border border-line-strong bg-surface text-ink-muted hover:bg-surface-muted hover:text-ink focus-visible:outline-brand-600",
   ghost: "text-ink-muted hover:bg-surface-sunken hover:text-ink",
   destructive:
     "bg-danger-600 text-white hover:bg-danger-700 focus-visible:outline-danger-600",
   // For dark surfaces: a translucent outline that reads on brand-800 and similar.
   inverse:
-    "border border-white/30 bg-transparent text-white hover:bg-white/10 focus-visible:outline-white",
+    "border border-white/30 bg-transparent text-white hover:bg-surface/10 focus-visible:outline-white",
 };
 
 const sizeStyles: Record<Size, string> = {

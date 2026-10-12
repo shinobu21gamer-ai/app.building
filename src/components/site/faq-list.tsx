@@ -16,7 +16,7 @@ export function FaqList({
               {item.question}
               <span
                 aria-hidden="true"
-                className="mt-0.5 shrink-0 text-slate-400 transition-transform group-open:rotate-45"
+                className="mt-0.5 shrink-0 text-ink-faint transition-transform group-open:rotate-45"
               >
                 +
               </span>

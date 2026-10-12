@@ -103,20 +103,20 @@ export function ConfirmActionButton({
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
           onClick={close}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
+            className="w-full max-w-md rounded-xl bg-surface p-5 shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 id={titleId} className="text-base font-semibold text-slate-900">
+            <h2 id={titleId} className="text-base font-semibold text-ink">
               {title}
             </h2>
-            <p className="mt-2 text-sm text-slate-600">{description}</p>
+            <p className="mt-2 text-sm text-ink-muted">{description}</p>
 
             {error && (
               <p
@@ -133,7 +133,7 @@ export function ConfirmActionButton({
                 type="button"
                 onClick={close}
                 disabled={busy}
-                className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition-[background-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-sm active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-line-strong bg-surface px-4 text-sm font-semibold text-ink transition-[background-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:bg-surface-muted hover:shadow-sm active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:opacity-50"
               >
                 {cancelLabel}
               </button>

@@ -22,7 +22,7 @@ const TONE_FILL: Record<BarTone, string> = {
   amber: "bg-amber-500",
   green: "bg-emerald-500",
   red: "bg-red-500",
-  slate: "bg-slate-400",
+  slate: "bg-ink-faint",
 };
 
 /**
