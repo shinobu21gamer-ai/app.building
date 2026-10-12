@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   REPORT_ROW_LIMIT,
+  crewTradeLabel,
   summarizeCrew,
   summarizeSla,
   summarizeTurnaround,
@@ -301,6 +302,17 @@ describe("summarizeCrew", () => {
     expect(summary.totalPlannedHours).toBe(12);
   });
 
+  it("keeps each member's own trade, as the person reads it", () => {
+    const summary = summarizeCrew(
+      [
+        crewRow({ trade: "Masonry" }),
+        crewRow({ crewId: 8, crewName: "Ben Reyes", concernId: 102, trade: null }),
+      ],
+      90
+    );
+    expect(summary.members.map((row) => row.trade)).toEqual(["Masonry", null]);
+  });
+
   it("expresses planned hours as a share of the period's working hours", () => {
     const summary = summarizeCrew([crewRow({ plannedHours: 8 })], 7);
     // 7 calendar days ≈ 5 working days ≈ 40 h, so 8 h is 20%.
@@ -395,5 +407,17 @@ describe("the report's row budget", () => {
 
   it("keeps the day constant honest for the fixtures above", () => {
     expect(DAY).toBe(86_400_000);
+  });
+});
+
+describe("crewTradeLabel", () => {
+  it("turns a roster code into the word the crew screens use", () => {
+    expect(crewTradeLabel("MASONRY")).toBe("Masonry");
+    expect(crewTradeLabel("GENERAL")).toBe("General labour");
+  });
+
+  it("leaves a free-text trade alone and says nothing for an empty one", () => {
+    expect(crewTradeLabel("Habal-habal driver")).toBe("Habal-habal driver");
+    expect(crewTradeLabel(null)).toBeNull();
   });
 });

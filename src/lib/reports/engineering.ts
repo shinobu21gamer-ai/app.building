@@ -27,6 +27,7 @@ import {
   periodRange,
   type ReportPeriod,
 } from "@/lib/reports/period";
+import { CREW_TRADE_LABELS } from "@/lib/validations/admin";
 
 /**
  * The engineering report: how much work came in, how long it took, whether the
@@ -304,6 +305,18 @@ export function workingDaysIn(days: number | null): number {
   return Math.max(1, Math.round((span * 5) / 7));
 }
 
+/**
+ * A crew member's trade as a person reads it. The roster stores a code
+ * (`MASONRY`), and the same label map the admin crew screens use turns it into
+ * a word; a value that is not a code (a legacy free-text trade) is printed as
+ * stored rather than hidden.
+ */
+export function crewTradeLabel(trade: string | null): string | null {
+  if (trade === null) return null;
+  const labels: Record<string, string | undefined> = CREW_TRADE_LABELS;
+  return labels[trade] ?? trade;
+}
+
 export function summarizeCrew(
   rows: readonly CrewAssignmentRow[],
   periodDays: number | null
@@ -499,7 +512,13 @@ export async function loadEngineeringReport(
       isActive: true,
       scheduledStartAt: true,
       scheduledEndAt: true,
-      crew: { select: { firstName: true, lastName: true } },
+      crew: {
+        select: {
+          firstName: true,
+          lastName: true,
+          crewProfile: { select: { trade: true } },
+        },
+      },
       concern: {
         select: {
           caseAssessment: { select: { estimatedDurationMinutes: true } },
@@ -525,7 +544,7 @@ export async function loadEngineeringReport(
     return {
       crewId: row.crewId,
       crewName: `${row.crew.firstName} ${row.crew.lastName}`.trim(),
-      trade: null,
+      trade: crewTradeLabel(row.crew.crewProfile?.trade ?? null),
       concernId: row.concernId,
       isActive: row.isActive,
       scheduledStartAt: row.scheduledStartAt,
@@ -652,6 +671,7 @@ export async function loadEngineeringReport(
     description: t.engineering.crewNote,
     columns: [
       textColumn("crew", t.engineering.crewCol),
+      textColumn("trade", t.engineering.tradeCol),
       numericColumn("active", t.engineering.activeCol),
       numericColumn("assignments", t.engineering.assignmentsCol),
       numericColumn("estimatedHours", t.engineering.estimatedHoursCol),
@@ -660,6 +680,7 @@ export async function loadEngineeringReport(
     ],
     rows: crew.members.map((row) => ({
       crew: row.name,
+      trade: row.trade ?? "—",
       active: row.activeJobs,
       assignments: row.assignments,
       estimatedHours: decimal(row.plannedHours),

@@ -83,7 +83,7 @@ beforeAll(async () => {
     })
   ).id;
   await db.crewProfile.create({
-    data: { userId: crewUserId, trade: "Mason", officeId: officeAId },
+    data: { userId: crewUserId, trade: "MASONRY", officeId: officeAId },
   });
 
   const typeId = (
@@ -384,6 +384,18 @@ describe("the engineering report", () => {
       now: NOW,
     });
     expect(stat(other, t.cases)).toBe(1);
+  });
+
+  it("shows a crew member's trade, joined from the roster", async () => {
+    const document = await loadEngineeringReport({
+      locale: "en",
+      period: PERIOD_90D,
+      now: NOW,
+    });
+    const crew = document.sections.find((section) => section.key === "crew");
+    expect(crew?.columns.map((column) => column.key)).toContain("trade");
+    // The stored code is printed the way the crew screens print it.
+    expect(crew?.rows[0]?.trade).toBe("Masonry");
   });
 
   it("builds every section the screen expects", async () => {

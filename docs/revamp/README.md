@@ -430,6 +430,13 @@ goes from 389 (stage 6) to 530 across 46 files.
   SLA engine already used), so the admin dashboard and the engineering report
   cannot report different processing times. The `/captain` desk has no figures of
   its own, so nothing changed there.
+- **The crew section finally shows who does what.** `loadEngineeringReport`
+  joined the assignment but not the person's profile, so every trade cell was
+  blank even though the column and its label existed. The loader now joins
+  `CrewProfile.trade` and prints it through `crewTradeLabel()` — the roster's
+  codes (MASONRY, GENERAL…) become the words the admin crew screens use, and a
+  free-text trade is printed as stored. Covered by a database test that asserts
+  the joined value in the report's own section rows.
 - **The sweep now honours a legal hold.** While a resident has a data-subject
   request that is `RECEIVED`/`IN_REVIEW`, the four policies that delete or
   overwrite personal data (`uploads.concern_images`, `pii.id_verification`,
@@ -444,10 +451,15 @@ goes from 389 (stage 6) to 530 across 46 files.
   with its unit-tested core `src/lib/privacy/rotate.ts` (decision 3).
 - `.env.example` documents both scripts beside the secret they belong to.
 
-**Known gaps, stated rather than hidden:** in `engineering.ts` a crew member's
-utilisation is derived from assignment windows, and `treasury.ts` prints a
-worker's trade as blank because `CrewAssignment` carries no trade column
-(`CrewProfile.trade` is the column to join if that is wanted).
+**Known gap, stated rather than hidden:** in `engineering.ts` a crew member's
+utilisation is derived from assignment windows (planned hours against the
+period's working days), so it is a load indicator rather than a time-sheet. The
+other half of this paragraph is gone: the crew section used to print every trade
+as blank, because `CrewAssignment` carries no trade column and the loader never
+joined one. It now joins `CrewProfile.trade` (`crewTradeLabel()` maps the
+roster's code through the same labels the admin crew screens use, and prints
+anything else as stored). The earlier wording blamed `treasury.ts`; the blank was
+in the engineering report's crew section.
 
 The report loaders and the retention sweep now *do* have database-level tests:
 `tests/db/**` runs against the `postgres:16` service container in the `database`
