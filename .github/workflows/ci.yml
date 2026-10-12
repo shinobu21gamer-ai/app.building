@@ -41,6 +41,52 @@ jobs:
           npx cap sync android
           git diff --exit-code -- android
 
+  # The report loaders and the retention sweep are the only layer whose bugs live
+  # in SQL instead of in arithmetic: the unit suite exercises them with fixture
+  # objects, which cannot catch a wrong join, a missing filter or a column that
+  # does not exist. This job applies the hand-written migrations to a real
+  # PostgreSQL and runs `tests/db/**`, which the default vitest config excludes so
+  # a checkout without a database still has a green suite.
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        # Without the health check the migration step races the server's start.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `prisma migrate deploy` only replays the committed migrations; a migration
+      # that does not apply is a deploy failure caught here rather than on Vercel.
+      - name: Apply the migrations to a real database
+        run: npx prisma migrate deploy
+
+      - name: Database-backed tests
+        run: npx vitest run --config vitest.db.config.mts
+
   # The Android shell cannot be tested from the web build, and a mistake in it
   # only shows up as a phone app that closes without a message. Compiling the
   # real APK on every change is the only cheap way to catch that before it is

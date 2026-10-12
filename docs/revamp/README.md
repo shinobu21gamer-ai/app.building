@@ -432,6 +432,21 @@ row that misstates what it is. That is a decision, not an oversight.
 
 ---
 
+### Verification
+
+- `npm run lint`, `npm run typecheck`, `npm test` — the unit suite (552 tests).
+  It needs no database: `vitest.config.mts` includes `src/**` only.
+- `npx vitest run --config vitest.db.config.mts` — the database suite
+  (`tests/db/**`). It expects a real PostgreSQL with the migrations applied
+  (`npx prisma migrate deploy`), which is exactly what the `database` job in
+  `.github/workflows/ci.yml` provides through a `postgres:16` service container.
+  It covers the two layers whose bugs live in SQL rather than arithmetic: the
+  report loaders (engineering, privacy, transparency — treasury goes through the
+  office-scoped service layer the unit suite covers) and the retention handlers,
+  including the legal hold and its lift.
+- `npm run build` (Prisma generate + Next build) and the Android APK job, both in
+  CI on every push and pull request.
+
 ## 4. Decisions that need your sign-off
 
 1. **Reference data inside the migration.** `Role` (6 rows), the three destination

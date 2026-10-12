@@ -238,5 +238,8 @@ SELECT count(*) FROM "NativePushToken";
 ```
 
 Application-level checks after the later stages: `npm run lint`, `npm run
-typecheck`, `npm test`, `npm run db:validate`, and the smoke script
-(`scripts/smoke/run.ts`) against the deployment.
+typecheck`, `npm test` (the unit suite — no database needed), `npm run db:validate`,
+the database suite (`npx vitest run --config vitest.db.config.mts`, which CI's
+`database` job runs against a `postgres:16` service container after `prisma
+migrate deploy`), and the smoke script (`scripts/smoke/run.ts`) against the
+deployment.
