@@ -77,6 +77,7 @@ export async function loadVoucherForActor(
           coaAccount: true,
           fundSource: true,
           office: { select: { id: true, name: true } },
+          fiscalYear: { select: { id: true, year: true } },
         },
       },
       earmark: { select: { id: true, code: true, status: true, amount: true } },
