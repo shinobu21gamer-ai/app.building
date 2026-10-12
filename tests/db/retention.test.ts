@@ -35,6 +35,8 @@ const ACTIVE_KEYS = [
 
 let heldUserId = 0;
 let freeUserId = 0;
+/** A third resident: `IdentityVerification.userId` is unique, one row per person. */
+let otherUserId = 0;
 let heldConcernId = 0;
 let freeConcernId = 0;
 let heldCaseRecordId = 0;
@@ -77,6 +79,18 @@ beforeAll(async () => {
         email: "free@example.test",
         passwordHash: "x",
         firstName: "Free",
+        lastName: "Resident",
+        roleId: residentRole.id,
+      },
+      select: { id: true },
+    })
+  ).id;
+  otherUserId = (
+    await db.user.create({
+      data: {
+        email: "other@example.test",
+        passwordHash: "x",
+        firstName: "Other",
         lastName: "Resident",
         roleId: residentRole.id,
       },
@@ -217,10 +231,11 @@ beforeAll(async () => {
       select: { id: true },
     })
   ).id;
+  // Submitted yesterday: inside every window, so it must survive the sweep.
   freshVerificationId = (
     await db.identityVerification.create({
       data: {
-        userId: freeUserId,
+        userId: otherUserId,
         status: "VERIFIED",
         idTypeLabel: "PhilSys",
         idNumberEncrypted: "v1.fresh.cipher",

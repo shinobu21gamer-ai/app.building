@@ -364,8 +364,9 @@ describe("the engineering report", () => {
 
   it("counts only what the period and the office scope include", async () => {
     const wide = await loadEngineeringReport({ locale: "en", period: PERIOD_90D, now: NOW });
-    // Three cases were submitted inside the window; the 400-day-old one is out.
-    expect(stat(wide, t.cases)).toBe(3);
+    // Four cases were submitted inside the window (including the spare the
+    // public projection needed); the 400-day-old one is out.
+    expect(stat(wide, t.cases)).toBe(4);
     expect(stat(wide, t.openNow)).toBe(1);
 
     const scoped = await loadEngineeringReport({
@@ -374,7 +375,7 @@ describe("the engineering report", () => {
       officeId: officeAId,
       now: NOW,
     });
-    expect(stat(scoped, t.cases)).toBe(2);
+    expect(stat(scoped, t.cases)).toBe(3);
 
     const other = await loadEngineeringReport({
       locale: "en",
