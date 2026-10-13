@@ -447,23 +447,22 @@ export async function assignCrew(
   ]);
 
   await refreshCaseLabour(tx, concern.id);
+
+  // Everyone now booked on the case, in the same shape the picker uses: rates,
+  // availability, the office the person belongs to and their open caseload all
+  // come from the roster, so the two lists can never drift apart.
+  const booked = new Set(
+    rows.filter((row) => row.isActive).map((row) => row.crew.id)
+  );
+  const roster = await listCrewRoster(tx, {
+    officeId: concern.assignedOfficeId,
+    includeOtherOffices: true,
+  });
+
   return {
     concernId: concern.id,
     caseNumber: concern.caseNumber,
-    assigned: rows
-      .filter((row) => row.isActive)
-      .map((row) => ({
-        id: row.crew.id,
-        name: `${row.crew.firstName} ${row.crew.lastName}`,
-        trade: row.crew.crewProfile?.trade ?? null,
-        tradeLabel: row.crew.crewProfile?.trade ?? null,
-        availability: row.crew.crewProfile?.availability ?? "AVAILABLE",
-        employmentType: "",
-        dailyRate: row.crew.crewProfile?.dailyRate?.toString() ?? null,
-        hourlyRate: null,
-        maxConcurrentCases: 1,
-        openAssignments: 0,
-      })),
+    assigned: roster.filter((member) => booked.has(member.id)),
     progress,
   };
 }
