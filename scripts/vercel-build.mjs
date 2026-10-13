@@ -38,5 +38,11 @@ if (isVercelProductionBuild) {
   );
 }
 
+// Report personal-data readiness while the build log is still open: a deploy
+// without PII_ENCRYPTION_KEY ships an app whose identity verification and
+// phone-number storage fail at runtime, which is hard to spot from a browser.
+// Warning only — the fix must be able to ship regardless.
+run("npx", ["tsx", "scripts/check-pii-key.ts"]);
+
 run("npx", ["prisma", "generate"]);
 run("npx", ["next", "build", "--turbopack"]);

@@ -17,6 +17,7 @@
     "db:migrate:reset": "prisma migrate reset",
     "db:seed": "prisma db seed",
     "db:check": "tsx scripts/db-check.ts",
+    "env:check-pii": "tsx scripts/check-pii-key.ts",
     "db:studio": "prisma studio",
     "db:validate": "prisma validate",
     "db:bootstrap-rbac": "tsx scripts/bootstrap-rbac.ts",

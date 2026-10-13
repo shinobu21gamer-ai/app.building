@@ -189,7 +189,29 @@ APK; from then on keep using the same keystore so updates install in place.
 
 ## Environment Variables
 
-See `.env.example`. The only required variable is `DATABASE_URL`, a PostgreSQL connection string (for example `postgresql://user:password@host:5432/barangayresolve`, or a Neon connection string).
+See `.env.example`. `DATABASE_URL` (a PostgreSQL connection string, for example
+`postgresql://user:password@host:5432/barangayresolve`, or a Neon connection
+string) is required for the app to start, and a production deployment needs two
+more before residents can use it:
+
+| Variable | Required | Notes |
+|---|---|---|
+| `DATABASE_URL` | yes | The app cannot start without it. |
+| `JWT_SECRET` | yes | Signs session cookies. A long random string; the app throws on the first login without it. |
+| `PII_ENCRYPTION_KEY` | yes in production | Encrypts personal data at rest (RA 10173): resident phone numbers and ID numbers. Generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Secrets under 32 bytes, and the `.env.example` placeholders, are rejected. |
+
+**What happens without `PII_ENCRYPTION_KEY`:** nothing is ever stored in the
+clear. Identity verification is disabled on the resident page (with the reason
+shown), registration with a phone number is refused, and staff see masked
+numbers only. `npm run env:check-pii` reports the state of the variable, and
+production Vercel builds print the same warning into the build log. Set the
+variable in the hosting dashboard and redeploy — for Vercel that is *Project
+Settings → Environment Variables*. A deployment that deliberately stores no
+personal data can set `ALLOW_MISSING_PII_KEY=true` to silence the build warning.
+
+`DIRECT_URL`, `CRON_SECRET`, `SESSION_COOKIE_SECURE` and the SMTP, web-push and
+Firebase variables are optional; the features they enable are documented below
+and degrade on their own when they are unset.
 
 ### Web Push
 
@@ -226,7 +248,9 @@ reason.
 
 Back up the production database before a schema-change release. Production
 Vercel builds run `prisma migrate deploy` before building the app, so new schema
-changes are applied before code that depends on them is published.
+changes are applied before code that depends on them is published. The same
+build runs `scripts/check-pii-key.ts`, which warns in the build log when the
+deployment cannot store personal data (see *Environment Variables* above).
 Set `DATABASE_URL` in Vercel, and set `DIRECT_URL` too if the provider requires a
 non-pooled connection for migrations. Preview deployments intentionally skip
 migrations so they cannot change a shared production database. For a non-Vercel
@@ -235,6 +259,14 @@ release step before deploying the new code. The office migration normalizes
 existing null contacts to empty strings. Office map and address fields have been
 removed from the admin workflow; a follow-up migration removes the unused map
 columns while preserving migration history.
+
+Consent is recorded per resident (`ConsentRecord`): filing a concern processes
+personal data, so the API refuses it without a `DATA_PROCESSING` grant. Accounts
+created before that table existed have no grant yet. They can give one in a
+single click — the submit-concern page and the resident dashboard show the
+statement and the button, and the privacy center at `/privacy/requests` lists
+every purpose — and `npm run privacy:consent-notice` (dry run, then `-- --apply`)
+tells each affected resident once, through the notification service.
 
 When several system alerts are queued, users can acknowledge them one at a time
 or record acknowledgment for all queued alerts in one action.

@@ -4,19 +4,61 @@ import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SubmitConcernForm } from "@/components/concern/submit-concern-form";
+import { ConsentGate } from "@/components/privacy/consent-gate";
 import { PageHeader } from "@/components/ui/page-header";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { getBarangayAreas } from "@/lib/cases/settings";
+import {
+  CONSENT_PURPOSE_LABELS,
+  type ConsentPurpose,
+} from "@/lib/privacy/catalog";
+import { hasConsent } from "@/lib/privacy/consent";
 
 export const metadata: Metadata = {
   title: "Submit Concern",
 };
 
+const SUBMIT_CONSENT: ConsentPurpose = "DATA_PROCESSING";
+
 export default async function NewConcernPage() {
-  await requireRole(["RESIDENT"]);
+  const user = await requireRole(["RESIDENT"]);
   const locale = await getLocale();
   const t = copy[locale].submit;
+
+  // Filing a concern processes the resident's details, so the API refuses
+  // without DATA_PROCESSING consent. Checked here as well: the form is
+  // replaced by the consent statement, so nobody writes a description,
+  // attaches a photo and only then learns that a page they never saw is
+  // blocking them.
+  const consentGranted = await hasConsent(user.id, SUBMIT_CONSENT);
+
+  if (!consentGranted) {
+    const privacy = copy[locale].revamp.privacyCenter;
+    const definition = CONSENT_PURPOSE_LABELS[SUBMIT_CONSENT];
+    return (
+      <div className="mx-auto max-w-2xl space-y-6">
+        <PageHeader title={t.title} description={t.lead} />
+        <Card
+          title={privacy.consentRequiredTitle}
+          description={privacy.consentRequiredBody}
+        >
+          <ConsentGate
+            purpose={SUBMIT_CONSENT}
+            label={definition.label}
+            description={definition.description}
+            requiredAtSignup={definition.requiredAtSignup}
+            locale={locale}
+          />
+          <div className="mt-4 border-t border-line pt-4">
+            <Button href="/privacy/requests" variant="outline" size="sm">
+              {privacy.title}
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   const [categories, factors, areas, types] = await Promise.all([
     db.concernCategory.findMany({

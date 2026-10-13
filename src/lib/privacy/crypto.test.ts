@@ -12,6 +12,8 @@ import {
   lookupHash,
   maskTail,
   parseKeyMaterial,
+  piiKeyProblemMessage,
+  piiKeyStatus,
   resetKeyCacheForTests,
   tail,
 } from "./crypto";
@@ -48,12 +50,69 @@ describe("key material", () => {
     expect(parseKeyMaterial("too-short")).toBeNull();
   });
 
+  it("rejects the documented placeholders even when they are long enough", () => {
+    // `.env.example` ships these; encrypting personal data under a value
+    // published in the repository is worse than refusing to store it.
+    expect(parseKeyMaterial("replace-with-a-32-byte-secret")).toBeNull();
+    expect(
+      parseKeyMaterial("replace-with-a-long-random-string-that-is-32-bytes")
+    ).toBeNull();
+    expect(parseKeyMaterial("only-during-a-rotation")).toBeNull();
+    expect(parseKeyMaterial("CHANGE-ME-because-this-string-is-long-enough")).toBeNull();
+  });
+
   it("derives independent encryption and lookup keys", () => {
     const material = parseKeyMaterial(TEST_KEY)!;
     const keys = deriveKeys(material);
     expect(keys.encryption.length).toBe(32);
     expect(keys.lookup.length).toBe(32);
     expect(keys.encryption.equals(keys.lookup)).toBe(false);
+  });
+});
+
+describe("piiKeyStatus", () => {
+  it("reports a usable key and its byte length", () => {
+    const status = piiKeyStatus();
+    expect(status.ready).toBe(true);
+    expect(status.byteLength).toBe(32);
+    expect(piiKeyProblemMessage(status)).toContain("configured");
+  });
+
+  it("distinguishes an unset key from a key that is set but unusable", () => {
+    delete process.env[PII_KEY_ENV];
+    resetKeyCacheForTests();
+    const missing = piiKeyStatus();
+    expect(missing).toEqual({ ready: false, problem: "missing", byteLength: 0 });
+    expect(piiKeyProblemMessage(missing)).toContain("is not set");
+
+    process.env[PII_KEY_ENV] = "short-secret";
+    const tooShort = piiKeyStatus();
+    expect(tooShort.ready).toBe(false);
+    if (!tooShort.ready) {
+      expect(tooShort.problem).toBe("too_short");
+      expect(tooShort.byteLength).toBe("short-secret".length);
+    }
+    // The operator is told what the length must be, not just that it is wrong.
+    const message = piiKeyProblemMessage(tooShort);
+    expect(message).toContain("is set but unusable");
+    expect(message).toContain(String("short-secret".length));
+  });
+
+  it("names the placeholder instead of claiming nothing is configured", () => {
+    process.env[PII_KEY_ENV] = "replace-with-a-32-byte-secret";
+    resetKeyCacheForTests();
+    const status = piiKeyStatus();
+    expect(status.ready).toBe(false);
+    if (!status.ready) expect(status.problem).toBe("placeholder");
+    expect(piiKeyProblemMessage(status)).toContain("placeholder");
+  });
+
+  it("tells the operator how to generate a real key, without echoing it", () => {
+    delete process.env[PII_KEY_ENV];
+    resetKeyCacheForTests();
+    const message = piiKeyProblemMessage(piiKeyStatus());
+    expect(message).toContain("randomBytes(32)");
+    expect(message).toContain(PII_KEY_ENV);
   });
 });
 
