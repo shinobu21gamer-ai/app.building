@@ -7,20 +7,32 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { ConsentGate } from "@/components/privacy/consent-gate";
 import { getResidentDashboard } from "@/lib/dashboards/resident";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import {
+  CONSENT_PURPOSE_LABELS,
+  type ConsentPurpose,
+} from "@/lib/privacy/catalog";
+import { hasConsent } from "@/lib/privacy/consent";
 
 export const metadata: Metadata = {
   title: "Resident Dashboard",
 };
 
+const SUBMIT_CONSENT: ConsentPurpose = "DATA_PROCESSING";
+
 export default async function ResidentPage() {
   const user = await requireRole(["RESIDENT"]);
   const locale = await getLocale();
   const t = copy[locale].resident;
-  const dashboard = await getResidentDashboard(user.id);
+  const privacy = copy[locale].revamp.privacyCenter;
+  const [dashboard, consentGranted] = await Promise.all([
+    getResidentDashboard(user.id),
+    hasConsent(user.id, SUBMIT_CONSENT),
+  ]);
   const { totals, recent, notifications, unreadNotifications } = dashboard;
 
   const stats = [
@@ -45,6 +57,25 @@ export default async function ResidentPage() {
           </>
         }
       />
+
+      {/* Accounts created before consent records existed cannot file a concern
+          until they grant one; saying so here saves them a failed submission. */}
+      {!consentGranted && (
+        <Card
+          title={privacy.consentRequiredTitle}
+          description={privacy.consentRequiredBody}
+        >
+          <ConsentGate
+            purpose={SUBMIT_CONSENT}
+            label={CONSENT_PURPOSE_LABELS[SUBMIT_CONSENT].label}
+            description={CONSENT_PURPOSE_LABELS[SUBMIT_CONSENT].description}
+            requiredAtSignup={
+              CONSENT_PURPOSE_LABELS[SUBMIT_CONSENT].requiredAtSignup
+            }
+            locale={locale}
+          />
+        </Card>
+      )}
 
       <div className="stagger grid gap-4 sm:grid-cols-3">
         {stats.map((stat) => (

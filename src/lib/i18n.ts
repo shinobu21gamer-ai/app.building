@@ -193,6 +193,8 @@ const en = {
     submitting: "Creating account…",
     haveAccount: "Already have an account?",
     signIn: "Sign in",
+    phoneUnavailable:
+      "Phone numbers cannot be stored on this server yet, so leave the phone field empty — you can add your number later from your profile.",
   },
   reset: {
     title: "Reset your password",
@@ -1438,6 +1440,10 @@ const en = {
       gateAdvisory: "Identity verification is optional for this type, but it speeds up benefit claims.",
       gateOff: "The barangay has turned identity verification off, so it is not required right now.",
       savedNow: "Saved. Thank you.",
+      unavailableTitle: "Identity verification is not available yet",
+      unavailableBody:
+        "This server is not ready to store identity documents safely, so submissions are paused. Your account and your cases are unaffected. Please try again later, or bring your ID to the barangay hall.",
+      unavailableOperator: "Barangay IT/admin:",
     },
     privacyCenter: {
       title: "Your data, your rights",
@@ -1450,6 +1456,12 @@ const en = {
       grant: "Allow",
       withdraw: "Withdraw",
       policyVersion: "Privacy notice version",
+      consentRequiredTitle: "Consent needed before filing a concern",
+      consentRequiredBody:
+        "Under the Data Privacy Act of 2012 the barangay needs your consent to process your details before a concern can be filed. Read the statement below and allow it to continue — you can see or withdraw it any time on this page.",
+      consentGrant: "Allow and continue",
+      consentGranting: "Saving...",
+      consentGranted: "Consent granted. You can file your concern now.",
       withdrawBlocked:
         "This consent is required while your account exists. File an erasure request to remove your data.",
       requestsTitle: "Data subject requests",
@@ -1934,6 +1946,9 @@ const en = {
       verificationTitle: "Identity verification queue",
       verificationLead:
         "Review the documents residents submitted. Only the last four characters of the ID number are ever shown.",
+      keyMissingTitle: "Nothing can be submitted yet",
+      keyMissingBody:
+        "This deployment has no personal-data encryption key, so residents cannot submit ID documents and cannot register with a phone number. Set it and redeploy.",
       identityDoc: "Document",
       viewDoc: "Open image",
       approve: "Verify",
@@ -2187,6 +2202,8 @@ const fil: typeof en = {
     submitting: "Ginagawa ang account…",
     haveAccount: "May account ka na?",
     signIn: "Mag-sign in",
+    phoneUnavailable:
+      "Hindi pa kayang mag-imbak ng numero ng telepono ang server na ito, kaya iwanang blangko ang field na iyon — maaari mo itong idagdag mamaya sa iyong profile.",
   },
   reset: {
     title: "I-reset ang password",
@@ -3434,6 +3451,10 @@ const fil: typeof en = {
       gateAdvisory: "Opsyonal ang beripikasyon sa ganitong uri, ngunit pinapabilis nito ang benepisyo.",
       gateOff: "Naka-off ang beripikasyon sa barangay ngayon, kaya hindi ito kailangan.",
       savedNow: "Nai-save. Salamat.",
+      unavailableTitle: "Hindi pa available ang beripikasyon ng pagkakakilanlan",
+      unavailableBody:
+        "Hindi pa nakahanda ang server na ito para ligtas na iimbak ang mga identity document, kaya pansamantalang naka-pause ang pagsumite. Hindi naaapektuhan ang iyong account at mga kaso. Subukan muli mamaya, o dalhin ang iyong ID sa barangay hall.",
+      unavailableOperator: "Barangay IT/admin:",
     },
     privacyCenter: {
       title: "Ang datos mo, ang karapatan mo",
@@ -3446,6 +3467,12 @@ const fil: typeof en = {
       grant: "Payagan",
       withdraw: "Bawiin",
       policyVersion: "Bersyon ng privacy notice",
+      consentRequiredTitle: "Kailangan ng pahintulot bago makapag-file ng reklamo",
+      consentRequiredBody:
+        "Sa ilalim ng Data Privacy Act of 2012, kailangan ng barangay ang pahintulot mo para iproseso ang iyong datos bago maisumite ang reklamo. Basahin ang pahayag sa ibaba at payagan ito para magpatuloy — makikita at puwede mong bawiin anumang oras sa pahinang ito.",
+      consentGrant: "Payagan at magpatuloy",
+      consentGranting: "Sine-save...",
+      consentGranted: "Naibigay na ang pahintulot. Maaari ka nang magsumite ng reklamo.",
       withdrawBlocked:
         "Kailangan ang pahintulot na ito habang may account ka. Mag-file ng erasure request para alisin ang datos.",
       requestsTitle: "Mga kahilingan tungkol sa datos",
@@ -3930,6 +3957,9 @@ const fil: typeof en = {
       verificationTitle: "Pila ng beripikasyon ng ID",
       verificationLead:
         "Suriin ang mga dokumentong isinumite ng residente. Apat na huling karakter lang ng ID number ang ipinapakita.",
+      keyMissingTitle: "Wala pang maisusumite",
+      keyMissingBody:
+        "Walang personal-data encryption key ang deployment na ito, kaya hindi makapagsumite ng ID document ang mga residente at hindi makakapagrehistro nang may numero ng telepono. Itakda ito at i-redeploy.",
       identityDoc: "Dokumento",
       viewDoc: "Buksan ang larawan",
       approve: "I-verify",

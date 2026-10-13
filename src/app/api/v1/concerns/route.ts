@@ -221,7 +221,7 @@ export const POST = withErrorBoundary(async (req: Request) => {
   await assertConsent(
     user.id,
     "DATA_PROCESSING",
-    "Your consent to process your data is missing, so this concern cannot be filed. Grant it on your Privacy page, then submit again."
+    "Your consent to process your data is missing, so this concern cannot be filed. Grant it under \"Your data, your rights\" (/privacy/requests), then submit again — the submit page shows the same button."
   );
 
   const form = await readCappedFormData(req);

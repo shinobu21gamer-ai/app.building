@@ -186,6 +186,25 @@ double-rotating), and while `PII_ENCRYPTION_KEY_PREVIOUS` is still set the
 rotation can be reversed by swapping the two variables and running `--apply`
 again — the same script, the same rules.
 
+### A key that is set but unusable
+
+"Missing" and "wrong" are reported separately, because they send the operator to
+different places. `parseKeyMaterial` rejects anything under 32 bytes *and* the
+placeholder strings `.env.example` ships, so a deployment that copied a
+placeholder still cannot store personal data — it just cannot, without any
+hint of why. The diagnostics added for that case:
+
+- `npm run env:check-pii` prints which of the three cases applies (unset, too
+  short with the byte count, or the shipped placeholder) and the command that
+  generates a real key.
+- `/resident/verification` shows a "not available yet" card instead of the
+  submission form (an already-verified resident still sees their status), and
+  the admin verification desk shows the same explanation, so an empty queue is
+  never mistaken for "no residents need review".
+- Production Vercel builds print the warning into the build log
+  (`scripts/check-pii-key.ts`); `ALLOW_MISSING_PII_KEY=true` silences it for a
+  deployment that deliberately stores no personal data.
+
 ## 7. Risks and mitigations
 
 | # | Risk | Mitigation |

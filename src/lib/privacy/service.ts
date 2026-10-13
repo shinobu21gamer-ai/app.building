@@ -14,7 +14,7 @@
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { createApiError } from "@/lib/api";
-import { hasPiiKey } from "@/lib/privacy/crypto";
+import { piiKeyProblemMessage, piiKeyStatus } from "@/lib/privacy/crypto";
 import { readablePhone } from "@/lib/privacy/phone-store";
 import { unpublishResidentRecords } from "@/lib/cases/public-record";
 import {
@@ -35,9 +35,10 @@ type Tx = Prisma.TransactionClient;
 
 /** Clear error when a deployment has no key but tries to store personal data. */
 export function assertPiiConfigured(): void {
-  if (!hasPiiKey()) {
+  const status = piiKeyStatus();
+  if (!status.ready) {
     throw createApiError.internal(
-      "Personal-data encryption is not configured on this server (PII_ENCRYPTION_KEY)."
+      `Personal-data encryption is unavailable: ${piiKeyProblemMessage(status)}`
     );
   }
 }

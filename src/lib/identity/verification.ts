@@ -9,8 +9,9 @@ import { db } from "@/lib/db";
 import { createApiError } from "@/lib/api";
 import {
   encryptField,
-  hasPiiKey,
   lookupHash,
+  piiKeyProblemMessage,
+  piiKeyStatus,
   tail,
 } from "@/lib/privacy/crypto";
 import { grantConsent } from "@/lib/privacy/consent";
@@ -154,9 +155,10 @@ export type SubmitIdentityInput = IdentitySubmitInput & {
  * revoked by an administrator first.
  */
 export async function submitIdentity(userId: number, input: SubmitIdentityInput) {
-  if (!hasPiiKey()) {
+  const keyStatus = piiKeyStatus();
+  if (!keyStatus.ready) {
     throw createApiError.internal(
-      "Identity documents cannot be processed: the server has no PII encryption key configured."
+      `Identity documents cannot be processed: ${piiKeyProblemMessage(keyStatus)}`
     );
   }
 
