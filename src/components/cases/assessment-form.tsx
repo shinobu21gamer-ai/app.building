@@ -74,8 +74,39 @@ export function AssessmentForm({
   const defaultHours = durationMinutes > 0 ? Math.floor(durationMinutes / 60) : "";
   const defaultMinutes = durationMinutes > 0 ? durationMinutes % 60 : "";
 
-  const toLocalInput = (value: string | null) =>
-    value ? value.slice(0, 16) : "";
+  // The pickers work in the browser's own local time; plans are stored as
+  // instants. Show and compare them in the barangay's timezone (Asia/Manila),
+  // which is what the people filling this form read off the clock.
+  const toLocalInput = (value: string | null) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Manila",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(date);
+    const part = (type: string) =>
+      parts.find((entry) => entry.type === type)?.value ?? "00";
+    const hour = part("hour") === "24" ? "00" : part("hour");
+    return `${part("year")}-${part("month")}-${part("day")}T${hour}:${part("minute")}`;
+  };
+
+  // A new plan may not start in the past. A plan that is already recorded keeps
+  // its own window as the floor, so re-saving a running case stays possible.
+  const nowLocal = toLocalInput(new Date().toISOString());
+  const storedFloor = [
+    toLocalInput(defaults?.scheduledStartAt ?? null),
+    toLocalInput(defaults?.scheduledEndAt ?? null),
+  ]
+    .filter(Boolean)
+    .sort()[0];
+  const planMin =
+    storedFloor && storedFloor < nowLocal ? storedFloor : nowLocal;
 
   const checkboxes: Checkbox[] = [
     {
@@ -313,6 +344,7 @@ export function AssessmentForm({
               id="scheduledStart"
               name="scheduledStartAt"
               type="datetime-local"
+              min={planMin}
               defaultValue={toLocalInput(defaults?.scheduledStartAt ?? null)}
             />
           </div>
@@ -322,6 +354,7 @@ export function AssessmentForm({
               id="scheduledEnd"
               name="scheduledEndAt"
               type="datetime-local"
+              min={planMin}
               defaultValue={toLocalInput(defaults?.scheduledEndAt ?? null)}
             />
             <p className="mt-1 text-xs text-ink-subtle">{t.scheduledHint}</p>

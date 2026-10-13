@@ -10,6 +10,7 @@ import { DonutChart } from "@/components/dashboard/donut-chart";
 import { getAdminDashboard } from "@/lib/dashboards/admin";
 import { statusLabel } from "@/lib/cases/workflow";
 import { MaintenanceActions } from "@/components/admin/maintenance-actions";
+import { StepGuide } from "@/components/cases/step-guide";
 import { AlertComposer } from "@/components/admin/alert-composer";
 import { PageHeader } from "@/components/ui/page-header";
 import { copy } from "@/lib/i18n";
@@ -44,6 +45,7 @@ export default async function AdminPage() {
   const user = await requireRole(["ADMIN"]);
   const locale = await getLocale();
   const t = copy[locale].admin;
+  const flowCopy = copy[locale].flow;
   const dashboard = await getAdminDashboard();
   const {
     totals,
@@ -123,6 +125,23 @@ export default async function AdminPage() {
           }
         />
       </div>
+
+      <Card title={flowCopy.guide.title} description={flowCopy.guide.lead}>
+        <StepGuide
+          steps={(
+            [
+              flowCopy.steps.VALIDATE,
+              flowCopy.steps.ASSESS,
+              flowCopy.steps.FUND,
+              flowCopy.steps.CREW,
+              flowCopy.steps.START,
+              flowCopy.steps.WORK,
+              flowCopy.steps.VERIFY,
+              flowCopy.steps.CLOSE,
+            ] as const
+          ).map((step) => ({ title: step.title, detail: step.lead }))}
+        />
+      </Card>
 
       <AlertComposer locale={locale} />
 

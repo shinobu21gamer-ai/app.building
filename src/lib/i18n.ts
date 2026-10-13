@@ -801,6 +801,7 @@ const en = {
     allOffices: "All offices",
     from: "Submitted from",
     to: "Submitted until",
+    dateLimitHint: "Today or earlier. A future date is ignored, and an end before the start is swapped.",
     apply: "Apply filters",
     applying: "Filtering...",
     clear: "Clear",
@@ -1070,6 +1071,171 @@ const en = {
         "Yes. After a case is resolved you will be asked for a 1–5 rating and an optional comment. That feedback is stored with the case so the hall can improve how it works.",
     },
   ],
+
+  // ── The step-by-step case flow, shared by the official and admin desks ──
+  flow: {
+    title: "Case flow",
+    lead: "Work the case from step 1 to step 8. The step highlighted below is the one being worked on now; finished steps are green.",
+    stepOf: "Step {current} of {total}",
+    progress: "{done} of {total} steps done",
+    currentStep: "Current step",
+    whatToDo: "What to do",
+    whoDoesIt: "Who does this",
+    nextUp: "When this is done: {title}",
+    doneBadge: "Done",
+    currentBadge: "Working on it",
+    waitingBadge: "Waiting",
+    laterBadge: "Later",
+    skippedBadge: "Not needed",
+    finishEarlier: "Step {number} has to be finished first.",
+    otherDesk: "The {desk} handles this step.",
+    nothingNow: "Nothing can be done on this step yet.",
+    closedNote:
+      "Every step is done, so the case is closed. The resident sees the same record and can rate the work.",
+    deskYou: "You",
+    deskAdmin: "Admin desk",
+    deskOfficial: "Your office",
+    deskTreasury: "Treasury office",
+    deskCrew: "Crew on site",
+    deskCaptain: "Captain's office",
+    steps: {
+      VALIDATE: {
+        title: "Validate the report",
+        lead: "The admin desk confirms what the report is and sends it to the right office.",
+        todo: [
+          "Read the report, the location and the photo.",
+          "Pick the service type — it decides routing, budget and crew.",
+          "Confirm the category, the priority shown to the public, and the office.",
+          "Save. The case is routed to that office and becomes Assigned.",
+        ],
+      },
+      ASSESS: {
+        title: "Assess and plan the work",
+        lead: "The assigned office works through the four checks, then plans the manpower and the cost.",
+        todo: [
+          "Work through the four checks: eligibility, inspection, resources, approval.",
+          "Plan how many workers, how long the work takes, and what equipment is needed.",
+          "Enter the cost estimate — labour included.",
+          "Save the assessment, then move the case to Under assessment.",
+        ],
+      },
+      FUND: {
+        title: "Wait for the budget",
+        lead: "Only cases whose service type needs money stop here. The treasury sets the amount aside.",
+        todo: [
+          "Move the case to Awaiting budget so the treasury can act on it.",
+          "The treasury approves an earmark for this case.",
+          "Work cannot start until the amount set aside covers the cost estimate.",
+        ],
+      },
+      CREW: {
+        title: "Assign the crew",
+        lead: "Book the workers named in the plan before the work starts.",
+        todo: [
+          "Open the roster and pick the planned number of workers by name.",
+          "Check who is free and how many open cases they already hold.",
+          "Booking fewer people than planned needs a written reason (the shortfall override).",
+        ],
+      },
+      START: {
+        title: "Start the work",
+        lead: "With the crew complete and the money in place, the case moves to In progress.",
+        todo: [
+          "Confirm the crew is complete and, for money cases, that the funds are set aside.",
+          "Move the case to In progress.",
+          "Attach the proof photo — every status change needs one.",
+        ],
+      },
+      WORK: {
+        title: "Do the work and log progress",
+        lead: "Remarks and actions are recorded as the work goes on. The step ends with the resolution.",
+        todo: [
+          "Log progress remarks and the actions taken while the work goes on.",
+          "Crew updates arrive from the crew app and appear in the case history.",
+          "When the work is finished, record the resolution: summary, actions taken, date and proof photo.",
+        ],
+      },
+      VERIFY: {
+        title: "Verify the fix",
+        lead: "Someone other than the official who recorded the resolution checks the proof.",
+        todo: [
+          "Compare the proof photo with the concern.",
+          "Record the decision: verified as fixed, partially verified, failed, or waiting for the resident.",
+          "A failed check stops closure unless a reasoned override is recorded.",
+        ],
+      },
+      CLOSE: {
+        title: "Close the case",
+        lead: "The approving official closes the case and the resident is asked to rate the work.",
+        todo: [
+          "Check that the verification passed and the resident sees the resolution.",
+          "Close the case with a proof photo and remarks.",
+          "Every entry stays in the case history permanently.",
+        ],
+      },
+    },
+    blocks: {
+      NEEDS_TYPE:
+        "The admin desk still has to confirm the service type of this report.",
+      NEEDS_ASSESSMENT:
+        "Save the assessment first: the four checks, the manpower plan and the cost estimate.",
+      WAITING_UNDER_ASSESSMENT:
+        "The assessment is saved. Move the case to Under assessment to finish this step.",
+      NEEDS_ESTIMATE:
+        "Save the cost estimate — the treasury needs a figure before it can set money aside.",
+      WAITING_BUDGET_STAGE:
+        "Move the case to Awaiting budget so the treasury can set the money aside.",
+      NEEDS_FUNDS:
+        "The treasury has not set aside enough money for this case yet.",
+      NEEDS_CREW_PLAN:
+        "The manpower plan decides how many people to book, so it comes first.",
+      NEEDS_CREW: "Book the rest of the planned crew before the work starts.",
+      FIELD_CHECK_OPEN:
+        "A field check is open. The case continues once an admin reviews the finding.",
+      NOT_STARTED: "This step starts once the earlier steps are finished.",
+      NEEDS_RESOLUTION: "Record the resolution with its proof photo first.",
+      NEEDS_VERIFICATION:
+        "The proof needs a verification decision before the case can close.",
+      VERIFICATION_FAILED:
+        "The verification failed. Record a new resolution, or close the case with a written override reason.",
+    },
+    crew: {
+      title: "Your part of the flow",
+      lead: "Every assignment follows these four steps. Send an update as you go so the office sees the same record.",
+      steps: [
+        {
+          title: "Check the plan",
+          detail:
+            "Workers, duration, equipment and the planned window are on this card.",
+        },
+        {
+          title: "Go to the site",
+          detail:
+            "Confirm the location and the materials before starting the work.",
+        },
+        {
+          title: "Send progress",
+          detail:
+            "Use Progress while it goes well, and Problem on site the moment something blocks the work.",
+        },
+        {
+          title: "Report completion",
+          detail:
+            "Mark Work completed and describe what was done — the office then records the resolution with a proof photo.",
+        },
+      ],
+    },
+    guide: {
+      title: "How a case moves, step by step",
+      lead: "Eight steps from the report to the closed case. Each case below shows the step it is on now.",
+      nextLabel: "Now on",
+    },
+    recordTitle: "Case record",
+    recordLead:
+      "Everything recorded on this case: the report itself, the priority computation, the assignments, the resolution and the full history.",
+    openAssessment: "Open the assessment form",
+    skippedNote: "This step is not needed for this case.",
+  },
 
   // ── Revamp: role portals, identity verification, privacy centre ─────
   revamp: {
@@ -1373,6 +1539,8 @@ const en = {
       yearName: "Name (optional)",
       startsOn: "Starts",
       endsOn: "Ends",
+      fiscalYearDatesHint:
+        "Today or later — a fiscal year cannot be opened in the past, and it must end after it starts.",
       createFiscalYear: "Open fiscal year",
       closeFiscalYear: "Close year",
       yearClosed: "Fiscal year closed.",
@@ -1764,7 +1932,7 @@ const en = {
       scheduledStart: "Planned start",
       scheduledEnd: "Planned finish",
       scheduledHint:
-        "The planned window is what the double-booking check uses for the crew.",
+        "Today or later — a plan cannot be set in the past. The planned window is what the double-booking check uses for the crew.",
       costTitle: "Cost estimate",
       costDesc: "Labour is part of the estimate — a plan without it is not costed.",
       labor: "Labour",
@@ -2822,6 +2990,7 @@ const fil: typeof en = {
     allOffices: "Lahat ng opisina",
     from: "Nahain mula",
     to: "Nahain hanggang",
+    dateLimitHint: "Ngayon o mas maaga. Hindi pinapansin ang petsa sa hinaharap, at ipinagpapalit kung baliktad ang simula at katapusan.",
     apply: "I-apply ang filter",
     applying: "Fini-filter...",
     clear: "I-clear",
@@ -3091,6 +3260,173 @@ const fil: typeof en = {
         "Oo. Pagkatapos ma-resolve, hihingi ng rating na 1–5 at opsyonal na komento. Naitatala iyon sa kaso para mapabuti ng hall ang serbisyo.",
     },
   ],
+
+  // ── The step-by-step case flow, shared by the official and admin desks ──
+  flow: {
+    title: "Daloy ng kaso",
+    lead: "Sundin ang mga hakbang 1 hanggang 8. Ang naka-highlight sa ibaba ang ginagawa ngayon; berde ang mga natapos na.",
+    stepOf: "Hakbang {current} ng {total}",
+    progress: "{done} sa {total} hakbang ang tapos",
+    currentStep: "Kasalukuyang hakbang",
+    whatToDo: "Ano ang gagawin",
+    whoDoesIt: "Sino ang gagawa",
+    nextUp: "Kapag tapos na ito: {title}",
+    doneBadge: "Tapos",
+    currentBadge: "Ginagawa",
+    waitingBadge: "Naghihintay",
+    laterBadge: "Mamaya",
+    skippedBadge: "Hindi kailangan",
+    finishEarlier: "Tapusin muna ang hakbang {number}.",
+    otherDesk: "Ang {desk} ang may hawak ng hakbang na ito.",
+    nothingNow: "Wala pang magagawa sa hakbang na ito.",
+    closedNote:
+      "Tapos na ang lahat ng hakbang, kaya sarado na ang kaso. Nakikita ng residente ang parehong record at makakapag-rate.",
+    deskYou: "Ikaw",
+    deskAdmin: "Admin desk",
+    deskOfficial: "Iyong tanggapan",
+    deskTreasury: "Treasury office",
+    deskCrew: "Crew sa site",
+    deskCaptain: "Tanggapan ng kapitan",
+    steps: {
+      VALIDATE: {
+        title: "I-validate ang ulat",
+        lead: "Kinukumpirma ng admin desk kung ano ang ulat at ipinapadala ito sa tamang tanggapan.",
+        todo: [
+          "Basahin ang ulat, ang lokasyon at ang litrato.",
+          "Piliin ang uri ng serbisyo — ito ang nagtatakda ng routing, budget at crew.",
+          "Kumpirmahin ang kategorya, ang priority na makikita ng publiko, at ang tanggapan.",
+          "I-save. Mapupunta ang kaso sa tanggapang iyon at magiging Assigned.",
+        ],
+      },
+      ASSESS: {
+        title: "I-assess at planuhin ang trabaho",
+        lead: "Dadaanin ng tanggapan ang apat na check, tapos planuhin ang manpower at gastos.",
+        todo: [
+          "Tapusin ang apat na check: eligibility, inspection, resources, approval.",
+          "Planuhin kung ilang manggagawa, gaano katagal, at anong kagamitan ang kailangan.",
+          "Ilagay ang cost estimate — kasama ang labour.",
+          "I-save ang assessment, tapos ilipat ang kaso sa Under assessment.",
+        ],
+      },
+      FUND: {
+        title: "Hintayin ang budget",
+        lead: "Dito lang humihinto ang mga kasong nangangailangan ng pera. Naglalaan ang treasury ng halaga.",
+        todo: [
+          "Ilipat ang kaso sa Awaiting budget para maaksyunan ng treasury.",
+          "Mag-aaprubahan ang treasury ng earmark para sa kasong ito.",
+          "Hindi pa puwedeng magsimula ang trabaho hangga't hindi sakop ng nakalaang halaga ang estimate.",
+        ],
+      },
+      CREW: {
+        title: "I-assign ang crew",
+        lead: "I-book ang mga manggagawang nasa plano bago magsimula ang trabaho.",
+        todo: [
+          "Buksan ang roster at piliin ang bilang ng manggagawa na nakasaad sa plano.",
+          "Tingnan kung sino ang bakante at ilan ang hawak na kaso.",
+          "Kung kukulangin sa plano, kailangan ng nakasulat na dahilan (shortfall override).",
+        ],
+      },
+      START: {
+        title: "Simulan ang trabaho",
+        lead: "Kapag kumpleto ang crew at may nakalaang pera, lilipat ang kaso sa In progress.",
+        todo: [
+          "Kumpirmahin na kumpleto ang crew at, para sa money cases, may nakalaang pondo.",
+          "Ilipat ang kaso sa In progress.",
+          "Mag-attach ng proof photo — kailangan ito sa bawat pagbabago ng status.",
+        ],
+      },
+      WORK: {
+        title: "Gawin ang trabaho at itala ang progreso",
+        lead: "Naitatala ang mga remark at aksyon habang tumatakbo ang trabaho. Ang resolution ang nagtatapos sa hakbang na ito.",
+        todo: [
+          "Itala ang progreso at ang mga aksyong ginawa habang tumatakbo ang trabaho.",
+          "Dumarating ang update ng crew mula sa crew app at lumalabas sa kasaysayan ng kaso.",
+          "Kapag tapos na ang trabaho, i-record ang resolution: summary, mga aksyon, petsa at proof photo.",
+        ],
+      },
+      VERIFY: {
+        title: "I-verify ang pagkukumpuni",
+        lead: "Ibang opisyal, hindi ang nag-record ng resolution, ang magche-check ng proof.",
+        todo: [
+          "Ihambing ang proof photo sa reklamo.",
+          "Itala ang desisyon: verified as fixed, partially verified, failed, o naghihintay sa residente.",
+          "Kapag failed, hindi maisasara ang kaso maliban sa override na may nakasulat na dahilan.",
+        ],
+      },
+      CLOSE: {
+        title: "Isara ang kaso",
+        lead: "Isinasara ng approving official ang kaso at hinihiling sa residente na i-rate ang trabaho.",
+        todo: [
+          "Tiyakin na pasado ang verification at nakikita ng residente ang resolution.",
+          "Isara ang kaso na may proof photo at remarks.",
+          "Mananatili sa kasaysayan ng kaso ang lahat ng entry.",
+        ],
+      },
+    },
+    blocks: {
+      NEEDS_TYPE:
+        "Kailangan pa ng admin desk na kumpirmahin ang uri ng serbisyo ng ulat na ito.",
+      NEEDS_ASSESSMENT:
+        "I-save muna ang assessment: ang apat na check, ang manpower plan at ang cost estimate.",
+      WAITING_UNDER_ASSESSMENT:
+        "Naka-save na ang assessment. Ilipat ang kaso sa Under assessment para matapos ang hakbang na ito.",
+      NEEDS_ESTIMATE:
+        "I-save ang cost estimate — kailangan ng treasury ng halaga bago makapaglaan ng pera.",
+      WAITING_BUDGET_STAGE:
+        "Ilipat ang kaso sa Awaiting budget para makapaglaan ng pera ang treasury.",
+      NEEDS_FUNDS:
+        "Wala pang sapat na nakalaang pera ang treasury para sa kasong ito.",
+      NEEDS_CREW_PLAN:
+        "Ang manpower plan ang nagtatakda kung ilang tao ang i-book, kaya ito muna.",
+      NEEDS_CREW:
+        "I-book ang natitirang crew na nasa plano bago magsimula ang trabaho.",
+      FIELD_CHECK_OPEN:
+        "May bukas na field check. Magpapatuloy ang kaso kapag na-review na ng admin ang finding.",
+      NOT_STARTED:
+        "Magsisimula ang hakbang na ito kapag tapos na ang mga naunang hakbang.",
+      NEEDS_RESOLUTION: "I-record muna ang resolution kasama ang proof photo.",
+      NEEDS_VERIFICATION:
+        "Kailangan ng desisyon sa verification bago maisara ang kaso.",
+      VERIFICATION_FAILED:
+        "Bigo ang verification. Mag-record ng bagong resolution, o isara ang kaso na may nakasulat na override na dahilan.",
+    },
+    crew: {
+      title: "Ang bahagi mo sa daloy",
+      lead: "Apat na hakbang ang sinusundan ng bawat assignment. Magpadala ng update habang tumatakbo para pareho ang record ng tanggapan.",
+      steps: [
+        {
+          title: "Tingnan ang plano",
+          detail:
+            "Nasa card na ito ang manggagawa, tagal, kagamitan at ang nakatakdang oras.",
+        },
+        {
+          title: "Pumunta sa lugar",
+          detail:
+            "Kumpirmahin ang lokasyon at ang materyales bago magsimula.",
+        },
+        {
+          title: "Magpadala ng progreso",
+          detail:
+            "Gamitin ang Progress habang maayos, at ang Problem on site kapag may humaharang sa trabaho.",
+        },
+        {
+          title: "I-report ang pagkumpleto",
+          detail:
+            "Markahan ang Work completed at ilarawan ang nagawa — pagkatapos, ire-record ng tanggapan ang resolution na may proof photo.",
+        },
+      ],
+    },
+    guide: {
+      title: "Paano gumagalaw ang kaso, hakbang-hakbang",
+      lead: "Walong hakbang mula sa ulat hanggang sa pagsasara. Nakikita sa bawat kaso sa ibaba ang hakbang nito ngayon.",
+      nextLabel: "Ngayon sa",
+    },
+    recordTitle: "Record ng kaso",
+    recordLead:
+      "Lahat ng naitatala sa kasong ito: ang ulat, ang kalkulasyon ng priority, ang mga assignment, ang resolution at ang buong kasaysayan.",
+    openAssessment: "Buksan ang assessment form",
+    skippedNote: "Hindi kailangan ang hakbang na ito para sa kasong ito.",
+  },
 
   // ── Revamp: role portals, identity verification, privacy centre ─────
   revamp: {
@@ -3395,6 +3731,8 @@ const fil: typeof en = {
       yearName: "Pangalan (opsyonal)",
       startsOn: "Simula",
       endsOn: "Katapusan",
+      fiscalYearDatesHint:
+        "Ngayon o mas huli — hindi puwedeng buksan ang fiscal year sa nakaraan, at kailangang matapos ito pagkatapos ng simula.",
       createFiscalYear: "Buksan ang fiscal year",
       closeFiscalYear: "Isara ang taon",
       yearClosed: "Naisara ang fiscal year.",
@@ -3786,7 +4124,7 @@ const fil: typeof en = {
       scheduledStart: "Planned start",
       scheduledEnd: "Planned finish",
       scheduledHint:
-        "Ang planned window ang basehan ng double-booking check ng crew.",
+        "Ngayon o mas huli — hindi puwedeng ilagay sa nakaraan ang plano. Ang planned window ang basehan ng double-booking check ng crew.",
       costTitle: "Tantyang gastos",
       costDesc: "Kasama ang labor sa tantya — walang labor, walang tantya.",
       labor: "Labor",

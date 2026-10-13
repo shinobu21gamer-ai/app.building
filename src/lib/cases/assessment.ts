@@ -12,6 +12,7 @@ import type { Prisma } from "@prisma/client";
 import { createApiError } from "@/lib/api";
 import { armCaseStageClock } from "@/lib/sla/escalation";
 import { canManageConcern, type WorkflowActor } from "@/lib/cases/workflow";
+import { planWindowProblem } from "@/lib/cases/plan-window";
 import {
   isValidDurationMinutes,
   isValidWorkersNeeded,
@@ -106,7 +107,15 @@ export async function loadConcernForAssessment(
       assignedOfficeId: true,
       submittedAt: true,
       type: { select: { key: true, requiresBudget: true, requiresCrew: true } },
-      caseAssessment: { select: { id: true, workersNeeded: true, status: true } },
+      caseAssessment: {
+        select: {
+          id: true,
+          workersNeeded: true,
+          status: true,
+          scheduledStartAt: true,
+          scheduledEndAt: true,
+        },
+      },
     },
   });
   if (!concern) throw createApiError.notFound("Concern not found.");
@@ -150,13 +159,20 @@ export async function saveAssessment(
       "Equipment notes are required (write \"none\" when no equipment is needed)."
     );
   }
-  if (values.scheduledStartAt && values.scheduledEndAt) {
-    if (values.scheduledEndAt.getTime() <= values.scheduledStartAt.getTime()) {
-      throw createApiError.badRequest(
-        "The planned finish must be after the planned start."
-      );
-    }
-  }
+  // The plan is a statement about work still to be done: neither end may be
+  // pushed further into the past. A window that is already stored keeps its
+  // days, so a case that is running can still be re-saved.
+  const planProblem = planWindowProblem({
+    scheduledStartAt: values.scheduledStartAt ?? null,
+    scheduledEndAt: values.scheduledEndAt ?? null,
+    existing: concern.caseAssessment
+      ? {
+          scheduledStartAt: concern.caseAssessment.scheduledStartAt,
+          scheduledEndAt: concern.caseAssessment.scheduledEndAt,
+        }
+      : null,
+  });
+  if (planProblem) throw createApiError.badRequest(planProblem);
 
   const now = new Date();
   const existing = concern.caseAssessment;

@@ -673,6 +673,18 @@ Administrators can view and act on any office's cases.
   `SUBMITTED → ASSIGNED` performed by the routing/assignment services). A single
   transition map validates every move, so steps cannot be skipped, repeated,
   reversed, or applied to a closed case.
+- **Guided step-by-step flow:** the case page opens with the whole flow as a
+  numbered rail — `Validate → Assess → Fund → Crew → Start work → Work →
+  Verify → Close` — and each step panel says what to do, who does it, and what
+  it is waiting for. The case's current step is marked and opened by default;
+  the form that performs a step lives inside that step, so nobody has to guess
+  the order or which button comes next. The official list shows each case's
+  current step, the official case sheet prints the flow, the admin dashboard
+  and the validation queue (`/admin/validation`) put the same numbered guide
+  above the workload, and the crew duty view carries the crew's four steps
+  (check the plan → travel and set up → send progress → finish the task). The
+  step order comes from one pure module (`src/lib/cases/process-flow.ts`), so
+  every desk sees the same sequence.
 - **Proof photo for every status change:** moving a case to in progress, resolved
   or closed requires a proof photo (JPEG, PNG or WebP, up to 5 MB, checked by its
   content and not just its file name). Without one the request is refused with
@@ -692,6 +704,15 @@ Administrators can view and act on any office's cases.
   The record time (`createdAt`) is the moment the entry was made and is never
   changed. The journal is append-only: a backdated entry is added as a new row, and
   no existing row is rewritten.
+- **No dates in the past where the past makes no sense:** the assessment's planned
+  start and planned finish, and a fiscal year's start and end, cannot be set to an
+  earlier day — the pickers are floored at today (Asia/Manila) and the server
+  refuses an earlier day with `400` even if the form is bypassed
+  (`src/lib/cases/plan-window.ts`, `fiscalYearCreateSchema`). An assessment that
+  already has a plan keeps its stored window, so editing an overdue plan does not
+  lock the official out. The past is still allowed where it is needed: action dates
+  on journal entries and the report/filter date ranges (a range that reaches past
+  today is clamped to today instead of rejected).
 - **Journaling:** every status change writes a `CaseStatusHistory` row with the
   previous status, new status, acting user and role, remarks, action date, proof
   photo and record time. Resolving also creates the unique `ResolutionRecord`

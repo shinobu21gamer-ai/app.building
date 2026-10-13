@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { isCaseStatus, PRIORITY_LEVELS } from "@/lib/cases/workflow";
+import { todayManila } from "@/lib/cases/action-date";
 
 export type ConcernListFilters = {
   q: string | null;
@@ -50,9 +51,39 @@ function parseManilaDate(value: string | null): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-export function parseConcernFilters(params: RawParams): ConcernListFilters {
-  const from = parseManilaDate(nonEmpty(readParam(params, "from")));
-  const toStart = parseManilaDate(nonEmpty(readParam(params, "to")));
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** A report window looks back in time, so a day after today is pulled to today. */
+function clampToToday(day: Date | null, todayStart: Date): Date | null {
+  if (!day) return null;
+  return day.getTime() > todayStart.getTime() ? todayStart : day;
+}
+
+/**
+ * Reads the concern list filters out of the query string.
+ *
+ * The date window is the one place a user can type dates freely, so it is made
+ * harmless here: a start after today is clamped to today (a report cannot show
+ * cases that have not happened), and a window whose end is before its start is
+ * swapped instead of returning nothing.
+ */
+export function parseConcernFilters(
+  params: RawParams,
+  /** Today in Asia/Manila (YYYY-MM-DD). Injected by tests. */
+  today: string = todayManila()
+): ConcernListFilters {
+  const todayStart = parseManilaDate(today);
+  let from = clampToToday(
+    parseManilaDate(nonEmpty(readParam(params, "from"))),
+    todayStart ?? new Date()
+  );
+  let toStart = clampToToday(
+    parseManilaDate(nonEmpty(readParam(params, "to"))),
+    todayStart ?? new Date()
+  );
+  if (from && toStart && from.getTime() > toStart.getTime()) {
+    [from, toStart] = [toStart, from];
+  }
 
   const status = nonEmpty(readParam(params, "status"));
   const priority = nonEmpty(readParam(params, "priority"))?.toUpperCase() ?? null;
@@ -66,7 +97,7 @@ export function parseConcernFilters(params: RawParams): ConcernListFilters {
         : null,
     categoryId: toPositiveInt(nonEmpty(readParam(params, "categoryId"))),
     from,
-    to: toStart ? new Date(toStart.getTime() + 24 * 60 * 60 * 1000) : null,
+    to: toStart ? new Date(toStart.getTime() + DAY_MS) : null,
     officeId: toPositiveInt(nonEmpty(readParam(params, "officeId"))),
   };
 }
@@ -137,6 +168,16 @@ export async function listConcerns(filters: ConcernListFilters) {
         assignedOfficial: {
           select: { id: true, firstName: true, lastName: true },
         },
+        // The step of the case flow this row is on (see `concernProcessFlow`).
+        type: { select: { requiresBudget: true } },
+        caseAssessment: { select: { workersNeeded: true, totalCost: true } },
+        resolutions: {
+          orderBy: { id: "desc" },
+          take: 1,
+          select: { verificationStatus: true },
+        },
+        crewAssignments: { where: { isActive: true }, select: { id: true } },
+        fieldChecks: { select: { status: true, finding: true } },
       },
       orderBy: { createdAt: "desc" },
       take: CONCERN_LIST_LIMIT,
