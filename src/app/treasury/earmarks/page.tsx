@@ -10,6 +10,7 @@ import { formatDateTime } from "@/lib/format";
 import { db } from "@/lib/db";
 import { requirePermission, userCan } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 import {
   fundedAmountsByConcern,
   listAllocations,
