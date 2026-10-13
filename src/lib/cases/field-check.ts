@@ -18,11 +18,13 @@ import {
   notifyFieldCheckSubmitted,
 } from "@/lib/notifications/service";
 
-// Field verification service: an admin (or the assigned office) asks a person to
-// confirm a concern is real; that person records a finding; an admin reviews it.
-// Every step writes to the case history. Nothing here moves a case forward on its
-// own, except a "not confirmed" finding approved by the admin, which closes the
-// case as unfounded (the only path out of ASSIGNED that skips assessment).
+// Field verification service: the reality check that opens every case. An admin
+// asks a person to confirm the report on site (the request is possible from the
+// moment the report arrives, before the case is validated or routed); that person
+// records a finding; an admin reviews it. Every step writes to the case history.
+// Nothing here moves a case forward on its own, except a "not confirmed" finding
+// approved by the admin, which closes the case as unfounded — the only path to a
+// closed case that skips assessment, budget, crew and work.
 
 type Tx = Prisma.TransactionClient;
 
@@ -92,7 +94,7 @@ export async function requestFieldCheck(
   }
   if (!canRequestFieldCheck(concern.status)) {
     throw createApiError.conflict(
-      "A field check can only be requested while the case is ASSIGNED, before assessment starts."
+      "A field check can only be requested while the case is SUBMITTED or ASSIGNED — the case has to be confirmed on site before assessment starts."
     );
   }
 
@@ -115,12 +117,26 @@ export async function requestFieldCheck(
   ) {
     throw createApiError.badRequest("Choose an active official or crew member.");
   }
+  // The case office's own people come first. Another office's staff are only
+  // sent when this office has nobody who can go, so a case routed to an office
+  // without crew is not a dead end — and not a way to poach other staff either.
   if (
     assignee.officeId !== null &&
     concern.assignedOfficeId !== null &&
     assignee.officeId !== concern.assignedOfficeId
   ) {
-    throw createApiError.badRequest("That person belongs to another office.");
+    const ownOffice = await tx.user.count({
+      where: {
+        isActive: true,
+        officeId: concern.assignedOfficeId,
+        role: { key: { in: [...FIELD_CHECK_ASSIGNEE_ROLES] } },
+      },
+    });
+    if (ownOffice > 0) {
+      throw createApiError.badRequest(
+        "That person belongs to another office, and this office has its own staff for the check."
+      );
+    }
   }
 
   const check = await tx.fieldCheck.create({
@@ -163,7 +179,9 @@ export async function submitFieldCheck(
   if (check.status !== "PENDING") {
     throw createApiError.conflict("This field check has already been submitted.");
   }
-  if (check.concern.status !== "ASSIGNED") {
+  // The case is SUBMITTED until an admin validates it, so both statuses are a
+  // live check: the person sent out may report back before validation happens.
+  if (!canRequestFieldCheck(check.concern.status)) {
     throw createApiError.conflict("This case is no longer waiting for a field check.");
   }
   const problem = findingProblem({
@@ -216,7 +234,7 @@ export async function reviewFieldCheck(
   if (check.status !== "SUBMITTED") {
     throw createApiError.conflict("Only a submitted field check can be reviewed.");
   }
-  if (check.concern.status !== "ASSIGNED") {
+  if (!canRequestFieldCheck(check.concern.status)) {
     throw createApiError.conflict("This case is no longer waiting for a field check.");
   }
   const note = input.note?.trim() || null;
@@ -295,7 +313,7 @@ export async function reviewFieldCheck(
 async function closeAsUnfounded(
   tx: Tx,
   input: {
-    concern: { id: number; caseNumber: string; userId: number };
+    concern: { id: number; caseNumber: string; userId: number; status: string };
     actor: WorkflowActor;
     reason: string;
     proofUrl: string | null;
@@ -320,7 +338,9 @@ async function closeAsUnfounded(
     data: {
       concernId: input.concern.id,
       entryType: "CLOSE",
-      fromStatus: "ASSIGNED",
+      // The check can be approved before the case is validated (still
+      // SUBMITTED), so the entry names the status the case was closed from.
+      fromStatus: input.concern.status,
       toStatus: "CLOSED",
       remarks: `Closed as unfounded after field check #${input.checkId}. ${input.reason}`,
       occurredOn: now,
@@ -337,6 +357,8 @@ async function closeAsUnfounded(
     userId: input.concern.userId,
     concernId: input.concern.id,
     caseNumber: input.concern.caseNumber,
+    outcome:
+      "The on-site check did not confirm the report, so the case was closed as unfounded. Open the case to read what the checker found.",
   });
 }
 

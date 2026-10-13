@@ -123,12 +123,6 @@ export const PERMISSIONS = [
       "Start work with fewer crew than planned. Requires a written reason.",
   },
   {
-    key: "case.override.budget_skip",
-    category: "CASE",
-    description:
-      "Skip the AWAITING_BUDGET stage. Requires a written reason.",
-  },
-  {
     key: "case.override.countersign",
     category: "CASE",
     description: "Countersign another user's workflow override.",
@@ -361,7 +355,6 @@ const OFFICIAL_PERMISSIONS = [
   "case.fieldcheck.perform",
   "case.resolution.verify",
   "case.override.crew_shortfall",
-  "case.override.budget_skip",
   "privacy.consent.manage",
   "report.view.office",
 ] as const satisfies readonly PermissionKey[];

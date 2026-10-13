@@ -10,6 +10,7 @@ import {
   CREATABLE_OVERRIDE_KINDS,
   isPassingVerification,
   OVERRIDE_KINDS,
+  overrideLabel,
   satisfactionForRating,
   statusLabel,
   statusPermissionFor,
@@ -19,7 +20,7 @@ describe("case workflow transitions", () => {
   it("returns the seven-stage lifecycle", () => {
     expect(allowedTransitions("SUBMITTED")).toEqual(["ASSIGNED"]);
     expect(allowedTransitions("ASSIGNED")).toEqual(["UNDER_ASSESSMENT"]);
-    // AWAITING_BUDGET is skippable: assessment may go straight to work.
+    // The transition exists, but the money gate refuses it for every case.
     expect(allowedTransitions("UNDER_ASSESSMENT")).toEqual([
       "AWAITING_BUDGET",
       "IN_PROGRESS",
@@ -48,25 +49,21 @@ describe("case workflow transitions", () => {
     expect(statusPermissionFor("SUBMITTED")).toBeNull();
   });
 
-  describe("budgetStageBlock (money cases cannot skip AWAITING_BUDGET)", () => {
-    const base = { typeRequiresBudget: true, estimatedCost: 5000, fundedAmount: 5000 };
+  describe("budgetStageBlock (no case skips AWAITING_BUDGET)", () => {
+    const base = { estimatedCost: 5000, fundedAmount: 5000 };
 
-    it("blocks a money case from skipping straight to IN_PROGRESS, with no override", () => {
+    it("blocks every case from skipping straight to IN_PROGRESS, with no override", () => {
       expect(
         budgetStageBlock({ ...base, fromStatus: "UNDER_ASSESSMENT", toStatus: "IN_PROGRESS" })
       ).toMatch(/cannot skip/);
-    });
-
-    it("lets a case that needs no money skip the stage", () => {
       expect(
         budgetStageBlock({
           fromStatus: "UNDER_ASSESSMENT",
           toStatus: "IN_PROGRESS",
-          typeRequiresBudget: false,
           estimatedCost: null,
           fundedAmount: 0,
         })
-      ).toBeNull();
+      ).toMatch(/cannot skip/);
     });
 
     it("needs a saved cost estimate before the case starts waiting for budget", () => {
@@ -74,10 +71,16 @@ describe("case workflow transitions", () => {
         budgetStageBlock({ ...base, estimatedCost: null, fromStatus: "UNDER_ASSESSMENT", toStatus: "AWAITING_BUDGET" })
       ).toMatch(/cost estimate/);
       expect(
-        budgetStageBlock({ ...base, estimatedCost: 0, fromStatus: "UNDER_ASSESSMENT", toStatus: "AWAITING_BUDGET" })
-      ).toMatch(/cost estimate/);
-      expect(
         budgetStageBlock({ ...base, fromStatus: "UNDER_ASSESSMENT", toStatus: "AWAITING_BUDGET" })
+      ).toBeNull();
+      // A saved ₱0 estimate is an answer: the case costs nothing.
+      expect(
+        budgetStageBlock({
+          fromStatus: "UNDER_ASSESSMENT",
+          toStatus: "AWAITING_BUDGET",
+          estimatedCost: 0,
+          fundedAmount: 0,
+        })
       ).toBeNull();
     });
 
@@ -98,9 +101,12 @@ describe("case workflow transitions", () => {
       ).toBeNull();
     });
 
-    it("the retired skip kind can no longer be created", () => {
+    it("the retired skip kind can no longer be created, but still reads", () => {
       expect(CREATABLE_OVERRIDE_KINDS).not.toContain("BUDGET_STAGE_SKIP");
-      expect(OVERRIDE_KINDS).toContain("BUDGET_STAGE_SKIP");
+      expect(OVERRIDE_KINDS).not.toContain("BUDGET_STAGE_SKIP");
+      expect(overrideLabel("BUDGET_STAGE_SKIP")).toMatch(/no longer allowed/);
+      expect(overrideLabel("CREW_SHORTFALL")).toMatch(/fewer crew/);
+      expect(overrideLabel("SOMETHING_ELSE")).toBe("SOMETHING_ELSE");
     });
   });
 });

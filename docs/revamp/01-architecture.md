@@ -63,8 +63,8 @@ link where it matters.
 | `case.manpower.plan` (`workersNeeded*`, duration, equipment) | – | ✅ | – | – | – | ✅ |
 | `case.crew.assign` | – | ✅ | – | – | – | ✅ |
 | `case.status.progress` (UNDER_ASSESSMENT → IN_PROGRESS → RESOLVED) | – | ✅ | – | – | – | ✅ |
-| `case.status.close` | – | – | – | – | ✅ | ✅ |
-| `case.override.crew_shortfall`, `case.override.budget_skip` | – | ✅ (reason required) | – | – | ✅ | ✅ |
+| `case.status.close` | – | – | – | – | ✅ (`/captain/closure`) | ✅ |
+| `case.override.crew_shortfall` | – | ✅ (reason required) | – | – | ✅ | ✅ |
 | `case.override.countersign` | – | – | – | – | ✅ | ✅ |
 | `crew.job.view.own`, `crew.job.update.own` | – | – | ✅ | – | – | – |
 | `treasury.coa.verify`, `treasury.allocation.*`, `treasury.earmark.*` | – | – | – | ✅ | countersign | ✅ |
@@ -84,10 +84,19 @@ falls back to code. Every override is audited (`RolePermission.updatedById`).
 
 **Office scoping.** `OFFICIAL` sees cases whose `assignedOfficeId` equals their
 `User.officeId` (existing `canManageConcern`, extended to the new statuses).
-`CREW` sees only cases with an active `CrewAssignment` for them. `TREASURER` and
-`CAPTAIN` see the treasury side of every case but not the resident's PII beyond
-the masked view. `ADMIN` sees everything and is the only role that can validate
-or recategorize.
+`CREW` sees only cases with an active `CrewAssignment` for them, plus any field
+check assigned to them personally. `TREASURER` sees the treasury side of every
+case but not the resident's PII beyond the masked view. `CAPTAIN` reaches the
+case sheet of any case (`/official/concerns/[id]`, the same page officials use —
+what they may do there is decided by their permissions, so they verify
+resolutions and close cases but cannot plan manpower, assign crew or drive the
+status forward) and works the closure queue at `/captain/closure`. `ADMIN` sees
+everything and is the only role that can validate or recategorize.
+
+A field check follows the **person** it was given to, not the case office: the
+assignee sees it on `/crew` (crew) or their own dashboard `/official`
+(officials and admins), with the resident's location and the finding form, so a
+checker from another office is never stranded.
 
 **ID verification.** A resident row starts at `IdentityVerification.status =
 UNVERIFIED`; submitting an ID moves it to `PENDING`, an admin decision to
@@ -103,6 +112,12 @@ only `idNumberLast4`.
                  ┌──────────────┐
  resident ──────►│  SUBMITTED   │
                  └──────┬───────┘
+                        │ step 1 — reality check: the admin sends an official or
+                        │ crew member to the resident's location; that person
+                        │ reports real / not real; an admin approves the finding.
+                        │ "Not real" closes the case as unfounded, right here.
+                        │ Nothing below runs until the finding confirms the report.
+                        ▼
                         │ admin validates + categorizes + confirms priority
                         ▼
                  ┌──────────────┐   routing engine (type → office)
@@ -115,10 +130,10 @@ only `idNumberLast4`.
                  │  UNDER_ASSESSMENT  │  eligibility · inspection · resources · approval
                  │  + manpower plan*  │  workersNeeded* · estimated duration · equipment notes
                  └──────┬─────────────┘
-                        │            requiresBudget (AYUDA/BUDGET/REPAIR)
+                        │            every case: no skip, no override
                         ▼
-                 ┌────────────────────┐   required for money cases (no skip, no
-                 │  AWAITING_BUDGET   │    override); DOCUMENTS may skip
+                 ┌────────────────────┐   the estimate goes to the treasury and
+                 │  AWAITING_BUDGET   │    the money is set aside before work
                  └──────┬─────────────┘
                         │ earmark approved + funds confirmed
                         ▼
@@ -141,11 +156,11 @@ Guards and effects (all enforced inside the transaction, never only in the UI):
 
 | Transition | Guards | Effects |
 |---|---|---|
-| SUBMITTED → ASSIGNED | admin validation done (`validatedAt`), type + category + priority set | `CaseAssignment`, `AssignedAt`, status history `ASSIGNMENT`, notify office officials + resident |
-| ASSIGNED → UNDER_ASSESSMENT | assigned office matches actor (or ADMIN) | `stageEnteredAt` reset, SLA clock per `SlaPolicy` |
-| UNDER_ASSESSMENT → AWAITING_BUDGET | assessment `SUBMITTED` with `workersNeeded ≥ 1*`, duration, equipment notes; saved cost estimate `totalCost > 0` (labour included) for money cases | `awaitingBudgetAt`, `CaseAssessment` rows audited, treasury sees the funding request |
-| UNDER_ASSESSMENT → IN_PROGRESS | `requiresBudget = false` only (DOCUMENTS). Money cases cannot skip AWAITING_BUDGET; there is no override for this | history entry |
-| AWAITING_BUDGET → IN_PROGRESS | `requiresBudget = false`, or approved/released earmarks for this case whose total ≥ `totalCost`* | ledger `EARMARK` reservation, disbursement draft may exist |
+| SUBMITTED → ASSIGNED | **reality check passed** (`realityCheckState` = PASSED: an approved finding that confirmed the report — a check that does not confirm it closes the case as unfounded instead); then admin validation done (`validatedAt`), type + category + priority set | `CaseAssignment`, `AssignedAt`, status history `ASSIGNMENT`, notify office officials + resident |
+| ASSIGNED → UNDER_ASSESSMENT | assigned office matches actor (or ADMIN); **the reality check passed**. All the doors into the stage are locked the same way: the validation that leaves the inbox (`validateConcern`), the status endpoint (`changeConcernStatus`) and the first assessment save (`saveAssessment`, which performs the same move) | `stageEnteredAt` reset, SLA clock per `SlaPolicy` |
+| UNDER_ASSESSMENT → AWAITING_BUDGET | assessment `SUBMITTED` with `workersNeeded ≥ 1*`, duration, equipment notes; a saved cost estimate (labour included; a saved ₱0 says the case costs nothing) | `awaitingBudgetAt`, `CaseAssessment` rows audited, treasury sees the funding request |
+| UNDER_ASSESSMENT → IN_PROGRESS | never allowed: every case waits in AWAITING_BUDGET, and there is no override for this | – |
+| AWAITING_BUDGET → IN_PROGRESS | approved/released earmarks for this case whose total ≥ `totalCost`* (a ₱0 estimate needs no earmark) | ledger `EARMARK` reservation, disbursement draft may exist |
 | IN_PROGRESS → RESOLVED | proof photo*, resolution record, crew releases | `ResolutionRecord`, notify resident, feedback request |
 | RESOLVED → CLOSED | passing verification (`FIXED_VERIFIED` or `PARTIALLY_VERIFIED`, `verifiedAt` set); a `FAILED` or still-pending check needs a `STATUS_FORCE` override with reason | `closedAt`, completion record, public projection refresh, notify resident |
 

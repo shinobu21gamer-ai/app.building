@@ -311,20 +311,33 @@ Accounts are created by `npm run db:seed` (see `prisma/seed.ts`). The seed only 
 
 ## Database Schema
 
-15 relational tables managed by Prisma migrations in `prisma/migrations/`:
+55 models in `prisma/schema.prisma`, managed by the migrations in
+`prisma/migrations/`, grouped as:
 
-- `Role`, `Office`, `User` — roles, barangay offices, and users
-- `ConcernCategory`, `RoutingRule` — categories and configurable routing rules
-- `Concern` — the case record (case number, status, priority, assignments)
-- `PriorityAssessment` — factor scores + total + level for every (re-)assessment
-- `CaseAssignment` — full assignment/reassignment history (self-referencing chain)
-- `CaseStatusHistory` — append-only journal of every status change, remark, action, resolution, and override. Official entries carry their **action date** (`occurredOn`, the Asia/Manila calendar day it happened) next to the immutable record time (`createdAt`); status changes also carry their **proof photo** (`attachmentUrl`). Added by migration `20261009090000_case_status_proof_and_action_date`.
-- `ResolutionRecord` — final resolution information (one per concern)
-- `PriorityConfig` — runtime-configurable priority score thresholds
-- `PriorityFactorConfig` — runtime-configurable scoring factors (label, weight, score range)
-- `Notification`, `Feedback`, `Audit` — notifications, post-resolution feedback, and the audit log
+- **People & access:** `Role`, `Permission`, `RolePermission`, `Office`, `User`,
+  `CrewProfile`, plus the RA 10173 privacy tables (`IdentityVerification`,
+  `ConsentRecord`, `DataSubjectRequest`, `ErasureExecution`, `RetentionPolicy`,
+  `RetentionRun`, `PiiAccessLog`).
+- **The case:** `Concern`, `ConcernCategory`, `ConcernType`, `RoutingRule`,
+  `PriorityAssessment`/`PriorityConfig`/`PriorityFactorConfig`,
+  `CaseAssignment`, `CaseStatusHistory`, `ResolutionRecord`, `CaseAssessment`,
+  `CrewAssignment`, `FieldCheck`, `CaseWorkflowOverride`, `PublicCaseRecord`,
+  `SlaPolicy`, `CaseEscalation`.
+- **Money (COA/MOOE):** `FiscalYear`, `CoaAccount`, `FundSource`,
+  `BudgetAllocation`, `BudgetEarmark`, `Disbursement`, `DisbursementApproval`,
+  `BudgetLedgerEntry`.
+- **Comms & operations:** `Notification`, the frozen alert tables
+  (`SystemAlert`, `SystemAlertAcknowledgement`, `SystemAlertReaction`,
+  `PushSubscription`, `NativePushToken`), `Feedback`, `AppSetting`,
+  `LoginAttemptBucket`, `RevokedToken`, `PasswordResetCode`, `UploadRecord`.
+- **Audit & maintenance:** `Audit`, `AuditChainState`, `AuditVerificationRun`,
+  `CronRun`, `EmailDelivery`.
 
-Status flow: `SUBMITTED → ASSIGNED → IN_PROGRESS → RESOLVED → CLOSED`.
+Column-level detail, indexes and the rule each table encodes are in
+`docs/revamp/02-data-model.md`.
+
+Status flow: `SUBMITTED → ASSIGNED → UNDER_ASSESSMENT → AWAITING_BUDGET →
+IN_PROGRESS → RESOLVED → CLOSED` — no stage may be skipped.
 
 ## API Structure
 
@@ -352,6 +365,8 @@ REST endpoints live under `src/app/api/v1/`. All routes return a consistent
 | GET | `/concerns/[id]/feedback` | RESIDENT (owner) | Read the resident's own feedback for a case |
 | POST | `/concerns/[id]/feedback` | RESIDENT (owner) | Rate a resolved/closed case (resolved check, 1-5 rating, optional comment) |
 | GET | `/admin/users` | ADMIN | List accounts (`?q=`, `?role=`, `?status=active\|disabled`) |
+| GET | `/admin/crew` | `case.crew.assign` | Crew roster for the picker (`?availability=`, `?officeId=`, `?includeOtherOffices=1`). `?scope=desk` (needs `crew.roster.manage`) lists every crew account, profiled or not |
+| POST | `/admin/crew` | `crew.roster.manage` | Create or update a crew profile (trade, employment, rates, availability, max cases, office, notes, roster state) |
 | POST | `/admin/users` | ADMIN | Create a resident/official/admin account |
 | PATCH | `/admin/users/[id]` | ADMIN | Update profile, role/office, password, or account status |
 | DELETE | `/admin/users/[id]` | ADMIN | Delete an account with no historical references (guarded) |
@@ -379,6 +394,9 @@ REST endpoints live under `src/app/api/v1/`. All routes return a consistent
 | POST | `/admin/routing-rules` | ADMIN | Create a routing rule (category → office + priority) |
 | PUT | `/admin/routing-rules/[id]` | ADMIN | Update / enable / disable a routing rule |
 | DELETE | `/admin/routing-rules/[id]` | ADMIN | Delete a routing rule (pure configuration) |
+| POST | `/concerns/[id]/field-checks` | `case.fieldcheck.request` | Step 1: send somebody to confirm a concern is real at the resident's location (allowed while the case is `SUBMITTED` or `ASSIGNED`) |
+| POST | `/field-checks/[checkId]/submit` | `case.fieldcheck.perform` | The assigned person records the finding (confirmed / not confirmed / could not verify) with notes and a photo |
+| POST | `/field-checks/[checkId]/review` | `case.fieldcheck.review` | The admin approves the finding or sends it back; approving "not confirmed" closes the case as unfounded |
 | GET | `/uploads/[filename]` | Owner / assigned office / ADMIN | Serve a stored concern image |
 
 ## Authentication & Authorization
@@ -669,14 +687,22 @@ Administrators can view and act on any office's cases.
   description, location and resident name/email; filters for status, priority,
   category, office (admin) and submission date range (interpreted in
   Asia/Manila).
-- **Status lifecycle:** `ASSIGNED → IN_PROGRESS → RESOLVED → CLOSED` (with
-  `SUBMITTED → ASSIGNED` performed by the routing/assignment services). A single
-  transition map validates every move, so steps cannot be skipped, repeated,
-  reversed, or applied to a closed case.
+- **Status lifecycle:** `SUBMITTED → ASSIGNED → UNDER_ASSESSMENT →
+  AWAITING_BUDGET → IN_PROGRESS → RESOLVED → CLOSED`. A single transition map
+  validates every move, so steps cannot be skipped, repeated, reversed, or
+  applied to a closed case.
+- **Reality check first:** step 1 of every case is answering "is this report
+  real?". The admin desk sends an official or a crew member to the location the
+  resident gave; that person reports what they found; an admin approves the
+  finding. A report that is not real closes the case as unfounded before any
+  office work happens, and nothing else on the case can proceed until the
+  finding confirms it — enforced at every door (see *Field checks* below).
 - **Guided step-by-step flow:** the case page opens with the whole flow as a
-  numbered rail — `Validate → Assess → Fund → Crew → Start work → Work →
-  Verify → Close` — and each step panel says what to do, who does it, and what
-  it is waiting for. The case's current step is marked and opened by default;
+  numbered rail — `Check the report → Validate → Assess → Fund → Crew → Start
+  work → Work → Verify → Close` — and each step panel says what to do, who does
+  it, and what it is waiting for. Step 1 is the reality check, and the form that
+  sends the checker lives on it. The case's current step is marked and opened by
+  default;
   the form that performs a step lives inside that step, so nobody has to guess
   the order or which button comes next. The official list shows each case's
   current step, the official case sheet prints the flow, the admin dashboard
@@ -684,7 +710,48 @@ Administrators can view and act on any office's cases.
   above the workload, and the crew duty view carries the crew's four steps
   (check the plan → travel and set up → send progress → finish the task). The
   step order comes from one pure module (`src/lib/cases/process-flow.ts`), so
-  every desk sees the same sequence.
+  every desk sees the same sequence. Each step names the desk that owns it
+  ("the treasury's queue", the case office, the Captain's office) and a step
+  the case never reached — because it was closed as unfounded — reads **not
+  needed** instead of pretending to be done. The Captain works the last step
+  from `/captain/closure`, the list of resolved cases with their verification
+  state.
+- **Every case waits for its budget:** the `AWAITING_BUDGET` stage is not
+  skippable. A case cannot move from `UNDER_ASSESSMENT` straight to
+  `IN_PROGRESS`, and there is no override for it. To leave the stage the case
+  needs a saved cost estimate (labour included; a saved ₱0 says the case costs
+  nothing) and approved earmarks whose total covers it, which is what makes the
+  treasury's decision visible before any work starts. The retired
+  `BUDGET_STAGE_SKIP` override kind stays readable on old records only.
+- **Field checks — is the report real?** Step 1 of every case, and the first
+  thing the admin does with a new report: the admin desk (or the assigned
+  office) picks an official or crew member, who sees the location the resident
+  pinned (address, purok and a map link), goes there, and records what they
+  found — confirmed, not confirmed, or impossible to verify — with notes and a
+  photo. The finding is a notification to every admin, and the case waits until
+  an admin answers it. The check can be sent from the moment the report arrives
+  (status `SUBMITTED`), before it is validated or routed. Approving a "not
+  confirmed" finding closes the case as unfounded, marks the steps that never
+  happened as not needed, and tells the resident in plain words why the case
+  ended with no work done; sending it back reopens the check for the same person
+  with the reviewer's note shown on their screen. While the check has not been
+  approved, the case cannot move on: the validation that leaves the inbox
+  (`validateConcern`), the status change out of `ASSIGNED` and the first
+  assessment save (`saveAssessment`) all check the same rule. The checker picks
+  the work up on their own dashboard (`/official` for officials, `/crew` for
+  crew) — the check follows the person, not the office, so somebody sent from
+  another office still gets the case location and the finding form. The whole
+  queue is at `/admin/field-checks`, whose "send someone" picker leads with the
+  reports that have just arrived.
+- **Crew roster and profiles:** every Maintenance Crew account carries a roster
+  profile — trade, employment type, hourly/daily rate, availability, how many
+  open cases they may hold, office, notes and whether they are on the roster.
+  Profiles are created with the account ("Crew profile" fields appear when the
+  role is Maintenance Crew) or on the crew roster screen (`/admin/crew`), which
+  also enables/disables the account. The assignment picker leads with the case
+  office's own crew and lists profiled crew from other offices after them with
+  their office's name, so a case routed to an office without crew of its own is
+  not a dead end.
 - **Proof photo for every status change:** moving a case to in progress, resolved
   or closed requires a proof photo (JPEG, PNG or WebP, up to 5 MB, checked by its
   content and not just its file name). Without one the request is refused with
@@ -713,6 +780,11 @@ Administrators can view and act on any office's cases.
   lock the official out. The past is still allowed where it is needed: action dates
   on journal entries and the report/filter date ranges (a range that reaches past
   today is clamped to today instead of rejected).
+- **Two rights in the assessment:** the findings (eligibility, inspection,
+  resources, approval) need `case.assess`; the manpower plan (workers needed,
+  duration, equipment) and the cost estimate the budget gate is measured
+  against need `case.manpower.plan` as well. A role can be trusted with one
+  without the other, and the API enforces both.
 - **Journaling:** every status change writes a `CaseStatusHistory` row with the
   previous status, new status, acting user and role, remarks, action date, proof
   photo and record time. Resolving also creates the unique `ResolutionRecord`
@@ -820,7 +892,18 @@ supports search/filtering and every create, update, enable/disable and delete
 action is confirmed and written to the `Audit` log.
 
 - **Accounts** (`/admin/users`): create RESIDENT/OFFICIAL/ADMIN accounts, edit
-  profiles, reset passwords, change role/office, and enable/disable access.
+  profiles, reset passwords, change role/office, and enable/disable access. When
+  the role is **Maintenance Crew**, the dialog also collects the crew profile
+  (trade, employment type, rates, availability, max open cases, notes and roster
+  state), so a new crew account can be assigned to a case immediately.
+- **Crew** (`/admin/crew`): the roster desk — every crew account with its trade,
+  rates, availability, open caseload and roster state, a filter for available
+  crew and for accounts that still need a profile, plus "add a crew profile" for
+  an existing account and enable/disable for the account itself.
+- **Field checks** (`/admin/field-checks`): step 1 of the workflow — send
+  somebody to confirm a concern is real (assignee + what to confirm), starting
+  with the reports that have just arrived, read the findings waiting for an
+  answer, and approve them or send them back for another look.
 - **Officials** (`/admin/officials`): a focused view for OFFICIAL accounts, where
   each official is linked to an active office.
 - **Offices** (`/admin/offices`): create and maintain the offices that receive

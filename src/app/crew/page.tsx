@@ -8,6 +8,7 @@ import { StepGuide } from "@/components/cases/step-guide";
 import { FieldCheckSubmitForm } from "@/components/cases/field-check-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { listCrewJobs } from "@/lib/cases/crew";
+import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import { formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -32,7 +33,19 @@ export default async function CrewHomePage() {
   const jobs = await listCrewJobs(db, user.id);
   const fieldChecks = await db.fieldCheck.findMany({
     where: { assigneeId: user.id, status: "PENDING" },
-    include: { concern: { select: { caseNumber: true, title: true } } },
+    include: {
+      concern: {
+        select: {
+          caseNumber: true,
+          title: true,
+          // The resident's own location: the checker has to go to that spot.
+          locationAddress: true,
+          locationPurok: true,
+          locationLat: true,
+          locationLng: true,
+        },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -49,7 +62,30 @@ export default async function CrewHomePage() {
                   {t.fieldCheck.caseLabel} {check.concern.caseNumber} · {check.concern.title}
                 </p>
                 <p className="text-sm text-ink-subtle">{check.instructions}</p>
-                <FieldCheckSubmitForm checkId={check.id} locale={locale} />
+                {check.reviewNote && (
+                  <p className="rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    {t.fieldCheck.reviewNote}: {check.reviewNote}
+                  </p>
+                )}
+                <FieldCheckSubmitForm
+                  checkId={check.id}
+                  locale={locale}
+                  location={{
+                    address: check.concern.locationAddress,
+                    purok: check.concern.locationPurok,
+                    lat: check.concern.locationLat,
+                    lng: check.concern.locationLng,
+                    mapUrl: hasCoordinates({
+                      lat: check.concern.locationLat,
+                      lng: check.concern.locationLng,
+                    })
+                      ? openStreetMapUrl(
+                          check.concern.locationLat as number,
+                          check.concern.locationLng as number
+                        )
+                      : null,
+                  }}
+                />
               </li>
             ))}
           </ul>

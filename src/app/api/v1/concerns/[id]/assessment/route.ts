@@ -46,7 +46,7 @@ export const GET = withErrorBoundary<[Request, RouteContext]>(
         status: true,
         title: true,
         assignedOfficeId: true,
-        type: { select: { id: true, key: true, name: true, requiresBudget: true, requiresCrew: true } },
+        type: { select: { id: true, key: true, name: true, requiresCrew: true } },
         caseAssessment: true,
       },
     });
@@ -75,7 +75,6 @@ export const GET = withErrorBoundary<[Request, RouteContext]>(
               id: concern.type.id,
               key: concern.type.key,
               name: concern.type.name,
-              requiresBudget: concern.type.requiresBudget,
               requiresCrew: concern.type.requiresCrew,
             }
           : null,
@@ -106,11 +105,18 @@ export const GET = withErrorBoundary<[Request, RouteContext]>(
  * resources, approval) plus the mandatory manpower plan (workers needed,
  * estimated duration, equipment notes) and the labour-inclusive cost estimate.
  * The first save on an ASSIGNED case moves it to UNDER_ASSESSMENT.
+ *
+ * Two separate rights, because the record and the plan are two decisions: the
+ * findings need `case.assess`, and the manpower plan (workers, duration,
+ * equipment) together with the cost estimate that the budget gate is measured
+ * against needs `case.manpower.plan`. A role may be trusted with one and not
+ * the other.
  */
 export const POST = withErrorBoundary<[Request, RouteContext]>(
   async (req, ctx) => {
     assertSameOrigin(req);
     const user = await requireApiPermission("case.assess");
+    await requireApiPermission("case.manpower.plan");
 
     const { id } = await ctx.params;
     const concernId = concernIdFrom(id);

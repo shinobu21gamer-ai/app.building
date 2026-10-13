@@ -207,16 +207,29 @@ export async function notifyFeedbackRequested(
   });
 }
 
+/**
+ * Closing is not always a finished repair: a case closed after a field check
+ * that did not confirm the report says so here, so the resident is never left
+ * guessing why a case ended without any work being done.
+ */
 export async function notifyCaseClosed(
   db: Db,
-  input: { userId: number; concernId: number; caseNumber: string }
+  input: {
+    userId: number;
+    concernId: number;
+    caseNumber: string;
+    /** Extra sentence naming the outcome, when it was not a completed repair. */
+    outcome?: string | null;
+  }
 ): Promise<void> {
   await createNotification(db, {
     userId: input.userId,
     concernId: input.concernId,
     type: NOTIFICATION_TYPES.CASE_CLOSED,
     title: "Your case has been closed",
-    message: `Case ${input.caseNumber} has been closed.`,
+    message:
+      `Case ${input.caseNumber} has been closed.` +
+      (input.outcome ? ` ${input.outcome}` : ""),
   });
 }
 

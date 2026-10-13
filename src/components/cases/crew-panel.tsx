@@ -23,6 +23,9 @@ type RosterMember = {
   trade: string | null;
   availability: string;
   openAssignments: number;
+  officeName: string | null;
+  /** True when the person is profiled under a different office than the case. */
+  otherOffice: boolean;
 };
 
 type CrewPayload = {
@@ -265,6 +268,9 @@ export function CrewPanel({
       {canAssign && data.roster.length > 0 && (
         <div className="space-y-3 border-t border-line pt-4">
           <p className="text-sm font-medium text-ink-muted">{t.crewRoster}</p>
+          {data.roster.some((member) => member.otherOffice) && (
+            <p className="text-xs text-ink-subtle">{t.crewOtherOfficeHint}</p>
+          )}
           <ul className="space-y-2">
             {data.roster.map((member) => {
               const already = active.some((row) => row.crewId === member.id);
@@ -292,6 +298,11 @@ export function CrewPanel({
                     <span>
                       {member.name}
                       {member.trade ? ` · ${member.trade}` : ""}
+                      {member.otherOffice ? (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-surface-sunken px-2 py-0.5 text-[11px] font-semibold text-ink-subtle">
+                          {member.officeName ?? t.crewOtherOffice}
+                        </span>
+                      ) : null}
                       <span className="block text-xs text-ink-subtle">
                         {t.crewOpenCases.replace(
                           "{count}",

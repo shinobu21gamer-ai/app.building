@@ -13,6 +13,7 @@ import { createApiError } from "@/lib/api";
 import { armCaseStageClock } from "@/lib/sla/escalation";
 import { canManageConcern, type WorkflowActor } from "@/lib/cases/workflow";
 import { planWindowProblem } from "@/lib/cases/plan-window";
+import { fieldCheckGateBlock } from "@/lib/cases/field-check-rules";
 import {
   isValidDurationMinutes,
   isValidWorkersNeeded,
@@ -106,7 +107,6 @@ export async function loadConcernForAssessment(
       status: true,
       assignedOfficeId: true,
       submittedAt: true,
-      type: { select: { key: true, requiresBudget: true, requiresCrew: true } },
       caseAssessment: {
         select: {
           id: true,
@@ -223,9 +223,19 @@ export async function saveAssessment(
   const cost = priced.cost;
   const labor = { basis: priced.basis };
 
-  // First assessment on an ASSIGNED case moves it into UNDER_ASSESSMENT.
+  // First assessment on an ASSIGNED case moves it into UNDER_ASSESSMENT — and
+  // that move is exactly what a requested field check is holding back. The
+  // status endpoint enforces the same gate (see `changeConcernStatus`); saving
+  // the assessment is the other door into UNDER_ASSESSMENT, so it locks here
+  // too. Without this, a case could walk past its own field check.
   let fromStatus = concern.status;
   if (concern.status === "ASSIGNED") {
+    const checks = await tx.fieldCheck.findMany({
+      where: { concernId: concern.id },
+      select: { status: true, finding: true },
+    });
+    const fieldBlock = fieldCheckGateBlock(checks);
+    if (fieldBlock) throw createApiError.badRequest(fieldBlock);
     await tx.concern.update({
       where: { id: concern.id },
       data: { status: "UNDER_ASSESSMENT", stageEnteredAt: now },

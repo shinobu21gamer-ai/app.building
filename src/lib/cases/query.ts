@@ -169,7 +169,6 @@ export async function listConcerns(filters: ConcernListFilters) {
           select: { id: true, firstName: true, lastName: true },
         },
         // The step of the case flow this row is on (see `concernProcessFlow`).
-        type: { select: { requiresBudget: true } },
         caseAssessment: { select: { workersNeeded: true, totalCost: true } },
         resolutions: {
           orderBy: { id: "desc" },

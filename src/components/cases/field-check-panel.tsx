@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormMessage, Input, Label, Select, Textarea } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
+import { canRequestFieldCheck } from "@/lib/cases/field-check-rules";
 import { copy, type Locale } from "@/lib/i18n";
 
 export type FieldCheckView = {
@@ -21,7 +22,61 @@ export type FieldCheckView = {
   requestedByName: string;
 };
 
-export type RosterOption = { id: number; name: string; roleLabel: string };
+export type RosterOption = {
+  id: number;
+  name: string;
+  roleLabel: string;
+  officeName?: string | null;
+  /** True when this person is being offered because nobody local is free. */
+  otherOffice?: boolean;
+};
+
+/** Where the resident said the concern is — what the checker has to go and see. */
+export type FieldCheckLocation = {
+  address: string | null;
+  purok: string | null;
+  lat: number | null;
+  lng: number | null;
+  mapUrl: string | null;
+};
+
+/**
+ * The location of the case, as the resident pinned it. It travels with every
+ * field-check card and with the form the checker submits from, so the person
+ * who is sent knows exactly which spot to look at.
+ */
+function LocationLine({
+  location,
+  labels,
+}: {
+  location: FieldCheckLocation | null;
+  labels: { title: string; purok: string; map: string; none: string };
+}) {
+  const place =
+    [location?.address, location?.purok ? `${labels.purok}: ${location.purok}` : null]
+      .filter(Boolean)
+      .join(" · ") || labels.none;
+
+  return (
+    <div className="text-sm">
+      <p>
+        <span className="font-medium">{labels.title}:</span> {place}
+      </p>
+      {location?.mapUrl && (
+        <p className="mt-0.5">
+          <a
+            href={location.mapUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-brand underline"
+          >
+            {labels.map}
+          </a>
+        </p>
+      )}
+    </div>
+  );
+}
 
 type Copy = (typeof copy)["en"]["revamp"]["workflow"]["fieldCheck"];
 
@@ -42,10 +97,13 @@ function statusTone(status: string): "amber" | "blue" | "green" {
 export function FieldCheckSubmitForm({
   checkId,
   locale = "en",
+  location = null,
   onDone,
 }: {
   checkId: number;
   locale?: Locale;
+  /** Where the resident placed the concern; shown before the finding is given. */
+  location?: FieldCheckLocation | null;
   onDone?: () => void;
 }) {
   const t = copy[locale].revamp.workflow.fieldCheck;
@@ -79,6 +137,16 @@ export function FieldCheckSubmitForm({
 
   return (
     <form onSubmit={submit} className="space-y-3">
+      <LocationLine
+        location={location}
+        labels={{
+          title: t.location,
+          purok: t.locationPurok,
+          map: t.locationMap,
+          none: t.locationNone,
+        }}
+      />
+
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-ink">{t.finding}</legend>
         {(["CONFIRMED", "NOT_CONFIRMED", "CANNOT_VERIFY"] as const).map((value) => (
@@ -130,6 +198,7 @@ export function FieldCheckPanel({
   locale = "en",
   checks,
   roster,
+  location = null,
   caseStatus,
   canRequest,
   canReview,
@@ -139,6 +208,8 @@ export function FieldCheckPanel({
   locale?: Locale;
   checks: FieldCheckView[];
   roster: RosterOption[];
+  /** The resident's location, shown on every check so the checker knows where to go. */
+  location?: FieldCheckLocation | null;
   caseStatus: string;
   canRequest: boolean;
   canReview: boolean;
@@ -153,7 +224,10 @@ export function FieldCheckPanel({
   const [error, setError] = useState<string | null>(null);
 
   const open = checks.some((check) => check.status === "PENDING" || check.status === "SUBMITTED");
-  const showRequest = canRequest && caseStatus === "ASSIGNED" && !open;
+  // Step 1: a check can go out from the moment the report arrives, and stays
+  // possible while the case waits for its assessment. It closes once the case
+  // moves on — and while a check is open, there is nothing to send.
+  const showRequest = canRequest && canRequestFieldCheck(caseStatus) && !open;
 
   async function request(event: React.FormEvent) {
     event.preventDefault();
@@ -211,6 +285,15 @@ export function FieldCheckPanel({
                   </span>
                 </div>
                 <p className="text-sm text-ink">{check.instructions}</p>
+                <LocationLine
+                  location={location}
+                  labels={{
+                    title: t.location,
+                    purok: t.locationPurok,
+                    map: t.locationMap,
+                    none: t.locationNone,
+                  }}
+                />
                 {check.finding && (
                   <div className="space-y-1 text-sm">
                     <p>
@@ -277,7 +360,11 @@ export function FieldCheckPanel({
 
                 {check.status === "PENDING" && isAssignee && (
                   <div className="border-t border-line pt-3">
-                    <FieldCheckSubmitForm checkId={check.id} locale={locale} />
+                    <FieldCheckSubmitForm
+                      checkId={check.id}
+                      locale={locale}
+                      location={location}
+                    />
                   </div>
                 )}
               </li>
@@ -301,10 +388,14 @@ export function FieldCheckPanel({
               >
                 {roster.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {option.name} ({option.roleLabel})
+                    {option.name} ({option.roleLabel}
+                    {option.officeName ? ` · ${option.officeName}` : ""})
                   </option>
                 ))}
               </Select>
+              {roster.some((option) => option.otherOffice) && (
+                <p className="mt-1 text-xs text-ink-subtle">{t.otherOfficeHint}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label htmlFor="fc-instructions">{t.instructions}</Label>

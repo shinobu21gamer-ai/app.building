@@ -84,10 +84,10 @@ need a change in a frozen file, work stops there and the change is raised with y
 5. **Personal data is minimised, encrypted, masked, logged.** See §6 of
    `01-architecture.md`. Staff never see a full phone number or ID number, and every
    unmasking requires a reason that lands in `PiiAccessLog`.
-6. **Every workflow exception is explicit.** Skipping `AWAITING_BUDGET`, starting work
-   with fewer crew than planned, or forcing a status writes an append-only
-   `CaseWorkflowOverride` row with a mandatory reason, an actor and (optionally) a
-   countersignature.
+6. **Every workflow exception is explicit.** Starting work with fewer crew than
+   planned, or forcing a status, writes an append-only `CaseWorkflowOverride` row
+   with a mandatory reason, an actor and (optionally) a countersignature. The money
+   stage is not one of the exceptions: every case passes through `AWAITING_BUDGET`.
 
 ---
 

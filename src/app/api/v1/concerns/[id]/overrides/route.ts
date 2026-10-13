@@ -10,8 +10,8 @@ import { requireApiPermission } from "@/lib/auth/session";
 import { recordAudit, requestMeta } from "@/lib/audit";
 import { workflowOverrideSchema } from "@/lib/validations/case";
 import {
-  OVERRIDE_LABELS,
   OVERRIDE_REASON_MIN,
+  overrideLabel,
   type OverrideKind,
 } from "@/lib/cases/workflow";
 import { canManageConcern } from "@/lib/cases/workflow";
@@ -24,9 +24,11 @@ type RouteContext = { params: Promise<{ id: string }> };
  * The permission each override kind needs. Every kind is a documented exception
  * to a workflow rule, so each one has an owner.
  */
-const OVERRIDE_PERMISSIONS: Record<OverrideKind, "case.override.crew_shortfall" | "case.override.budget_skip" | "case.override.countersign"> = {
+const OVERRIDE_PERMISSIONS: Record<
+  OverrideKind,
+  "case.override.crew_shortfall" | "case.override.countersign"
+> = {
   CREW_SHORTFALL: "case.override.crew_shortfall",
-  BUDGET_STAGE_SKIP: "case.override.budget_skip",
   STATUS_FORCE: "case.override.countersign",
   SLA_EXTENSION: "case.override.countersign",
   VALIDATION_BYPASS: "case.override.countersign",
@@ -85,7 +87,7 @@ export const GET = withErrorBoundary<[Request, RouteContext]>(
       overrides: overrides.map((row) => ({
         id: row.id,
         kind: row.kind,
-        label: OVERRIDE_LABELS[row.kind as OverrideKind] ?? row.kind,
+        label: overrideLabel(row.kind),
         reason: row.reason,
         actorRole: row.actorRole,
         actorName: `${row.actor.firstName} ${row.actor.lastName}`,
@@ -184,7 +186,7 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
         overrideId: override.id,
         concernId,
         kind: override.kind,
-        label: OVERRIDE_LABELS[body.kind],
+        label: overrideLabel(body.kind),
         reason: override.reason,
         createdAt: override.createdAt.toISOString(),
       },

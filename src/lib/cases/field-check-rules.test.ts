@@ -3,16 +3,52 @@ import {
   canRequestFieldCheck,
   fieldCheckGateBlock,
   findingProblem,
+  realityCheckState,
 } from "./field-check-rules";
 
+describe("realityCheckState", () => {
+  it("is NONE until somebody is sent", () => {
+    expect(realityCheckState([])).toBe("NONE");
+  });
+
+  it("is OPEN while a check is out or waiting for the admin", () => {
+    expect(realityCheckState([{ status: "PENDING", finding: null }])).toBe("OPEN");
+    expect(realityCheckState([{ status: "SUBMITTED", finding: "CONFIRMED" }])).toBe("OPEN");
+    expect(
+      realityCheckState([
+        { status: "APPROVED", finding: "CANNOT_VERIFY" },
+        { status: "PENDING", finding: null },
+      ])
+    ).toBe("OPEN");
+  });
+
+  it("is PASSED once an approved finding confirms the report", () => {
+    expect(
+      realityCheckState([
+        { status: "APPROVED", finding: "CANNOT_VERIFY" },
+        { status: "APPROVED", finding: "CONFIRMED" },
+      ])
+    ).toBe("PASSED");
+  });
+
+  it("is FAILED when the approved findings did not confirm it", () => {
+    expect(realityCheckState([{ status: "APPROVED", finding: "CANNOT_VERIFY" }])).toBe("FAILED");
+    expect(realityCheckState([{ status: "APPROVED", finding: "NOT_CONFIRMED" }])).toBe("FAILED");
+  });
+
+  it("counts a case already past this point as passed (legacy)", () => {
+    expect(realityCheckState([], { legacyPassed: true })).toBe("PASSED");
+  });
+});
+
 describe("fieldCheckGateBlock", () => {
-  it("does not gate a case when no check was requested", () => {
-    expect(fieldCheckGateBlock([])).toBeNull();
+  it("blocks a case nobody has checked yet", () => {
+    expect(fieldCheckGateBlock([])).toMatch(/Nobody has checked the location/);
   });
 
   it("blocks while a check is pending or awaiting admin review", () => {
-    expect(fieldCheckGateBlock([{ status: "PENDING", finding: null }])).toMatch(/still open/);
-    expect(fieldCheckGateBlock([{ status: "SUBMITTED", finding: "CONFIRMED" }])).toMatch(/still open/);
+    expect(fieldCheckGateBlock([{ status: "PENDING", finding: null }])).toMatch(/still open|field check is open/i);
+    expect(fieldCheckGateBlock([{ status: "SUBMITTED", finding: "CONFIRMED" }])).toMatch(/field check is open/i);
   });
 
   it("passes once an approved check confirms the concern", () => {
@@ -28,6 +64,10 @@ describe("fieldCheckGateBlock", () => {
     expect(fieldCheckGateBlock([{ status: "APPROVED", finding: "CANNOT_VERIFY" }])).toMatch(
       /did not confirm/
     );
+  });
+
+  it("lets a legacy case through when its stage says so", () => {
+    expect(fieldCheckGateBlock([], { legacyPassed: true })).toBeNull();
   });
 });
 
@@ -52,9 +92,9 @@ describe("findingProblem", () => {
 });
 
 describe("canRequestFieldCheck", () => {
-  it("is allowed only while the case is ASSIGNED, before assessment starts", () => {
+  it("is allowed on a fresh report and while it is still assigned", () => {
     expect(canRequestFieldCheck("ASSIGNED")).toBe(true);
     expect(canRequestFieldCheck("UNDER_ASSESSMENT")).toBe(false);
-    expect(canRequestFieldCheck("SUBMITTED")).toBe(false);
+    expect(canRequestFieldCheck("SUBMITTED")).toBe(true);
   });
 });

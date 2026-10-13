@@ -6,11 +6,10 @@ import {
   type ProcessFlowInput,
 } from "./process-flow";
 
-/** A minimal case: submitted, validated, no money needed, nobody booked yet. */
+/** A minimal case: checked, validated, nobody booked yet. */
 const base: ProcessFlowInput = {
   status: "ASSIGNED",
   typeId: 4,
-  requiresBudget: false,
   hasAssessment: false,
   workersNeeded: null,
   estimatedCost: null,
@@ -18,7 +17,15 @@ const base: ProcessFlowInput = {
   activeCrew: 0,
   hasResolution: false,
   verificationStatus: null,
-  fieldCheckOpen: false,
+  realityCheck: "PASSED",
+};
+
+/** A report that just arrived: nobody has been to the location yet. */
+const unchecked: ProcessFlowInput = {
+  ...base,
+  status: "SUBMITTED",
+  typeId: null,
+  realityCheck: "NONE",
 };
 
 const stepOf = (input: ProcessFlowInput, key: string) =>
@@ -36,39 +43,71 @@ describe("crewSatisfied", () => {
 describe("fundingSatisfied", () => {
   it("needs an estimate the earmarks cover", () => {
     expect(fundingSatisfied(null, 5000)).toBe(false);
-    expect(fundingSatisfied(0, 5000)).toBe(false);
+    // A saved ₱0 estimate is a statement, not a gap: nothing has to be set aside.
+    expect(fundingSatisfied(0, 5000)).toBe(true);
     expect(fundingSatisfied(5000, 0)).toBe(false);
     expect(fundingSatisfied(5000, 4999.99)).toBe(false);
     expect(fundingSatisfied(5000, 5000)).toBe(true);
     expect(fundingSatisfied(5000, 7500)).toBe(true);
+    // A saved ₱0 estimate needs nothing set aside.
+    expect(fundingSatisfied(0, 0)).toBe(true);
   });
 });
 
 describe("caseProcessFlow", () => {
-  it("starts an unvalidated report on step 1", () => {
-    const flow = caseProcessFlow({ ...base, status: "SUBMITTED", typeId: null });
-    expect(flow.currentKey).toBe("VALIDATE");
+  it("starts every report on the reality check, before anything else", () => {
+    const flow = caseProcessFlow(unchecked);
+    expect(flow.currentKey).toBe("CHECK");
     expect(flow.currentNumber).toBe(1);
-    expect(stepOf({ ...base, status: "SUBMITTED", typeId: null }, "VALIDATE")).toMatchObject({
+    expect(stepOf(unchecked, "CHECK")).toMatchObject({
       state: "current",
-      block: "NEEDS_TYPE",
+      block: "NEEDS_REALITY_CHECK",
     });
+    // Validation cannot get ahead of it: the type is not set *and* the check
+    // has not happened, so the wait that matters is the check.
+    expect(stepOf(unchecked, "VALIDATE").block).toBe("NEEDS_REALITY_CHECK");
+    expect(stepOf(unchecked, "ASSESS").block).toBe("NEEDS_REALITY_CHECK");
     expect(flow.doneCount).toBe(0);
     expect(flow.percent).toBe(0);
   });
 
-  it("skips the budget step for a case that needs no money", () => {
+  it("holds the case while the check is out, and when a finding is sent back", () => {
+    const out = { ...unchecked, realityCheck: "OPEN" as const };
+    expect(stepOf(out, "CHECK")).toMatchObject({
+      state: "current",
+      block: "FIELD_CHECK_OPEN",
+    });
+
+    const sentBack = { ...unchecked, realityCheck: "FAILED" as const };
+    expect(stepOf(sentBack, "CHECK")).toMatchObject({
+      state: "current",
+      block: "FIELD_CHECK_FAILED",
+    });
+    expect(stepOf(sentBack, "VALIDATE").block).toBe("FIELD_CHECK_FAILED");
+  });
+
+  it("moves on to validation once the finding is approved as confirmed", () => {
+    const confirmed = { ...unchecked, realityCheck: "PASSED" as const };
+    const flow = caseProcessFlow(confirmed);
+    expect(flow.currentKey).toBe("VALIDATE");
+    expect(flow.currentNumber).toBe(2);
+    expect(stepOf(confirmed, "CHECK").state).toBe("done");
+    expect(stepOf(confirmed, "VALIDATE").block).toBe("NEEDS_TYPE");
+  });
+
+  it("keeps the budget step for every case — nothing is skipped", () => {
     const flow = caseProcessFlow(base);
     const fund = flow.steps.find((step) => step.key === "FUND")!;
-    expect(fund.state).toBe("skipped");
-    // 8 steps, one of them skipped → progress is out of 7.
-    expect(flow.activeTotal).toBe(7);
+    expect(fund.state).toBe("pending");
+    expect(fund.block).toBe("NEEDS_ESTIMATE");
+    expect(flow.activeTotal).toBe(9);
+    expect(flow.steps.some((step) => step.state === "pending")).toBe(true);
   });
 
   it("moves to the assessment step once the type is set", () => {
     const flow = caseProcessFlow(base);
     expect(flow.currentKey).toBe("ASSESS");
-    expect(flow.currentNumber).toBe(2);
+    expect(flow.currentNumber).toBe(3);
     expect(stepOf(base, "ASSESS").block).toBe("NEEDS_ASSESSMENT");
   });
 
@@ -79,15 +118,15 @@ describe("caseProcessFlow", () => {
       block: "WAITING_UNDER_ASSESSMENT",
     });
     const under = caseProcessFlow({ ...assessed, status: "UNDER_ASSESSMENT" });
-    expect(under.currentKey).toBe("CREW");
+    // The money step comes next: every case passes through it.
+    expect(under.currentKey).toBe("FUND");
     expect(under.currentNumber).toBe(4);
   });
 
-  it("waits for the treasury on a money case", () => {
+  it("waits for the treasury on every case", () => {
     const money = {
       ...base,
       status: "UNDER_ASSESSMENT",
-      requiresBudget: true,
       hasAssessment: true,
       workersNeeded: 2,
       estimatedCost: 12_000,
@@ -95,7 +134,7 @@ describe("caseProcessFlow", () => {
     };
     const flow = caseProcessFlow(money);
     expect(flow.currentKey).toBe("FUND");
-    expect(flow.currentNumber).toBe(3);
+    expect(flow.currentNumber).toBe(4);
     expect(stepOf(money, "FUND").block).toBe("WAITING_BUDGET_STAGE");
     expect(stepOf(money, "START").block).toBe("WAITING_BUDGET_STAGE");
 
@@ -115,29 +154,30 @@ describe("caseProcessFlow", () => {
       hasAssessment: true,
       workersNeeded: 3,
       activeCrew: 1,
+      estimatedCost: 3000,
+      fundedAmount: 3000,
     };
     expect(stepOf(short, "CREW").block).toBe("NEEDS_CREW");
     expect(stepOf(short, "START").block).toBe("NEEDS_CREW");
     expect(caseProcessFlow(short).currentKey).toBe("CREW");
   });
 
-  it("pauses on an open field check", () => {
+  it("keeps a case whose check never passed from starting work", () => {
     const held = {
       ...base,
       status: "UNDER_ASSESSMENT",
       hasAssessment: true,
       workersNeeded: 1,
       activeCrew: 1,
-      fieldCheckOpen: true,
+      realityCheck: "FAILED" as const,
     };
-    expect(stepOf(held, "START").block).toBe("FIELD_CHECK_OPEN");
+    expect(stepOf(held, "START").block).toBe("FIELD_CHECK_FAILED");
   });
 
-  it("walks a money case all the way to closed", () => {
+  it("walks a case all the way to closed", () => {
     const inProgress = {
       ...base,
       status: "IN_PROGRESS",
-      requiresBudget: true,
       hasAssessment: true,
       workersNeeded: 2,
       estimatedCost: 8000,
@@ -146,8 +186,8 @@ describe("caseProcessFlow", () => {
     };
     const working = caseProcessFlow(inProgress);
     expect(working.currentKey).toBe("WORK");
-    expect(working.currentNumber).toBe(6);
-    expect(working.steps.slice(0, 5).every((step) => step.state === "done")).toBe(
+    expect(working.currentNumber).toBe(7);
+    expect(working.steps.slice(0, 6).every((step) => step.state === "done")).toBe(
       true
     );
 
@@ -159,13 +199,13 @@ describe("caseProcessFlow", () => {
     };
     const toVerify = caseProcessFlow(resolved);
     expect(toVerify.currentKey).toBe("VERIFY");
-    expect(toVerify.currentNumber).toBe(7);
+    expect(toVerify.currentNumber).toBe(8);
     expect(stepOf(resolved, "CLOSE").block).toBe("NEEDS_VERIFICATION");
 
     const verified = { ...resolved, verificationStatus: "FIXED_VERIFIED" };
     const toClose = caseProcessFlow(verified);
     expect(toClose.currentKey).toBe("CLOSE");
-    expect(toClose.currentNumber).toBe(8);
+    expect(toClose.currentNumber).toBe(9);
     expect(stepOf(verified, "CLOSE").block).toBeNull();
 
     const closed = { ...verified, status: "CLOSED" };
@@ -176,11 +216,66 @@ describe("caseProcessFlow", () => {
     expect(done.doneCount).toBe(done.activeTotal);
   });
 
+  it("drops the steps a closed-as-unfounded case never reached", () => {
+    // A field check that was approved as "not confirmed" closes the case from
+    // ASSIGNED (see closeAsUnfounded): no assessment, no money, no crew, no
+    // work ever happened, so those steps are not "done" and not "coming".
+    const unfounded: ProcessFlowInput = {
+      ...base,
+      status: "CLOSED",
+      typeId: 4,
+      hasAssessment: false,
+      workersNeeded: null,
+      estimatedCost: null,
+      fundedAmount: 0,
+      activeCrew: 0,
+      hasResolution: false,
+      verificationStatus: null,
+      // The check did happen: it is what ended the case.
+      realityCheck: "FAILED",
+    };
+    const flow = caseProcessFlow(unfounded);
+    expect(flow.finished).toBe(true);
+    expect(flow.currentKey).toBeNull();
+    expect(stepOf(unfounded, "CHECK").state).toBe("done");
+    expect(stepOf(unfounded, "VALIDATE").state).toBe("done");
+    expect(stepOf(unfounded, "CLOSE").state).toBe("done");
+    for (const key of ["ASSESS", "FUND", "CREW", "START", "WORK", "VERIFY"]) {
+      expect(stepOf(unfounded, key)).toMatchObject({ state: "notNeeded", block: null });
+    }
+    // Only the steps that happened count towards the progress.
+    expect(flow.activeTotal).toBe(3);
+    expect(flow.doneCount).toBe(3);
+    expect(flow.percent).toBe(100);
+    expect(flow.closedUnfounded).toBe(true);
+  });
+
+  it("never leaves a current step on a closed case", () => {
+    // Closed on a reasoned status-force override, with the verification still
+    // outstanding: the case is finished, so the leftover step is not "coming".
+    const forced = {
+      ...base,
+      status: "CLOSED",
+      hasAssessment: true,
+      workersNeeded: 1,
+      estimatedCost: 1000,
+      fundedAmount: 1000,
+      activeCrew: 1,
+      hasResolution: true,
+      verificationStatus: "FAILED",
+    };
+    const flow = caseProcessFlow(forced);
+    expect(flow.currentKey).toBeNull();
+    expect(flow.finished).toBe(true);
+    expect(flow.closedUnfounded).toBe(false);
+    expect(stepOf(forced, "VERIFY").state).toBe("notNeeded");
+    expect(flow.steps.every((step) => step.state !== "current")).toBe(true);
+  });
+
   it("flags a failed verification instead of letting the case close", () => {
     const failed = {
       ...base,
       status: "RESOLVED",
-      requiresBudget: true,
       hasAssessment: true,
       workersNeeded: 1,
       estimatedCost: 1000,
@@ -203,17 +298,19 @@ describe("caseProcessFlow", () => {
     expect(stepOf(legacy, "START").block).toBe("NEEDS_ASSESSMENT");
   });
 
-  it("reports progress as a share of the steps that apply", () => {
+  it("reports progress as a share of all nine steps", () => {
     const flow = caseProcessFlow({
       ...base,
       status: "IN_PROGRESS",
       hasAssessment: true,
       workersNeeded: 1,
       activeCrew: 1,
+      estimatedCost: 500,
+      fundedAmount: 500,
     });
-    // VALIDATE, ASSESS, CREW, START = 4 of 7 (FUND is skipped).
-    expect(flow.activeTotal).toBe(7);
-    expect(flow.doneCount).toBe(4);
-    expect(flow.percent).toBe(57);
+    // CHECK, VALIDATE, ASSESS, FUND, CREW, START = 6 of 9.
+    expect(flow.activeTotal).toBe(9);
+    expect(flow.doneCount).toBe(6);
+    expect(flow.percent).toBe(67);
   });
 });
