@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { CrewJobForm } from "@/components/cases/crew-job-form";
+import { StepGuide } from "@/components/cases/step-guide";
 import { FieldCheckSubmitForm } from "@/components/cases/field-check-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { listCrewJobs } from "@/lib/cases/crew";
@@ -27,6 +28,7 @@ export default async function CrewHomePage() {
   const locale = await getLocale();
   const t = copy[locale].revamp.workflow;
 
+  const flowCopy = copy[locale].flow;
   const jobs = await listCrewJobs(db, user.id);
   const fieldChecks = await db.fieldCheck.findMany({
     where: { assigneeId: user.id, status: "PENDING" },
@@ -114,6 +116,26 @@ export default async function CrewHomePage() {
                       </div>
                     )}
                   </dl>
+
+                  <div className="border-t border-line pt-3">
+                    <StepGuide
+                      title={flowCopy.crew.title}
+                      lead={flowCopy.crew.lead}
+                      steps={flowCopy.crew.steps.map((step, index) => {
+                        // Once the office starts the work, sending progress is
+                        // the crew's job; before that, checking the plan is.
+                        const current =
+                          job.concern.status === "IN_PROGRESS" ? 2 : 0;
+                        return {
+                          title: step.title,
+                          detail: step.detail,
+                          highlight: index === current,
+                          stateLabel:
+                            index === current ? flowCopy.currentBadge : undefined,
+                        };
+                      })}
+                    />
+                  </div>
 
                   <div className="border-t border-line pt-3">
                     <CrewJobForm concernId={job.concern.id} locale={locale} />

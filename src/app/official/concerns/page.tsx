@@ -7,6 +7,8 @@ import { PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { ConcernFilters } from "@/components/cases/concern-filters";
 import { PageHeader } from "@/components/ui/page-header";
 import { listConcerns, parseConcernFilters } from "@/lib/cases/query";
+import { concernProcessFlow } from "@/lib/cases/process-flow";
+import { fundedAmountsByConcern } from "@/lib/treasury/query";
 import { formatDate } from "@/lib/format";
 import { firstParam } from "@/lib/utils";
 import { copy } from "@/lib/i18n";
@@ -67,6 +69,29 @@ export default async function OfficialConcernsPage({
 
   const { concerns, total, truncated } = result;
   const now = Date.now();
+  // Which flow step each case is on. The step number and title come from the
+  // same engine the case page uses, so the queue and the case agree.
+  const flowCopy = copy[locale].flow;
+  const funded = await fundedAmountsByConcern(
+    db,
+    concerns.map((concern) => concern.id)
+  );
+  const flowHints = new Map(
+    concerns.map((concern) => {
+      const flow = concernProcessFlow(concern, funded.get(concern.id) ?? 0);
+      const current = flow.steps.find((step) => step.key === flow.currentKey);
+      return [
+        concern.id,
+        current
+          ? `${flowCopy.stepOf
+              .replace("{current}", String(current.number))
+              .replace("{total}", String(flow.steps.length))} · ${
+              flowCopy.steps[current.key].title
+            }`
+          : flowCopy.closedNote,
+      ];
+    })
+  );
   const hasFilters = [
     "q",
     "status",
@@ -150,6 +175,9 @@ export default async function OfficialConcernsPage({
                       {showOfficeScope && concern.assignedOffice
                         ? ` · ${concern.assignedOffice.name}`
                         : ""}
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-brand-800">
+                      {flowHints.get(concern.id)}
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       {concern.priorityLevel ? (
@@ -236,6 +264,9 @@ export default async function OfficialConcernsPage({
                     </td>
                     <td className="py-3 pr-4">
                       <StatusBadge status={concern.status} />
+                      <p className="mt-1 text-xs text-brand-800">
+                        {flowHints.get(concern.id)}
+                      </p>
                     </td>
                     <td className="py-3 pr-4">
                       {concern.slaDueAt && concern.status !== "CLOSED" && concern.status !== "RESOLVED" ? (

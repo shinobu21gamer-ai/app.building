@@ -1,17 +1,20 @@
 import { Badge, PriorityBadge } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/format";
 import { copy, type Locale } from "@/lib/i18n";
-import type { PriorityEvaluation } from "@/lib/priority/engine";
+import {
+  priorityEvaluationFrom,
+  type PriorityEvaluation,
+} from "@/lib/priority/engine";
 
+/**
+ * The stored calculation of a priority row, ready for the panel. An official
+ * override row stores only its source, which is not a breakdown; see
+ * `priorityEvaluationFrom`.
+ */
 export function parseEvaluation(
   calculationJson: string | null
 ): PriorityEvaluation | null {
-  if (!calculationJson) return null;
-  try {
-    return JSON.parse(calculationJson) as PriorityEvaluation;
-  } catch {
-    return null;
-  }
+  return priorityEvaluationFrom(calculationJson);
 }
 
 export function PriorityBreakdown({
@@ -47,10 +50,14 @@ export function PriorityBreakdown({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <PriorityBadge level={level} />
-        <span className="text-sm text-ink-muted">
-          {t.totalScore}{" "}
-          <span className="font-semibold text-ink">{totalScore}</span>
-        </span>
+        {/* An override row stores no arithmetic to total up, so it is shown
+            without a score rather than with a misleading zero. */}
+        {(!isOverride || totalScore > 0) && (
+          <span className="text-sm text-ink-muted">
+            {t.totalScore}{" "}
+            <span className="font-semibold text-ink">{totalScore}</span>
+          </span>
+        )}
         {isOverride ? (
           <Badge tone="amber">{t.officialOverride}</Badge>
         ) : (
@@ -107,7 +114,7 @@ export function PriorityBreakdown({
         </table>
       )}
 
-      {evaluation && (
+      {evaluation && evaluation.explanation.length > 0 && (
         <div className="rounded-control bg-surface-muted p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
             {t.howComputed}

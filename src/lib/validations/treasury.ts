@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { todayManila } from "@/lib/cases/action-date";
 import { booleanFlag } from "@/lib/validations/boolean";
 import {
   ACCOUNT_CLASSES,
@@ -149,6 +150,18 @@ export const fiscalYearCreateSchema = z
   })
   .refine((value) => value.endsOn > value.startsOn, {
     message: "The fiscal year has to end after it starts.",
+    path: ["endsOn"],
+  })
+  // A fiscal year frames money that has not been spent yet, so it cannot be
+  // opened in the past. Both ends are checked: a year that already finished is
+  // history, not a live frame for appropriations.
+  .refine((value) => value.startsOn >= todayManila(), {
+    message: "The fiscal year cannot start in the past. Pick today or a later day.",
+    path: ["startsOn"],
+  })
+  .refine((value) => value.endsOn >= todayManila(), {
+    message:
+      "The fiscal year cannot end in the past. Pick today or a later day.",
     path: ["endsOn"],
   });
 

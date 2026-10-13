@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   evaluatePriority,
   PriorityRuleError,
+  priorityEvaluationFrom,
   resolveThreshold,
   validatePriorityConfiguration,
   type FactorConfig,
@@ -122,5 +123,58 @@ describe("validatePriorityConfiguration", () => {
     ];
     const problems = validatePriorityConfiguration(FACTORS, dup);
     expect(problems.join(" ")).toContain('Duplicate priority level "LOW"');
+  });
+});
+describe("priorityEvaluationFrom", () => {
+  it("reads a full engine calculation back", () => {
+    const evaluation = evaluatePriority(
+      { urgencyScore: 4, impactScore: 3 },
+      FACTORS,
+      THRESHOLDS
+    );
+
+    const parsed = priorityEvaluationFrom(JSON.stringify(evaluation));
+    expect(parsed?.factors).toHaveLength(2);
+    expect(parsed?.explanation.length).toBeGreaterThan(0);
+    expect(parsed?.totalScore).toBe(evaluation.totalScore);
+    expect(parsed?.level).toBe(evaluation.level);
+  });
+
+  it("returns null for an official override row, which stores only its source", () => {
+    // What admin validation writes when it changes the level (see
+    // `validateConcern` in src/lib/cases/service.ts).
+    expect(priorityEvaluationFrom('{"source":"admin_validation"}')).toBeNull();
+  });
+
+  it("returns null for missing or unreadable calculations", () => {
+    expect(priorityEvaluationFrom(null)).toBeNull();
+    expect(priorityEvaluationFrom(undefined)).toBeNull();
+    expect(priorityEvaluationFrom("")).toBeNull();
+    expect(priorityEvaluationFrom("{not json")).toBeNull();
+    expect(priorityEvaluationFrom('"a string"')).toBeNull();
+    expect(priorityEvaluationFrom("[]")).toBeNull();
+  });
+
+  it("keeps the part a legacy row does have instead of crashing the panel", () => {
+    const legacy = JSON.stringify({
+      totalScore: 12,
+      level: "MEDIUM",
+      factors: [
+        {
+          key: "URGENCY",
+          label: "Urgency",
+          score: 3,
+          weight: 1,
+          weightedScore: 3,
+          minScore: 1,
+          maxScore: 5,
+        },
+      ],
+    });
+
+    const parsed = priorityEvaluationFrom(legacy);
+    expect(parsed?.factors).toHaveLength(1);
+    // The explanation block is skipped rather than rendered empty.
+    expect(parsed?.explanation).toEqual([]);
   });
 });

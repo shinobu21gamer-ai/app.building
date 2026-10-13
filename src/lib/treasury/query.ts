@@ -546,6 +546,33 @@ export async function ledgerRegister(
 }
 
 /**
+ * How much the treasury has set aside per case, for the list screens that show
+ * which flow step each case is on. One grouped query instead of one per row.
+ */
+export async function fundedAmountsByConcern(
+  tx: Tx,
+  concernIds: number[]
+): Promise<Map<number, number>> {
+  const totals = new Map<number, number>();
+  if (concernIds.length === 0) return totals;
+
+  const rows = await tx.budgetEarmark.groupBy({
+    by: ["concernId"],
+    where: {
+      concernId: { in: concernIds },
+      status: { in: ["APPROVED", "RELEASED"] },
+    },
+    _sum: { amount: true },
+  });
+
+  for (const row of rows) {
+    if (row.concernId === null) continue;
+    totals.set(row.concernId, toMoney(row._sum.amount ?? 0));
+  }
+  return totals;
+}
+
+/**
  * Everything the treasury knows about one case: the earmarks set aside for it,
  * the vouchers raised against it and whether the funds are certified. The case
  * screens and the funding gate both read this.

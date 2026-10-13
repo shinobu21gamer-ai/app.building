@@ -130,19 +130,30 @@ export function CaseWorkflowForm({
 
       <div>
         <Label htmlFor="workflow-status">{t.nextAction}</Label>
-        <select
-          id="workflow-status"
-          name="status"
-          value={status}
-          onChange={(event) => setChosen(event.target.value)}
-          className={selectStyles}
-        >
-          {allowedTransitions.map((target) => (
-            <option key={target} value={target}>
-              {actionLabel[target] ?? target}
-            </option>
-          ))}
-        </select>
+        {/* Inside a flow step there is exactly one correct next status, so it is
+            stated rather than offered as a one-option dropdown. */}
+        {allowedTransitions.length > 1 ? (
+          <select
+            id="workflow-status"
+            name="status"
+            value={status}
+            onChange={(event) => setChosen(event.target.value)}
+            className={selectStyles}
+          >
+            {allowedTransitions.map((target) => (
+              <option key={target} value={target}>
+                {actionLabel[target] ?? target}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <>
+            <input type="hidden" name="status" value={status} />
+            <p className="rounded-control border border-line bg-surface-sunken px-3 py-2 text-sm font-semibold text-ink">
+              {actionLabel[status] ?? status}
+            </p>
+          </>
+        )}
         <p className="mt-1 text-xs text-ink-subtle">
           {t.currentStatus.replace("{status}", currentStatus)}
         </p>

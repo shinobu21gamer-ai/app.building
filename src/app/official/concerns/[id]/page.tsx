@@ -15,6 +15,15 @@ import { PriorityOverrideForm } from "@/components/priority/priority-override-fo
 import { ReassignForm } from "@/components/routing/reassign-form";
 import { CaseWorkflowForm } from "@/components/cases/case-workflow-form";
 import { CaseNoteForm } from "@/components/cases/case-note-form";
+import {
+  ProcessFlowPanel,
+  type FlowStepView,
+} from "@/components/cases/process-flow-panel";
+import {
+  caseProcessFlow,
+  type ProcessStepKey,
+} from "@/lib/cases/process-flow";
+import { fieldCheckGateBlock } from "@/lib/cases/field-check-rules";
 import { ConcernMap } from "@/components/concern/concern-map";
 import { CrewPanel } from "@/components/cases/crew-panel";
 import { FieldCheckPanel } from "@/components/cases/field-check-panel";
@@ -35,9 +44,10 @@ import {
 } from "@/lib/cases/action-date";
 import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import {
-  allowedTransitions,
+  STATUS_ORDER,
   canManageConcern,
   caseWorkflowFlags,
+  type CaseStatus,
 } from "@/lib/cases/workflow";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -106,7 +116,7 @@ export default async function OfficialConcernDetailPage({
           official: { select: { firstName: true, lastName: true } },
         },
       },
-      type: { select: { id: true, name: true, key: true } },
+      type: { select: { id: true, name: true, key: true, requiresBudget: true } },
       caseAssessment: true,
     },
   });
@@ -151,13 +161,10 @@ export default async function OfficialConcernDetailPage({
   const canManage = canManageConcern(actor, {
     assignedOfficeId: concern.assignedOfficeId,
   });
-  const nextStatuses = allowedTransitions(concern.status);
-  // Resolving has its own richer form (resolution details + proof photo), so it
-  // is excluded from the generic status form. ASSIGNED is reached through the
-  // routing/reassignment services, not the workflow status endpoint.
-  const workflowStatuses = nextStatuses.filter(
-    (status) => status !== "RESOLVED" && status !== "ASSIGNED"
-  );
+  // Resolving has its own richer form (resolution details + proof photo), and
+  // ASSIGNED is reached through the routing/reassignment services. Every other
+  // status change is offered inside the flow step that owns it (see `panels`),
+  // so the reader only ever sees the transition the current step calls for.
   const canResolve = concern.status === "IN_PROGRESS";
   const resolution = concern.resolutions[0] ?? null;
 
@@ -184,6 +191,8 @@ export default async function OfficialConcernDetailPage({
     canViewTreasury,
     canRequestFieldCheck,
     canReviewFieldCheck,
+    canProgress,
+    canClose,
   ] = await Promise.all([
     userCan(user.role.key, "case.validate"),
     userCan(user.role.key, "case.assess"),
@@ -192,6 +201,8 @@ export default async function OfficialConcernDetailPage({
     userCan(user.role.key, "treasury.balance.view"),
     userCan(user.role.key, "case.fieldcheck.request"),
     userCan(user.role.key, "case.fieldcheck.review"),
+    userCan(user.role.key, "case.status.progress"),
+    userCan(user.role.key, "case.status.close"),
   ]);
 
   const fieldChecks =
@@ -264,6 +275,269 @@ export default async function OfficialConcernDetailPage({
     safetyScore: latest?.safetyScore ?? minFor("SAFETY", 1),
   };
 
+  // ---------------------------------------------------------------- the flow
+  // Where the case is in the eight-step flow, what each step needs, and the form
+  // that does the work of the step it is on. The flow is the page's spine: the
+  // reader follows the numbered steps instead of hunting for the right form in a
+  // column of panels.
+  const flowCopy = copy[locale].flow;
+  const stageIndex = STATUS_ORDER[concern.status as CaseStatus] ?? 0;
+  const fieldCheckBlock = fieldCheckGateBlock(
+    fieldChecks.map((check) => ({ status: check.status, finding: check.finding }))
+  );
+
+  const flow = caseProcessFlow({
+    status: concern.status,
+    typeId: concern.typeId,
+    requiresBudget: concern.type?.requiresBudget ?? false,
+    hasAssessment: Boolean(concern.caseAssessment?.workersNeeded),
+    workersNeeded: concern.caseAssessment?.workersNeeded ?? null,
+    estimatedCost: concern.caseAssessment
+      ? Number(concern.caseAssessment.totalCost ?? 0)
+      : null,
+    fundedAmount: funding?.gate.total ?? 0,
+    activeCrew: crewSummary,
+    hasResolution: Boolean(resolution),
+    verificationStatus: resolution?.verificationStatus ?? null,
+    fieldCheckOpen: fieldCheckBlock !== null,
+  });
+
+  const stepState = (key: ProcessStepKey) =>
+    flow.steps.find((step) => step.key === key) ?? null;
+
+  // Who is expected to act on each step, and whether this reader is the one who
+  // can. "You" beats the owning desk in the copy shown on the card.
+  const stepDesk: Record<ProcessStepKey, string> = {
+    VALIDATE: flowCopy.deskAdmin,
+    ASSESS: flowCopy.deskOfficial,
+    FUND: flowCopy.deskTreasury,
+    CREW: flowCopy.deskOfficial,
+    START: flowCopy.deskOfficial,
+    WORK: flowCopy.deskOfficial,
+    VERIFY: flowCopy.deskOfficial,
+    CLOSE: flowCopy.deskCaptain,
+  };
+  // The treasury's figure is read here, never written: this desk sends the case
+  // to Awaiting budget, and the treasury office sets the money aside.
+  const fundStep = stepState("FUND");
+  const fundNeedsSending = fundStep?.block === "WAITING_BUDGET_STAGE";
+  const canDoStep: Record<ProcessStepKey, boolean> = {
+    VALIDATE: canValidate,
+    ASSESS: canAssess && canManage,
+    FUND: fundNeedsSending && canProgress && canManage,
+    CREW: canAssignCrew && canManage,
+    START: canProgress && canManage,
+    WORK: canProgress && canManage,
+    VERIFY: canVerifyResolution,
+    CLOSE: canClose && canManage,
+  };
+
+  const flowSteps: FlowStepView[] = flow.steps.map((step) => {
+    const stepCopy = flowCopy.steps[step.key];
+    return {
+      key: step.key,
+      number: step.number,
+      state: step.state,
+      title: stepCopy.title,
+      lead: stepCopy.lead,
+      todo: [...stepCopy.todo],
+      desk: canDoStep[step.key] ? flowCopy.deskYou : stepDesk[step.key],
+      block: step.block ? flowCopy.blocks[step.block] : null,
+    };
+  });
+
+  // The form that does each step's work. A step with no panel explains itself
+  // instead: either the earlier step has to finish first, or another desk owns it.
+  const panels: Partial<Record<ProcessStepKey, React.ReactNode>> = {};
+
+  if (canValidate && !isFinalized) {
+    panels.VALIDATE = (
+      <ValidationForm
+        concernId={concern.id}
+        locale={locale}
+        types={concernTypes.map((type) => ({ id: type.id, label: type.name }))}
+        categories={allCategories.map((category) => ({
+          id: category.id,
+          label: category.name,
+        }))}
+        currentTypeId={concern.typeId}
+        currentCategoryId={concern.categoryId}
+        currentPriority={concern.priorityLevel}
+      />
+    );
+  }
+
+  if (canAssess && canManage && !isFinalized) {
+    panels.ASSESS = (
+      <div className="space-y-4">
+        {concern.caseAssessment ? (
+          <dl className="space-y-2 text-sm">
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-subtle">
+                {copy[locale].revamp.workflow.workersNeeded}
+              </dt>
+              <dd className="font-medium text-ink">
+                {concern.caseAssessment.workersNeeded ?? "—"}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-subtle">{copy[locale].revamp.workflow.estimate}</dt>
+              <dd className="font-medium tabular-nums text-ink">
+                ₱{Number(concern.caseAssessment.totalCost ?? 0).toFixed(2)}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-subtle">{copy[locale].revamp.workflow.duration}</dt>
+              <dd className="font-medium text-ink">
+                {concern.caseAssessment.estimatedDurationMinutes ?? 0} min
+              </dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="text-sm text-ink-muted">
+            {copy[locale].revamp.workflow.assessmentRequired}
+          </p>
+        )}
+
+        <Button
+          href={`/official/concerns/${concern.id}/assessment`}
+          size="sm"
+          variant="outline"
+        >
+          {flowCopy.openAssessment}
+        </Button>
+
+        {concern.caseAssessment && stageIndex < 2 && canProgress ? (
+          <div className="border-t border-line pt-4">
+            <CaseWorkflowForm
+              concernId={concern.id}
+              currentStatus={concern.status}
+              allowedTransitions={["UNDER_ASSESSMENT"]}
+              locale={locale}
+              today={today}
+              earliestDay={statusEarliestDay}
+            />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (concern.type?.requiresBudget && canViewTreasury && funding) {
+    panels.FUND = (
+      <div className="space-y-4">
+        {fundNeedsSending && canProgress && canManage && stageIndex < 3 ? (
+          <CaseWorkflowForm
+            concernId={concern.id}
+            currentStatus={concern.status}
+            allowedTransitions={["AWAITING_BUDGET"]}
+            locale={locale}
+            today={today}
+            earliestDay={statusEarliestDay}
+          />
+        ) : null}
+        <FundingPanel funding={funding} locale={locale} />
+      </div>
+    );
+  }
+
+  if (canAssignCrew && canManage && !isFinalized) {
+    panels.CREW = (
+      <div className="space-y-3">
+        <p className="text-xs text-ink-subtle">
+          {copy[locale].revamp.workflow.crewProgress}:{" "}
+          {workflowFlags.crewProgressLabel}
+        </p>
+        <CrewPanel
+          concernId={concern.id}
+          locale={locale}
+          canAssign={!isFinalized}
+          canOverrideShortfall
+        />
+      </div>
+    );
+  }
+
+  // Work may only start once the crew is complete and, for money cases, the
+  // funds are set aside. Until then the step card says what is missing.
+  const crewStepDone = stepState("CREW")?.state === "done";
+  const fundStepDone = !concern.type?.requiresBudget || fundStep?.state === "done";
+  const canStartNow =
+    canProgress &&
+    canManage &&
+    stageIndex >= 2 &&
+    stageIndex < 4 &&
+    crewStepDone &&
+    fundStepDone;
+
+  if (canStartNow) {
+    panels.START = (
+      <CaseWorkflowForm
+        concernId={concern.id}
+        currentStatus={concern.status}
+        allowedTransitions={["IN_PROGRESS"]}
+        locale={locale}
+        today={today}
+        earliestDay={statusEarliestDay}
+      />
+    );
+  }
+
+  if ((canProgress || canResolve || canClose) && canManage) {
+    panels.WORK = (
+      <div className="space-y-5">
+        <div>
+          <p className="mb-2 text-sm font-medium text-ink-muted">
+            {desk.progressNotes}
+          </p>
+          <CaseNoteForm
+            concernId={concern.id}
+            disabled={concern.status === "CLOSED"}
+            locale={locale}
+            today={today}
+            earliestDay={noteEarliestDay}
+          />
+        </div>
+        {canResolve && !resolution && canProgress ? (
+          <div className="border-t border-line pt-5">
+            <p className="mb-2 text-sm font-medium text-ink-muted">
+              {desk.resolveCase}
+            </p>
+            <ResolutionForm
+              concernId={concern.id}
+              locale={locale}
+              today={today}
+              earliestDay={statusEarliestDay}
+            />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (canVerifyResolution && resolution && concern.status === "RESOLVED") {
+    panels.VERIFY = (
+      <ResolutionVerifyForm
+        concernId={concern.id}
+        locale={locale}
+        recordedById={resolution.officialId}
+      />
+    );
+  }
+
+  if (canClose && canManage && concern.status === "RESOLVED") {
+    panels.CLOSE = (
+      <CaseWorkflowForm
+        concernId={concern.id}
+        currentStatus={concern.status}
+        allowedTransitions={["CLOSED"]}
+        locale={locale}
+        today={today}
+        earliestDay={statusEarliestDay}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Button href="/official/concerns" variant="ghost" size="sm">
@@ -297,9 +571,30 @@ export default async function OfficialConcernDetailPage({
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <Card title={desk.detailsTitle}>
+      {/* The flow first, full width: the numbered steps, the one being worked on,
+          and only that step's form. Everything recorded about the case follows
+          underneath, so the work is never buried in a side column. */}
+      <ProcessFlowPanel
+        locale={locale}
+        steps={flowSteps}
+        currentKey={flow.currentKey}
+        doneCount={flow.doneCount}
+        activeTotal={flow.activeTotal}
+        percent={flow.percent}
+        finished={flow.finished}
+        panels={panels}
+      />
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-subtitle text-ink">{flowCopy.recordTitle}</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-ink-subtle">
+            {flowCopy.recordLead}
+          </p>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card title={desk.detailsTitle} className="lg:col-span-2">
             <dl className="space-y-4 text-sm">
               <div>
                 <dt className="text-ink-subtle">{desk.category}</dt>
@@ -411,9 +706,7 @@ export default async function OfficialConcernDetailPage({
               <dl className="space-y-3 text-sm">
                 <div>
                   <dt className="text-ink-subtle">{desk.summary}</dt>
-                  <dd className="mt-0.5 text-ink-muted">
-                    {resolution.summary}
-                  </dd>
+                  <dd className="mt-0.5 text-ink-muted">{resolution.summary}</dd>
                 </div>
                 <div>
                   <dt className="text-ink-subtle">{desk.actionsTaken}</dt>
@@ -508,215 +801,6 @@ export default async function OfficialConcernDetailPage({
             </Card>
           )}
 
-          <Card title={desk.timelineTitle} description={desk.timelineDesc}>
-            <CaseTimeline
-              locale={locale}
-              entries={concern.history.map((entry) => ({
-                id: entry.id,
-                entryType: entry.entryType,
-                fromStatus: entry.fromStatus,
-                toStatus: entry.toStatus,
-                remarks: entry.remarks,
-                actorRole: entry.actorRole,
-                createdAt: entry.createdAt,
-                occurredOn: entry.occurredOn,
-                attachmentUrl: entry.attachmentUrl,
-              }))}
-            />
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card title={desk.manageTitle} description={desk.manageDesc}>
-            {canManage ? (
-              <div className="space-y-6">
-                <div className="flex flex-wrap gap-2">
-                  {workflowFlags.crewProgressLabel && (
-                    <span className="self-center text-xs text-ink-subtle">
-                      {copy[locale].revamp.workflow.crewProgress}:{" "}
-                      {workflowFlags.crewProgressLabel}
-                    </span>
-                  )}
-                </div>
-                {canResolve && !resolution && (
-                  <div>
-                    <p className="mb-3 text-sm font-medium text-ink-muted">
-                      {desk.resolveCase}
-                    </p>
-                    <ResolutionForm
-                      concernId={concern.id}
-                      locale={locale}
-                      today={today}
-                      earliestDay={statusEarliestDay}
-                    />
-                  </div>
-                )}
-                <div className={canResolve && !resolution ? "border-t border-line pt-5" : ""}>
-                  <CaseWorkflowForm
-                    concernId={concern.id}
-                    currentStatus={concern.status}
-                    allowedTransitions={workflowStatuses}
-                    locale={locale}
-                    today={today}
-                    earliestDay={statusEarliestDay}
-                  />
-                </div>
-                <div className="border-t border-line pt-5">
-                  <p className="mb-3 text-sm font-medium text-ink-muted">
-                    {desk.progressNotes}
-                  </p>
-                  <CaseNoteForm
-                    concernId={concern.id}
-                    disabled={concern.status === "CLOSED"}
-                    locale={locale}
-                    today={today}
-                    earliestDay={noteEarliestDay}
-                  />
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-ink-subtle">{desk.otherOffice}</p>
-            )}
-          </Card>
-
-          {canVerifyResolution && resolution && concern.status === "RESOLVED" && (
-            <Card
-              title={copy[locale].revamp.workflow.verifyTitle}
-              description={copy[locale].revamp.workflow.verifyDesc}
-            >
-              <ResolutionVerifyForm
-                concernId={concern.id}
-                locale={locale}
-                recordedById={resolution.officialId}
-              />
-            </Card>
-          )}
-
-          {(canRequestFieldCheck || canReviewFieldCheck) && canManage && (
-            <Card
-              title={copy[locale].revamp.workflow.fieldCheck.title}
-              description={copy[locale].revamp.workflow.fieldCheck.desc}
-            >
-              <FieldCheckPanel
-                concernId={concern.id}
-                locale={locale}
-                caseStatus={concern.status}
-                canRequest={canRequestFieldCheck}
-                canReview={canReviewFieldCheck}
-                currentUserId={user.id}
-                checks={fieldChecks.map((check) => ({
-                  id: check.id,
-                  status: check.status,
-                  instructions: check.instructions,
-                  finding: check.finding,
-                  findingNotes: check.findingNotes,
-                  findingPhotoUrl: check.findingPhotoUrl,
-                  reviewNote: check.reviewNote,
-                  assigneeId: check.assigneeId,
-                  assigneeName: `${check.assignee.firstName} ${check.assignee.lastName}`,
-                  requestedByName: `${check.requestedBy.firstName} ${check.requestedBy.lastName}`,
-                }))}
-                roster={fieldCheckRoster.map((person) => ({
-                  id: person.id,
-                  name: `${person.firstName} ${person.lastName}`,
-                  roleLabel: person.role.key === "CREW" ? "Crew" : "Official",
-                }))}
-              />
-            </Card>
-          )}
-
-          {canAssignCrew && canManage && (
-            <Card
-              title={copy[locale].revamp.workflow.crewTitle}
-              description={copy[locale].revamp.workflow.crewDesc}
-            >
-              <CrewPanel
-                concernId={concern.id}
-                locale={locale}
-                canAssign={concern.status !== "RESOLVED" && concern.status !== "CLOSED"}
-                canOverrideShortfall
-              />
-            </Card>
-          )}
-
-          {canViewTreasury && funding && (
-            <Card
-              title={copy[locale].revamp.treasuryDesk.fundingTitle}
-              description={copy[locale].revamp.treasuryDesk.fundingLead}
-            >
-              <FundingPanel funding={funding} locale={locale} />
-            </Card>
-          )}
-
-          {canValidate && !isFinalized && (
-            <Card
-              title={copy[locale].revamp.workflow.validationTitle}
-              description={copy[locale].revamp.workflow.validationDesc}
-            >
-              <ValidationForm
-                concernId={concern.id}
-                locale={locale}
-                types={concernTypes.map((type) => ({ id: type.id, label: type.name }))}
-                categories={allCategories.map((category) => ({
-                  id: category.id,
-                  label: category.name,
-                }))}
-                currentTypeId={concern.typeId}
-                currentCategoryId={concern.categoryId}
-                currentPriority={concern.priorityLevel}
-              />
-            </Card>
-          )}
-
-          {canAssess && canManage && !isFinalized && (
-            <Card
-              title={copy[locale].revamp.workflow.assessmentTitle}
-              description={copy[locale].revamp.workflow.manpowerTitle}
-            >
-              {concern.caseAssessment ? (
-                <dl className="space-y-2 text-sm">
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-ink-subtle">
-                      {copy[locale].revamp.workflow.workersNeeded}
-                    </dt>
-                    <dd className="font-medium text-ink">
-                      {concern.caseAssessment.workersNeeded ?? "—"}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-ink-subtle">
-                      {copy[locale].revamp.workflow.estimate}
-                    </dt>
-                    <dd className="font-medium tabular-nums text-ink">
-                      ₱{Number(concern.caseAssessment.totalCost ?? 0).toFixed(2)}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-ink-subtle">
-                      {copy[locale].revamp.workflow.duration}
-                    </dt>
-                    <dd className="font-medium text-ink">
-                      {concern.caseAssessment.estimatedDurationMinutes ?? 0} min
-                    </dd>
-                  </div>
-                </dl>
-              ) : (
-                <p className="text-sm text-ink-subtle">
-                  {copy[locale].revamp.workflow.assessmentRequired}
-                </p>
-              )}
-              <div className="mt-4">
-                <Button
-                  href={`/official/concerns/${concern.id}/assessment`}
-                  size="sm"
-                  variant="outline"
-                >
-                  {copy[locale].revamp.workflow.viewAssessment}
-                </Button>
-              </div>
-            </Card>
-          )}
-
           <Card
             title={desk.location}
             description={copy[locale].revamp.workflow.geotagDesc}
@@ -756,9 +840,7 @@ export default async function OfficialConcernDetailPage({
                 </div>
               </dl>
             ) : (
-              <p className="text-sm text-amber-700">
-                {desk.notRouted}
-              </p>
+              <p className="text-sm text-amber-700">{desk.notRouted}</p>
             )}
 
             {isFinalized ? (
@@ -810,8 +892,63 @@ export default async function OfficialConcernDetailPage({
               <p className="text-sm text-ink-subtle">{desk.otherOfficeOverride}</p>
             )}
           </Card>
+
+          {(canRequestFieldCheck || canReviewFieldCheck) && canManage && (
+            <Card
+              className="lg:col-span-2"
+              title={copy[locale].revamp.workflow.fieldCheck.title}
+              description={copy[locale].revamp.workflow.fieldCheck.desc}
+            >
+              <FieldCheckPanel
+                concernId={concern.id}
+                locale={locale}
+                caseStatus={concern.status}
+                canRequest={canRequestFieldCheck}
+                canReview={canReviewFieldCheck}
+                currentUserId={user.id}
+                checks={fieldChecks.map((check) => ({
+                  id: check.id,
+                  status: check.status,
+                  instructions: check.instructions,
+                  finding: check.finding,
+                  findingNotes: check.findingNotes,
+                  findingPhotoUrl: check.findingPhotoUrl,
+                  reviewNote: check.reviewNote,
+                  assigneeId: check.assigneeId,
+                  assigneeName: `${check.assignee.firstName} ${check.assignee.lastName}`,
+                  requestedByName: `${check.requestedBy.firstName} ${check.requestedBy.lastName}`,
+                }))}
+                roster={fieldCheckRoster.map((person) => ({
+                  id: person.id,
+                  name: `${person.firstName} ${person.lastName}`,
+                  roleLabel: person.role.key === "CREW" ? "Crew" : "Official",
+                }))}
+              />
+            </Card>
+          )}
+
+          <Card
+            className="lg:col-span-2"
+            title={desk.timelineTitle}
+            description={desk.timelineDesc}
+          >
+            <CaseTimeline
+              locale={locale}
+              entries={concern.history.map((entry) => ({
+                id: entry.id,
+                entryType: entry.entryType,
+                fromStatus: entry.fromStatus,
+                toStatus: entry.toStatus,
+                remarks: entry.remarks,
+                actorRole: entry.actorRole,
+                createdAt: entry.createdAt,
+                occurredOn: entry.occurredOn,
+                attachmentUrl: entry.attachmentUrl,
+              }))}
+            />
+          </Card>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

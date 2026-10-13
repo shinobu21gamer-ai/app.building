@@ -89,10 +89,13 @@ export function SiteHeader({
         </div>
       </Container>
 
+      {/* The dropdown scrolls inside the viewport: with a signed-in user it
+          carries the account links on top of the guest ones, and a menu that
+          runs past the screen would hide its own last rows. */}
       {open ? (
         <div
           id="mobile-nav"
-          className="animate-drop-in border-t border-line bg-surface md:hidden"
+          className="animate-drop-in max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t border-line bg-surface md:hidden"
         >
           <Container className="flex flex-col gap-2 py-3" aria-label="Mobile">
             {user ? (

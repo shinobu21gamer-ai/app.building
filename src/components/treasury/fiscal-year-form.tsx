@@ -4,12 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
+  FieldHint,
   FormMessage,
   Input,
   Label,
   RequiredLegend,
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
+import { todayManila } from "@/lib/cases/action-date";
 import { copy, type Locale } from "@/lib/i18n";
 
 /** Opens a fiscal year. Everything in the treasury hangs off this frame. */
@@ -18,6 +20,9 @@ export function FiscalYearForm({ locale = "en" }: { locale?: Locale }) {
   const common = copy[locale].revamp.common;
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  // The pickers start at today: a fiscal year frames money that is still to be
+  // spent, so opening one in the past is not a valid move.
+  const today = todayManila();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,6 +99,7 @@ export function FiscalYearForm({ locale = "en" }: { locale?: Locale }) {
             id="fiscal-year-start"
             name="startsOn"
             type="date"
+            min={today}
             required
           />
         </div>
@@ -101,7 +107,14 @@ export function FiscalYearForm({ locale = "en" }: { locale?: Locale }) {
           <Label htmlFor="fiscal-year-end" required>
             {t.endsOn}
           </Label>
-          <Input id="fiscal-year-end" name="endsOn" type="date" required />
+          <Input
+            id="fiscal-year-end"
+            name="endsOn"
+            type="date"
+            min={today}
+            required
+          />
+          <FieldHint>{t.fiscalYearDatesHint}</FieldHint>
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/field";
 import { CASE_STATUSES, PRIORITY_LEVELS } from "@/lib/cases/workflow";
+import { todayManila } from "@/lib/cases/action-date";
 import { copy, type Locale } from "@/lib/i18n";
 
 export type FilterOffice = { id: number; name: string };
@@ -39,6 +40,8 @@ export function ConcernFilters({
 }) {
   const t = copy[locale].filters;
   const router = useRouter();
+  // The newest day a report can look at: there are no cases from the future.
+  const today = todayManila();
   // Pending state follows the real navigation, so the button reads "Applying…"
   // until the filtered results have arrived.
   const [pending, startTransition] = useTransition();
@@ -157,6 +160,7 @@ export function ConcernFilters({
             id="filter-from"
             name="from"
             type="date"
+            max={today}
             defaultValue={defaults.from}
             className={inputStyles}
           />
@@ -168,9 +172,11 @@ export function ConcernFilters({
             id="filter-to"
             name="to"
             type="date"
+            max={today}
             defaultValue={defaults.to}
             className={inputStyles}
           />
+          <p className="mt-1 text-caption text-ink-subtle">{t.dateLimitHint}</p>
         </div>
       </div>
 
