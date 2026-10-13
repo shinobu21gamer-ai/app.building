@@ -511,6 +511,9 @@ const en = {
     crewShortfallHint: "Of {cases} case(s) with a crew plan",
     measuredOne: "1 resolved case measured",
     measuredMany: "{count} resolved cases measured",
+    housekeepingTitle: "Housekeeping",
+    housekeepingDesc:
+      "Desk chores that run on demand. Everyday destinations live in the menu on the left.",
     byStatusChart: "Cases by status",
     byStatusChartDesc: "Distribution across the case lifecycle.",
     casesLabel: "Cases",
@@ -2699,6 +2702,9 @@ const fil: typeof en = {
     crewShortfallHint: "Sa {cases} kaso na may plano ng crew",
     measuredOne: "1 na-resolve na kaso ang nasukat",
     measuredMany: "{count} na-resolve na kaso ang nasukat",
+    housekeepingTitle: "Housekeeping",
+    housekeepingDesc:
+      "Mga gawain sa desk na pwedeng patakbuhin agad. Nasa menu sa kaliwa ang araw-araw na destinasyon.",
     byStatusChart: "Kaso ayon sa status",
     byStatusChartDesc: "Distribusyon sa lifecycle ng kaso.",
     casesLabel: "Mga kaso",

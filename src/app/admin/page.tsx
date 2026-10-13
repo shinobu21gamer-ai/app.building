@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import { Building2, Download, GitBranch, Settings2, SlidersHorizontal, Tags, UserRound, Users } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { BarChart, type BarItem } from "@/components/dashboard/bar-chart";
 import { DonutChart } from "@/components/dashboard/donut-chart";
@@ -59,44 +57,10 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <PageHeader title={t.welcome.replace("{name}", user.firstName)} description={t.overview} />
-        <div className="flex flex-wrap items-center gap-2">
-          <Button href="/admin/users" variant="outline" size="sm">
-            <Users size={14} aria-hidden="true" />
-            {t.navUsers}
-          </Button>
-          <Button href="/admin/officials" variant="outline" size="sm">
-            <UserRound size={14} aria-hidden="true" />
-            {t.navOfficials}
-          </Button>
-          <Button href="/admin/offices" variant="outline" size="sm">
-            <Building2 size={14} aria-hidden="true" />
-            {t.navOffices}
-          </Button>
-          <Button href="/admin/categories" variant="outline" size="sm">
-            <Tags size={14} aria-hidden="true" />
-            {t.navCategories}
-          </Button>
-          <Button href="/admin/priority" variant="outline" size="sm">
-            <SlidersHorizontal size={14} aria-hidden="true" />
-            {t.navPriority}
-          </Button>
-          <Button href="/admin/routing" variant="outline" size="sm">
-            <GitBranch size={14} aria-hidden="true" />
-            {t.navRouting}
-          </Button>
-          <Button href="/admin/settings" variant="outline" size="sm">
-            <Settings2 size={14} aria-hidden="true" />
-            {t.navSettings}
-          </Button>
-          <Button href="/admin/reports" variant="secondary" size="sm">
-            <Download size={14} aria-hidden="true" />
-            {t.navReports}
-          </Button>
-          <MaintenanceActions locale={locale} />
-        </div>
-      </div>
+      <PageHeader
+        title={t.welcome.replace("{name}", user.firstName)}
+        description={t.overview}
+      />
 
       <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label={t.totalCases} value={totals.total} />
@@ -189,6 +153,10 @@ export default async function AdminPage() {
           />
         </Card>
       </div>
+
+      <Card title={t.housekeepingTitle} description={t.housekeepingDesc}>
+        <MaintenanceActions locale={locale} />
+      </Card>
 
       <Card title={t.processingTitle} description={t.processingDesc}>
         {processingTime.sampleSize === 0 ? (

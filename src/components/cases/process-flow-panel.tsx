@@ -126,7 +126,10 @@ export function ProcessFlowPanel({
           />
         </div>
 
-        <ol className="flex gap-2 overflow-x-auto pb-1">
+        {/* Eight steps do not fit on a phone, so the rail scrolls sideways
+            there; from `sm` up they wrap, because a hidden step is a step
+            somebody forgets. */}
+        <ol className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
           {steps.map((step) => {
             const isOpen = step.key === openKey;
             return (

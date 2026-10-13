@@ -65,7 +65,7 @@ export function Sheet({
         aria-label={title}
         tabIndex={-1}
         className={cn(
-          "animate-drop-in absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto",
+          "animate-drop-in absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto overscroll-contain",
           "rounded-t-2xl border-t border-line bg-surface pb-[env(safe-area-inset-bottom,0px)] shadow-raised",
           className
         )}
