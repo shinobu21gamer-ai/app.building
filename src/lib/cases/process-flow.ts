@@ -14,10 +14,20 @@ import {
   isPassingVerification,
   type CaseStatus,
 } from "@/lib/cases/workflow";
-import { fieldCheckGateBlock } from "@/lib/cases/field-check-rules";
+import {
+  realityCheckState,
+  type RealityCheckState,
+} from "@/lib/cases/field-check-rules";
 
-/** The ordered steps of processing a concern, start to finish. */
+/**
+ * The ordered steps of processing a concern, start to finish.
+ *
+ * The first step is the reality check: somebody has to see the location the
+ * resident gave before the report is validated, planned, funded or worked on.
+ * See `docs/revamp/01-architecture.md`.
+ */
 export const PROCESS_STEPS = [
+  "CHECK",
   "VALIDATE",
   "ASSESS",
   "FUND",
@@ -31,18 +41,20 @@ export const PROCESS_STEPS = [
 export type ProcessStepKey = (typeof PROCESS_STEPS)[number];
 
 /**
- * done    — finished, the case has moved past it
- * current — the step being worked on now
- * pending — still to come
- * skipped — not needed for this case (a case that needs no money has no FUND)
+ * done      — finished, the case has moved past it
+ * current   — the step being worked on now
+ * pending   — still to come
+ * notNeeded — the case closed before this step; it is never coming
  */
-export type ProcessStepState = "done" | "current" | "pending" | "skipped";
+export type ProcessStepState = "done" | "current" | "pending" | "notNeeded";
 
 /**
  * Why a step cannot be acted on yet, or why it is waiting on someone else.
  * The page turns these codes into sentences; the engine never writes prose.
  */
 export type ProcessBlock =
+  | "NEEDS_REALITY_CHECK"
+  | "FIELD_CHECK_FAILED"
   | "NEEDS_TYPE"
   | "NEEDS_ASSESSMENT"
   | "WAITING_UNDER_ASSESSMENT"
@@ -74,8 +86,6 @@ export type ProcessFlowInput = {
   status: string;
   /** The service type set by validation; null until an admin validates. */
   typeId: number | null;
-  /** ConcernType.requiresBudget — money cases must stop at AWAITING_BUDGET. */
-  requiresBudget: boolean;
   /** A saved assessment with a manpower plan. */
   hasAssessment: boolean;
   /** Workers planned; null when no plan is saved. */
@@ -90,8 +100,8 @@ export type ProcessFlowInput = {
   hasResolution: boolean;
   /** ResolutionRecord.verificationStatus; null when there is no resolution. */
   verificationStatus: string | null;
-  /** A field check is open, which pauses the case. */
-  fieldCheckOpen: boolean;
+  /** Where the reality check stands: it is step 1 of every case. */
+  realityCheck: RealityCheckState;
 };
 
 export type ProcessFlow = {
@@ -101,10 +111,16 @@ export type ProcessFlow = {
   /** 1-based number of the current step (the last step when finished). */
   currentNumber: number;
   doneCount: number;
-  /** Steps that count towards progress (skipped steps excluded). */
+  /** Steps that count towards progress. Every step counts: none is optional. */
   activeTotal: number;
   percent: number;
   finished: boolean;
+  /**
+   * The case is closed and no resolution was ever recorded: the only path that
+   * does this is an approved "not confirmed" field check (`closeAsUnfounded`),
+   * where the report was not real and no work was done.
+   */
+  closedUnfounded: boolean;
 };
 
 /** A small tolerance so "set aside ₱5,000" covers a ₱5,000 estimate. */
@@ -123,21 +139,28 @@ export function crewSatisfied(
   return activeCrew >= workersNeeded;
 }
 
-/** True when an estimate exists and the treasury has set that much aside. */
+/**
+ * True when an estimate exists and the treasury has set that much aside. A
+ * saved ₱0 estimate is a real answer — "this case costs nothing" — and needs
+ * nothing set aside.
+ */
 export function fundingSatisfied(
   estimatedCost: number | null,
   fundedAmount: number
 ): boolean {
-  if (estimatedCost === null || estimatedCost <= 0) return false;
+  if (estimatedCost === null) return false;
   return fundedAmount + MONEY_EPSILON >= estimatedCost;
 }
 
 /**
- * Walks the case through the eight steps and returns their states plus the one
+ * Walks the case through the nine steps and returns their states plus the one
  * the desk should be working on.
  *
- * The first step that is neither done nor skipped is the current one. A case
- * that is CLOSED has no current step.
+ * The first step that is not done is the current one, except on a closed case:
+ * nothing is being worked on there, so no step is current and the steps that
+ * never happened read `notNeeded` instead of "still to come". A case closed as
+ * unfounded (the on-site check did not confirm the report) only ever validated
+ * and closed, so its work steps are not "done" either.
  */
 export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
   const stage = stageOf(input.status);
@@ -146,6 +169,12 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
   const funded = fundingSatisfied(input.estimatedCost, input.fundedAmount);
   const verified = isPassingVerification(input.verificationStatus);
   const resolved = input.hasResolution;
+  /**
+   * Closed with no resolution on record: the only path that does this is a
+   * field check whose finding was approved as "not confirmed" (see
+   * `closeAsUnfounded`). The report was not real, so the work never happened.
+   */
+  const unfounded = closed && !resolved;
 
   const steps: ProcessStep[] = [];
   const push = (
@@ -156,59 +185,76 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
     steps.push({ key, number: steps.length + 1, state, block });
   };
 
-  // 1 — Validate the report: a service type decides routing, budget and crew.
+  // 1 — Check the report is real: somebody goes to the location the resident
+  //     gave and an admin approves what they found. Nothing else happens until
+  //     then, so this is the one gate every case passes through first.
+  const checkDone = input.realityCheck === "PASSED";
+  const realityGate: ProcessBlock | null =
+    input.realityCheck === "NONE"
+      ? "NEEDS_REALITY_CHECK"
+      : input.realityCheck === "OPEN"
+        ? "FIELD_CHECK_OPEN"
+        : input.realityCheck === "FAILED"
+          ? "FIELD_CHECK_FAILED"
+          : null;
+  push("CHECK", checkDone ? "done" : "pending", checkDone ? null : realityGate);
+
+  // 2 — Validate the report: a service type decides routing, budget and crew.
   push(
     "VALIDATE",
     input.typeId !== null ? "done" : "pending",
-    input.typeId === null ? "NEEDS_TYPE" : null
+    input.typeId === null
+      ? // The reality check owns the case until it passes, so that is what the
+        // validation step is waiting for when no type is set yet.
+        (checkDone ? "NEEDS_TYPE" : realityGate)
+      : null
   );
 
-  // 2 — Assess and plan: the four checks, the manpower plan and the estimate.
+  // 3 — Assess and plan: the four checks, the manpower plan and the estimate.
   const assessed = input.hasAssessment && stage >= 2;
   push(
     "ASSESS",
     assessed ? "done" : "pending",
     assessed
       ? null
-      : input.hasAssessment
-        ? "WAITING_UNDER_ASSESSMENT"
-        : "NEEDS_ASSESSMENT"
+      : !checkDone
+        ? realityGate
+        : input.hasAssessment
+          ? "WAITING_UNDER_ASSESSMENT"
+          : "NEEDS_ASSESSMENT"
   );
 
-  // 3 — Wait for the budget: only for types that need money.
-  if (!input.requiresBudget) {
-    push("FUND", "skipped");
-  } else {
-    push(
-      "FUND",
-      funded ? "done" : "pending",
-      funded
-        ? null
-        : input.estimatedCost === null || input.estimatedCost <= 0
-          ? "NEEDS_ESTIMATE"
-          : stage < 3
-            ? "WAITING_BUDGET_STAGE"
-            : "NEEDS_FUNDS"
-    );
-  }
+  // 4 — Wait for the budget: every case passes through here, so the estimate
+  //     reaches the treasury and the money is set aside before any work starts.
+  push(
+    "FUND",
+    funded ? "done" : "pending",
+    funded
+      ? null
+      : input.estimatedCost === null
+        ? "NEEDS_ESTIMATE"
+        : stage < 3
+          ? "WAITING_BUDGET_STAGE"
+          : "NEEDS_FUNDS"
+  );
 
-  // 4 — Assign the crew named in the plan.
+  // 5 — Assign the crew named in the plan.
   push(
     "CREW",
     crewOk ? "done" : "pending",
     crewOk ? null : input.workersNeeded === null ? "NEEDS_CREW_PLAN" : "NEEDS_CREW"
   );
 
-  // 5 — Start the work: everything the plan and the money rules require is in
+  // 6 — Start the work: everything the plan and the money rules require is in
   //     place before the case may move to IN_PROGRESS.
   const startBlock: ProcessBlock | null =
     stage >= 4
       ? null
       : !input.hasAssessment
         ? "NEEDS_ASSESSMENT"
-        : input.fieldCheckOpen
-          ? "FIELD_CHECK_OPEN"
-          : input.requiresBudget && !funded
+        : !checkDone
+          ? realityGate
+          : !funded
             ? stage < 3
               ? "WAITING_BUDGET_STAGE"
               : "NEEDS_FUNDS"
@@ -217,7 +263,7 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
               : "NOT_STARTED";
   push("START", stage >= 4 ? "done" : "pending", stage >= 4 ? null : startBlock);
 
-  // 6 — Do the work: log progress while IN_PROGRESS, then record the resolution
+  // 7 — Do the work: log progress while IN_PROGRESS, then record the resolution
   //     with its proof photo (that is what completes the step).
   push(
     "WORK",
@@ -225,7 +271,7 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
     resolved ? null : stage < 4 ? "NOT_STARTED" : null
   );
 
-  // 7 — Verify the fix: the proof is checked by someone other than the official
+  // 8 — Verify the fix: the proof is checked by someone other than the official
   //     who recorded the resolution.
   push(
     "VERIFY",
@@ -239,7 +285,7 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
           : "NEEDS_VERIFICATION"
   );
 
-  // 8 — Close the case and let the resident rate the work.
+  // 9 — Close the case and let the resident rate the work.
   push(
     "CLOSE",
     closed ? "done" : "pending",
@@ -252,14 +298,37 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
           : "NEEDS_VERIFICATION"
   );
 
-  const currentIndex = steps.findIndex(
-    (step) => step.state === "pending"
-  );
+  // A case closed before its work steps existed is not "on step 2" forever.
+  // Only an open case has a current step, and the steps a closed case never
+  // reached are dropped from the count so the progress bar stays honest.
+  if (closed) {
+    for (const step of steps) {
+      if (step.key === "CLOSE") {
+        step.state = "done";
+        step.block = null;
+        continue;
+      }
+      // On an unfounded case only two steps ran: the check that ended it and a
+      // validation that may have come before it. Everything else is "not
+      // needed" — never "done", because the work never happened.
+      const ranBeforeClosing = unfounded
+        ? step.key === "CHECK"
+          ? input.realityCheck !== "NONE"
+          : step.key === "VALIDATE"
+        : step.state === "done";
+      step.state = ranBeforeClosing ? "done" : "notNeeded";
+      step.block = null;
+    }
+  }
+
+  const currentIndex = closed
+    ? -1
+    : steps.findIndex((step) => step.state === "pending");
   const withCurrent = steps.map((step, index) =>
     index === currentIndex ? { ...step, state: "current" as const } : step
   );
 
-  const activeTotal = steps.filter((step) => step.state !== "skipped").length;
+  const activeTotal = steps.filter((step) => step.state !== "notNeeded").length;
   const doneCount = steps.filter((step) => step.state === "done").length;
   const percent =
     activeTotal === 0 ? 100 : Math.round((doneCount / activeTotal) * 100);
@@ -275,6 +344,7 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
     activeTotal,
     percent: closed ? 100 : percent,
     finished: currentIndex === -1,
+    closedUnfounded: unfounded,
   };
 }
 
@@ -292,8 +362,8 @@ export function stepByKey(
  */
 export type FlowConcernRow = {
   status: string;
+  /** The case's field checks: they decide the first step of the flow. */
   typeId: number | null;
-  type?: { requiresBudget: boolean } | null;
   caseAssessment?: {
     workersNeeded: number | null;
     totalCost: unknown;
@@ -306,7 +376,8 @@ export type FlowConcernRow = {
 /**
  * The flow for a concern row from a list query. `fundedAmount` comes from the
  * treasury (approved earmarks set aside for the case); 0 is the honest answer
- * when the page did not load them.
+ * when the page did not load them. The first step is decided by the case's own
+ * field checks.
  */
 export function concernProcessFlow(
   concern: FlowConcernRow,
@@ -315,7 +386,6 @@ export function concernProcessFlow(
   return caseProcessFlow({
     status: concern.status,
     typeId: concern.typeId,
-    requiresBudget: concern.type?.requiresBudget ?? false,
     hasAssessment: Boolean(concern.caseAssessment?.workersNeeded),
     workersNeeded: concern.caseAssessment?.workersNeeded ?? null,
     estimatedCost: concern.caseAssessment
@@ -325,7 +395,11 @@ export function concernProcessFlow(
     activeCrew: concern.crewAssignments?.length ?? 0,
     hasResolution: (concern.resolutions?.length ?? 0) > 0,
     verificationStatus: concern.resolutions?.[0]?.verificationStatus ?? null,
-    fieldCheckOpen:
-      fieldCheckGateBlock(concern.fieldChecks ?? []) !== null,
+    // Cases that were already past this point when the check became step 1
+    // (in assessment or further) count as checked, or every old case would read
+    // as still waiting for its first visit.
+    realityCheck: realityCheckState(concern.fieldChecks ?? [], {
+      legacyPassed: (STATUS_ORDER[concern.status as CaseStatus] ?? 0) >= 2,
+    }),
   });
 }

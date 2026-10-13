@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Check } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { copy, type Locale } from "@/lib/i18n";
 import type { ProcessStepKey, ProcessStepState } from "@/lib/cases/process-flow";
@@ -23,14 +23,16 @@ const DOT_STATE: Record<ProcessStepState, string> = {
   done: "border-brand-600 bg-brand-600 text-white",
   current: "border-brand-600 bg-surface text-brand-700 ring-4 ring-brand-100",
   pending: "border-line-strong bg-surface text-ink-faint",
-  skipped: "border-line bg-surface-sunken text-ink-faint",
+  // A step the case closed before reaching: it is not "coming", so it reads
+  // back rather than forward.
+  notNeeded: "border-line bg-surface-sunken text-ink-faint",
 };
 
 const CHIP_STATE: Record<ProcessStepState, string> = {
   done: "border-line bg-surface text-ink",
   current: "border-brand-600 bg-brand-50 text-brand-900 ring-1 ring-brand-200",
   pending: "border-line bg-surface text-ink-faint",
-  skipped: "border-line bg-surface-sunken text-ink-faint",
+  notNeeded: "border-dashed border-line bg-surface-sunken text-ink-subtle",
 };
 
 /**
@@ -51,6 +53,7 @@ export function ProcessFlowPanel({
   activeTotal,
   percent,
   finished,
+  unfounded = false,
   panels = {},
 }: {
   locale?: Locale;
@@ -60,6 +63,12 @@ export function ProcessFlowPanel({
   activeTotal: number;
   percent: number;
   finished: boolean;
+  /**
+   * The case was closed without ever doing the work, because the field check
+   * did not confirm the report (`closeAsUnfounded`). The closing note says so
+   * instead of telling the reader every step was worked.
+   */
+  unfounded?: boolean;
   /** The form that does each step's work, keyed by step. */
   panels?: Partial<Record<ProcessStepKey, ReactNode>>;
 }) {
@@ -91,7 +100,7 @@ export function ProcessFlowPanel({
     done: t.doneBadge,
     current: t.currentBadge,
     pending: t.laterBadge,
-    skipped: t.skippedBadge,
+    notNeeded: t.notNeededBadge,
   };
 
   return (
@@ -126,7 +135,7 @@ export function ProcessFlowPanel({
           />
         </div>
 
-        {/* Eight steps do not fit on a phone, so the rail scrolls sideways
+        {/* Nine steps do not fit on a phone, so the rail scrolls sideways
             there; from `sm` up they wrap, because a hidden step is a step
             somebody forgets. */}
         <ol className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
@@ -152,6 +161,8 @@ export function ProcessFlowPanel({
                   >
                     {step.state === "done" ? (
                       <Check size={13} aria-hidden="true" />
+                    ) : step.state === "notNeeded" ? (
+                      <Minus size={13} aria-hidden="true" />
                     ) : (
                       step.number
                     )}
@@ -174,7 +185,7 @@ export function ProcessFlowPanel({
       <div className="border-t border-line px-4 py-5 sm:px-5">
         {finished || !active ? (
           <p className="rounded-control border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-            {t.closedNote}
+            {unfounded ? t.unfoundedNote : t.closedNote}
           </p>
         ) : (
           <div className="grid gap-5 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:gap-8">
@@ -229,16 +240,14 @@ export function ProcessFlowPanel({
                 panels[active.key]
               ) : (
                 <p className="rounded-control border border-dashed border-line bg-surface-sunken px-3 py-3 text-sm text-ink-muted">
-                  {active.state === "skipped"
-                    ? t.skippedNote
-                    : earlierUnfinished
-                      ? t.finishEarlier.replace(
-                          "{number}",
-                          String(earlierUnfinished.number)
-                        )
-                      : active.block
-                        ? active.block
-                        : t.otherDesk.replace("{desk}", active.desk)}
+                  {earlierUnfinished
+                    ? t.finishEarlier.replace(
+                        "{number}",
+                        String(earlierUnfinished.number)
+                      )
+                    : active.block
+                      ? active.block
+                      : t.otherDesk.replace("{desk}", active.desk)}
                 </p>
               )}
             </div>

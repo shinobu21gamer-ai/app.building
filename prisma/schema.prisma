@@ -9,7 +9,8 @@
 // REVAMP (2026-10-12) - see docs/revamp/README.md
 //   * Lifecycle is now
 //       SUBMITTED -> ASSIGNED -> UNDER_ASSESSMENT -> AWAITING_BUDGET
-//       (skippable) -> IN_PROGRESS -> RESOLVED -> CLOSED.
+//       -> IN_PROGRESS -> RESOLVED -> CLOSED. The money stage is not
+//       skippable: every case waits in AWAITING_BUDGET before work starts.
 //   * Roles: RESIDENT | OFFICIAL | ADMIN | TREASURER | CAPTAIN | CREW.
 //   * New blocks in this file: RBAC, resident ID verification and RA 10173
 //     privacy controls, concern types and geotagging, the manpower/crew
@@ -142,8 +143,9 @@ model ConcernType {
   description     String?
   defaultOfficeId Int?
   defaultOffice   Office?  @relation("ConcernTypeDefaultOffice", fields: [defaultOfficeId], references: [id])
-  // AYUDA and BUDGET cases go through AWAITING_BUDGET; DOCUMENTS cases may
-  // skip it (the skip is recorded as a CaseWorkflowOverride).
+  // Legacy planning flag. Every case now passes through AWAITING_BUDGET, so
+  // nothing branches on this column any more; it is kept so older rows and
+  // reports keep their meaning.
   requiresBudget  Boolean  @default(false)
   requiresCrew    Boolean  @default(false)
   slaHours        Int      @default(48)
@@ -507,8 +509,8 @@ model Concern {
   locationVerifiedById Int?
   locationVerifiedBy User?          @relation("ConcernLocationVerifier", fields: [locationVerifiedById], references: [id])
   imageUrl           String?
-  // SUBMITTED => ASSIGNED => UNDER_ASSESSMENT => AWAITING_BUDGET (skippable)
-  //   => IN_PROGRESS => RESOLVED => CLOSED
+  // SUBMITTED => ASSIGNED => UNDER_ASSESSMENT => AWAITING_BUDGET
+  //   (not skippable) => IN_PROGRESS => RESOLVED => CLOSED
   status             String          @default("SUBMITTED")
   // When the case entered its current status. The 48-hour escalation job is
   // driven by this column, not by updatedAt (which any edit would move).
@@ -819,14 +821,16 @@ model FieldCheck {
 }
 
 // An explicit, reasoned exception to a workflow rule (start work with fewer
-// crew than planned, skip AWAITING_BUDGET for a DOCUMENTS case, extend an SLA,
-// force a status). The reason is mandatory and the row is append-only.
+// crew than planned, extend an SLA, force a status). The reason is mandatory
+// and the row is append-only. Nothing skips the money stage: every case waits
+// in AWAITING_BUDGET.
 model CaseWorkflowOverride {
   id           Int       @id @default(autoincrement())
   concernId    Int
   concern      Concern   @relation(fields: [concernId], references: [id], onDelete: Cascade)
-  // CREW_SHORTFALL | BUDGET_STAGE_SKIP | STATUS_FORCE | SLA_EXTENSION |
-  // VALIDATION_BYPASS | ASSESSMENT_BYPASS
+  // CREW_SHORTFALL | STATUS_FORCE | SLA_EXTENSION | VALIDATION_BYPASS |
+  // ASSESSMENT_BYPASS. BUDGET_STAGE_SKIP survives on old rows only and can no
+  // longer be written (see RETIRED_OVERRIDE_KINDS).
   kind         String
   reason       String
   detailsJson  String?

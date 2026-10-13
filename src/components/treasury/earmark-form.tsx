@@ -37,7 +37,20 @@ export function EarmarkForm({
   locale = "en",
 }: {
   allocations: AllocationOption[];
-  caseOptions?: Array<{ id: number; caseNumber: string; title: string }>;
+  /**
+   * Cases the money can be linked to. The estimate and the amount already set
+   * aside travel with each one, because the treasurer's job here is to reserve
+   * enough to cover the estimate — and that is the number the case stops
+   * waiting for (see `fundingGateForConcern`).
+   */
+  caseOptions?: Array<{
+    id: number;
+    caseNumber: string;
+    title: string;
+    estimate: number | null;
+    setAside: number;
+    waitingForBudget: boolean;
+  }>;
   presetAllocationId?: number | null;
   presetConcernId?: number | null;
   locale?: Locale;
@@ -153,6 +166,13 @@ export function EarmarkForm({
             {caseOptions.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.caseNumber} — {option.title}
+                {option.waitingForBudget ? ` · ${t.caseWaitingForBudget}` : ""}
+                {option.estimate === null
+                  ? ` · ${t.caseNoEstimate}`
+                  : ` · ${t.caseEstimate} ${formatPeso(option.estimate)}`}
+                {option.setAside > 0
+                  ? ` · ${t.caseSetAside} ${formatPeso(option.setAside)}`
+                  : ""}
               </option>
             ))}
           </select>

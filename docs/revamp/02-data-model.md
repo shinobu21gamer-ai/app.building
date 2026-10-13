@@ -25,7 +25,7 @@ relation has a Prisma-level name when two models are linked more than once.
 
 | Model | Key columns | Invariants & notes |
 |---|---|---|
-| `ConcernType` | `key` (`AYUDA`/`REPAIR`/`DOCUMENTS`/`BUDGET`), `defaultOfficeId`, `requiresBudget`, `requiresCrew`, `slaHours` | The type decides the office and whether the case must pass `AWAITING_BUDGET` |
+| `ConcernType` | `key` (`AYUDA`/`REPAIR`/`DOCUMENTS`/`BUDGET`), `defaultOfficeId`, `requiresBudget` (legacy, no longer branched on), `requiresCrew`, `slaHours` | The type decides the office and whether the case needs a crew. Every case passes `AWAITING_BUDGET` |
 | `CrewProfile` | `userId` (unique), `trade`, `hourlyRate`, `dailyRate`, `availability`, `maxConcurrentCases` | Rates price labor in a case estimate; `maxConcurrentCases` defaults to 1 (no parallel bookings) |
 | `IdentityVerification` | `userId` (unique), `status`, `method`, `idNumberEncrypted`, `idNumberLast4`, `idNumberHash`, `reviewedById`, `expiresAt` | One row per resident; re-verification reuses the row so history stays linear; the ID number itself is never returned to staff |
 
@@ -46,7 +46,7 @@ relation has a Prisma-level name when two models are linked more than once.
 |---|---|---|
 | `CaseAssessment` | `concernId` (unique), `status`, `eligibilityChecked`, `inspection*`, `resourcesVerified*`, `approval*`, `workersNeeded`, `estimatedDurationMinutes`, `scheduledStartAt/EndAt`, `equipmentNotes`, `laborCost`, `materialsCost`, `equipmentCost`, `otherCost`, `totalCost`, `laborCostBasisJson` | One per case; `workersNeeded ≥ 1`, duration and equipment notes are mandatory before the case leaves `UNDER_ASSESSMENT`; the cost snapshot keeps labor explainable |
 | `CrewAssignment` | `concernId`, `crewId`, `scheduledStartAt/EndAt`, `assignedAt`, `releasedAt`, `isActive` | Unique `(concernId, crewId)`; releasing flips `isActive` (the row is reused on re-assignment). Overlap checks use these windows |
-| `CaseWorkflowOverride` | `concernId`, `kind`, `reason` (required), `actorId`, `approvedById` | Append-only exception log; kinds `CREW_SHORTFALL`, `BUDGET_STAGE_SKIP` (retired: read-only, no longer creatable), `STATUS_FORCE`, `SLA_EXTENSION`, `VALIDATION_BYPASS`, `ASSESSMENT_BYPASS` |
+| `CaseWorkflowOverride` | `concernId`, `kind`, `reason` (required), `actorId`, `approvedById` | Append-only exception log; kinds `CREW_SHORTFALL`, `STATUS_FORCE`, `SLA_EXTENSION`, `VALIDATION_BYPASS`, `ASSESSMENT_BYPASS`. `BUDGET_STAGE_SKIP` survives on old rows only: the kind is retired and no longer creatable, because every case now waits in AWAITING_BUDGET |
 | `PublicCaseRecord` | `publicRef` (unique, `BR-PUB-…`), `concernId` (unique), `typeKey`, `categoryName`, `publicTitle`, `status`, `areaLabel`, `geohash`, `responseHours`, `published` | The **only** table public pages read; no names, no case number, no exact coordinates |
 
 ### SLA
@@ -95,7 +95,7 @@ relation has a Prisma-level name when two models are linked more than once.
 ## 3. Lifecycle values now in use
 
 `Concern.status`: `SUBMITTED → ASSIGNED → UNDER_ASSESSMENT → AWAITING_BUDGET`
-(skipped only by DOCUMENTS, which need no money) `→ IN_PROGRESS → RESOLVED → CLOSED`. The previous five values are a
+`→ IN_PROGRESS → RESOLVED → CLOSED`. The previous five values are a
 subset, so existing rows remain valid; no data rewrite is required.
 
 `CaseStatusHistory.entryType` keeps its documented set and gains `ASSESSMENT`,

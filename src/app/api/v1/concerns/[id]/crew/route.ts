@@ -33,6 +33,10 @@ function concernIdFrom(value: string): number {
  * GET /api/v1/concerns/[id]/crew
  * The crew booked on the case, the plan's progress ("2 of 3 assigned") and the
  * roster to pick from.
+ *
+ * The roster leads with the case office's own crew and then carries profiled
+ * crew from other offices, flagged with `otherOffice`. A case routed to an
+ * office that has no crew of its own can still be staffed.
  */
 export const GET = withErrorBoundary<[Request, RouteContext]>(
   async (_req, ctx) => {
@@ -58,6 +62,7 @@ export const GET = withErrorBoundary<[Request, RouteContext]>(
       listCrewRoster(db, {
         officeId:
           user.role.key === "ADMIN" ? (concern.assignedOfficeId ?? null) : user.officeId,
+        includeOtherOffices: true,
       }),
     ]);
 

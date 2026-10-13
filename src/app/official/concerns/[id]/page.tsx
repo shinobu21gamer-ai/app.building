@@ -23,7 +23,7 @@ import {
   caseProcessFlow,
   type ProcessStepKey,
 } from "@/lib/cases/process-flow";
-import { fieldCheckGateBlock } from "@/lib/cases/field-check-rules";
+import { realityCheckState } from "@/lib/cases/field-check-rules";
 import { ConcernMap } from "@/components/concern/concern-map";
 import { CrewPanel } from "@/components/cases/crew-panel";
 import { FieldCheckPanel } from "@/components/cases/field-check-panel";
@@ -64,10 +64,53 @@ function userName(
   return user ? `${user.firstName} ${user.lastName}` : null;
 }
 
+/**
+ * Who can be sent to look at the location.
+ *
+ * The case office's own officials and crew come first. Only when that office
+ * has nobody who can go is the rest of the roster offered (flagged so the
+ * picker says so) — the field-check service allows a cross-office pick in
+ * exactly that case, which keeps a case routed to a crewless office workable.
+ */
+async function loadFieldCheckRoster(officeId: number | null) {
+  const select = {
+    id: true,
+    firstName: true,
+    lastName: true,
+    role: { select: { key: true } },
+    office: { select: { id: true, name: true } },
+  } as const;
+
+  const ownOffice = await db.user.findMany({
+    where: {
+      isActive: true,
+      role: { key: { in: ["OFFICIAL", "CREW"] } },
+      ...(officeId === null ? {} : { OR: [{ officeId: null }, { officeId }] }),
+    },
+    select,
+    orderBy: { firstName: "asc" },
+    take: 100,
+  });
+  if (ownOffice.length > 0 || officeId === null) {
+    return ownOffice.map((person) => ({ ...person, otherOffice: false }));
+  }
+
+  const anyone = await db.user.findMany({
+    where: { isActive: true, role: { key: { in: ["OFFICIAL", "CREW"] } } },
+    select,
+    orderBy: { firstName: "asc" },
+    take: 100,
+  });
+  return anyone.map((person) => ({ ...person, otherOffice: true }));
+}
+
 export default async function OfficialConcernDetailPage({
   params,
 }: PageProps) {
-  const user = await requireRole(["OFFICIAL", "ADMIN"]);
+  // The Captain (the approving official) closes cases and verifies resolutions
+  // from this same case sheet, so they are let in here with their own
+  // permissions deciding what they can do — see the `can*` flags below.
+  const user = await requireRole(["OFFICIAL", "ADMIN", "CAPTAIN"]);
   const locale = await getLocale();
   const t = copy[locale].official;
   const desk = copy[locale].desk;
@@ -75,11 +118,11 @@ export default async function OfficialConcernDetailPage({
   const numericId = Number(id);
   if (!Number.isInteger(numericId) || numericId <= 0) notFound();
 
+  const seesEveryCase = user.role.key !== "OFFICIAL";
   const concern = await db.concern.findFirst({
-    where:
-      user.role.key === "ADMIN"
-        ? { id: numericId }
-        : { id: numericId, assignedOfficeId: user.officeId ?? -1 },
+    where: seesEveryCase
+      ? { id: numericId }
+      : { id: numericId, assignedOfficeId: user.officeId ?? -1 },
     include: {
       category: true,
       user: {
@@ -116,7 +159,7 @@ export default async function OfficialConcernDetailPage({
           official: { select: { firstName: true, lastName: true } },
         },
       },
-      type: { select: { id: true, name: true, key: true, requiresBudget: true } },
+      type: { select: { id: true, name: true, key: true } },
       caseAssessment: true,
     },
   });
@@ -205,22 +248,17 @@ export default async function OfficialConcernDetailPage({
     userCan(user.role.key, "case.status.close"),
   ]);
 
+  // A live check is possible while the report is still in the inbox and while
+  // it waits for assessment: step 1 of the flow.
+  const canRequestNow =
+    concern.status === "SUBMITTED" || concern.status === "ASSIGNED";
   const fieldChecks =
     canRequestFieldCheck || canReviewFieldCheck
       ? await listFieldChecks(db, numericId)
       : [];
   const fieldCheckRoster =
-    canRequestFieldCheck && concern.status === "ASSIGNED"
-      ? await db.user.findMany({
-          where: {
-            isActive: true,
-            role: { key: { in: ["OFFICIAL", "CREW"] } },
-            OR: [{ officeId: null }, { officeId: concern.assignedOfficeId }],
-          },
-          select: { id: true, firstName: true, lastName: true, role: { select: { key: true } } },
-          orderBy: { firstName: "asc" },
-          take: 100,
-        })
+    canRequestFieldCheck && canRequestNow
+      ? await loadFieldCheckRoster(concern.assignedOfficeId)
       : [];
 
   const funding = canViewTreasury
@@ -276,20 +314,23 @@ export default async function OfficialConcernDetailPage({
   };
 
   // ---------------------------------------------------------------- the flow
-  // Where the case is in the eight-step flow, what each step needs, and the form
+  // Where the case is in the nine-step flow, what each step needs, and the form
   // that does the work of the step it is on. The flow is the page's spine: the
   // reader follows the numbered steps instead of hunting for the right form in a
-  // column of panels.
+  // column of panels. Step 1 is the reality check: is the report real?
   const flowCopy = copy[locale].flow;
   const stageIndex = STATUS_ORDER[concern.status as CaseStatus] ?? 0;
-  const fieldCheckBlock = fieldCheckGateBlock(
-    fieldChecks.map((check) => ({ status: check.status, finding: check.finding }))
+  // A case that was already past step 1 when the check became step 1 counts as
+  // checked: the visit never happened, but the case was vetted the old way and
+  // re-gating it would strand work that is under way.
+  const realityCheck = realityCheckState(
+    fieldChecks.map((check) => ({ status: check.status, finding: check.finding })),
+    { legacyPassed: stageIndex >= STATUS_ORDER.UNDER_ASSESSMENT }
   );
 
   const flow = caseProcessFlow({
     status: concern.status,
     typeId: concern.typeId,
-    requiresBudget: concern.type?.requiresBudget ?? false,
     hasAssessment: Boolean(concern.caseAssessment?.workersNeeded),
     workersNeeded: concern.caseAssessment?.workersNeeded ?? null,
     estimatedCost: concern.caseAssessment
@@ -299,7 +340,7 @@ export default async function OfficialConcernDetailPage({
     activeCrew: crewSummary,
     hasResolution: Boolean(resolution),
     verificationStatus: resolution?.verificationStatus ?? null,
-    fieldCheckOpen: fieldCheckBlock !== null,
+    realityCheck,
   });
 
   const stepState = (key: ProcessStepKey) =>
@@ -307,14 +348,18 @@ export default async function OfficialConcernDetailPage({
 
   // Who is expected to act on each step, and whether this reader is the one who
   // can. "You" beats the owning desk in the copy shown on the card.
+  const officeDesk = concern.assignedOffice?.name ?? flowCopy.deskOfficial;
   const stepDesk: Record<ProcessStepKey, string> = {
+    CHECK: flowCopy.deskCheck,
     VALIDATE: flowCopy.deskAdmin,
-    ASSESS: flowCopy.deskOfficial,
-    FUND: flowCopy.deskTreasury,
-    CREW: flowCopy.deskOfficial,
-    START: flowCopy.deskOfficial,
-    WORK: flowCopy.deskOfficial,
-    VERIFY: flowCopy.deskOfficial,
+    ASSESS: officeDesk,
+    // The treasurer prepares the earmark; the Captain's approval is what sets
+    // the money aside, so both desks are named.
+    FUND: flowCopy.deskFund,
+    CREW: officeDesk,
+    START: officeDesk,
+    WORK: officeDesk,
+    VERIFY: officeDesk,
     CLOSE: flowCopy.deskCaptain,
   };
   // The treasury's figure is read here, never written: this desk sends the case
@@ -322,6 +367,7 @@ export default async function OfficialConcernDetailPage({
   const fundStep = stepState("FUND");
   const fundNeedsSending = fundStep?.block === "WAITING_BUDGET_STAGE";
   const canDoStep: Record<ProcessStepKey, boolean> = {
+    CHECK: (canRequestFieldCheck || canReviewFieldCheck) && canManage,
     VALIDATE: canValidate,
     ASSESS: canAssess && canManage,
     FUND: fundNeedsSending && canProgress && canManage,
@@ -349,6 +395,54 @@ export default async function OfficialConcernDetailPage({
   // The form that does each step's work. A step with no panel explains itself
   // instead: either the earlier step has to finish first, or another desk owns it.
   const panels: Partial<Record<ProcessStepKey, React.ReactNode>> = {};
+
+  // Step 1's form: the reality check. The same panel as before, moved onto the
+  // step that owns it — a check can go out from the moment the report arrives,
+  // so "who do I send to look?" is answered by the first step of the flow.
+  const fieldCheckPanelElement =
+    canRequestFieldCheck || canReviewFieldCheck ? (
+      <FieldCheckPanel
+        concernId={concern.id}
+        locale={locale}
+        caseStatus={concern.status}
+        canRequest={canRequestFieldCheck}
+        canReview={canReviewFieldCheck}
+        currentUserId={user.id}
+        checks={fieldChecks.map((check) => ({
+          id: check.id,
+          status: check.status,
+          instructions: check.instructions,
+          finding: check.finding,
+          findingNotes: check.findingNotes,
+          findingPhotoUrl: check.findingPhotoUrl,
+          reviewNote: check.reviewNote,
+          assigneeId: check.assigneeId,
+          assigneeName: `${check.assignee.firstName} ${check.assignee.lastName}`,
+          requestedByName: `${check.requestedBy.firstName} ${check.requestedBy.lastName}`,
+        }))}
+        location={{
+          address: concern.locationAddress,
+          purok: concern.locationPurok,
+          lat: concern.locationLat,
+          lng: concern.locationLng,
+          mapUrl: hasCoordinates(coordinates)
+            ? openStreetMapUrl(coordinates.lat, coordinates.lng)
+            : null,
+        }}
+        roster={fieldCheckRoster.map((person) => ({
+          id: person.id,
+          name: `${person.firstName} ${person.lastName}`,
+          roleLabel: person.role.key === "CREW" ? "Crew" : "Official",
+          officeName: person.office?.name ?? null,
+          otherOffice: person.otherOffice,
+        }))}
+      />
+    ) : null;
+  // While the case is open the panel sits on step 1; the record below keeps it
+  // only when there is no step to put it on (closed cases, other desks).
+  const fieldCheckOnStep =
+    fieldCheckPanelElement !== null && canManage && !isFinalized;
+  if (fieldCheckOnStep) panels.CHECK = fieldCheckPanelElement;
 
   if (canValidate && !isFinalized) {
     panels.VALIDATE = (
@@ -423,7 +517,7 @@ export default async function OfficialConcernDetailPage({
     );
   }
 
-  if (concern.type?.requiresBudget && canViewTreasury && funding) {
+  if (canViewTreasury && funding) {
     panels.FUND = (
       <div className="space-y-4">
         {fundNeedsSending && canProgress && canManage && stageIndex < 3 ? (
@@ -458,10 +552,10 @@ export default async function OfficialConcernDetailPage({
     );
   }
 
-  // Work may only start once the crew is complete and, for money cases, the
-  // funds are set aside. Until then the step card says what is missing.
+  // Work may only start once the crew is complete and the funds are set aside.
+  // Until then the step card says what is missing.
   const crewStepDone = stepState("CREW")?.state === "done";
-  const fundStepDone = !concern.type?.requiresBudget || fundStep?.state === "done";
+  const fundStepDone = fundStep?.state === "done";
   const canStartNow =
     canProgress &&
     canManage &&
@@ -483,7 +577,7 @@ export default async function OfficialConcernDetailPage({
     );
   }
 
-  if ((canProgress || canResolve || canClose) && canManage) {
+  if ((canProgress || canResolve) && canManage) {
     panels.WORK = (
       <div className="space-y-5">
         <div>
@@ -540,7 +634,13 @@ export default async function OfficialConcernDetailPage({
 
   return (
     <div className="space-y-6">
-      <Button href="/official/concerns" variant="ghost" size="sm">
+      {/* The Captain reaches this sheet from their own desk, which is the one
+          place that lists cases for them — send them back there. */}
+      <Button
+        href={user.role.key === "CAPTAIN" ? "/captain" : "/official/concerns"}
+        variant="ghost"
+        size="sm"
+      >
         {desk.backConcerns}
       </Button>
 
@@ -552,14 +652,19 @@ export default async function OfficialConcernDetailPage({
           .replace("{date}", formatDateTime(concern.submittedAt))}
         actions={
           <>
-            <Button
-              href={`/official/concerns/${concern.id}/print`}
-              variant="outline"
-              size="sm"
-              className="no-print"
-            >
-              {t.print}
-            </Button>
+            {/* The printout is the office's paperwork and its page is scoped to
+                officials and admins; the Captain reads the same sheet on screen
+                instead of being sent to a route that would turn them away. */}
+            {user.role.key !== "CAPTAIN" && (
+              <Button
+                href={`/official/concerns/${concern.id}/print`}
+                variant="outline"
+                size="sm"
+                className="no-print"
+              >
+                {t.print}
+              </Button>
+            )}
             <StatusBadge status={concern.status} />
             {concern.priorityLevel && (
               <PriorityBadge level={concern.priorityLevel} />
@@ -582,6 +687,7 @@ export default async function OfficialConcernDetailPage({
         activeTotal={flow.activeTotal}
         percent={flow.percent}
         finished={flow.finished}
+        unfounded={flow.closedUnfounded}
         panels={panels}
       />
 
@@ -873,7 +979,7 @@ export default async function OfficialConcernDetailPage({
                   ? desk.cannotOverrideResolved
                   : desk.cannotOverrideClosed}
               </p>
-            ) : canManage ? (
+            ) : canAssess && canManage ? (
               <PriorityOverrideForm
                 concernId={concern.id}
                 factors={activeFactors.map((f) => ({
@@ -893,37 +999,13 @@ export default async function OfficialConcernDetailPage({
             )}
           </Card>
 
-          {(canRequestFieldCheck || canReviewFieldCheck) && canManage && (
+          {fieldCheckPanelElement && !fieldCheckOnStep && (
             <Card
               className="lg:col-span-2"
               title={copy[locale].revamp.workflow.fieldCheck.title}
               description={copy[locale].revamp.workflow.fieldCheck.desc}
             >
-              <FieldCheckPanel
-                concernId={concern.id}
-                locale={locale}
-                caseStatus={concern.status}
-                canRequest={canRequestFieldCheck}
-                canReview={canReviewFieldCheck}
-                currentUserId={user.id}
-                checks={fieldChecks.map((check) => ({
-                  id: check.id,
-                  status: check.status,
-                  instructions: check.instructions,
-                  finding: check.finding,
-                  findingNotes: check.findingNotes,
-                  findingPhotoUrl: check.findingPhotoUrl,
-                  reviewNote: check.reviewNote,
-                  assigneeId: check.assigneeId,
-                  assigneeName: `${check.assignee.firstName} ${check.assignee.lastName}`,
-                  requestedByName: `${check.requestedBy.firstName} ${check.requestedBy.lastName}`,
-                }))}
-                roster={fieldCheckRoster.map((person) => ({
-                  id: person.id,
-                  name: `${person.firstName} ${person.lastName}`,
-                  roleLabel: person.role.key === "CREW" ? "Crew" : "Official",
-                }))}
-              />
+              {fieldCheckPanelElement}
             </Card>
           )}
 

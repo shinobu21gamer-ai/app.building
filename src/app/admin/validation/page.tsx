@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
  * service type (or that are sitting in SUBMITTED). Opening a case leads to the
  * validation form on the case page.
  *
- * The whole eight-step flow is printed above the queue, and every case says
+ * The whole nine-step flow is printed above the queue, and every case says
  * which step it is on, so the admin desk can see where validation sits in the
  * work that follows it.
  */
@@ -45,7 +45,6 @@ export default async function ValidationQueuePage() {
       assignedOffice: { select: { name: true } },
       user: { select: { firstName: true, lastName: true } },
       // Enough of the case to place it on the flow (see concernProcessFlow).
-      type: { select: { requiresBudget: true } },
       caseAssessment: { select: { workersNeeded: true, totalCost: true } },
       resolutions: {
         orderBy: { id: "desc" },

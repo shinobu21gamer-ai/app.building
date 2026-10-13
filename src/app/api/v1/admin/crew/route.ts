@@ -9,20 +9,35 @@ import {
 import { requireApiPermission, requireApiUser } from "@/lib/auth/session";
 import { recordAudit, requestMeta } from "@/lib/audit";
 import { crewRosterUpsertSchema } from "@/lib/validations/crew";
-import { listCrewRoster } from "@/lib/cases/crew";
+import { listCrewDesk, listCrewRoster } from "@/lib/cases/crew";
 
 export const runtime = "nodejs";
 
 /**
  * GET /api/v1/admin/crew
- * The crew roster with each person's current open caseload, for the assignment
- * picker and the roster desk.
+ *
+ * Default: the crew roster with each person's current open caseload, for the
+ * assignment picker. `?includeOtherOffices=1` also carries profiled crew from
+ * other offices (flagged), so a case routed to an office without its own crew
+ * is not a dead end.
+ *
+ * `?scope=desk` (the roster desk) lists every crew account instead — profiled
+ * or not, active or disabled — which is what the admin crew screen edits.
  */
 export const GET = withErrorBoundary(async (req: Request) => {
   const user = await requireApiPermission("case.crew.assign");
   const { searchParams } = new URL(req.url);
   const availability = searchParams.get("availability");
   const officeId = searchParams.get("officeId");
+  const scope = searchParams.get("scope");
+
+  if (scope === "desk") {
+    if (!(await requireApiPermission("crew.roster.manage"))) {
+      throw createApiError.forbidden();
+    }
+    const crew = await listCrewDesk(db);
+    return ok({ crew, total: crew.length, scope: "desk" as const });
+  }
 
   const roster = await listCrewRoster(db, {
     officeId:
@@ -31,13 +46,14 @@ export const GET = withErrorBoundary(async (req: Request) => {
           ? Number(officeId)
           : null
         : (user.officeId ?? null),
+    includeOtherOffices: searchParams.get("includeOtherOffices") === "1",
   });
 
   const filtered = availability
     ? roster.filter((member) => member.availability === availability)
     : roster;
 
-  return ok({ crew: filtered, total: filtered.length });
+  return ok({ crew: filtered, total: filtered.length, scope: "roster" as const });
 });
 
 /**
@@ -64,6 +80,11 @@ export const POST = withErrorBoundary(async (req: Request) => {
       "Only users with the CREW role can have a crew profile."
     );
   }
+
+  const existing = await db.crewProfile.findUnique({
+    where: { userId: body.userId },
+    select: { id: true },
+  });
 
   const profile = await db.crewProfile.upsert({
     where: { userId: body.userId },
@@ -103,7 +124,9 @@ export const POST = withErrorBoundary(async (req: Request) => {
     action: "CREW_PROFILE_UPDATED",
     resourceType: "crew_profile",
     resourceId: String(profile.id),
-    description: `Crew profile for user #${body.userId} updated.`,
+    description: `Crew profile for user #${body.userId} ${
+      existing ? "updated" : "created"
+    }.`,
     userId: user.id,
     ...meta,
   });
@@ -117,6 +140,8 @@ export const POST = withErrorBoundary(async (req: Request) => {
     dailyRate: profile.dailyRate?.toString() ?? null,
     availability: profile.availability,
     maxConcurrentCases: profile.maxConcurrentCases,
+    officeId: profile.officeId,
+    notes: profile.notes,
     isActive: profile.isActive,
   });
 });

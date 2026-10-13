@@ -32,7 +32,11 @@ import {
   type WorkflowTargetStatus,
 } from "@/lib/cases/workflow";
 import { assertCrewGate } from "@/lib/cases/crew";
-import { fieldCheckGateBlock } from "@/lib/cases/field-check-rules";
+import {
+  fieldCheckGateBlock,
+  realityCheckBlock,
+  realityCheckState,
+} from "@/lib/cases/field-check-rules";
 import { fundingGateForConcern } from "@/lib/treasury/budget";
 import {
   armCaseStageClock,
@@ -51,7 +55,6 @@ type ConcernForWorkflow = {
   assignedOfficeId: number | null;
   submittedAt: Date;
   resolutionId: number | null;
-  typeRequiresBudget: boolean;
   workersNeeded: number | null;
 };
 
@@ -70,7 +73,6 @@ async function loadConcernForWorkflow(
       assignedOfficeId: true,
       submittedAt: true,
       resolutions: { select: { id: true }, take: 1 },
-      type: { select: { requiresBudget: true } },
       caseAssessment: { select: { workersNeeded: true } },
     },
   });
@@ -90,7 +92,6 @@ async function loadConcernForWorkflow(
     assignedOfficeId: concern.assignedOfficeId,
     submittedAt: concern.submittedAt,
     resolutionId: concern.resolutions[0]?.id ?? null,
-    typeRequiresBudget: concern.type?.requiresBudget ?? false,
     workersNeeded: concern.caseAssessment?.workersNeeded ?? null,
   };
 }
@@ -256,7 +257,7 @@ function requestedStatusDay(input: StatusChangeInput): {
  *
  * Gates enforced here (not only in the route):
  *   * IN_PROGRESS - the planned crew must be assigned, or an override given
- *   * money cases - AWAITING_BUDGET cannot be skipped; estimate and funds required (budgetStageBlock)
+ *   * every case - AWAITING_BUDGET cannot be skipped; estimate and funds required (budgetStageBlock)
  *   * CLOSED - the resolution must be verified, or an override given
  */
 export async function changeConcernStatus(
@@ -306,7 +307,7 @@ export async function changeConcernStatus(
   let overrideKind: OverrideKind | null = null;
   let crewProgressLabel: string | null = null;
 
-  // ---- gate: a requested field check must confirm the case before it continues ----
+  // ---- gate: step 1. The report is confirmed on site before the work starts ----
   if (concern.status === "ASSIGNED" && input.status === "UNDER_ASSESSMENT") {
     const checks = await tx.fieldCheck.findMany({
       where: { concernId: concern.id },
@@ -316,11 +317,8 @@ export async function changeConcernStatus(
     if (fieldBlock) throw createApiError.badRequest(fieldBlock);
   }
 
-  // ---- gate: money cases wait in AWAITING_BUDGET, sized and funded ----
-  if (
-    concern.typeRequiresBudget &&
-    (input.status === "AWAITING_BUDGET" || input.status === "IN_PROGRESS")
-  ) {
+  // ---- gate: every case waits in AWAITING_BUDGET, sized and funded ----
+  if (input.status === "AWAITING_BUDGET" || input.status === "IN_PROGRESS") {
     const assessment = await tx.caseAssessment.findUnique({
       where: { concernId: concern.id },
       select: { totalCost: true },
@@ -329,7 +327,6 @@ export async function changeConcernStatus(
     const block = budgetStageBlock({
       fromStatus: concern.status,
       toStatus: input.status,
-      typeRequiresBudget: true,
       estimatedCost:
         assessment?.totalCost === null || assessment?.totalCost === undefined
           ? null
@@ -568,8 +565,10 @@ export async function addConcernNote(
 }
 
 // ---------------------------------------------------------------- evaluation
-// Admin validation: "this is a real, correctly categorized concern", with the
-// service type, the priority confirmation and the office it belongs to.
+// Admin validation: "this is a correctly categorized concern", with the service
+// type, the priority confirmation and the office it belongs to. Whether the
+// concern is real was already settled on site — that is step 1 of the flow, and
+// this step cannot run before it.
 
 export type ValidationInput = {
   concernId: number;
@@ -611,6 +610,19 @@ export async function validateConcern(
     throw createApiError.conflict(
       "Resolved or closed cases can no longer be validated."
     );
+  }
+
+  // Step 1 of the flow comes before this step: a report still waiting in the
+  // inbox has to be confirmed on site (send someone, read the finding, approve
+  // it) before it can be typed and routed. Validation is the door into ASSIGNED,
+  // so the gate lives here as well as on the assessment door.
+  if (concern.status === "SUBMITTED") {
+    const checks = await tx.fieldCheck.findMany({
+      where: { concernId: concern.id },
+      select: { status: true, finding: true },
+    });
+    const block = realityCheckBlock(realityCheckState(checks));
+    if (block) throw createApiError.badRequest(block);
   }
 
   const type = await tx.concernType.findUnique({

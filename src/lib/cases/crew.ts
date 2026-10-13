@@ -62,6 +62,11 @@ export type CrewMemberView = {
   hourlyRate: string | null;
   maxConcurrentCases: number;
   openAssignments: number;
+  /** The office the roster profile belongs to; null for unassigned crew. */
+  officeId: number | null;
+  officeName: string | null;
+  /** True when this person works for a different office than the case's. */
+  otherOffice: boolean;
 };
 
 type ConcernForCrew = {
@@ -523,22 +528,37 @@ export async function releaseCrew(
 /**
  * Crew roster for the assignment picker: everyone active, with how many open
  * cases they currently hold so the official can see who is free.
+ *
+ * `officeId` names the office the case belongs to. With `includeOtherOffices`
+ * the roster also carries profiled crew from other offices, flagged with
+ * `otherOffice` and listed after the case's own people — a case routed to an
+ * office with no crew of its own is then not a dead end.
  */
 export async function listCrewRoster(
   tx: Tx,
-  options: { officeId?: number | null } = {}
+  options: {
+    officeId?: number | null;
+    includeOtherOffices?: boolean;
+  } = {}
 ): Promise<CrewMemberView[]> {
+  const caseOfficeId = options.officeId ?? null;
   const rows = await tx.user.findMany({
     where: {
       isActive: true,
       role: { key: "CREW" },
       crewProfile: { is: { isActive: true } },
-      ...(options.officeId ? { officeId: options.officeId } : {}),
+      ...(caseOfficeId && !options.includeOtherOffices
+        ? {
+            OR: [{ officeId: caseOfficeId }, { crewProfile: { is: { officeId: caseOfficeId } } }],
+          }
+        : {}),
     },
     select: {
       id: true,
       firstName: true,
       lastName: true,
+      officeId: true,
+      office: { select: { id: true, name: true } },
       crewProfile: {
         select: {
           trade: true,
@@ -547,6 +567,8 @@ export async function listCrewRoster(
           dailyRate: true,
           hourlyRate: true,
           maxConcurrentCases: true,
+          officeId: true,
+          office: { select: { id: true, name: true } },
         },
       },
       _count: {
@@ -562,18 +584,107 @@ export async function listCrewRoster(
     take: 200,
   });
 
-  return rows.map((row) => ({
-    id: row.id,
-    name: `${row.firstName} ${row.lastName}`,
-    trade: row.crewProfile?.trade ?? null,
-    tradeLabel: row.crewProfile?.trade ?? null,
-    availability: row.crewProfile?.availability ?? "AVAILABLE",
-    employmentType: row.crewProfile?.employmentType ?? "JOB_ORDER",
-    dailyRate: row.crewProfile?.dailyRate?.toString() ?? null,
-    hourlyRate: row.crewProfile?.hourlyRate?.toString() ?? null,
-    maxConcurrentCases: row.crewProfile?.maxConcurrentCases ?? 1,
-    openAssignments: row._count.crewJobs,
-  }));
+  const roster = rows.map((row) => {
+    const office = row.crewProfile?.office ?? row.office;
+    return {
+      id: row.id,
+      name: `${row.firstName} ${row.lastName}`,
+      trade: row.crewProfile?.trade ?? null,
+      tradeLabel: row.crewProfile?.trade ?? null,
+      availability: row.crewProfile?.availability ?? "AVAILABLE",
+      employmentType: row.crewProfile?.employmentType ?? "JOB_ORDER",
+      dailyRate: row.crewProfile?.dailyRate?.toString() ?? null,
+      hourlyRate: row.crewProfile?.hourlyRate?.toString() ?? null,
+      maxConcurrentCases: row.crewProfile?.maxConcurrentCases ?? 1,
+      openAssignments: row._count.crewJobs,
+      officeId: office?.id ?? null,
+      officeName: office?.name ?? null,
+      otherOffice: caseOfficeId !== null && office !== null && office.id !== caseOfficeId,
+    };
+  });
+
+  // The case's own crew come first; the rest of the roster follows, so a
+  // widened picker still leads with the people the office already works with.
+  return roster.sort((a, b) => {
+    if (a.otherOffice !== b.otherOffice) return a.otherOffice ? 1 : -1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+export type CrewDeskRow = {
+  userId: number;
+  name: string;
+  email: string;
+  /** The account itself: a disabled account cannot sign in or be assigned. */
+  isActive: boolean;
+  officeId: number | null;
+  officeName: string | null;
+  hasProfile: boolean;
+  profileIsActive: boolean | null;
+  trade: string | null;
+  employmentType: string | null;
+  hourlyRate: string | null;
+  dailyRate: string | null;
+  availability: string | null;
+  maxConcurrentCases: number | null;
+  notes: string | null;
+  openAssignments: number;
+};
+
+/**
+ * Every crew account for the admin roster desk: profiled or not, active or
+ * disabled. The picker only wants working crew, but the desk has to be able to
+ * profile a new person and to switch somebody back on, so it sees them all.
+ */
+export async function listCrewDesk(tx: Tx): Promise<CrewDeskRow[]> {
+  const rows = await tx.user.findMany({
+    where: { role: { key: "CREW" } },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      isActive: true,
+      officeId: true,
+      office: { select: { id: true, name: true } },
+      crewProfile: {
+        include: { office: { select: { id: true, name: true } } },
+      },
+      _count: {
+        select: {
+          crewJobs: {
+            where: { isActive: true, concern: { status: { in: BOOKING_STATUSES } } },
+          },
+        },
+      },
+    },
+    orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+    take: 500,
+  });
+
+  return rows.map((row) => {
+    // The roster profile owns the work office; the account's own office is the
+    // fallback for somebody who has not been profiled yet.
+    const office = row.crewProfile?.office ?? row.office;
+    return {
+      userId: row.id,
+      name: `${row.firstName} ${row.lastName}`,
+      email: row.email,
+      isActive: row.isActive,
+      officeId: office?.id ?? null,
+      officeName: office?.name ?? null,
+      hasProfile: row.crewProfile !== null,
+      profileIsActive: row.crewProfile?.isActive ?? null,
+      trade: row.crewProfile?.trade ?? null,
+      employmentType: row.crewProfile?.employmentType ?? null,
+      hourlyRate: row.crewProfile?.hourlyRate?.toString() ?? null,
+      dailyRate: row.crewProfile?.dailyRate?.toString() ?? null,
+      availability: row.crewProfile?.availability ?? null,
+      maxConcurrentCases: row.crewProfile?.maxConcurrentCases ?? null,
+      notes: row.crewProfile?.notes ?? null,
+      openAssignments: row._count.crewJobs,
+    };
+  });
 }
 
 /** A crew member's own jobs, for the crew portal. */

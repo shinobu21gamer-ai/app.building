@@ -20,15 +20,22 @@ import {
   Lock,
   Shield,
   Building2,
+  HardHat,
   ToggleLeft,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FormMessage, Input, Label } from "@/components/ui/field";
+import { FormMessage, Input, Label, Select, Textarea } from "@/components/ui/field";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
 import { useToast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api-client";
 import { extractApiError } from "@/lib/utils";
+import {
+  CREW_AVAILABILITY,
+  CREW_EMPLOYMENT_TYPES,
+  CREW_TRADES,
+  CREW_TRADE_LABELS,
+} from "@/lib/validations/admin";
 import { copy, type Locale } from "@/lib/i18n";
 type RoleOption = { id: number; key: string; name: string };
 type OfficeOption = { id: number; name: string; code: string };
@@ -91,6 +98,7 @@ export function UserManager({
   locale?: Locale;
 }) {
   const t = copy[locale].admin.mgr;
+  const crewCopy = copy[locale].admin.crew;
   const router = useRouter();
   const { showToast } = useToast();
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -108,6 +116,16 @@ export function UserManager({
     offices[0] ? String(offices[0].id) : ""
   );
   const [isActive, setIsActive] = useState(true);
+  // Crew profile fields, shown when the role is Maintenance Crew. They travel
+  // with the account so a new crew member arrives profiled and assignable.
+  const [crewTrade, setCrewTrade] = useState("");
+  const [crewEmploymentType, setCrewEmploymentType] = useState("JOB_ORDER");
+  const [crewHourlyRate, setCrewHourlyRate] = useState("");
+  const [crewDailyRate, setCrewDailyRate] = useState("");
+  const [crewAvailability, setCrewAvailability] = useState("AVAILABLE");
+  const [crewMaxCases, setCrewMaxCases] = useState("1");
+  const [crewNotes, setCrewNotes] = useState("");
+  const [crewRosterActive, setCrewRosterActive] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -119,8 +137,25 @@ export function UserManager({
     expiresInMinutes: number;
   } | null>(null);
 
-  const showOffice = roleKey === "OFFICIAL";
+  // Officials must belong to an office; crew may, and the roster desk uses the
+  // crew profile's office to offer them the right cases first.
+  const showOffice = roleKey === "OFFICIAL" || roleKey === "CREW";
+  const showCrewFields = roleKey === "CREW";
   const officeOptions = [...additionalOffices, ...offices];
+
+  // Crew labels: the same wording the crew roster screen uses, so a trade or an
+  // availability reads identically wherever it is set.
+  const availabilityLabel: Record<string, string> = {
+    AVAILABLE: crewCopy.availabilityAvailable,
+    ON_LEAVE: crewCopy.availabilityOnLeave,
+    UNAVAILABLE: crewCopy.availabilityUnavailable,
+  };
+  const employmentLabel: Record<string, string> = {
+    JOB_ORDER: crewCopy.employerJobOrder,
+    CASUAL: crewCopy.employerCasual,
+    PERMANENT: crewCopy.employerPermanent,
+    VOLUNTEER: crewCopy.employerVolunteer,
+  };
 
   // Validation helpers
   function isFirstNameInvalid() {
@@ -171,6 +206,14 @@ export function UserManager({
     setRoleKey(fixedRole ?? roles[0]?.key ?? "RESIDENT");
     setOfficeId(offices[0] ? String(offices[0].id) : "");
     setIsActive(true);
+    setCrewTrade("");
+    setCrewEmploymentType("JOB_ORDER");
+    setCrewHourlyRate("");
+    setCrewDailyRate("");
+    setCrewAvailability("AVAILABLE");
+    setCrewMaxCases("1");
+    setCrewNotes("");
+    setCrewRosterActive(true);
     setTouched(initialTouched);
   }
 
@@ -250,6 +293,22 @@ export function UserManager({
     // an empty field must leave the stored number untouched.
     if (phone.trim() !== "") payload.phone = phone.trim();
     if (password.trim()) payload.password = password;
+    // A new crew account is sent with its roster profile. On an existing
+    // account the profile is edited on the crew roster screen instead, so the
+    // dialog never overwrites a trade or a rate that the roster desk set.
+    if (showCrewFields && !editingId) {
+      payload.crew = {
+        trade: crewTrade || undefined,
+        employmentType: crewEmploymentType,
+        hourlyRate: crewHourlyRate === "" ? null : Number(crewHourlyRate),
+        dailyRate: crewDailyRate === "" ? null : Number(crewDailyRate),
+        availability: crewAvailability,
+        maxConcurrentCases: Number(crewMaxCases || 1),
+        officeId: officeId ? Number(officeId) : null,
+        notes: crewNotes || undefined,
+        isActive: crewRosterActive,
+      };
+    }
 
     setBusy(true);
     const result = editingId
@@ -582,9 +641,140 @@ export function UserManager({
                   </option>
                 ))}
               </select>
+              {roleKey === "CREW" && (
+                <p className="mt-1 text-xs text-ink-subtle">{crewCopy.officeHint}</p>
+              )}
             </div>
           )}
         </div>
+
+        {showCrewFields && !editingId && (
+          <fieldset className="space-y-3 rounded-card border border-line bg-surface-muted p-4">
+            <legend className="px-1 text-sm font-semibold text-ink">
+              <span className="inline-flex items-center gap-1.5">
+                <HardHat size={14} className="text-ink-subtle" />
+                {crewCopy.sectionTitle}
+              </span>
+            </legend>
+            <p className="text-xs text-ink-subtle">{crewCopy.sectionHint}</p>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <Label htmlFor="crew-trade">{crewCopy.trade}</Label>
+                <Select
+                  id="crew-trade"
+                  value={crewTrade}
+                  onChange={(event) => setCrewTrade(event.target.value)}
+                >
+                  <option value="">{crewCopy.tradeNone}</option>
+                  {CREW_TRADES.map((trade) => (
+                    <option key={trade} value={trade}>
+                      {CREW_TRADE_LABELS[trade]}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="crew-employment">{crewCopy.employmentType}</Label>
+                <Select
+                  id="crew-employment"
+                  value={crewEmploymentType}
+                  onChange={(event) => setCrewEmploymentType(event.target.value)}
+                >
+                  {CREW_EMPLOYMENT_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {employmentLabel[type]}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="crew-availability">{crewCopy.availability}</Label>
+                <Select
+                  id="crew-availability"
+                  value={crewAvailability}
+                  onChange={(event) => setCrewAvailability(event.target.value)}
+                >
+                  {CREW_AVAILABILITY.map((value) => (
+                    <option key={value} value={value}>
+                      {availabilityLabel[value]}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="crew-hourly">{crewCopy.hourlyRate}</Label>
+                <Input
+                  id="crew-hourly"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={crewHourlyRate}
+                  onChange={(event) => setCrewHourlyRate(event.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="crew-daily">{crewCopy.dailyRate}</Label>
+                <Input
+                  id="crew-daily"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={crewDailyRate}
+                  onChange={(event) => setCrewDailyRate(event.target.value)}
+                />
+                <p className="mt-1 text-xs text-ink-subtle">{crewCopy.ratesHint}</p>
+              </div>
+
+              <div>
+                <Label htmlFor="crew-max">{crewCopy.maxCases}</Label>
+                <Input
+                  id="crew-max"
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={crewMaxCases}
+                  onChange={(event) => setCrewMaxCases(event.target.value)}
+                />
+                <p className="mt-1 text-xs text-ink-subtle">{crewCopy.maxCasesHint}</p>
+              </div>
+
+              <div className="sm:col-span-2 lg:col-span-3">
+                <Label htmlFor="crew-notes">{crewCopy.notes}</Label>
+                <Textarea
+                  id="crew-notes"
+                  rows={2}
+                  maxLength={500}
+                  value={crewNotes}
+                  onChange={(event) => setCrewNotes(event.target.value)}
+                />
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-ink-muted">
+              <input
+                type="checkbox"
+                checked={crewRosterActive}
+                onChange={(event) => setCrewRosterActive(event.target.checked)}
+                className="h-4 w-4 rounded border-line-strong"
+              />
+              {crewCopy.onRoster}
+            </label>
+          </fieldset>
+        )}
+
+        {showCrewFields && editingId && (
+          <p className="rounded-control border border-line bg-surface-sunken px-3 py-2 text-xs leading-relaxed text-ink-muted">
+            {crewCopy.editHint}{" "}
+            <a href="/admin/crew" className="font-semibold text-brand-700 underline">
+              {crewCopy.editLink}
+            </a>
+          </p>
+        )}
 
         <label className="flex items-center gap-2 text-sm text-ink-muted">
           <input

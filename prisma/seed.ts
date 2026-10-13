@@ -163,8 +163,8 @@ async function main() {
   ];
 
   // ---- Concern types ----------------------------------------------
-  // The four service types and the office each one belongs to. AYUDA and
-  // BUDGET cases pass through AWAITING_BUDGET; REPAIR cases need a crew.
+  // The four service types and the office each one belongs to. Every case
+  // passes through AWAITING_BUDGET; REPAIR cases additionally need a crew.
   const typeData = [
     {
       key: "AYUDA",
@@ -189,7 +189,7 @@ async function main() {
       name: "Documents and Records",
       description: "Barangay documents, certificates, and records.",
       office: "SECRETARY",
-      requiresBudget: false,
+      requiresBudget: true,
       requiresCrew: false,
       displayOrder: 3,
     },
@@ -209,8 +209,9 @@ async function main() {
     const defaultOfficeId = offices.get(t.office)!.id;
     const concernType = await prisma.concernType.upsert({
       where: { key: t.key },
-      // Re-running the seed corrects the destination office of existing types.
-      update: { defaultOfficeId },
+      // Re-running the seed corrects the destination office and the money flag
+      // of existing types.
+      update: { defaultOfficeId, requiresBudget: t.requiresBudget },
       create: {
         key: t.key,
         name: t.name,

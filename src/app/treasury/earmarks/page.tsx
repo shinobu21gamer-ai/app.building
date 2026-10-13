@@ -10,8 +10,11 @@ import { formatDateTime } from "@/lib/format";
 import { db } from "@/lib/db";
 import { requirePermission, userCan } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
-import { getLocale } from "@/lib/locale";
-import { listAllocations, listEarmarks } from "@/lib/treasury/query";
+import {
+  fundedAmountsByConcern,
+  listAllocations,
+  listEarmarks,
+} from "@/lib/treasury/query";
 
 export const metadata: Metadata = {
   title: "Earmarks",
@@ -48,11 +51,44 @@ export default async function TreasuryEarmarksPage() {
         where: { status: { notIn: ["CLOSED", "RESOLVED"] } },
         orderBy: { id: "desc" },
         take: 50,
-        select: { id: true, caseNumber: true, title: true },
+        select: {
+          id: true,
+          caseNumber: true,
+          title: true,
+          status: true,
+          // The amount to reserve is the case's own cost estimate; showing it
+          // here is what makes the treasury's decision an informed one.
+          caseAssessment: { select: { totalCost: true } },
+        },
       }),
       userCan(user.role.key, "treasury.earmark.prepare"),
       userCan(user.role.key, "treasury.earmark.approve"),
     ]);
+
+  // What is already set aside for each of those cases, so the picker can say
+  // what still has to be covered rather than making the treasurer go hunting.
+  const setAside = await fundedAmountsByConcern(
+    db,
+    openCases.map((item) => item.id)
+  );
+  // Cases waiting in AWAITING_BUDGET first: those are the ones the money is
+  // actually being reserved for right now.
+  const caseOptions = [...openCases]
+    .sort((a, b) => {
+      const rank = (status: string) => (status === "AWAITING_BUDGET" ? 0 : 1);
+      return rank(a.status) - rank(b.status) || b.id - a.id;
+    })
+    .map((item) => ({
+      id: item.id,
+      caseNumber: item.caseNumber,
+      title: item.title,
+      estimate:
+        item.caseAssessment === null
+          ? null
+          : Number(item.caseAssessment.totalCost ?? 0),
+      setAside: setAside.get(item.id) ?? 0,
+      waitingForBudget: item.status === "AWAITING_BUDGET",
+    }));
 
   return (
     <div className="space-y-6">
@@ -68,7 +104,7 @@ export default async function TreasuryEarmarksPage() {
               fundSourceCode: allocation.fundSourceCode,
               available: allocation.available,
             }))}
-            caseOptions={openCases}
+            caseOptions={caseOptions}
             locale={locale}
           />
         </Card>

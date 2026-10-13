@@ -88,7 +88,9 @@ export default async function OfficialConcernsPage({
               .replace("{total}", String(flow.steps.length))} · ${
               flowCopy.steps[current.key].title
             }`
-          : flowCopy.closedNote,
+          : flow.closedUnfounded
+            ? flowCopy.unfoundedNote
+            : flowCopy.closedNote,
       ];
     })
   );

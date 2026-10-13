@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ConcernFilters } from "@/components/cases/concern-filters";
+import { FieldCheckSubmitForm } from "@/components/cases/field-check-panel";
 import { parseConcernFilters } from "@/lib/cases/query";
+import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import { getOfficialDashboard } from "@/lib/dashboards/official";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { firstParam } from "@/lib/utils";
@@ -55,6 +57,28 @@ export default async function OfficialPage({
 
   const { counts, recentlyResolved, cases } = dashboard;
 
+  // Field checks handed to this user personally. The check belongs to the
+  // person, not to the office: somebody from another office can be sent when
+  // the case office has nobody free, and this card is where they pick the work
+  // up — the case sheet itself stays scoped to the case office.
+  const fieldChecks = await db.fieldCheck.findMany({
+    where: { assigneeId: user.id, status: "PENDING" },
+    orderBy: { createdAt: "desc" },
+    include: {
+      concern: {
+        select: {
+          caseNumber: true,
+          title: true,
+          locationAddress: true,
+          locationPurok: true,
+          locationLat: true,
+          locationLng: true,
+        },
+      },
+    },
+  });
+  const fieldCheckCopy = copy[locale].revamp.workflow.fieldCheck;
+
   const scopeLabel = isOfficial
     ? user.office
       ? t.caseload.replace("{office}", user.office.name)
@@ -87,6 +111,52 @@ export default async function OfficialPage({
           />
         ))}
       </div>
+
+      {fieldChecks.length > 0 && (
+        <Card
+          title={fieldCheckCopy.forYou}
+          description={fieldCheckCopy.forYouDesc}
+        >
+          <ul className="space-y-4">
+            {fieldChecks.map((check) => (
+              <li
+                key={check.id}
+                className="space-y-2 rounded-xl border border-line p-4"
+              >
+                <p className="text-sm font-medium text-ink">
+                  {fieldCheckCopy.caseLabel} {check.concern.caseNumber} ·{" "}
+                  {check.concern.title}
+                </p>
+                <p className="text-sm text-ink-subtle">{check.instructions}</p>
+                {check.reviewNote && (
+                  <p className="rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    {fieldCheckCopy.reviewNote}: {check.reviewNote}
+                  </p>
+                )}
+                <FieldCheckSubmitForm
+                  checkId={check.id}
+                  locale={locale}
+                  location={{
+                    address: check.concern.locationAddress,
+                    purok: check.concern.locationPurok,
+                    lat: check.concern.locationLat,
+                    lng: check.concern.locationLng,
+                    mapUrl: hasCoordinates({
+                      lat: check.concern.locationLat,
+                      lng: check.concern.locationLng,
+                    })
+                      ? openStreetMapUrl(
+                          check.concern.locationLat as number,
+                          check.concern.locationLng as number
+                        )
+                      : null,
+                  }}
+                />
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card title={t.recentResolved} description={t.recentResolvedDesc}>
         {recentlyResolved.length === 0 ? (

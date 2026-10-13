@@ -1,8 +1,11 @@
 // Field verification rules: pure functions, no database access.
 //
-// An admin may ask an official or crew member to confirm that a concern is real
-// before the case continues. Once a check has been requested, the case cannot
-// leave ASSIGNED until an approved check has CONFIRMED the concern.
+// The reality check is step 1 of every case. The admin sends an official or a
+// crew member to the location the resident gave; that person records what they
+// found; an admin approves it. Nothing else happens on the case until the
+// finding is in and approved — no validation, no assessment, no money, no crew,
+// no work. A finding that is not confirmed either sends the checker back out or
+// closes the case as unfounded.
 
 export const FIELD_CHECK_STATUSES = ["PENDING", "SUBMITTED", "APPROVED"] as const;
 export type FieldCheckStatus = (typeof FIELD_CHECK_STATUSES)[number];
@@ -22,19 +25,62 @@ export const OPEN_FIELD_CHECK_STATUSES: readonly string[] = ["PENDING", "SUBMITT
 export type FieldCheckSummary = { status: string; finding: string | null };
 
 /**
- * Why the case may not leave ASSIGNED for UNDER_ASSESSMENT, or null when it may.
- * With no check requested there is no gate. Otherwise an open check blocks, and
- * so does any history with no approved CONFIRMED finding.
+ * Where the reality check stands for a case:
+ *
+ *   NONE   — nobody has been sent yet (a brand new report);
+ *   OPEN   — somebody is out, or the finding is waiting for the admin;
+ *   PASSED — an approved finding confirmed the report is real;
+ *   FAILED — the only approved findings did not confirm it.
  */
-export function fieldCheckGateBlock(checks: FieldCheckSummary[]): string | null {
-  if (checks.length === 0) return null;
-  if (checks.some((check) => OPEN_FIELD_CHECK_STATUSES.includes(check.status))) {
-    return "A field check is still open. The assigned person must submit the finding, and an admin must approve it, before the case continues.";
-  }
+export type RealityCheckState = "NONE" | "OPEN" | "PASSED" | "FAILED";
+
+/**
+ * The reality check for a case, from its check history.
+ *
+ * `legacyPassed` is for cases that were already past this point when the check
+ * became the first step of every case: without it, an old in-progress case would
+ * be reported as still waiting for its first check.
+ */
+export function realityCheckState(
+  checks: FieldCheckSummary[],
+  options: { legacyPassed?: boolean } = {}
+): RealityCheckState {
   if (checks.some((check) => check.status === "APPROVED" && check.finding === "CONFIRMED")) {
-    return null;
+    return "PASSED";
   }
-  return "The field check did not confirm that the concern is real. Request a new field check before the case continues.";
+  if (checks.some((check) => OPEN_FIELD_CHECK_STATUSES.includes(check.status))) {
+    return "OPEN";
+  }
+  if (checks.some((check) => check.status === "APPROVED")) {
+    return "FAILED";
+  }
+  return options.legacyPassed ? "PASSED" : "NONE";
+}
+
+/** Why the first step is still holding the case, or null once it has passed. */
+export function realityCheckBlock(state: RealityCheckState): string | null {
+  switch (state) {
+    case "PASSED":
+      return null;
+    case "OPEN":
+      return "A field check is open. The case waits until the person who went to the location sends the finding and an admin approves it.";
+    case "FAILED":
+      return "The field check did not confirm that the concern is real. Send somebody to check again — a report that is not real is closed as unfounded.";
+    default:
+      return "Nobody has checked the location yet. Send an official or crew member to confirm the report is real: nothing else happens on this case until that finding is approved.";
+  }
+}
+
+/**
+ * The same rule as a sentence, for the transitions it guards (validation, the
+ * start of the assessment). Every case passes through the reality check, so
+ * there is no "no checks requested" way around it.
+ */
+export function fieldCheckGateBlock(
+  checks: FieldCheckSummary[],
+  options: { legacyPassed?: boolean } = {}
+): string | null {
+  return realityCheckBlock(realityCheckState(checks, options));
 }
 
 export type FindingInput = {
@@ -64,7 +110,10 @@ export function findingProblem(input: FindingInput): string | null {
   return null;
 }
 
-/** Whether a field check may be requested for a case in this status. */
+/**
+ * Whether a field check may be requested for a case in this status: the two
+ * stages before the case is assessed, because the check comes first.
+ */
 export function canRequestFieldCheck(status: string): boolean {
-  return status === "ASSIGNED";
+  return status === "SUBMITTED" || status === "ASSIGNED";
 }
