@@ -66,6 +66,41 @@ export type PriorityEvaluation = {
 };
 
 /**
+ * Reads a stored `calculationJson` back as an evaluation, or null when the row
+ * holds nothing to show.
+ *
+ * Not every `PriorityAssessment` row carries an engine calculation: when an
+ * official changes the level during validation, the override row records only
+ * where it came from (`{"source":"admin_validation"}`) and the case page shows
+ * the badge and the reason instead of a breakdown. A row like that — or one
+ * written before a field existed — must read as "no breakdown", never as a
+ * half-built object the renderer then walks into. Missing arrays are filled in
+ * so a legacy row still shows the part it does have.
+ */
+export function priorityEvaluationFrom(
+  calculationJson: string | null | undefined
+): PriorityEvaluation | null {
+  if (!calculationJson) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(calculationJson);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+
+  const candidate = parsed as Partial<PriorityEvaluation>;
+  const factors = Array.isArray(candidate.factors) ? candidate.factors : [];
+  const explanation = Array.isArray(candidate.explanation)
+    ? candidate.explanation
+    : [];
+  if (factors.length === 0 && explanation.length === 0) return null;
+
+  return { ...candidate, factors, explanation } as PriorityEvaluation;
+}
+
+/**
  * Thrown when the rule engine is given invalid scores or misconfigured rules.
  * Pure and framework-free so the engine can be unit tested in isolation.
  */
