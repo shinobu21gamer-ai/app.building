@@ -1883,6 +1883,17 @@ const en = {
       geotagCaptured: "Pin captured.",
       geotagAccuracy: "Accurate to about {meters} m",
       geotagFailed: "Could not read your location. Tap the map or enter it manually.",
+      geotagDenied:
+        "Location permission is off. Allow location for this app/browser in your device settings, then try again — or tap the map to drop the pin.",
+      geotagUnavailable:
+        "Your device could not find its location. Turn on Location/GPS, then try again — or tap the map to drop the pin.",
+      geotagTimeout:
+        "Location took too long to arrive. Move somewhere with a clearer signal, then try again — or tap the map to drop the pin.",
+      geotagUnsupported:
+        "This browser cannot share its location. Tap the map to drop the pin or enter the coordinates manually.",
+      geotagTapMap: "Tap the map to drop the pin. You can drag the pin to adjust it.",
+      geotagNoPin: "No pin yet",
+      geotagOpenMap: "Open the full map",
       geotagPurok: "Purok / area",
       geotagPurokPlaceholder: "e.g. Purok 3",
       geotagManual: "Coordinates",
@@ -3894,6 +3905,18 @@ const fil: typeof en = {
       geotagCaptured: "Nakuha ang pin.",
       geotagAccuracy: "Tumpak hanggang mga {meters} m",
       geotagFailed: "Hindi makuha ang lokasyon. I-tap ang mapa o ilagay nang manwal.",
+      geotagDenied:
+        "Naka-off ang pahintulot sa lokasyon. Payagan ang lokasyon para sa app/browser na ito sa settings ng device, pagkatapos ay subukan ulit — o i-tap ang mapa para ilagay ang pin.",
+      geotagUnavailable:
+        "Hindi mahanap ng device ang lokasyon nito. Buksan ang Location/GPS, pagkatapos ay subukan ulit — o i-tap ang mapa para ilagay ang pin.",
+      geotagTimeout:
+        "Matagal dumating ang lokasyon. Lumipat sa lugar na mas malinaw ang signal, pagkatapos ay subukan ulit — o i-tap ang mapa para ilagay ang pin.",
+      geotagUnsupported:
+        "Hindi maibahagi ng browser na ito ang lokasyon nito. I-tap ang mapa para ilagay ang pin o ilagay nang manwal ang coordinates.",
+      geotagTapMap:
+        "I-tap ang mapa para ilagay ang pin. Maaari mong i-drag ang pin para i-adjust.",
+      geotagNoPin: "Wala pang pin",
+      geotagOpenMap: "Buksan ang buong mapa",
       geotagPurok: "Purok / lugar",
       geotagPurokPlaceholder: "hal. Purok 3",
       geotagManual: "Coordinates",

@@ -54,6 +54,13 @@ export const OSM_ATTRIBUTION = "© OpenStreetMap contributors";
 /** Zoom used for a single case location: street level without street names. */
 export const MAP_ZOOM = 16;
 
+/**
+ * Where the location picker opens before the resident has placed a pin:
+ * Dasmariñas, Cavite (the area the case data uses), so "tap the map" starts
+ * from the neighbourhood instead of an empty ocean view.
+ */
+export const MAP_DEFAULT_CENTER = { lat: 14.3294, lng: 120.9367 } as const;
+
 /** Web-mercator limits; beyond these a tile coordinate stops being meaningful. */
 const MAX_LATITUDE = 85.05112878;
 

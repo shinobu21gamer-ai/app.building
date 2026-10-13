@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { Button } from "@/components/ui/button";
 import { FormMessage, Input, Label } from "@/components/ui/field";
+import { LeafletMap } from "@/components/ui/leaflet-map";
 import { copy, type Locale } from "@/lib/i18n";
+import { MAP_DEFAULT_CENTER } from "@/lib/maps";
 
 export type GeotagValue = {
   lat: string;
@@ -20,11 +23,25 @@ const SOURCES = [
   { value: "MANUAL", label: "Manual" },
 ];
 
+type FailureKind = "denied" | "unavailable" | "timeout" | "unsupported" | "failed";
+
 /**
  * Captures where the concern is. The device's own location is preferred (it is
- * the only source with a real accuracy figure); typing coordinates stays
- * available for when the resident is not on site. The values are submitted as
- * hidden inputs alongside the rest of the concern form.
+ * the only source with a real accuracy figure); tapping/dragging the pin on
+ * the map and typing coordinates stay available for when the resident is not
+ * on site or the device will not share its location. The values are submitted
+ * as hidden inputs alongside the rest of the concern form.
+ *
+ * Two capture paths, because they fail differently:
+ * - In the Android app the native `@capacitor/geolocation` plugin is used.
+ *   The WebView's `navigator.geolocation` cannot prompt for the runtime
+ *   permission itself, so without the plugin (and the ACCESS_*_LOCATION
+ *   manifest entries) every capture silently landed in the error callback —
+ *   the "could not read your location" residents kept seeing.
+ * - In a browser, `navigator.geolocation` is used, but the failure is now
+ *   classified (denied / GPS off / timeout / unsupported) instead of one
+ *   generic message, and a high-accuracy timeout is retried once with a
+ *   coarse, longer fix before giving up.
  */
 export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
   const t = copy[locale].revamp.workflow;
@@ -40,37 +57,193 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
   );
   const [note, setNote] = useState<string | null>(null);
 
-  function capture() {
+  const latNum = Number(value.lat);
+  const lngNum = Number(value.lng);
+  const hasPin =
+    value.lat.trim() !== "" &&
+    value.lng.trim() !== "" &&
+    Number.isFinite(latNum) &&
+    Number.isFinite(lngNum) &&
+    Math.abs(latNum) <= 90 &&
+    Math.abs(lngNum) <= 180;
+  // Before any pin exists the map opens over the barangay so "tap the map"
+  // starts from the neighbourhood — without drawing a pin there, which would
+  // claim a location the resident never chose.
+  const centre = hasPin
+    ? { lat: latNum, lng: lngNum }
+    : { lat: MAP_DEFAULT_CENTER.lat, lng: MAP_DEFAULT_CENTER.lng };
+
+  function fail(kind: FailureKind) {
+    setStatus("failed");
+    setNote(
+      kind === "denied"
+        ? t.geotagDenied
+        : kind === "unavailable"
+          ? t.geotagUnavailable
+          : kind === "timeout"
+            ? t.geotagTimeout
+            : kind === "unsupported"
+              ? t.geotagUnsupported
+              : t.geotagFailed
+    );
+  }
+
+  function applyFix(lat: number, lng: number, accuracy: number, source: string) {
+    setValue((prev) => ({
+      ...prev,
+      lat: lat.toFixed(6),
+      lng: lng.toFixed(6),
+      accuracyM: Math.round(accuracy).toString(),
+      source,
+    }));
+    setStatus("captured");
+    setNote(t.geotagAccuracy.replace("{meters}", String(Math.round(accuracy))));
+  }
+
+  /** Native-app capture via the Capacitor plugin. Returns false to fall back to the web path. */
+  async function captureNative(): Promise<boolean> {
+    let Geolocation: typeof import("@capacitor/geolocation").Geolocation;
+    try {
+      Geolocation = (await import("@capacitor/geolocation")).Geolocation;
+    } catch {
+      return false;
+    }
+
+    let permission;
+    try {
+      permission = await Geolocation.checkPermissions();
+      if (permission.location !== "granted" && permission.coarseLocation !== "granted") {
+        permission = await Geolocation.requestPermissions({
+          permissions: ["location", "coarseLocation"],
+        });
+      }
+    } catch {
+      // The plugin throws when the device's Location switch itself is off.
+      fail("unavailable");
+      return true;
+    }
+    if (permission.location !== "granted" && permission.coarseLocation !== "granted") {
+      fail("denied");
+      return true;
+    }
+
+    try {
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 30000,
+      });
+      applyFix(
+        position.coords.latitude,
+        position.coords.longitude,
+        position.coords.accuracy,
+        "GPS_PINNED"
+      );
+    } catch {
+      // A high-accuracy fix commonly times out indoors; one coarse retry
+      // before telling the resident it failed.
+      try {
+        const position = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: false,
+          timeout: 20000,
+          maximumAge: 60000,
+        });
+        applyFix(
+          position.coords.latitude,
+          position.coords.longitude,
+          position.coords.accuracy,
+          "GPS_PINNED"
+        );
+      } catch (error) {
+        fail(error instanceof Error && /timeout/i.test(error.message) ? "timeout" : "unavailable");
+      }
+    }
+    return true;
+  }
+
+  function captureWeb() {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setStatus("failed");
-      setNote(t.geotagFailed);
+      // Also the insecure-context case: browsers withhold the API entirely
+      // off HTTPS, so there is nothing to prompt for.
+      fail("unsupported");
       return;
     }
+
+    const attempt = (highAccuracy: boolean, isRetry: boolean) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          applyFix(
+            position.coords.latitude,
+            position.coords.longitude,
+            position.coords.accuracy,
+            "GPS_PINNED"
+          );
+        },
+        (error) => {
+          // error.code: 1 PERMISSION_DENIED, 2 POSITION_UNAVAILABLE, 3 TIMEOUT.
+          if (error.code === error.TIMEOUT && !isRetry) {
+            attempt(false, true);
+            return;
+          }
+          fail(
+            error.code === error.PERMISSION_DENIED
+              ? "denied"
+              : error.code === error.TIMEOUT
+                ? "timeout"
+                : "unavailable"
+          );
+        },
+        highAccuracy
+          ? { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
+          : { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }
+      );
+    };
+
+    // If permission was already denied, the browser will not show a prompt
+    // again — say so (and how to fix it) instead of spinning first.
+    if (typeof navigator.permissions?.query === "function") {
+      navigator.permissions
+        .query({ name: "geolocation" })
+        .then((result) => {
+          if (result.state === "denied") {
+            fail("denied");
+          } else {
+            attempt(true, false);
+          }
+        })
+        .catch(() => attempt(true, false));
+      return;
+    }
+    attempt(true, false);
+  }
+
+  async function capture() {
     setStatus("locating");
     setNote(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setValue((prev) => ({
-          ...prev,
-          lat: position.coords.latitude.toFixed(6),
-          lng: position.coords.longitude.toFixed(6),
-          accuracyM: Math.round(position.coords.accuracy).toString(),
-          source: "GPS_PINNED",
-        }));
-        setStatus("captured");
-        setNote(
-          t.geotagAccuracy.replace(
-            "{meters}",
-            String(Math.round(position.coords.accuracy))
-          )
-        );
-      },
-      () => {
-        setStatus("failed");
-        setNote(t.geotagFailed);
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
-    );
+    if (Capacitor.isNativePlatform()) {
+      try {
+        if (await captureNative()) {
+          return;
+        }
+      } catch {
+        fail("failed");
+        return;
+      }
+    }
+    captureWeb();
+  }
+
+  function pickOnMap(lat: number, lng: number) {
+    setValue((prev) => ({
+      ...prev,
+      lat: lat.toFixed(6),
+      lng: lng.toFixed(6),
+      // A map tap has no device accuracy figure to claim.
+      accuracyM: "",
+      source: "MAP_PINNED",
+    }));
+    setStatus("captured");
+    setNote(t.geotagCaptured);
   }
 
   return (
@@ -86,7 +259,7 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
           size="sm"
           variant="outline"
           disabled={status === "locating"}
-          onClick={capture}
+          onClick={() => void capture()}
         >
           {status === "locating" ? t.geotagLocating : t.geotagUse}
         </Button>
@@ -118,6 +291,20 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
         </FormMessage>
       )}
 
+      <div className="space-y-1.5">
+        <LeafletMap
+          lat={centre.lat}
+          lng={centre.lng}
+          zoom={14}
+          title={t.geotagTitle}
+          openLabel={t.geotagOpenMap}
+          onPick={pickOnMap}
+          showPin={hasPin}
+          emptyPinLabel={t.geotagNoPin}
+        />
+        <p className="text-xs text-ink-subtle">{t.geotagTapMap}</p>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label htmlFor="geotag-lat">{t.geotagLat}</Label>
@@ -132,7 +319,9 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
               setValue((prev) => ({
                 ...prev,
                 lat: event.target.value,
-                source: prev.source || "MANUAL",
+                // Hand-typed coordinates are no longer a GPS/map fix.
+                accuracyM: "",
+                source: prev.source === "GPS_PINNED" || prev.source === "MAP_PINNED" ? "MANUAL" : prev.source || "MANUAL",
               }))
             }
           />
@@ -150,7 +339,8 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
               setValue((prev) => ({
                 ...prev,
                 lng: event.target.value,
-                source: prev.source || "MANUAL",
+                accuracyM: "",
+                source: prev.source === "GPS_PINNED" || prev.source === "MAP_PINNED" ? "MANUAL" : prev.source || "MANUAL",
               }))
             }
           />
