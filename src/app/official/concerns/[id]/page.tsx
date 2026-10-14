@@ -24,13 +24,20 @@ import {
   type ProcessStepKey,
 } from "@/lib/cases/process-flow";
 import { realityCheckState } from "@/lib/cases/field-check-rules";
+import {
+  verificationActorState,
+  verificationAskNames,
+} from "@/lib/cases/verification-rules";
 import { ConcernMap } from "@/components/concern/concern-map";
 import { CrewPanel } from "@/components/cases/crew-panel";
 import { FieldCheckPanel } from "@/components/cases/field-check-panel";
 import { listFieldChecks } from "@/lib/cases/field-check";
 import { FundingPanel } from "@/components/treasury/funding-panel";
 import { ValidationForm } from "@/components/cases/validation-form";
-import { ResolutionVerifyForm } from "@/components/cases/resolution-verify-form";
+import {
+  ResolutionVerifyForm,
+  VerifyBlockedNotice,
+} from "@/components/cases/resolution-verify-form";
 import { ResolutionForm } from "@/components/cases/resolution-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { loadPriorityConfig } from "@/lib/priority/config";
@@ -102,6 +109,35 @@ async function loadFieldCheckRoster(officeId: number | null) {
     take: 100,
   });
   return anyone.map((person) => ({ ...person, otherOffice: true }));
+}
+
+/**
+ * The people the recorder may ask to verify the resolution, by name.
+ *
+ * The office's own officials can open this case (the sheet is scoped to the
+ * case's office), so they come first. When that office has nobody else, the
+ * Barangay Captain is named — they verify any case. Only asked for when the
+ * blocked notice is going to be drawn.
+ */
+async function loadVerificationAskNames(
+  officeId: number | null,
+  colleagues: Array<{ id: number; firstName: string; lastName: string }>,
+  recordedById: number | null
+): Promise<string[]> {
+  if (officeId !== null && colleagues.some((person) => person.id !== recordedById)) {
+    return verificationAskNames({ colleagues, recordedById, captain: null });
+  }
+
+  const captains = await db.user.findMany({
+    where: { isActive: true, role: { key: "CAPTAIN" } },
+    select: { id: true, firstName: true, lastName: true },
+    orderBy: { firstName: "asc" },
+  });
+  return verificationAskNames({
+    colleagues,
+    recordedById,
+    captain: captains[0] ?? null,
+  });
 }
 
 export default async function OfficialConcernDetailPage({
@@ -353,6 +389,28 @@ export default async function OfficialConcernDetailPage({
   // Who is expected to act on each step, and whether this reader is the one who
   // can. "You" beats the owning desk in the copy shown on the card.
   const officeDesk = concern.assignedOffice?.name ?? flowCopy.deskOfficial;
+  // Step 8 is the one step the same person may not do twice: the official who
+  // recorded the resolution is refused by the server. Deciding it here means
+  // the step names the desk that can actually do it, and the panel below shows
+  // no form for the recorder — instead of a header saying "You" above a button
+  // that can only fail.
+  const verifyState = verificationActorState({
+    canVerify: canVerifyResolution,
+    recordedById: resolution?.officialId ?? null,
+    actorId: user.id,
+  });
+  // Only the recorder needs this: everybody else sees the form.
+  const verifyAskNames =
+    verifyState === "SELF_RECORDED"
+      ? await loadVerificationAskNames(
+          concern.assignedOfficeId,
+          offices.find(
+            (office: { id: number; users: Array<{ id: number; firstName: string; lastName: string }> }) =>
+              office.id === concern.assignedOfficeId
+          )?.users ?? [],
+          resolution?.officialId ?? null
+        )
+      : [];
   const stepDesk: Record<ProcessStepKey, string> = {
     CHECK: flowCopy.deskCheck,
     VALIDATE: flowCopy.deskAdmin,
@@ -363,7 +421,8 @@ export default async function OfficialConcernDetailPage({
     CREW: officeDesk,
     START: officeDesk,
     WORK: officeDesk,
-    VERIFY: officeDesk,
+    VERIFY:
+      verifyState === "SELF_RECORDED" ? flowCopy.deskVerifyOther : officeDesk,
     CLOSE: flowCopy.deskCaptain,
   };
   // The treasury's figure is read here, never written: this desk sends the case
@@ -378,7 +437,7 @@ export default async function OfficialConcernDetailPage({
     CREW: canAssignCrew && canManage,
     START: canProgress && canManage,
     WORK: canProgress && canManage,
-    VERIFY: canVerifyResolution,
+    VERIFY: verifyState === "CAN_VERIFY",
     CLOSE: canClose && canManage,
   };
 
@@ -625,13 +684,18 @@ export default async function OfficialConcernDetailPage({
     );
   }
 
-  if (canVerifyResolution && resolution && concern.status === "RESOLVED") {
+  if (verifyState !== "NO_PERMISSION" && resolution && concern.status === "RESOLVED") {
     panels.VERIFY = (
-      <ResolutionVerifyForm
-        concernId={concern.id}
-        locale={locale}
-        recordedById={resolution.officialId}
-      />
+      verifyState === "CAN_VERIFY" ? (
+        <ResolutionVerifyForm concernId={concern.id} locale={locale} />
+      ) : (
+        <VerifyBlockedNotice
+          locale={locale}
+          officeName={concern.assignedOffice?.name ?? null}
+          askNames={verifyAskNames}
+          canSeeAllCases={user.role.key === "CAPTAIN" || user.role.key === "ADMIN"}
+        />
+      )
     );
   }
 

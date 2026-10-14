@@ -792,6 +792,30 @@ Administrators can view and act on any office's cases.
   and the Captain's approval brief opens with a three-tick summary (right
   case · budget covers it · proposed by someone else) ahead of the full
   figures, so "am I good to approve?" is answered at a glance.
+- **Preparing an allocation is guided too:** the Budgets page used to ask for
+  the four accounting facts at once — fiscal year, fund source, COA account,
+  office — without saying what any of them were for, and its most common
+  mistake (a line that already exists for that exact combination) came back as
+  an error after the click. The New allocation card now lays out the three
+  decisions in order — what the money is for, where it comes from, how much and
+  who may spend it — each with one line of plain language, above a summary
+  panel that states the line being created in words and prints the exact label
+  the register will store, and it runs the duplicate check
+  (`src/lib/treasury/allocation-guide.ts`, pure and unit-tested) while the
+  choices are being made: a combination the register already holds blocks the
+  button and offers the existing line as a link to adjust, instead of a refusal
+  nobody can act on. The newest open fiscal year is suggested, a single
+  verified fund source is chosen rather than asked for, and the amount is
+  checked the way the server checks it — more than zero, at most ₱1,000,000,000
+  — while the cursor is still in the field. When a case's funding panel says
+  "Add a budget", it arrives here with that case's own numbers already in the
+  form (its shortfall in the amount, the office holding the case), and the
+  line it creates links back to that case's funding panel, where the earmark
+  is proposed once the Captain approves it — so funding a resident's concern
+  never starts from an empty form and never ends without a way back. The
+  pieces a line cannot exist without — an open fiscal year, a verified fund
+  source, a verified MOOE account — are named in the place they are fixed, not
+  as a failed submit.
 - **Field checks — is the report real?** Step 1 of every case, and the first
   thing the admin does with a new report: the admin desk (or the assigned
   office) picks an official or crew member, who sees the location the resident

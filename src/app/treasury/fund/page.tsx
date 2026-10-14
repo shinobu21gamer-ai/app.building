@@ -192,6 +192,7 @@ export default async function TreasuryFundCasePage({
                           caseNumber: row.caseNumber,
                           title: row.title,
                           officeName: row.officeName,
+                          officeId: row.officeId,
                           estimate: row.estimate,
                           setAside: row.setAside,
                           proposed: row.proposed,

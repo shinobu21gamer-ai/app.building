@@ -28,15 +28,18 @@ import {
  * topping up a line, and cancelled earmarks freeing their reservations.
  */
 function AddBudgetActions({
+  href,
   label,
   howTo,
 }: {
+  /** The guided allocation form, carrying this case's amount and office. */
+  href: string;
   label: string;
   howTo: string;
 }) {
   return (
     <div className="space-y-2 rounded-control border border-line bg-surface px-3 py-2.5">
-      <Button href="/treasury/budgets" size="sm">
+      <Button href={href} size="sm">
         {label}
       </Button>
       <p className="text-xs leading-relaxed text-ink-subtle">{howTo}</p>
@@ -50,12 +53,33 @@ export type FundCaseFacts = {
   caseNumber: string;
   title: string;
   officeName: string | null;
+  /** The case's office, so "Add a budget" can hand it to the allocation form. */
+  officeId: number | null;
   estimate: number | null;
   setAside: number;
   proposed: number;
   /** What a new proposal must cover (never double-counts pending proposals). */
   uncommitted: number;
 };
+
+/**
+ * Where "Add a budget" lands: the guided allocation form, prefilled with what
+ * this case is missing — the amount still to set aside and the office holding
+ * the case — so preparing the budget starts from the case's own numbers
+ * instead of an empty form the treasurer has to translate them into.
+ */
+function addBudgetHref(facts: FundCaseFacts): string {
+  const params = new URLSearchParams();
+  if (facts.uncommitted > 0) {
+    params.set("amount", facts.uncommitted.toFixed(2));
+  }
+  if (facts.officeId !== null) {
+    params.set("office", String(facts.officeId));
+  }
+  params.set("case", facts.caseNumber);
+  params.set("concern", String(facts.concernId));
+  return `/treasury/budgets?${params.toString()}`;
+}
 
 /**
  * The guided way to fund one case, replacing the generic "new earmark" form
@@ -114,7 +138,13 @@ export function FundCaseForm({
         <p className="rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           {t.noAllocations}
         </p>
-        {canAddBudget && <AddBudgetActions label={t.addBudget} howTo={t.addBudgetHow} />}
+        {canAddBudget && (
+          <AddBudgetActions
+            href={addBudgetHref(facts)}
+            label={t.addBudget}
+            howTo={t.addBudgetHow}
+          />
+        )}
       </div>
     );
   }
@@ -266,7 +296,11 @@ export function FundCaseForm({
               {budgetShortHint}
             </p>
             {canAddBudget && (
-              <AddBudgetActions label={t.addBudget} howTo={t.addBudgetHow} />
+              <AddBudgetActions
+                href={addBudgetHref(facts)}
+                label={t.addBudget}
+                howTo={t.addBudgetHow}
+              />
             )}
           </div>
         )}

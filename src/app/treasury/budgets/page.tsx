@@ -9,6 +9,12 @@ import { db } from "@/lib/db";
 import { requirePermission, userCan } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import {
+  allocationBlockers,
+  allocationPrefill,
+  prefillIsEmpty,
+  type RegisterLine,
+} from "@/lib/treasury/allocation-guide";
 import { listAllocations } from "@/lib/treasury/query";
 
 export const metadata: Metadata = {
@@ -26,9 +32,26 @@ const STATUS_TONES: Record<string, "amber" | "green" | "gray"> = {
 /**
  * The appropriation register. Each row shows the appropriation and the live
  * balance derived from the ledger, so nobody has to add anything up by hand.
+ *
+ * The New allocation card is the guided way in: it asks the three questions
+ * one at a time, states the line being created in words, and refuses to
+ * prepare a line the register already holds — the same refusal the server
+ * would give, but delivered with a link to the existing line instead of a
+ * dead end. `?amount=`, `?office=` and `?case=` are how a case's funding panel
+ * hands its own numbers over (see `allocation-guide.ts`).
  */
-export default async function TreasuryBudgetsPage() {
+export default async function TreasuryBudgetsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    amount?: string;
+    office?: string;
+    case?: string;
+    concern?: string;
+  }>;
+}) {
   const user = await requirePermission("treasury.balance.view");
+  const params = await searchParams;
   const locale = await getLocale();
   const t = copy[locale].revamp.treasuryDesk;
   const common = copy[locale].revamp.common;
@@ -42,7 +65,12 @@ export default async function TreasuryBudgetsPage() {
 
   const [allocations, fiscalYears, fundSources, coaAccounts, offices] =
     await Promise.all([
-      listAllocations(db, { actor }),
+      // Wider than the register's default page: the register doubles as the
+      // duplicate check for the form below, so a line further down the list is
+      // still recognised before someone tries to add it a second time. A
+      // register past this many lines only loses the pre-check — the server
+      // still refuses the duplicate, which is where it was caught before.
+      listAllocations(db, { actor, take: 200 }),
       db.fiscalYear.findMany({
         orderBy: { year: "desc" },
         select: { id: true, year: true, isClosed: true },
@@ -67,6 +95,28 @@ export default async function TreasuryBudgetsPage() {
       }),
     ]);
 
+  // What the form cannot work around: a line needs a verified fund source and
+  // a verified MOOE account to exist at all, and both are verified on another
+  // screen. An open fiscal year is the form's own business — it says so and
+  // offers the administrator the way to open one.
+  const blockers = allocationBlockers({ fiscalYears, fundSources, coaAccounts });
+  const needsReferences =
+    blockers.includes("NO_VERIFIED_FUND_SOURCE") ||
+    blockers.includes("NO_VERIFIED_COA_ACCOUNT");
+
+  const officeIds = offices.map((office: { id: number }) => office.id);
+  const prefill = allocationPrefill(params, { officeIds });
+
+  const register: RegisterLine[] = allocations.map((allocation) => ({
+    id: allocation.id,
+    label: allocation.label,
+    status: allocation.status,
+    fiscalYearId: allocation.fiscalYearId,
+    fundSourceCode: allocation.fundSourceCode,
+    coaCode: allocation.coaCode,
+    officeId: allocation.officeId,
+  }));
+
   return (
     <div className="space-y-6">
       <PageHeader title={t.budgetsTitle} description={t.budgetsLead} />
@@ -83,20 +133,16 @@ export default async function TreasuryBudgetsPage() {
       {canPrepare && (
         <Card
           title={t.newAllocation}
-          description={
-            fundSources.length === 0 || coaAccounts.length === 0
-              ? t.codesLead
-              : undefined
-          }
+          description={needsReferences ? t.codesLead : undefined}
         >
-          {fundSources.length === 0 || coaAccounts.length === 0 ? (
+          {needsReferences ? (
             <div className="space-y-3">
-              {fundSources.length === 0 && (
+              {blockers.includes("NO_VERIFIED_FUND_SOURCE") && (
                 <p className="text-sm text-ink-muted">
                   {t.noVerifiedFundSource}
                 </p>
               )}
-              {coaAccounts.length === 0 && (
+              {blockers.includes("NO_VERIFIED_COA_ACCOUNT") && (
                 <p className="text-sm text-ink-muted">
                   {t.noVerifiedMooeAccount}
                 </p>
@@ -112,6 +158,8 @@ export default async function TreasuryBudgetsPage() {
               fundSources={fundSources}
               coaAccounts={coaAccounts}
               offices={offices}
+              register={register}
+              prefill={prefillIsEmpty(prefill) ? null : prefill}
               locale={locale}
             />
           )}
