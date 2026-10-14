@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api-client";
 import { enqueueAlerts, removeAlert, removeAlerts } from "@/lib/alert-queue";
 import type { AlertView } from "@/components/alerts/alert-archive";
-import { getPushMode } from "@/lib/capacitor-types";
+import { getPushMode, toNativeAlertView, type NativeAlertPayload } from "@/lib/capacitor-types";
 
 /** Starts the one native alarm for the alert currently at the head of the queue. */
 function startNativeAlarm(alert: AlertView) {
@@ -109,8 +109,17 @@ export function AlertListener({ enabled = true }: { enabled?: boolean }) {
 
   useEffect(() => {
     const handler = (event: Event) => {
-      const nativeAlert = (event as CustomEvent<AlertView>).detail;
-      if (nativeAlert?.id) offer([nativeAlert]);
+      // Two producers dispatch this event with two different shapes: the
+      // Capacitor path arrives already converted to AlertView (`id`), while
+      // the Android foreground service (AlertMessagingService) evaluates its
+      // raw FCM shape into the WebView (`alertId`/`message`). Normalise both
+      // through toNativeAlertView — casting the raw shape to AlertView and
+      // reading `.id` silently dropped every foreground push.
+      const detail = (event as CustomEvent<NativeAlertPayload>).detail;
+      const rawId = detail?.alertId ?? detail?.id;
+      const parsedId = typeof rawId === "number" ? rawId : Number(rawId);
+      if (!Number.isSafeInteger(parsedId) || parsedId <= 0) return;
+      offer([toNativeAlertView(detail)]);
     };
     window.addEventListener("native-push-received", handler as EventListener);
     return () => window.removeEventListener("native-push-received", handler as EventListener);

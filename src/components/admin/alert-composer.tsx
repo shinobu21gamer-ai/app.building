@@ -121,6 +121,14 @@ export function AlertComposer({ locale = "en" }: { locale?: Locale }) {
     );
     if (statusUnknown) {
       setDeliveryWarning("Push delivery status could not be evaluated. Check the server logs; the alert itself was saved.");
+    } else if (result.data.push.android.registered > 0 && !result.data.push.android.configured) {
+      // The most common "alert not working" report: phones are registered but
+      // the deployment cannot send to them, so they receive literally nothing.
+      // Name the fix instead of a generic "check the logs".
+      const phones = result.data.push.android.registered;
+      setDeliveryWarning(
+        `${phones} phone${phones === 1 ? " is" : "s are"} registered, but the server has no valid Firebase credentials, so nothing was sent to them. Set FIREBASE_SERVICE_ACCOUNT to the service-account JSON on the deployment (on Vercel: Project Settings → Environment Variables) and redeploy. Until then, phones only see this alert if the app is opened.`
+      );
     } else if (registered === 0) {
       setDeliveryWarning("No active phone or browser push registrations were found. Users can still see this alert when they open the app.");
     } else if (failed > 0 || skipped > 0) {

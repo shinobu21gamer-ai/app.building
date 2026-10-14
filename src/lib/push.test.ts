@@ -29,6 +29,13 @@ describe("Android alert delivery", () => {
     expect(await push.sendAndroidPushTest("test-device-token")).toMatchObject({ accepted: false });
     expect(fetchMock).not.toHaveBeenCalled();
   });
+  it("accepts service-account JSON pasted with surrounding quotes or as base64", async () => {
+    // The shapes a hand-pasted Vercel value actually arrives in (see .env.example).
+    vi.stubEnv("FIREBASE_SERVICE_ACCOUNT", `'${JSON.stringify(account)}'`);
+    expect(await push.isNativePushConfigured()).toBe(true);
+    vi.stubEnv("FIREBASE_SERVICE_ACCOUNT", Buffer.from(JSON.stringify(account)).toString("base64"));
+    expect(await push.isNativePushConfigured()).toBe(true);
+  });
   it("uses inline configuration when a deployment cannot read the local file path", async () => {
     vi.stubEnv("FIREBASE_SERVICE_ACCOUNT_PATH", "/not-packaged/service-account.json");
     expect(await push.isNativePushConfigured()).toBe(true);
