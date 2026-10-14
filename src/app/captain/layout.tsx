@@ -1,6 +1,7 @@
 import { RoleShell } from "@/components/role-shell";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import { captainNavItems } from "@/lib/portal-nav";
 
 export default async function CaptainLayout({
   children,
@@ -8,20 +9,10 @@ export default async function CaptainLayout({
   children: React.ReactNode;
 }) {
   const locale = await getLocale();
-  const t = copy[locale].revamp;
+  const t = copy[locale];
 
   return (
-    <RoleShell
-      roles={["CAPTAIN", "ADMIN"]}
-      items={[
-        { href: "/captain", label: t.captain.title },
-        { href: "/captain/closure", label: t.captain.closeQueueTitle },
-        { href: "/captain/escalations", label: t.slaDesk.navEscalations },
-        { href: "/captain/approvals", label: t.treasuryDesk.navApprovals },
-        { href: "/captain/reports", label: t.reports.title },
-        { href: "/notifications", label: t.common.notifications },
-      ]}
-    >
+    <RoleShell roles={["CAPTAIN", "ADMIN"]} items={captainNavItems(t)}>
       {children}
     </RoleShell>
   );

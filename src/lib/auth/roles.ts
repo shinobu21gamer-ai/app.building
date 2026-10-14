@@ -128,6 +128,53 @@ export const PORTAL_GUARDS: readonly {
   { prefix: "/crew", roles: ["CREW", "ADMIN"] },
 ];
 
+/**
+ * Routes that live inside one portal's tree but are worked from another desk.
+ *
+ * A case has one sheet in this app — `/official/concerns/[id]` — and the Captain
+ * works the last two steps of the flow on it: reading the proof of completion,
+ * verifying it, and closing the case (docs/revamp/01-architecture.md §2). The
+ * Captain's own desk is what lists those cases (`/captain/closure`), so the
+ * office's tree has to admit them to that route — and, because the guard is a
+ * table of roles rather than a special case in the middleware, to nothing else.
+ *
+ * What a reader may *do* once inside is not a routing question: the sheet and
+ * its APIs decide that from their permissions. The Captain holds `case.view.all`,
+ * `case.resolution.verify` and `case.status.close`, and none of the office's own
+ * rights (assessment, manpower, crew, driving the status forward), so the sheet
+ * offers them verification, closure and the record — nothing more.
+ *
+ * The prefix is matched with its trailing slash, which is deliberate: the
+ * office's own queue (`/official/concerns`) and every other page of the portal
+ * stay exactly as guarded as they were, so this table can never widen a portal
+ * — only open a single shared route.
+ *
+ * Pages under a shared route keep their own guard, and the tighter one wins:
+ * `/official/concerns/[id]/print` is the office's paperwork and still turns
+ * every role but officials and administrators away.
+ */
+export const SHARED_PORTAL_ROUTES: readonly {
+  prefix: string;
+  roles: readonly RoleKey[];
+}[] = [
+  // The case sheet: the Captain's one way into the office's tree.
+  { prefix: "/official/concerns/", roles: ["CAPTAIN"] },
+];
+
+/**
+ * The roles that may open the case sheet: the office that holds the case, an
+ * administrator, and the Captain.
+ *
+ * The sheet's own page guards with this list, so the door the middleware opens
+ * and the page behind it admit exactly the same readers. They used to disagree
+ * — the page had already been taught that the Captain verifies and closes a
+ * case on it, while the route guard still turned the Captain away at the portal
+ * — and a Captain could not open a single case to do the job. Anything that
+ * reads the sheet is either on this list or behind a list of its own (the
+ * printout, which is the office's paperwork, admits officials and admins).
+ */
+export const CASE_SHEET_ROLES = ["OFFICIAL", "ADMIN", "CAPTAIN"] as const;
+
 export function isRoleKey(value: unknown): value is RoleKey {
   return (
     typeof value === "string" && (ROLE_KEYS as readonly string[]).includes(value)
@@ -166,4 +213,38 @@ export function portalRoles(prefix: string): readonly RoleKey[] {
 /** Portal prefixes that require a session, in stable order. */
 export function portalPrefixes(): string[] {
   return PORTAL_GUARDS.map((guard) => guard.prefix);
+}
+
+/**
+ * Roles a portal opens to a shared route inside it, beyond its own.
+ * Empty for a path no portal shares, which is every path but the case sheet.
+ */
+export function sharedRouteRoles(pathname: string): readonly RoleKey[] {
+  return (
+    SHARED_PORTAL_ROUTES.find((route) => pathname.startsWith(route.prefix))
+      ?.roles ?? []
+  );
+}
+
+function matchesPrefix(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+/**
+ * Whether a role may open a path — the rule the middleware routes on.
+ *
+ * Everything outside a guarded portal is open to any signed-in user (the
+ * middleware has already established that this visitor has a live session); a
+ * path inside a portal is open to the portal's own roles, plus the roles that
+ * portal names for a shared route under it (`SHARED_PORTAL_ROUTES`).
+ */
+export function canOpenPath(roleKey: string, pathname: string): boolean {
+  for (const guard of PORTAL_GUARDS) {
+    if (!matchesPrefix(pathname, guard.prefix)) continue;
+    return (
+      (guard.roles as readonly string[]).includes(roleKey) ||
+      (sharedRouteRoles(pathname) as readonly string[]).includes(roleKey)
+    );
+  }
+  return true;
 }
