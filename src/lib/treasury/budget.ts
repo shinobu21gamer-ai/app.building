@@ -793,6 +793,28 @@ export async function fundingGateForConcern(
   tx: Tx,
   concernId: number
 ): Promise<FundingGate> {
+  const concern = await tx.concern.findUnique({
+    where: { id: concernId },
+    select: { caseAssessment: { select: { totalCost: true } } },
+  });
+  const estimate =
+    concern?.caseAssessment?.totalCost === null ||
+    concern?.caseAssessment?.totalCost === undefined
+      ? null
+      : toMoney(concern.caseAssessment.totalCost);
+
+  // A case that costs nothing needs no money set aside: the treasury has
+  // nothing to fund, so it is funded by definition.
+  if (estimate === 0) {
+    const earmarks = await earmarksForConcern(tx, concernId);
+    return {
+      certified: true,
+      total: 0,
+      earmarks,
+      message: "No funds needed for this case.",
+    };
+  }
+
   const earmarks = await earmarksForConcern(tx, concernId);
   const usable = earmarks.filter(
     (earmark) => earmark.status === "APPROVED" || earmark.status === "RELEASED"

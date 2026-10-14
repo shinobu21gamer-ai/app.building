@@ -14,6 +14,7 @@ import { PushSessionSync } from "@/components/alerts/push-session-sync";
 import { ToastProvider } from "@/components/ui/toast";
 import { NavigationProgress } from "@/components/loading/navigation-progress";
 import { RouteEnter } from "@/components/loading/route-enter";
+import { AutoRefresh } from "@/components/loading/auto-refresh";
 
 function appBaseUrl(): URL {
   const candidate = process.env.NEXT_PUBLIC_APP_URL;
@@ -98,6 +99,7 @@ export default async function RootLayout({
             <NavigationProgress label={t.loading.label} />
           </Suspense>
 
+          <AutoRefresh />
           <main id="main-content" className="flex-1">
             <RouteEnter>{children}</RouteEnter>
           </main>

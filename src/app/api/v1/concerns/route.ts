@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import {
   assertSameOrigin,
@@ -217,12 +218,33 @@ export const GET = withErrorBoundary(async (req: Request) => {
 
 export const POST = withErrorBoundary(async (req: Request) => {
   assertSameOrigin(req);
-  const user = await requireApiRole(["RESIDENT"]);
-  await assertConsent(
-    user.id,
-    "DATA_PROCESSING",
-    "Your consent to process your data is missing, so this concern cannot be filed. Grant it under \"Your data, your rights\" (/privacy/requests), then submit again — the submit page shows the same button."
-  );
+  const url = new URL(req.url);
+  const anonymous = url.searchParams.get("anonymous") === "1";
+
+  let user;
+  if (anonymous) {
+    const residentRole = await db.role.findUnique({ where: { key: "RESIDENT" } });
+    if (!residentRole) throw createApiError.internal("Resident role is not configured.");
+    const trackingEmail = `anonymous-${crypto.randomUUID()}@anonymous.local`;
+    const passwordHash = await bcrypt.hash(crypto.randomUUID(), 10);
+    user = await db.user.create({
+      data: {
+        email: trackingEmail,
+        passwordHash,
+        firstName: "Anonymous",
+        lastName: "Resident",
+        roleId: residentRole.id,
+        isActive: true,
+      },
+    });
+  } else {
+    user = await requireApiRole(["RESIDENT"]);
+    await assertConsent(
+      user.id,
+      "DATA_PROCESSING",
+      "Your consent to process your data is missing, so this concern cannot be filed. Grant it under \"Your data, your rights\" (/privacy/requests), then submit again — the submit page shows the same button."
+    );
+  }
 
   const form = await readCappedFormData(req);
 
@@ -354,7 +376,7 @@ export const POST = withErrorBoundary(async (req: Request) => {
             notifiedOfficials: routing.notifiedOfficials,
           }
         : { routed: false, reason: routing.reason },
-      redirect: `/resident/concerns/${concern.id}`,
+      redirect: anonymous ? `/track?case=${concern.caseNumber}` : `/resident/concerns/${concern.id}`,
     },
     { status: 201 }
   );

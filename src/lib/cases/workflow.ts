@@ -260,7 +260,14 @@ export function budgetStageBlock(input: BudgetStageInput): string | null {
   const estimate = input.estimatedCost;
   const hasEstimate = estimate !== null;
 
-  if (input.fromStatus === "UNDER_ASSESSMENT" && input.toStatus === "IN_PROGRESS") {
+  // A concern that needs no money (a saved estimate of ₱0) never enters the
+  // budget stage: there is nothing for the treasury to set aside, so it can go
+  // straight from assessment to work.
+  if (
+    input.fromStatus === "UNDER_ASSESSMENT" &&
+    input.toStatus === "IN_PROGRESS" &&
+    input.estimatedCost !== 0
+  ) {
     return "Every case waits in AWAITING_BUDGET until the treasury has set money aside. It cannot skip that stage.";
   }
   if (input.toStatus === "AWAITING_BUDGET" && !hasEstimate) {

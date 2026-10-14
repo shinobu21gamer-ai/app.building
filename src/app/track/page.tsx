@@ -38,6 +38,9 @@ export default async function TrackPage({
             <Button href="/help" variant="ghost" size="sm">
               {t.help}
             </Button>
+            <Button href="/submit" variant="ghost" size="sm">
+              Submit anonymously
+            </Button>
           </div>
         </Card>
       </div>
