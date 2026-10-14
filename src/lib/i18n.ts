@@ -1224,6 +1224,9 @@ const en = {
     unfoundedNote:
       "The field check did not confirm this report, so the case was closed as unfounded. The steps that never happened are marked as not needed, and the resident was told why.",
     deskYou: "You",
+    // Step 8 when the reader recorded the resolution: the independent check is
+    // somebody else's, and the card has to say so instead of "You".
+    deskVerifyOther: "A colleague in the office, or the Captain",
     deskAdmin: "Admin desk",
     deskCheck: "Admin desk, with the person sent to the site",
     deskOfficial: "Your office",
@@ -2554,7 +2557,21 @@ const en = {
       verifySubmit: "Record verification",
       verifySaving: "Recording…",
       verifySaved: "Verification recorded.",
-      verifyBlocked: "You recorded this resolution, so someone else must verify it.",
+      // The decision list needs one line explaining the odd one out: three of
+      // the four decisions close the step, "waiting for the resident" parks it.
+      verifyDecisionHelp:
+        "Verified as fixed, partially verified and failed all decide the step. Waiting for the resident parks it until the resident confirms the work — nothing is stamped as verified yet.",
+      verifyWhoHelp:
+        "Your name goes on this verification, and the case journal shows it to the resident.",
+      // Shown INSTEAD of the form when the reader recorded the resolution: the
+      // server refuses them, so the panel names the desk that can do it.
+      verifyBlockedTitle: "Someone else has to verify this fix",
+      verifyBlocked:
+        "You recorded this resolution, so you cannot verify it — the check has to be independent. A colleague in {desk} can do it from this same case, in step 8.",
+      verifyColleagueFallback: "the office holding the case",
+      verifyBlockedNext:
+        "The case stays in Resolved until they record the decision. A failed check stops closure unless a reasoned override is recorded, and the Captain closes the case afterwards.",
+      verifyBlockedCaptain: "Go to the closure desk",
       geotagTitle: "Location",
       geotagDesc:
         "Pin the exact spot. The pin is only ever shown coarsely to the public.",
@@ -3925,6 +3942,7 @@ const fil: typeof en = {
     unfoundedNote:
       "Hindi nakumpirma ng pagsusuri sa lugar na totoo ang reklamong ito, kaya isinara ang kaso bilang walang batayan. Ang mga hakbang na hindi nangyari ay minarkahan na hindi kailangan, at sinabihan ang residente kung bakit.",
     deskYou: "Ikaw",
+    deskVerifyOther: "Kasamahan sa tanggapan, o ang Kapitan",
     deskAdmin: "Admin desk",
     deskCheck: "Admin desk, kasama ang taong ipapadala sa lugar",
     deskOfficial: "Iyong tanggapan",
@@ -5238,7 +5256,17 @@ const fil: typeof en = {
       verifySubmit: "Itala ang beripikasyon",
       verifySaving: "Itinatala…",
       verifySaved: "Natala ang beripikasyon.",
-      verifyBlocked: "Ikaw ang nagtala ng resolution na ito, kaya ibang tao ang dapat magberipika.",
+      verifyDecisionHelp:
+        "Ang beripikadong naayos, bahagyang beripikado at bigo ay tumutukoy sa hakbang. Ang hinihintay ang residente ay nagpapahinto muna nito hanggang kumpirmahin ng residente ang trabaho — wala pang natatakang beripikado.",
+      verifyWhoHelp:
+        "Nakalagay ang pangalan mo sa beripikasyong ito, at makikita ito ng residente sa journal ng kaso.",
+      verifyBlockedTitle: "Ibang tao ang dapat magberipika ng ayos na ito",
+      verifyBlocked:
+        "Ikaw ang nagtala ng resolution na ito, kaya hindi mo ito puwedeng beripikahin — kailangang independyente ang pagsusuri. Puwede itong gawin ng kasamahan sa {desk} sa parehong kasong ito, sa hakbang 8.",
+      verifyColleagueFallback: "tanggapan na may hawak ng kaso",
+      verifyBlockedNext:
+        "Mananatili ang kaso sa Resolved hangga't hindi nila natatala ang desisyon. Ang bigong pagsusuri ay humaharang sa pagsasara maliban kung may nakatalang override na may dahilan, at ang Kapitan ang magsasara ng kaso pagkatapos.",
+      verifyBlockedCaptain: "Pumunta sa closure desk",
       geotagTitle: "Lokasyon",
       geotagDesc:
         "I-pin ang eksaktong lugar. Ang pin ay ipinapakita lamang nang magaspang sa publiko.",

@@ -3,25 +3,26 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { FormMessage, Label, Textarea } from "@/components/ui/field";
+import { FormMessage, Label, Select, Textarea } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
 import { copy, type Locale } from "@/lib/i18n";
 
-const selectStyles =
-  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
-
 /**
  * Verification before closure: check the proof attached to the resolution.
- * The API refuses when the verifier is the official who recorded it.
+ *
+ * The API refuses when the verifier is the official who recorded it, so this
+ * form is only ever rendered for someone the server will accept — the page
+ * decides that with `verificationActorState` and renders `VerifyBlockedNotice`
+ * for the recorder instead. Nothing here says "you cannot do this" to someone
+ * who can: that hint used to show to everyone, including colleagues who had
+ * every right to verify.
  */
 export function ResolutionVerifyForm({
   concernId,
   locale = "en",
-  recordedById,
 }: {
   concernId: number;
   locale?: Locale;
-  recordedById: number | null;
 }) {
   const t = copy[locale].revamp.workflow;
   const router = useRouter();
@@ -64,18 +65,18 @@ export function ResolutionVerifyForm({
         <Label htmlFor="verify-status" required>
           {t.verifyStatus}
         </Label>
-        <select
+        <Select
           id="verify-status"
           name="verificationStatus"
           required
           defaultValue="FIXED_VERIFIED"
-          className={selectStyles}
         >
           <option value="FIXED_VERIFIED">{t.verifyFixed}</option>
           <option value="PARTIALLY_VERIFIED">{t.verifyPartial}</option>
           <option value="FAILED">{t.verifyFailed}</option>
           <option value="PENDING_RESIDENT_CONFIRMATION">{t.verifyResident}</option>
-        </select>
+        </Select>
+        <p className="mt-1 text-caption text-ink-subtle">{t.verifyDecisionHelp}</p>
       </div>
 
       <div>
@@ -85,12 +86,53 @@ export function ResolutionVerifyForm({
         <Textarea id="verify-notes" name="notes" rows={3} maxLength={1000} required />
       </div>
 
-      <Button type="submit" disabled={submitting} loading={submitting}>
-        {t.verifySubmit}
-      </Button>
-      {recordedById !== null && (
-        <p className="text-xs text-ink-subtle">{t.verifyBlocked}</p>
-      )}
+      <div className="space-y-2">
+        <Button type="submit" disabled={submitting} loading={submitting}>
+          {t.verifySubmit}
+        </Button>
+        <p className="text-caption text-ink-subtle">{t.verifyWhoHelp}</p>
+      </div>
     </form>
+  );
+}
+
+/**
+ * What the recorder sees instead of the form: the rule, and whose desk the
+ * step moved to. A button that can only be refused is worse than no button —
+ * the reader is told who can do it and where they will find it.
+ */
+export function VerifyBlockedNotice({
+  locale = "en",
+  officeName = null,
+  canSeeAllCases = false,
+}: {
+  locale?: Locale;
+  /** The office holding the case, so the colleague can be named. */
+  officeName?: string | null;
+  /** The Captain (or an admin) can open any case, so the way there is shown. */
+  canSeeAllCases?: boolean;
+}) {
+  const t = copy[locale].revamp.workflow;
+  const desk = officeName ?? t.verifyColleagueFallback;
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1 rounded-control border border-amber-200 bg-amber-50 px-3 py-2.5">
+        <p className="text-sm font-semibold text-amber-900">
+          {t.verifyBlockedTitle}
+        </p>
+        <p className="text-sm leading-relaxed text-amber-800">
+          {t.verifyBlocked.replaceAll("{desk}", desk)}
+        </p>
+      </div>
+      <p className="text-sm leading-relaxed text-ink-muted">
+        {t.verifyBlockedNext}
+      </p>
+      {canSeeAllCases && (
+        <Button href="/captain/closure" size="sm" variant="outline">
+          {t.verifyBlockedCaptain}
+        </Button>
+      )}
+    </div>
   );
 }

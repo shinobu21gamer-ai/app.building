@@ -24,13 +24,17 @@ import {
   type ProcessStepKey,
 } from "@/lib/cases/process-flow";
 import { realityCheckState } from "@/lib/cases/field-check-rules";
+import { verificationActorState } from "@/lib/cases/verification-rules";
 import { ConcernMap } from "@/components/concern/concern-map";
 import { CrewPanel } from "@/components/cases/crew-panel";
 import { FieldCheckPanel } from "@/components/cases/field-check-panel";
 import { listFieldChecks } from "@/lib/cases/field-check";
 import { FundingPanel } from "@/components/treasury/funding-panel";
 import { ValidationForm } from "@/components/cases/validation-form";
-import { ResolutionVerifyForm } from "@/components/cases/resolution-verify-form";
+import {
+  ResolutionVerifyForm,
+  VerifyBlockedNotice,
+} from "@/components/cases/resolution-verify-form";
 import { ResolutionForm } from "@/components/cases/resolution-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { loadPriorityConfig } from "@/lib/priority/config";
@@ -353,6 +357,16 @@ export default async function OfficialConcernDetailPage({
   // Who is expected to act on each step, and whether this reader is the one who
   // can. "You" beats the owning desk in the copy shown on the card.
   const officeDesk = concern.assignedOffice?.name ?? flowCopy.deskOfficial;
+  // Step 8 is the one step the same person may not do twice: the official who
+  // recorded the resolution is refused by the server. Deciding it here means
+  // the step names the desk that can actually do it, and the panel below shows
+  // no form for the recorder — instead of a header saying "You" above a button
+  // that can only fail.
+  const verifyState = verificationActorState({
+    canVerify: canVerifyResolution,
+    recordedById: resolution?.officialId ?? null,
+    actorId: user.id,
+  });
   const stepDesk: Record<ProcessStepKey, string> = {
     CHECK: flowCopy.deskCheck,
     VALIDATE: flowCopy.deskAdmin,
@@ -363,7 +377,8 @@ export default async function OfficialConcernDetailPage({
     CREW: officeDesk,
     START: officeDesk,
     WORK: officeDesk,
-    VERIFY: officeDesk,
+    VERIFY:
+      verifyState === "SELF_RECORDED" ? flowCopy.deskVerifyOther : officeDesk,
     CLOSE: flowCopy.deskCaptain,
   };
   // The treasury's figure is read here, never written: this desk sends the case
@@ -378,7 +393,7 @@ export default async function OfficialConcernDetailPage({
     CREW: canAssignCrew && canManage,
     START: canProgress && canManage,
     WORK: canProgress && canManage,
-    VERIFY: canVerifyResolution,
+    VERIFY: verifyState === "CAN_VERIFY",
     CLOSE: canClose && canManage,
   };
 
@@ -625,13 +640,17 @@ export default async function OfficialConcernDetailPage({
     );
   }
 
-  if (canVerifyResolution && resolution && concern.status === "RESOLVED") {
+  if (verifyState !== "NO_PERMISSION" && resolution && concern.status === "RESOLVED") {
     panels.VERIFY = (
-      <ResolutionVerifyForm
-        concernId={concern.id}
-        locale={locale}
-        recordedById={resolution.officialId}
-      />
+      verifyState === "CAN_VERIFY" ? (
+        <ResolutionVerifyForm concernId={concern.id} locale={locale} />
+      ) : (
+        <VerifyBlockedNotice
+          locale={locale}
+          officeName={concern.assignedOffice?.name ?? null}
+          canSeeAllCases={user.role.key === "CAPTAIN" || user.role.key === "ADMIN"}
+        />
+      )
     );
   }
 
