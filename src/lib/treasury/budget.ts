@@ -9,6 +9,11 @@
 
 import type { Prisma } from "@prisma/client";
 import { createApiError } from "@/lib/api";
+import {
+  notifyEarmarkApproved,
+  notifyEarmarkCancelled,
+  notifyEarmarkProposed,
+} from "@/lib/notifications/service";
 import { codeUsable } from "@/lib/treasury/coa";
 import {
   checkAvailability,
@@ -456,12 +461,14 @@ export async function proposeEarmark(
   });
   if (!accountGate.usable) throw createApiError.conflict(accountGate.reason!);
 
+  let caseNumber: string | null = null;
   if (input.concernId !== null) {
     const concern = await tx.concern.findUnique({
       where: { id: input.concernId },
       select: { id: true, caseNumber: true },
     });
     if (!concern) throw createApiError.badRequest("Pick an existing case.");
+    caseNumber = concern.caseNumber;
   }
 
   const code = await nextEarmarkCode(tx, allocation.fiscalYear.year);
@@ -478,6 +485,19 @@ export async function proposeEarmark(
       notes: input.notes ?? null,
     },
     select: { id: true, code: true, amount: true },
+  });
+
+  // Somebody else has to decide this, and segregation of duties means it is
+  // not the proposer: without a notification the earmark waits on an approval
+  // nobody was told to make, and the case waits in AWAITING_BUDGET with it.
+  await notifyEarmarkProposed(tx, {
+    earmarkId: earmark.id,
+    earmarkCode: earmark.code,
+    amount: toMoney(earmark.amount),
+    purpose: input.purpose,
+    preparedById: input.actor.id,
+    concernId: input.concernId,
+    caseNumber,
   });
 
   return {
@@ -498,7 +518,10 @@ export async function approveEarmark(
 ) {
   const earmark = await tx.budgetEarmark.findUnique({
     where: { id: input.earmarkId },
-    include: { allocation: { include: { coaAccount: true, fiscalYear: true } } },
+    include: {
+      allocation: { include: { coaAccount: true, fiscalYear: true } },
+      concern: { select: { id: true, caseNumber: true, assignedOfficeId: true } },
+    },
   });
   if (!earmark) throw createApiError.notFound("Earmark not found.");
   if (earmark.status === "APPROVED") {
@@ -552,6 +575,19 @@ export async function approveEarmark(
     actorId: input.actor.id,
   });
 
+  // The proposer learns the money landed, and so does the office holding the
+  // case: an official watching a case sit in AWAITING_BUDGET has no other way
+  // to find out the approval happened.
+  await notifyEarmarkApproved(tx, {
+    earmarkId: earmark.id,
+    earmarkCode: earmark.code,
+    amount,
+    preparedById: earmark.preparedById,
+    concernId: earmark.concern?.id ?? null,
+    caseNumber: earmark.concern?.caseNumber ?? null,
+    officeId: earmark.concern?.assignedOfficeId ?? null,
+  });
+
   return {
     earmarkId: earmark.id,
     code: earmark.code,
@@ -566,6 +602,9 @@ export async function cancelEarmark(
 ) {
   const earmark = await tx.budgetEarmark.findUnique({
     where: { id: input.earmarkId },
+    include: {
+      concern: { select: { id: true, caseNumber: true, assignedOfficeId: true } },
+    },
   });
   if (!earmark) throw createApiError.notFound("Earmark not found.");
   if (earmark.status === "CANCELLED") {
@@ -598,6 +637,26 @@ export async function cancelEarmark(
     },
   });
 
+  // A cancelled earmark quietly leaves the case short again, so the reason
+  // travels with the notification to the proposer and the case's office.
+  const notifyCancelled = async (available: number) => {
+    await notifyEarmarkCancelled(tx, {
+      earmarkId: earmark.id,
+      earmarkCode: earmark.code,
+      amount: toMoney(earmark.amount),
+      reason: input.reason,
+      preparedById: earmark.preparedById,
+      concernId: earmark.concern?.id ?? null,
+      caseNumber: earmark.concern?.caseNumber ?? null,
+      officeId: earmark.concern?.assignedOfficeId ?? null,
+    });
+    return {
+      earmarkId: earmark.id,
+      status: "CANCELLED" as const,
+      available,
+    };
+  };
+
   if (earmark.status === "APPROVED") {
     const amount = toMoney(earmark.amount);
     const entry = await writeLedgerEntry(tx, {
@@ -610,15 +669,11 @@ export async function cancelEarmark(
       referenceId: String(earmark.id),
       actorId: input.actor.id,
     });
-    return { earmarkId: earmark.id, status: "CANCELLED" as const, available: entry.available };
+    return notifyCancelled(entry.available);
   }
 
   const balance = await allocationBalance(tx, earmark.allocationId);
-  return {
-    earmarkId: earmark.id,
-    status: "CANCELLED" as const,
-    available: balance.available,
-  };
+  return notifyCancelled(balance.available);
 }
 
 /**

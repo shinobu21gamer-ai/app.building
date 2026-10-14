@@ -6,7 +6,14 @@
 // their entries) instead of one query per allocation.
 
 import type { Prisma } from "@prisma/client";
-import { seesWholeBudget, type Actor, earmarksForConcern, fundingGateForConcern } from "@/lib/treasury/budget";
+import {
+  allocationBalances,
+  earmarksForConcern,
+  fundingGateForConcern,
+  seesWholeBudget,
+  type Actor,
+} from "@/lib/treasury/budget";
+import { setAsideBeforeThis } from "@/lib/treasury/approval";
 import {
   agingSummary,
   liquidationState,
@@ -164,6 +171,31 @@ export type EarmarkRow = {
   cancelReason: string | null;
   committed: number;
   notes: string | null;
+  // ---- what an approver has to see before deciding ----
+  // Always present: they are plain joins on rows the query already loads.
+  /** The allocation's own label, e.g. "MOOE 2026 — Repairs — Engineering". */
+  allocationLabel: string;
+  coaName: string;
+  fundSourceName: string;
+  preparedById: number | null;
+  preparedByName: string | null;
+  preparedByRole: string | null;
+  approvedByName: string | null;
+  caseStatus: string | null;
+  caseOfficeName: string | null;
+  /** The case's saved cost estimate — the figure this earmark is measured against. */
+  caseEstimate: number | null;
+  // Only populated when `includeApprovalContext` is set: both need a second
+  // pass (the live ledger balance per allocation, and the set-aside total per
+  // case), which the registers and the reports do not ask for.
+  /** Available on the source allocation right now; null when not requested. */
+  allocationAvailable: number | null;
+  /**
+   * Approved/released earmarks already set aside for the same case, EXCLUDING
+   * this row — the brief is about what approving this one *adds*. Null when not
+   * requested.
+   */
+  caseSetAside: number | null;
 };
 
 export async function listEarmarks(
@@ -174,6 +206,12 @@ export async function listEarmarks(
     concernId?: number | null;
     status?: string | null;
     take?: number;
+    /**
+     * Also load the live balance of each source allocation and how much is
+     * already set aside per case. The approval screens need both; the register
+     * and the reports do not, so they keep the cheaper query.
+     */
+    includeApprovalContext?: boolean;
   }
 ): Promise<EarmarkRow[]> {
   const rows = await tx.budgetEarmark.findMany({
@@ -188,47 +226,153 @@ export async function listEarmarks(
     include: {
       allocation: {
         include: {
-          coaAccount: { select: { code: true } },
-          fundSource: { select: { code: true } },
+          coaAccount: { select: { code: true, name: true } },
+          fundSource: { select: { code: true, name: true } },
           fiscalYear: { select: { year: true } },
           office: { select: { name: true } },
         },
       },
-      concern: { select: { id: true, caseNumber: true, title: true } },
+      // The case's own facts travel with the earmark: its status says whether a
+      // resident is waiting on this money, and the saved estimate is the figure
+      // the amount is measured against.
+      concern: {
+        select: {
+          id: true,
+          caseNumber: true,
+          title: true,
+          status: true,
+          assignedOffice: { select: { name: true } },
+          caseAssessment: { select: { totalCost: true } },
+        },
+      },
+      preparedBy: {
+        select: {
+          firstName: true,
+          lastName: true,
+          role: { select: { key: true } },
+        },
+      },
+      approvedBy: { select: { firstName: true, lastName: true } },
       disbursements: { select: { amount: true, status: true } },
     },
   });
 
-  return rows.map((row) => ({
-    id: row.id,
-    code: row.code,
-    purpose: row.purpose,
-    status: row.status,
-    amount: toMoney(row.amount),
-    allocationId: row.allocationId,
-    coaCode: row.allocation.coaAccount.code,
-    fundSourceCode: row.allocation.fundSource.code,
-    fiscalYear: row.allocation.fiscalYear.year,
-    officeName: row.allocation.office?.name ?? null,
-    concernId: row.concern?.id ?? null,
-    caseNumber: row.concern?.caseNumber ?? null,
-    caseTitle: row.concern?.title ?? null,
-    preparedAt: row.preparedAt,
-    approvedAt: row.approvedAt,
-    releasedAt: row.releasedAt,
-    cancelledAt: row.cancelledAt,
-    cancelReason: row.cancelReason,
-    committed: roundMoney(
-      row.disbursements
-        .filter((voucher) =>
-          ["SUBMITTED", "CERTIFIED", "APPROVED", "RELEASED", "LIQUIDATED"].includes(
-            voucher.status
+  // Both passes are grouped, never one query per row.
+  const balances = new Map<number, { available: number }>();
+  const setAsideByConcern = new Map<number, number>();
+  if (input.includeApprovalContext) {
+    const allocationIds: number[] = [
+      ...new Set<number>(rows.map((row) => row.allocationId)),
+    ];
+    const concernIds: number[] = [
+      ...new Set<number>(
+        rows
+          .map((row) => row.concernId)
+          .filter((concernId): concernId is number => concernId !== null)
+      ),
+    ];
+    const [loadedBalances, loadedSetAside] = await Promise.all([
+      allocationBalances(tx, allocationIds),
+      fundedAmountsByConcern(tx, concernIds),
+    ]);
+    for (const [allocationId, balance] of loadedBalances) {
+      balances.set(allocationId, { available: balance.available });
+    }
+    for (const [concernId, total] of loadedSetAside) {
+      setAsideByConcern.set(concernId, total);
+    }
+  }
+
+  return rows.map((row) => {
+    const concernTotal =
+      row.concernId === null ? 0 : (setAsideByConcern.get(row.concernId) ?? 0);
+
+    return {
+      id: row.id,
+      code: row.code,
+      purpose: row.purpose,
+      status: row.status,
+      amount: toMoney(row.amount),
+      allocationId: row.allocationId,
+      coaCode: row.allocation.coaAccount.code,
+      fundSourceCode: row.allocation.fundSource.code,
+      fiscalYear: row.allocation.fiscalYear.year,
+      officeName: row.allocation.office?.name ?? null,
+      concernId: row.concern?.id ?? null,
+      caseNumber: row.concern?.caseNumber ?? null,
+      caseTitle: row.concern?.title ?? null,
+      preparedAt: row.preparedAt,
+      approvedAt: row.approvedAt,
+      releasedAt: row.releasedAt,
+      cancelledAt: row.cancelledAt,
+      cancelReason: row.cancelReason,
+      committed: roundMoney(
+        row.disbursements
+          .filter((voucher) =>
+            ["SUBMITTED", "CERTIFIED", "APPROVED", "RELEASED", "LIQUIDATED"].includes(
+              voucher.status
+            )
           )
-        )
-        .reduce((sum, voucher) => sum + toMoney(voucher.amount), 0)
-    ),
-    notes: row.notes,
-  }));
+          .reduce((sum, voucher) => sum + toMoney(voucher.amount), 0)
+      ),
+      notes: row.notes,
+      allocationLabel: row.allocation.label,
+      coaName: row.allocation.coaAccount.name,
+      fundSourceName: row.allocation.fundSource.name,
+      preparedById: row.preparedById,
+      preparedByName: row.preparedBy
+        ? `${row.preparedBy.firstName} ${row.preparedBy.lastName}`
+        : null,
+      preparedByRole: row.preparedBy?.role.key ?? null,
+      approvedByName: row.approvedBy
+        ? `${row.approvedBy.firstName} ${row.approvedBy.lastName}`
+        : null,
+      caseStatus: row.concern?.status ?? null,
+      caseOfficeName: row.concern?.assignedOffice?.name ?? null,
+      caseEstimate:
+        row.concern?.caseAssessment?.totalCost === null ||
+        row.concern?.caseAssessment?.totalCost === undefined
+          ? null
+          : toMoney(row.concern.caseAssessment.totalCost),
+      allocationAvailable: input.includeApprovalContext
+        ? (balances.get(row.allocationId)?.available ?? null)
+        : null,
+      caseSetAside:
+        input.includeApprovalContext && row.concernId !== null
+          ? setAsideBeforeThis({
+              concernTotal,
+              thisAmount: toMoney(row.amount),
+              thisStatus: row.status,
+            })
+          : null,
+    };
+  });
+}
+
+
+/**
+ * How many earmarks are in each status, for the register's filter tabs.
+ *
+ * Counted separately rather than derived from the fetched page: `listEarmarks`
+ * is capped, so counting what came back would under-report the queue — and the
+ * queue is exactly what a treasurer needs to be accurate about, because an
+ * earmark nobody has looked at for a week is the one a case is stuck on.
+ */
+export async function earmarkStatusCounts(
+  tx: Tx,
+  input: { actor: Actor }
+): Promise<Map<string, number>> {
+  const rows = await tx.budgetEarmark.groupBy({
+    by: ["status"],
+    where: { allocation: officeScope(input.actor) },
+    _count: { _all: true },
+  });
+
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    counts.set(row.status, row._count._all);
+  }
+  return counts;
 }
 
 export type DisbursementRow = {

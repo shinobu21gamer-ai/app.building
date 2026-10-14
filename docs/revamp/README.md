@@ -204,16 +204,17 @@ Stages 1–4 are marked ✅; everything else is the committed plan for that stag
 | `src/lib/treasury/budget.ts` | N ✅ | Fiscal years, allocations, earmarks, ledger writes, the case funding gate |
 | `src/lib/treasury/disbursement.ts` | N ✅ | Draft → treasurer certification → AAO approval → release → liquidation |
 | `src/lib/treasury/query.ts` | N ✅ | Live balances, registers, aging summary, per-case funding view |
+| `src/lib/treasury/approval.ts` | N ✅ | The earmark approval brief: what approving adds, whether it clears the case's estimate, whether the allocation covers it, and whether this reader may decide at all (segregation of duties) |
 | `src/lib/validations/treasury.ts` | N ✅ | Every treasury schema + the payee / mode-of-payment catalogues |
 | `src/app/api/v1/treasury/allocations/route.ts`, `allocations/[id]/route.ts` | N ✅ | Register + prepare, approve, adjust (admin memo), close |
 | `src/app/api/v1/treasury/earmarks/route.ts`, `earmarks/[id]/route.ts` | N ✅ | Propose, approve (reserve), cancel (release) |
 | `src/app/api/v1/treasury/disbursements/route.ts`, `disbursements/[id]/route.ts` | N ✅ | Prepare + the seven lifecycle actions, with separation of duties |
 | `src/app/api/v1/treasury/balances/route.ts` | N ✅ | Dashboard figures and pending-queue counts |
 | `src/app/api/v1/admin/treasury/accounts/**`, `fund-sources/**`, `fiscal-years/**` | N ✅ | COA catalogue, fund sources, fiscal years (verify / open / close) |
-| `src/app/treasury/{page,budgets,budgets/[id],earmarks,disbursements,disbursements/[id],ledger,codes}/page.tsx` | N ✅ | Treasurer portal: dashboard, budgets, earmarks, vouchers, ledger, verification desk |
-| `src/app/captain/approvals/page.tsx` | N ✅ | AAO approval queue (allocations, earmarks, certified vouchers) |
+| `src/app/treasury/{page,budgets,budgets/[id],earmarks,disbursements,disbursements/[id],ledger,codes}/page.tsx` | N ✅ | Treasurer portal: dashboard, budgets, earmarks (a decision queue, filterable, deep-linkable from a case with `?concernId=`), vouchers, ledger, verification desk |
+| `src/app/captain/approvals/page.tsx` | N ✅ | AAO approval queue (allocations, earmarks with their approval brief, certified vouchers) |
 | `src/app/admin/treasury/page.tsx` | N ✅ | Administrator view: fiscal years, fund sources, appropriation register |
-| `src/components/treasury/*` | N ✅ | Balance cards, ledger + aging table, five forms, verify form, funding panel |
+| `src/components/treasury/*` | N ✅ | Balance cards, ledger + aging table, five forms, verify form, funding panel, the earmark approval brief panel |
 | `src/app/{treasury,captain,admin}/layout.tsx` | M ✅ | Nav entries for the new desks |
 | `src/lib/i18n.ts` | M ✅ | `revamp.treasuryDesk` copy (en + fil, key parity) |
 | `src/app/official/concerns/[id]/page.tsx` | M ✅ | Case funding panel for holders of `treasury.balance.view` |

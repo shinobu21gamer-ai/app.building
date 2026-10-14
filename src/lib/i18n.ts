@@ -1655,6 +1655,104 @@ const en = {
       cancelEarmark: "Cancel",
       cancelReason: "Why is it being cancelled?",
       earmarkCommitted: "Committed",
+      // ---- the approval brief: what an approver has to see before deciding ----
+      earmarkFilterAll: "All",
+      earmarkFilterNeedsDecision: "Needs a decision",
+      earmarkFilterSetAside: "Set aside",
+      earmarkFilterEnded: "Cancelled",
+      earmarkQueueCount: "{count} waiting",
+      earmarkQueueEmpty: "Nothing is waiting for a decision.",
+      earmarkNeedsYourDecision: "You can decide on this now",
+      earmarkWaitingOnCaptain: "Waiting on the Captain's approval",
+      earmarkReview: {
+        title: "Check this before you approve",
+        lead: "The earmark read against the resident's concern and the budget it comes out of.",
+        caseSection: "The resident's concern",
+        caseNotLinked:
+          "Not linked to a case. This earmark funds a purpose, so there is no cost estimate to measure it against.",
+        caseOffice: "Office",
+        openCase: "Open the case and compare",
+        moneySection: "Does the amount match what the case needs?",
+        estimate: "Cost estimate saved on the case",
+        setAsideBefore: "Already set aside for it",
+        thisEarmark: "This earmark",
+        setAsideAfter: "Set aside once approved",
+        shortfall: "Still short after approval",
+        excess: "Above the estimate by",
+        sourceSection: "Where the money comes from",
+        availableBefore: "Available on that budget now",
+        availableAfter: "Available after approval",
+        // Same three figures, worded for an earmark that has already been
+        // decided: there is no approval left to happen, so "once approved" and
+        // "after approval" would be nonsense on the register.
+        setAsideNow: "Set aside in total",
+        shortfallNow: "Still short",
+        availableUnchanged: "Available on that budget",
+        balanceUnknown: "Balance not loaded",
+        preparedBy: "Proposed by",
+        approvedBy: "Approved by",
+        unrecorded: "not recorded",
+        roleNames: {
+          ADMIN: "Administrator",
+          CAPTAIN: "Barangay Captain",
+          TREASURER: "Treasurer",
+          OFFICIAL: "Official",
+          CREW: "Crew",
+          RESIDENT: "Resident",
+        },
+        verdicts: {
+          UNBLOCKS:
+            "Approving this covers the full estimate. {case} can leave Awaiting budget and the work can start.",
+          COVERS:
+            "Approving this covers the full estimate for {case}. That case is not waiting on this money right now.",
+          PART_FUNDS:
+            "Approving this still leaves {case} short by {shortfall}. It stays in Awaiting budget until the rest is set aside.",
+          OVER_FUNDS:
+            "This is {excess} more than the estimate for {case}. Check the purpose before approving.",
+          NO_CASE:
+            "No case is linked, so this money is not reserved against any resident concern. Approve it only if that is what was intended.",
+          NO_ESTIMATE:
+            "{case} has no cost estimate saved yet, so this amount cannot be checked against what the work costs.",
+        },
+        blocks: {
+          SELF_PREPARED:
+            "You proposed this earmark, and the same person may not both propose and approve it. {desk}.",
+          OVER_AVAILABLE:
+            "Only {available} is available on that budget, so {amount} cannot be reserved from it. Reduce the amount, cancel it, or add funds to the allocation first.",
+          NOT_PROPOSED:
+            "This earmark has already been decided — nothing here is waiting on you.",
+          NO_PERMISSION:
+            "Your role cannot approve earmarks. {desk}.",
+        },
+        approverDesk:
+          "The Barangay Captain decides, at Captain → Approvals",
+        // Grammar lives in the copy, not in the component: "…from MOOE 2026 for
+        // BR-20261012-0007" in English, "…mula sa MOOE 2026 para sa
+        // BR-20261012-0001" in Filipino. Empty when no case is linked.
+        caseSuffix: " for {case}",
+        confirmApprove:
+          "Reserve {amount} from {allocation}{caseSuffix}. {available} will be left available.",
+        // An earmark that has already been decided states its outcome instead of
+        // asking for one.
+        settled: {
+          APPROVED: "Approved — {amount} is set aside{caseSuffix}.",
+          RELEASED: "Released — {amount} has been paid out{caseSuffix}.",
+          CANCELLED: "Cancelled — this earmark sets nothing aside.",
+        },
+        nothingReserved: "Nothing is reserved until an earmark is approved.",
+      },
+      // ---- the funding panel's exit sign, for a case stuck in AWAITING_BUDGET ----
+      fundingStillNeeded: "Still needed",
+      fundingWhatNext: "What happens next",
+      fundingNeedsMore:
+        "The treasury still has to set aside {shortfall} before this case can leave Awaiting budget.",
+      fundingNothingSetAside:
+        "Nothing is set aside for this case yet. The treasurer proposes an earmark for {shortfall} and the Captain approves it; only then can the work start.",
+      fundingFullySetAside:
+        "The full estimate is set aside. This case can move to In progress.",
+      fundingNoEstimate:
+        "No cost estimate is saved on this case yet, so the treasury has no figure to set money aside against. The assigned office saves it on the assessment.",
+      fundingProposeShortfall: "Set aside the {shortfall} now",
       disbursementsTitle: "Disbursement vouchers",
       disbursementsLead: "Draft → funds certified by the treasurer → approved by the Captain (AAO) → released → liquidated.",
       newVoucher: "New voucher",
@@ -4083,6 +4181,101 @@ const fil: typeof en = {
       cancelEarmark: "Kanselahin",
       cancelReason: "Bakit kinakansela?",
       earmarkCommitted: "Nakompromiso",
+      // ---- ang approval brief: ang dapat makita bago magdesisyon ----
+      earmarkFilterAll: "Lahat",
+      earmarkFilterNeedsDecision: "Kailangang desisyunan",
+      earmarkFilterSetAside: "Nakalaan na",
+      earmarkFilterEnded: "Nakansela",
+      earmarkQueueCount: "{count} ang naghihintay",
+      earmarkQueueEmpty: "Walang naghihintay ng desisyon.",
+      earmarkNeedsYourDecision: "Maaari mo na itong desisyunan",
+      earmarkWaitingOnCaptain: "Naghihintay ng aprobasyon ng Kapitan",
+      earmarkReview: {
+        title: "Suriin ito bago aprubahan",
+        lead: "Ang earmark na inihambing sa reklamo ng residente at sa budget na pinagkukunan nito.",
+        caseSection: "Ang reklamo ng residente",
+        caseNotLinked:
+          "Walang nakalink na kaso. Ang earmark na ito ay para sa isang layunin, kaya walang cost estimate na maipaghahambing dito.",
+        caseOffice: "Opisina",
+        openCase: "Buksan ang kaso at ikumpara",
+        moneySection: "Tumutugma ba ang halaga sa kailangan ng kaso?",
+        estimate: "Cost estimate na naitala sa kaso",
+        setAsideBefore: "Nakalaan na dito dati",
+        thisEarmark: "Ang earmark na ito",
+        setAsideAfter: "Nakalaan kapag naaprubahan",
+        shortfall: "Kulang pa pagkatapos aprubahan",
+        excess: "Labis sa estimate ng",
+        sourceSection: "Saan galing ang pera",
+        availableBefore: "Magagamit ngayon sa budget na iyon",
+        availableAfter: "Magagamit pagkatapos aprubahan",
+        // Ang parehong tatlong numero, nakasulat para sa earmark na nadesisyunan
+        // na: walang aprobasyong natitira, kaya "kapag naaprubahan" ay nonsense.
+        setAsideNow: "Kabuuang nakalaan",
+        shortfallNow: "Kulang pa",
+        availableUnchanged: "Magagamit sa budget na iyon",
+        balanceUnknown: "Hindi naka-load ang balanse",
+        preparedBy: "Ihinain ni",
+        approvedBy: "Inaprubahan ni",
+        unrecorded: "hindi naitala",
+        roleNames: {
+          ADMIN: "Administrator",
+          CAPTAIN: "Punong Barangay",
+          TREASURER: "Treasurer",
+          OFFICIAL: "Opisyal",
+          CREW: "Kawani sa trabaho",
+          RESIDENT: "Residente",
+        },
+        verdicts: {
+          UNBLOCKS:
+            "Kapag inaprubahan ito, sapat na ang buong estimate. Maaari nang lumabas sa Awaiting budget ang {case} at magsimula ang trabaho.",
+          COVERS:
+            "Kapag inaprubahan ito, sapat na ang buong estimate para sa {case}. Ang kasong iyon ay hindi ngayon naghihintay sa perang ito.",
+          PART_FUNDS:
+            "Kapag inaprubahan ito, kulang pa rin ang {case} ng {shortfall}. Mananatili ito sa Awaiting budget hanggang maitabi ang natitira.",
+          OVER_FUNDS:
+            "Labis ito ng {excess} kumpara sa estimate para sa {case}. Suriin ang layunin bago aprubahan.",
+          NO_CASE:
+            "Walang nakalink na kaso, kaya ang perang ito ay hindi nakareserba para sa anumang reklamo ng residente. Aprubahan lamang kung iyon nga ang sinasadya.",
+          NO_ESTIMATE:
+            "Ang {case} ay wala pang naitalang cost estimate, kaya hindi masusuri kung tama ang halagang ito para sa gastos ng trabaho.",
+        },
+        blocks: {
+          SELF_PREPARED:
+            "Ikaw ang naghain ng earmark na ito, at ang isang tao ay hindi maaaring maghain at mag-apruba nito. {desk}.",
+          OVER_AVAILABLE:
+            "{available} lamang ang magagamit sa budget na iyon, kaya hindi maaaring magreserba ng {amount} dito. Bawasan ang halaga, kanselahin ito, o dagdagan muna ang pondo ng allocation.",
+          NOT_PROPOSED:
+            "Nadesisyunan na ang earmark na ito — wala nang naghihintay sa iyo dito.",
+          NO_PERMISSION:
+            "Ang iyong tungkulin ay hindi maaaring mag-apruba ng earmark. {desk}.",
+        },
+        approverDesk:
+          "Ang Punong Barangay ang nagpapasya, sa Captain → Approvals",
+        // Ang gramatika ay nasa copy, hindi sa component: walang suffix kapag
+        // walang nakalink na kaso.
+        caseSuffix: " para sa {case}",
+        confirmApprove:
+          "Magreserba ng {amount} mula sa {allocation}{caseSuffix}. {available} ang matitirang magagamit.",
+        // Ang earmark na nadesisyunan na ay nagsasabi ng resulta, hindi na humihiling nito.
+        settled: {
+          APPROVED: "Naaprubahan — {amount} ang nakalaan{caseSuffix}.",
+          RELEASED: "Nailabas — {amount} ang naibayad{caseSuffix}.",
+          CANCELLED: "Nakansela — walang inilalaan ang earmark na ito.",
+        },
+        nothingReserved: "Walang naireserba hangga't walang naaaprubahang earmark.",
+      },
+      // ---- ang karatula ng funding panel para sa kasong nakatigil sa AWAITING_BUDGET ----
+      fundingStillNeeded: "Kailangan pa",
+      fundingWhatNext: "Ang susunod na mangyayari",
+      fundingNeedsMore:
+        "Kailangan pang magtabi ang treasury ng {shortfall} bago maaaring lumabas sa Awaiting budget ang kasong ito.",
+      fundingNothingSetAside:
+        "Wala pang nakalaan para sa kasong ito. Ang treasurer ang maghahain ng earmark na {shortfall} at ang Kapitan ang mag-aapruba nito; doon lamang magsisimula ang trabaho.",
+      fundingFullySetAside:
+        "Sapat na ang nakalaan para sa buong estimate. Maaari nang ilipat sa In progress ang kasong ito.",
+      fundingNoEstimate:
+        "Wala pang cost estimate na naitala sa kasong ito, kaya walang halagang maipagbabatayan ang treasury. Itinatala ito ng opisina sa assessment.",
+      fundingProposeShortfall: "Itabi ngayon ang {shortfall}",
       disbursementsTitle: "Mga disbursement voucher",
       disbursementsLead: "Draft → sertipikado ng treasurer ang pondo → aprubado ng Kapitan (AAO) → inilabas → nilikida.",
       newVoucher: "Bagong voucher",

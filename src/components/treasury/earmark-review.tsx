@@ -1,0 +1,362 @@
+import { Badge, StatusBadge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { formatPeso } from "@/lib/cases/manpower";
+import { statusLabel } from "@/lib/cases/workflow";
+import { formatDateTime } from "@/lib/format";
+import { copy, type Locale } from "@/lib/i18n";
+import type { EarmarkApprovalBrief } from "@/lib/treasury/approval";
+// Type-only: erased at build time, so this component never pulls the
+// Prisma-dependent read layer into a bundle.
+import type { EarmarkRow } from "@/lib/treasury/query";
+
+/**
+ * The earmark facts this panel reads. Declared here rather than importing
+ * `EarmarkRow` so the panel stays presentational and both approval screens can
+ * hand it the row they already loaded.
+ */
+export type EarmarkReviewFacts = {
+  id: number;
+  code: string | null;
+  purpose: string;
+  /** PROPOSED | APPROVED | RELEASED | CANCELLED — decides how the panel reads. */
+  status: string;
+  amount: number;
+  allocationLabel: string;
+  coaCode: string;
+  coaName: string;
+  fundSourceCode: string;
+  fundSourceName: string;
+  fiscalYear: number;
+  officeName: string | null;
+  concernId: number | null;
+  caseNumber: string | null;
+  caseTitle: string | null;
+  caseStatus: string | null;
+  caseOfficeName: string | null;
+  preparedByName: string | null;
+  preparedByRole: string | null;
+  preparedAt: Date;
+  approvedByName: string | null;
+};
+
+/**
+ * Narrows a register row to what the panel displays. Every approval screen loads
+ * `EarmarkRow`, so keeping the mapping here is what stops three pages drifting
+ * apart on which facts an approver gets to see.
+ */
+export function earmarkReviewFacts(row: EarmarkRow): EarmarkReviewFacts {
+  return {
+    id: row.id,
+    code: row.code,
+    purpose: row.purpose,
+    status: row.status,
+    amount: row.amount,
+    allocationLabel: row.allocationLabel,
+    coaCode: row.coaCode,
+    coaName: row.coaName,
+    fundSourceCode: row.fundSourceCode,
+    fundSourceName: row.fundSourceName,
+    fiscalYear: row.fiscalYear,
+    officeName: row.officeName,
+    concernId: row.concernId,
+    caseNumber: row.caseNumber,
+    caseTitle: row.caseTitle,
+    caseStatus: row.caseStatus,
+    caseOfficeName: row.caseOfficeName,
+    preparedByName: row.preparedByName,
+    preparedByRole: row.preparedByRole,
+    preparedAt: row.preparedAt,
+    approvedByName: row.approvedByName,
+  };
+}
+
+/** The statuses an earmark can be settled in, i.e. already decided. */
+const SETTLED_STATUSES = ["APPROVED", "RELEASED", "CANCELLED"] as const;
+type SettledStatus = (typeof SETTLED_STATUSES)[number];
+
+/**
+ * Narrows a stored status to one the settled copy covers. The database column is
+ * a plain string, so this is what keeps `t.settled[...]` indexed by a key that
+ * is known to exist rather than by whatever the row happens to hold.
+ */
+function settledStatus(status: string): SettledStatus | null {
+  return (SETTLED_STATUSES as readonly string[]).includes(status)
+    ? (status as SettledStatus)
+    : null;
+}
+
+function roleName(
+  roleKey: string | null,
+  names: { readonly [key: string]: string },
+  fallback: string
+): string {
+  if (roleKey === null) return fallback;
+  return names[roleKey] ?? roleKey;
+}
+
+/** One labelled figure in the money column. */
+function Figure({
+  label,
+  value,
+  tone = "text-ink",
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-1">
+      <span className="text-sm text-ink-muted">{label}</span>
+      <span className={`text-sm font-semibold tabular-nums ${tone}`}>{value}</span>
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-caption font-semibold uppercase tracking-wide text-ink-subtle">
+      {children}
+    </p>
+  );
+}
+
+/**
+ * The approval brief: one earmark read against the resident concern it is for
+ * and the budget it comes out of.
+ *
+ * This is the answer to "how do I know I am approving the right money for the
+ * right case?". Before it existed the approver saw a code, an amount, a purpose
+ * and two accounting codes — nothing that connected the money to the concern,
+ * nothing that said whether approving it would actually let the case leave
+ * Awaiting budget, and nothing that warned that the reader was the one who
+ * proposed it and therefore could not decide. Every one of those is a fact the
+ * treasury already held; `earmarkApprovalBrief` turns them into this panel.
+ *
+ * The verdict and the block reason are both always shown: an earmark can be
+ * exactly right for the case and still be one this reader may not approve.
+ */
+export function EarmarkReview({
+  earmark,
+  brief,
+  locale = "en",
+  compact = false,
+}: {
+  earmark: EarmarkReviewFacts;
+  brief: EarmarkApprovalBrief;
+  locale?: Locale;
+  /** Tighter spacing for the Captain's queue, where each row is one line up. */
+  compact?: boolean;
+}) {
+  const t = copy[locale].revamp.treasuryDesk.earmarkReview;
+  const desk = copy[locale].revamp.treasuryDesk;
+  const caseName = earmark.caseNumber ?? `#${earmark.concernId ?? earmark.id}`;
+  const caseSuffix =
+    earmark.concernId === null
+      ? ""
+      : t.caseSuffix.replaceAll("{case}", caseName);
+  // An earmark that has already been decided reads differently: there is no
+  // approval left to happen, so the figures are stated as they stand.
+  const decided = brief.blockReason === "NOT_PROPOSED";
+
+  const verdict = t.verdicts[brief.verdict]
+    .replaceAll("{case}", caseName)
+    .replaceAll("{shortfall}", formatPeso(brief.shortfallAfter))
+    .replaceAll("{excess}", formatPeso(brief.excessOverEstimate));
+
+  const settledKey = settledStatus(earmark.status);
+  const settledNote =
+    settledKey === null
+      ? null
+      : t.settled[settledKey]
+          .replaceAll("{amount}", formatPeso(brief.amount))
+          .replaceAll("{caseSuffix}", caseSuffix);
+
+  const block =
+    brief.blockReason === null || brief.blockReason === "NOT_PROPOSED"
+      ? null
+      : t.blocks[brief.blockReason]
+          .replaceAll("{desk}", t.approverDesk)
+          .replaceAll("{amount}", formatPeso(brief.amount))
+          .replaceAll(
+            "{available}",
+            brief.availableBefore === null
+              ? t.balanceUnknown
+              : formatPeso(brief.availableBefore)
+          );
+
+  // Red is reserved for "the money is not there". Being told somebody else
+  // decides is a routing fact, not an error, so it reads amber; a proposal that
+  // does exactly what the case needs reads green.
+  const verdictTone = (() => {
+    if (brief.blockReason === "OVER_AVAILABLE") {
+      return "border-red-200 bg-red-50 text-red-800";
+    }
+    if (
+      brief.blockReason === "SELF_PREPARED" ||
+      brief.blockReason === "NO_PERMISSION"
+    ) {
+      return "border-amber-200 bg-amber-50 text-amber-800";
+    }
+    if (brief.blockReason === null) {
+      if (brief.verdict === "UNBLOCKS" || brief.verdict === "COVERS") {
+        return "border-emerald-200 bg-emerald-50 text-emerald-800";
+      }
+      if (
+        brief.verdict === "PART_FUNDS" ||
+        brief.verdict === "OVER_FUNDS" ||
+        brief.verdict === "NO_ESTIMATE"
+      ) {
+        return "border-amber-200 bg-amber-50 text-amber-800";
+      }
+    }
+    return "border-line bg-surface-sunken text-ink-muted";
+  })();
+
+  return (
+    <div
+      className={`rounded-control border border-line bg-surface-sunken/60 ${
+        compact ? "space-y-3 p-3" : "space-y-4 p-4"
+      }`}
+    >
+      <p className="text-caption font-semibold uppercase tracking-wide text-ink-subtle">
+        {t.title}
+      </p>
+
+      {/* ── 1. Which resident concern this money is for ── */}
+      <div className="space-y-1.5">
+        <SectionTitle>{t.caseSection}</SectionTitle>
+        {earmark.concernId === null ? (
+          <p className="text-sm text-ink-muted">{t.caseNotLinked}</p>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-sm font-semibold text-ink">
+                {earmark.caseNumber}
+              </span>
+              {earmark.caseStatus && (
+                <StatusBadge
+                  status={earmark.caseStatus}
+                  label={statusLabel(earmark.caseStatus)}
+                />
+              )}
+              {brief.caseWaitingForBudget && (
+                <Badge tone="amber">{desk.caseWaitingForBudget}</Badge>
+              )}
+            </div>
+            <p className="text-sm text-ink">{earmark.caseTitle}</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-ink-subtle">
+              {earmark.caseOfficeName && (
+                <span>
+                  {t.caseOffice}: {earmark.caseOfficeName}
+                </span>
+              )}
+              <Button
+                href={`/official/concerns/${earmark.concernId}`}
+                size="sm"
+                variant="ghost"
+              >
+                {t.openCase}
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── 2. Whether the amount matches what that concern needs ── */}
+      <div className="space-y-1">
+        <SectionTitle>{t.moneySection}</SectionTitle>
+        <div className="divide-y divide-line">
+          <Figure
+            label={t.estimate}
+            value={
+              brief.caseEstimate === null
+                ? `— (${desk.caseNoEstimate})`
+                : formatPeso(brief.caseEstimate)
+            }
+          />
+          <Figure
+            label={t.setAsideBefore}
+            value={formatPeso(brief.setAsideBefore)}
+          />
+          <Figure label={t.thisEarmark} value={formatPeso(brief.amount)} />
+          <Figure
+            label={decided ? t.setAsideNow : t.setAsideAfter}
+            value={formatPeso(brief.setAsideAfter)}
+            tone="text-ink"
+          />
+          {brief.shortfallAfter > 0 && (
+            <Figure
+              label={decided ? t.shortfallNow : t.shortfall}
+              value={formatPeso(brief.shortfallAfter)}
+              tone="text-amber-700"
+            />
+          )}
+          {brief.excessOverEstimate > 0 && (
+            <Figure
+              label={t.excess}
+              value={formatPeso(brief.excessOverEstimate)}
+              tone="text-amber-700"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* ── 3. Which budget it comes out of, and what is left afterwards ── */}
+      <div className="space-y-1">
+        <SectionTitle>{t.sourceSection}</SectionTitle>
+        <p className="text-sm text-ink">
+          {earmark.allocationLabel}
+          <span className="block text-xs text-ink-subtle">
+            {earmark.coaCode} — {earmark.coaName} · {earmark.fundSourceCode} —{" "}
+            {earmark.fundSourceName} · FY {earmark.fiscalYear}
+            {earmark.officeName ? ` · ${earmark.officeName}` : ""}
+          </span>
+        </p>
+        <div className="divide-y divide-line">
+          <Figure
+            label={t.availableBefore}
+            value={
+              brief.balanceKnown
+                ? formatPeso(brief.availableBefore)
+                : t.balanceUnknown
+            }
+          />
+          <Figure
+            label={decided ? t.availableUnchanged : t.availableAfter}
+            value={
+              brief.balanceKnown
+                ? formatPeso(brief.availableAfter)
+                : t.balanceUnknown
+            }
+            tone={brief.fits ? "text-emerald-700" : "text-red-600"}
+          />
+        </div>
+      </div>
+
+      {/* ── 4. Who proposed it, so the approver knows whose word this is ── */}
+      <p className="text-xs text-ink-subtle">
+        {t.preparedBy}:{" "}
+        <span className="font-medium text-ink-muted">
+          {earmark.preparedByName ?? t.unrecorded}
+        </span>{" "}
+        ({roleName(earmark.preparedByRole, t.roleNames, t.unrecorded)}) ·{" "}
+        {formatDateTime(earmark.preparedAt)}
+        {earmark.approvedByName
+          ? ` · ${t.approvedBy}: ${earmark.approvedByName}`
+          : ""}
+      </p>
+
+      {/* ── the answer ── */}
+      <div className="space-y-2">
+        <p className={`rounded-control border px-3 py-2 text-sm ${verdictTone}`}>
+          {block ?? (decided ? (settledNote ?? verdict) : verdict)}
+        </p>
+        {/* A block still has to say what the money would do for the case: the
+            reader needs both facts, not just the reason they cannot act. */}
+        {block !== null && (
+          <p className="text-xs text-ink-subtle">{verdict}</p>
+        )}
+      </div>
+    </div>
+  );
+}

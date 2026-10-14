@@ -236,6 +236,7 @@ export default async function OfficialConcernDetailPage({
     canReviewFieldCheck,
     canProgress,
     canClose,
+    canPrepareEarmark,
   ] = await Promise.all([
     userCan(user.role.key, "case.validate"),
     userCan(user.role.key, "case.assess"),
@@ -246,6 +247,9 @@ export default async function OfficialConcernDetailPage({
     userCan(user.role.key, "case.fieldcheck.review"),
     userCan(user.role.key, "case.status.progress"),
     userCan(user.role.key, "case.status.close"),
+    // Lets the funding panel offer the shortcut that opens the treasury's
+    // earmark form on this case with the shortfall already filled in.
+    userCan(user.role.key, "treasury.earmark.prepare"),
   ]);
 
   // A live check is possible while the report is still in the inbox and while
@@ -530,7 +534,19 @@ export default async function OfficialConcernDetailPage({
             earliestDay={statusEarliestDay}
           />
         ) : null}
-        <FundingPanel funding={funding} locale={locale} />
+        <FundingPanel
+          funding={funding}
+          concernId={concern.id}
+          // Same expression the flow engine is fed above, so the panel and the
+          // step card never disagree about what the case needs.
+          estimate={
+            concern.caseAssessment
+              ? Number(concern.caseAssessment.totalCost ?? 0)
+              : null
+          }
+          canPrepareEarmark={canPrepareEarmark}
+          locale={locale}
+        />
       </div>
     );
   }

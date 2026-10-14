@@ -40,6 +40,45 @@ describe("copy", () => {
     expect(Object.keys(copy.fil.loading)).toEqual(Object.keys(copy.en.loading));
   });
 
+  it("keeps the treasury desk aligned, including the earmark approval brief", () => {
+    const en = copy.en.revamp.treasuryDesk;
+    const fil = copy.fil.revamp.treasuryDesk;
+    expect(Object.keys(fil)).toEqual(Object.keys(en));
+    expect(Object.keys(fil.earmarkReview)).toEqual(Object.keys(en.earmarkReview));
+    expect(Object.keys(fil.earmarkReview.verdicts)).toEqual(
+      Object.keys(en.earmarkReview.verdicts)
+    );
+    expect(Object.keys(fil.earmarkReview.blocks)).toEqual(
+      Object.keys(en.earmarkReview.blocks)
+    );
+    expect(Object.keys(fil.earmarkReview.roleNames)).toEqual(
+      Object.keys(en.earmarkReview.roleNames)
+    );
+  });
+
+  it("gives every earmark verdict and block a sentence in each language", () => {
+    const enDesk = copy.en.revamp.treasuryDesk;
+    const filDesk = copy.fil.revamp.treasuryDesk;
+    const en = enDesk.earmarkReview;
+    const fil = filDesk.earmarkReview;
+    for (const verdict of Object.values(en.verdicts)) {
+      expect(verdict.length).toBeGreaterThan(20);
+    }
+    for (const block of Object.values(fil.blocks)) {
+      expect(block.length).toBeGreaterThan(20);
+    }
+    // The placeholders the screens fill in have to survive translation.
+    expect(fil.verdicts.PART_FUNDS).toContain("{shortfall}");
+    expect(fil.verdicts.UNBLOCKS).toContain("{case}");
+    expect(fil.blocks.SELF_PREPARED).toContain("{desk}");
+    expect(fil.blocks.OVER_AVAILABLE).toContain("{available}");
+    expect(fil.confirmApprove).toContain("{amount}");
+    expect(enDesk.fundingProposeShortfall).toContain("{shortfall}");
+    expect(filDesk.fundingProposeShortfall).toContain("{shortfall}");
+    expect(enDesk.fundingNeedsMore).toContain("{shortfall}");
+    expect(filDesk.fundingNeedsMore).toContain("{shortfall}");
+  });
+
   it("gives the loading status a real translation in each language", () => {
     expect(copy.en.loading.label).toBe("Loading…");
     expect(copy.fil.loading.label).toBe("Naglo-load…");

@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { AllocationActions } from "@/components/treasury/allocation-actions";
 import { EarmarkActions } from "@/components/treasury/earmark-actions";
 import { EarmarkForm } from "@/components/treasury/earmark-form";
+import {
+  EarmarkReview,
+  earmarkReviewFacts,
+} from "@/components/treasury/earmark-review";
 import { LedgerTable } from "@/components/treasury/ledger-table";
 import { VoucherForm } from "@/components/treasury/voucher-form";
 import { PageHeader } from "@/components/ui/page-header";
@@ -16,6 +20,7 @@ import { requirePermission, userCan } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { allocationBalance, loadAllocationForActor } from "@/lib/treasury/budget";
+import { briefForEarmarkRow } from "@/lib/treasury/approval";
 import {
   ledgerRegister,
   listDisbursements,
@@ -53,15 +58,42 @@ export default async function TreasuryAllocationPage({ params }: PageProps) {
   );
   if (!allocation) notFound();
 
-  const [balance, earmarks, vouchers, ledger, canApprove, canPrepare] =
-    await Promise.all([
-      allocationBalance(db, allocationId),
-      listEarmarks(db, { actor, allocationId }),
-      listDisbursements(db, { actor, allocationId }),
-      ledgerRegister(db, { actor, allocationId, take: 50 }),
-      userCan(user.role.key, "treasury.allocation.approve"),
-      userCan(user.role.key, "treasury.allocation.prepare"),
-    ]);
+  const [
+    balance,
+    earmarks,
+    vouchers,
+    ledger,
+    canApprove,
+    canApproveEarmark,
+    canPrepareEarmark,
+    canPrepareVoucher,
+  ] = await Promise.all([
+    allocationBalance(db, allocationId),
+    // The earmark brief needs the live balance of the allocation (already loaded
+    // above for the header, but per-row so the cards are self-contained) and how
+    // much is set aside per case.
+    listEarmarks(db, { actor, allocationId, includeApprovalContext: true }),
+    listDisbursements(db, { actor, allocationId }),
+    ledgerRegister(db, { actor, allocationId, take: 50 }),
+    userCan(user.role.key, "treasury.allocation.approve"),
+    // Earmarks are decided on their own permissions. This page used to offer the
+    // earmark Approve and Cancel buttons behind the *allocation* permissions,
+    // which is a different right — a role holding one but not the other was
+    // shown a button the API would then refuse.
+    userCan(user.role.key, "treasury.earmark.approve"),
+    userCan(user.role.key, "treasury.earmark.prepare"),
+    userCan(user.role.key, "treasury.disbursement.prepare"),
+  ]);
+
+  const earmarkBriefs = new Map(
+    earmarks.map((row) => [
+      row.id,
+      briefForEarmarkRow(row, {
+        id: actor.id,
+        canApprove: canApproveEarmark,
+      }),
+    ])
+  );
 
   const figures = [
     { label: t.appropriation, value: balance.appropriated, tone: "text-ink" },
@@ -138,7 +170,7 @@ export default async function TreasuryAllocationPage({ params }: PageProps) {
         title={t.earmarksTitle}
         description={t.earmarksLead}
       >
-        {canPrepare && allocation.status === "APPROVED" ? (
+        {canPrepareEarmark && allocation.status === "APPROVED" ? (
           <div className="mb-4">
             <EarmarkForm
               allocations={[
@@ -160,52 +192,68 @@ export default async function TreasuryAllocationPage({ params }: PageProps) {
           <p className="text-sm text-ink-subtle">{t.noEntries}</p>
         ) : (
           <ul className="divide-y divide-line">
-            {earmarks.map((earmark) => (
-              <li key={earmark.id} className="space-y-2 py-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs text-ink-subtle">
-                    {earmark.code ?? `#${earmark.id}`}
-                  </span>
-                  <Badge
-                    tone={
-                      earmark.status === "APPROVED"
-                        ? "amber"
-                        : earmark.status === "PROPOSED"
-                          ? "sky"
-                          : "gray"
-                    }
-                  >
-                    {earmark.status}
-                  </Badge>
-                  <span className="text-sm font-semibold text-ink">
-                    {formatPeso(earmark.amount)}
-                  </span>
-                  {earmark.committed > 0 && (
-                    <span className="text-xs text-ink-subtle">
-                      {t.earmarkCommitted}: {formatPeso(earmark.committed)}
+            {earmarks.map((earmark) => {
+              const brief = earmarkBriefs.get(earmark.id);
+              if (!brief) return null;
+              return (
+                <li key={earmark.id} className="space-y-3 py-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-xs text-ink-subtle">
+                      {earmark.code ?? `#${earmark.id}`}
                     </span>
-                  )}
-                </div>
-                <p className="text-sm text-ink-muted">{earmark.purpose}</p>
-                <p className="text-xs text-ink-subtle">
-                  {earmark.caseNumber ? `${earmark.caseNumber} · ` : ""}
-                  {formatDateTime(earmark.preparedAt)}
-                </p>
-                <EarmarkActions
-                  earmarkId={earmark.id}
-                  status={earmark.status}
-                  canApprove={canApprove}
-                  canCancel={canPrepare}
-                  locale={locale}
-                />
-              </li>
-            ))}
+                    <Badge
+                      tone={
+                        earmark.status === "APPROVED"
+                          ? "amber"
+                          : earmark.status === "PROPOSED"
+                            ? "sky"
+                            : "gray"
+                      }
+                    >
+                      {earmark.status}
+                    </Badge>
+                    <span className="text-sm font-semibold text-ink">
+                      {formatPeso(earmark.amount)}
+                    </span>
+                    {earmark.committed > 0 && (
+                      <span className="text-xs text-ink-subtle">
+                        {t.earmarkCommitted}: {formatPeso(earmark.committed)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-ink-muted">{earmark.purpose}</p>
+                  <p className="text-xs text-ink-subtle">
+                    {earmark.caseNumber ? `${earmark.caseNumber} · ` : ""}
+                    {formatDateTime(earmark.preparedAt)}
+                  </p>
+
+                  {/* On the allocation page the balance is already on screen, so
+                      the brief is what ties each earmark back to a concern. */}
+                  <EarmarkReview
+                    earmark={earmarkReviewFacts(earmark)}
+                    brief={brief}
+                    locale={locale}
+                    compact
+                  />
+
+                  <EarmarkActions
+                    earmarkId={earmark.id}
+                    status={earmark.status}
+                    brief={brief}
+                    allocationLabel={earmark.allocationLabel}
+                    caseNumber={earmark.caseNumber}
+                    canCancel={canPrepareEarmark}
+                    locale={locale}
+                  />
+                </li>
+              );
+            })}
           </ul>
         )}
       </Card>
 
       <Card title={t.disbursementsTitle} description={t.disbursementsLead}>
-        {canPrepare && allocation.status === "APPROVED" ? (
+        {canPrepareVoucher && allocation.status === "APPROVED" ? (
           <div className="mb-4">
             <VoucherForm
               allocations={[

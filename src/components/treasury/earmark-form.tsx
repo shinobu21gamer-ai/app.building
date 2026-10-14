@@ -28,12 +28,18 @@ export type AllocationOption = {
 /**
  * Proposes an earmark: a slice of an allocation set aside for a purpose or a
  * case. Proposing reserves nothing — the amount is checked when it is approved.
+ *
+ * `presetConcernId` and `suggestedAmount` let a case's funding panel send the
+ * treasurer here with the case already picked and the amount already sized to
+ * what that case is still short, so the proposal is not typed from memory.
  */
 export function EarmarkForm({
   allocations,
   caseOptions = [],
   presetAllocationId = null,
   presetConcernId = null,
+  suggestedAmount = null,
+  defaultOpen = false,
   locale = "en",
 }: {
   allocations: AllocationOption[];
@@ -53,14 +59,28 @@ export function EarmarkForm({
   }>;
   presetAllocationId?: number | null;
   presetConcernId?: number | null;
+  /** Prefills the amount with what the chosen case still needs. */
+  suggestedAmount?: number | null;
+  /** Opens the form straight away, for a deep link that arrives mid-task. */
+  defaultOpen?: boolean;
   locale?: Locale;
 }) {
   const t = copy[locale].revamp.treasuryDesk;
   const common = copy[locale].revamp.common;
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Arriving from a case, the purpose is already known: name the concern the
+  // money is for, so the proposal says what it is without retyping the title.
+  const presetCase =
+    presetConcernId === null
+      ? null
+      : (caseOptions.find((option) => option.id === presetConcernId) ?? null);
+  const presetPurpose = presetCase
+    ? `${presetCase.caseNumber} — ${presetCase.title}`.slice(0, 200)
+    : null;
 
   if (allocations.length === 0) {
     return <p className="text-sm text-ink-subtle">{t.fundingMissing}</p>;
@@ -120,6 +140,7 @@ export function EarmarkForm({
             required
             maxLength={200}
             placeholder="Repair of Barangay Hall comfort rooms"
+            defaultValue={presetPurpose ?? undefined}
           />
         </div>
         <div>
@@ -133,7 +154,17 @@ export function EarmarkForm({
             min="0.01"
             step="0.01"
             required
+            defaultValue={
+              suggestedAmount !== null && suggestedAmount > 0
+                ? suggestedAmount.toFixed(2)
+                : undefined
+            }
           />
+          {suggestedAmount !== null && suggestedAmount > 0 && (
+            <p className="mt-1 text-xs text-ink-subtle">
+              {t.earmarkReview.shortfall}: {formatPeso(suggestedAmount)}
+            </p>
+          )}
         </div>
         <div>
           <Label htmlFor="earmark-allocation" required>

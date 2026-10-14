@@ -10,7 +10,7 @@
 // The pure functions here are unit-tested without a database;
 // `effectivePermissions()` is the only database-aware entry point.
 
-import { isRoleKey, type RoleKey } from "@/lib/auth/roles";
+import { ROLE_KEYS, isRoleKey, type RoleKey } from "@/lib/auth/roles";
 
 export const PERMISSION_CATEGORIES = [
   "CASE",
@@ -419,6 +419,21 @@ export function roleHasCodePermission(
   key: PermissionKey
 ): boolean {
   return permissionsForRole(roleKey).includes(key);
+}
+
+/**
+ * Every role the code matrix grants `key` to.
+ *
+ * The reverse of `roleHasCodePermission`, and what lets a notification be sent
+ * to "whoever may decide this" without naming roles at the call site. Naming
+ * them is how a queue ends up stranded: an earmark approval belongs to the
+ * Captain today, and a notification hard-coded to `CAPTAIN` would silently stop
+ * reaching an administrator if the matrix ever moved.
+ */
+export function rolesWithCodePermission(key: PermissionKey): RoleKey[] {
+  return ROLE_KEYS.filter((roleKey) =>
+    permissionsForRole(roleKey).includes(key)
+  );
 }
 
 export type PermissionOverrideRow = { key: string; allowed: boolean };
