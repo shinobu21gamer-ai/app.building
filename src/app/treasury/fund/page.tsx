@@ -60,10 +60,11 @@ export default async function TreasuryFundCasePage({
     officeId: user.officeId ?? null,
   };
 
-  const [cases, allocations, canPrepare] = await Promise.all([
+  const [cases, allocations, canPrepare, canAddBudget] = await Promise.all([
     listCasesAwaitingFunding(db),
     listAllocations(db, { actor, status: "APPROVED", take: 200 }),
     userCan(user.role.key, "treasury.earmark.prepare"),
+    userCan(user.role.key, "treasury.allocation.prepare"),
   ]);
 
   const queue = [...cases].sort((a, b) =>
@@ -201,7 +202,7 @@ export default async function TreasuryFundCasePage({
                           caseOfficeId: row.officeId,
                           allocations: allocationOptions,
                         })}
-                        hasAllocations={allocations.length > 0}
+                        canAddBudget={canAddBudget}
                         locale={locale}
                       />
                     </>

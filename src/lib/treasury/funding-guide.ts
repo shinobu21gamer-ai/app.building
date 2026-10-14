@@ -204,6 +204,23 @@ export function rankFundingOptions(input: {
 }
 
 /**
+ * True when the approved budgets, pooled together, could still cover the need
+ * — by splitting the reservation across more than one earmark. When this is
+ * false the money itself is finished: no rearrangement of reservations can
+ * fund the case, and only adding budget (or freeing cancelled earmarks) can.
+ */
+export function coversInTotal(input: {
+  shortfall: number;
+  allocations: FundingAllocationOption[];
+}): boolean {
+  const total = input.allocations.reduce(
+    (sum, option) => sum + option.available,
+    0
+  );
+  return total + MONEY_EPSILON >= input.shortfall;
+}
+
+/**
  * The queue order of the funding desk: the case a resident is waiting on
  * comes first (it is sitting in AWAITING_BUDGET), then the longest-waiting
  * case. `waitingSince` is when the case was submitted; AWAITING_BUDGET cases

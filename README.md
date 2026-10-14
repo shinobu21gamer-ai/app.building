@@ -774,8 +774,16 @@ Administrators can view and act on any office's cases.
   next, then other offices, each by the headroom left after the reservation
   (`rankFundingOptions`; no recommendation when nothing covers the need alone,
   because preselecting a line that would fail the approval's ledger check
-  would just be a button that can only fail). Proposing states the hand-over
-  out loud — the Captain approves, and only that approval reserves the money.
+  would just be a button that can only fail). When no line covers the need,
+  the form names which of two very different situations it is — the pooled
+  budgets still cover it (split the reservation across more than one earmark)
+  or the money itself is finished (`coversInTotal`) — and offers the way out
+  in place: an "Add a budget" link to prepare a new allocation (the Captain
+  approves it before it becomes spendable), with the other two ways money can
+  appear — an administrator topping up a line via Adjust, and cancelled
+  earmarks freeing their reservations — stated alongside. Proposing states
+  the hand-over out loud — the Captain approves, and only that approval
+  reserves the money.
   The pending-proposal arithmetic never double-books: a proposal waiting on
   the Captain counts towards what a new one must cover
   (`uncommittedShortfall`), and a card whose pending proposal already covers

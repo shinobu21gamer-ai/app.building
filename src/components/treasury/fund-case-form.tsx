@@ -16,7 +16,33 @@ import {
 import { apiRequest } from "@/lib/api-client";
 import { formatPeso } from "@/lib/cases/manpower";
 import { copy, type Locale } from "@/lib/i18n";
-import type { RankedFundingOption } from "@/lib/treasury/funding-guide";
+import {
+  coversInTotal,
+  type RankedFundingOption,
+} from "@/lib/treasury/funding-guide";
+
+/**
+ * The way out of a finished budget, stated where the dead end is: a link to
+ * prepare a new allocation (the Captain approves it before it becomes
+ * spendable) plus the two other ways money can appear — an administrator
+ * topping up a line, and cancelled earmarks freeing their reservations.
+ */
+function AddBudgetActions({
+  label,
+  howTo,
+}: {
+  label: string;
+  howTo: string;
+}) {
+  return (
+    <div className="space-y-2 rounded-control border border-line bg-surface px-3 py-2.5">
+      <Button href="/treasury/budgets" size="sm">
+        {label}
+      </Button>
+      <p className="text-xs leading-relaxed text-ink-subtle">{howTo}</p>
+    </div>
+  );
+}
 
 /** The case facts the form needs, as computed by the funding guide. */
 export type FundCaseFacts = {
@@ -48,16 +74,18 @@ export type FundCaseFacts = {
 export function FundCaseForm({
   facts,
   options,
-  hasAllocations,
+  canAddBudget = false,
   locale = "en",
 }: {
   facts: FundCaseFacts;
-  /** Ranked by `rankFundingOptions`: recommended first. */
+  /** Ranked by `rankFundingOptions`; empty when no approved allocation
+   *  exists at all, which the form reads as a setup gap rather than a
+   *  "this budget is too small" situation. */
   options: RankedFundingOption[];
-  /** Whether any approved allocation exists at all; false is a setup gap, not
-   *  a "this budget is too small" situation, and the message must not conflate
-   *  the two. */
-  hasAllocations: boolean;
+  /** Whether this reader may prepare a new allocation (Treasurer, Admin) —
+   *  the "the money is finished" dead end is only actionable if it links to
+   *  the way out. */
+  canAddBudget?: boolean;
   locale?: Locale;
 }) {
   const t = copy[locale].revamp.treasuryDesk.fundCase;
@@ -82,9 +110,12 @@ export function FundCaseForm({
 
   if (options.length === 0) {
     return (
-      <p className="rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-        {hasAllocations ? t.noOptionCovers : t.noAllocations}
-      </p>
+      <div className="space-y-2">
+        <p className="rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {t.noAllocations}
+        </p>
+        {canAddBudget && <AddBudgetActions label={t.addBudget} howTo={t.addBudgetHow} />}
+      </div>
     );
   }
 
@@ -101,6 +132,27 @@ export function FundCaseForm({
   const selected = options.find(
     (option) => option.option.allocationId === allocationId
   );
+
+  // The dead end, named for what it actually is: no line covers the need on
+  // its own, and either the pooled budgets still can (split the reservation)
+  // or the money itself is finished (only adding budget helps). Both say the
+  // way out instead of leaving the reader to invent one.
+  const anyCovers = options.some((option) => option.covers);
+  const totalAvailable = Math.round(
+    options.reduce((sum, option) => sum + option.option.available, 0) * 100
+  ) / 100;
+  const pooledCovers = coversInTotal({
+    shortfall: facts.uncommitted,
+    allocations: options.map((option) => option.option),
+  });
+  const budgetShortHint =
+    !anyCovers && pooledCovers
+      ? t.splitHint.replaceAll("{total}", formatPeso(totalAvailable))
+      : !anyCovers
+        ? t.exhaustedHint
+            .replaceAll("{total}", formatPeso(totalAvailable))
+            .replaceAll("{need}", formatPeso(facts.uncommitted))
+        : null;
 
   async function submit(formData: FormData) {
     setBusy(true);
@@ -208,6 +260,16 @@ export function FundCaseForm({
         <legend className="text-caption font-semibold uppercase tracking-wide text-ink-subtle">
           2. {t.stepBudget}
         </legend>
+        {budgetShortHint && (
+          <div className="space-y-2">
+            <p className="rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              {budgetShortHint}
+            </p>
+            {canAddBudget && (
+              <AddBudgetActions label={t.addBudget} howTo={t.addBudgetHow} />
+            )}
+          </div>
+        )}
         <div className="space-y-2">
           {options.map((option) => {
             const id = `fund-allocation-${facts.concernId}-${option.option.allocationId}`;

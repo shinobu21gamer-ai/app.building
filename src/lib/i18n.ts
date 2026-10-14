@@ -1822,10 +1822,20 @@ const en = {
         coversDetail:
           "{available} available — {remaining} left after this reservation.",
         notCovers: "Not enough on its own: {available} available for a {need} need.",
-        noOptionCovers:
-          "No approved budget covers this need on its own. Split it across more than one earmark, or ask an administrator to adjust the budgets.",
         noAllocations:
-          "There is no approved budget to draw from yet. An administrator has to open the fiscal year and approve an allocation first.",
+          "There is no approved budget to draw from yet. Add one below — the Captain approves it before the money becomes spendable. If no fiscal year is open, an administrator has to open one first (Admin \u2192 Treasury).",
+        // No single budget line covers the need. Two very different
+        // situations share that symptom, and the reader must not have to do
+        // the arithmetic to tell them apart: the pooled budgets still cover
+        // it (split the reservation), or the money itself is finished (only
+        // adding budget can help).
+        splitHint:
+          "No single budget covers this need on its own. The approved budgets have {total} left between them, so the reservation can be split across more than one earmark — or money can be added first.",
+        exhaustedHint:
+          "The approved budgets have only {total} left between them, and this case needs {need}. The money itself is finished: it has to be added before this case can be funded.",
+        addBudget: "Add a budget",
+        addBudgetHow:
+          "Prepare a new allocation on the Budgets page, for the amount authorized in the appropriation ordinance — the Captain approves it before the money becomes spendable. An administrator can also top up an existing budget line (Adjust), and cancelling earmarks that are no longer needed frees their reservations.",
         amountLabel: "Amount to set aside",
         purposeLabel: "Purpose",
         notesLabel: "Notes (optional)",
@@ -4410,7 +4420,7 @@ const fil: typeof en = {
         stateNeedsEstimate:
           "Wala pang cost estimate. Sine-save ito ng case office habang nasa assessment.",
         statePending:
-          "May naghihintay na aprobasyon ng Kapitan na ₱{amount}. Kapag inaprubahan nila ito, ganap nang pondado ang kaso na ito.",
+          "May naghihintay na aprobasyon ng Kapitan na {amount}. Kapag inaprubahan nila ito, ganap nang pondado ang kaso na ito.",
         statePendingPartial:
           "Ang {amount} ng estimate ng kasong ito ay naghihintay na sa aprobasyon ng Kapitan. Ang halagang nasa ibaba ay ang natitira lang pagkatapos noon, kaya ang pag-aprubaha sa pareho ay maglalagay ng eksaktong estimate.",
         stateCovered:
@@ -4433,10 +4443,15 @@ const fil: typeof en = {
         coversDetail:
           "{available} ang magagamit — {remaining} ang matitira pagkatapos ng reserbasyon.",
         notCovers: "Hindi kaya nang mag-isa: {available} lang ang magagamit para sa {need} na kailangan.",
-        noOptionCovers:
-          "Walang aprubadong badyet na kayang takpan ang kailangang ito nang mag-isa. Hatiin sa mahigit isang earmark, o hingin sa administrator na ayusin ang mga badyet.",
         noAllocations:
-          "Wala pang aprubadong badyet na pagkukunan. Kailangan muna ng administrator na buksan ang fiscal year at aprubahan ang isang allocation.",
+          "Wala pang aprubadong badyet na pagkukunan. Magdagdag sa ibaba — inaaprubahan muna ito ng Kapitan bago magagamit ang pera. Kung walang bukas na fiscal year, kailangan muna itong buksan ng administrator (Admin \u2192 Treasury).",
+        splitHint:
+          "Walang nag-iisang badyet na kayang takpan ito nang mag-isa. May {total} pa ang natitira sa mga aprubadong badyet kapag pinagsama, kaya pwedeng hatiin ang reserbasyon sa mahigit isang earmark — o magdagdag muna ng pondo.",
+        exhaustedHint:
+          "May {total} na lang ang natitira sa mga aprubadong badyet kapag pinagsama, at {need} ang kailangan ng kasong ito. Ubos na ang pondo: kailangang magdagdag bago ito mapondohan.",
+        addBudget: "Magdagdag ng badyet",
+        addBudgetHow:
+          "Ihanda ang bagong allocation sa pahina ng Badyet, ayon sa halagang pinahintulutan sa appropriation ordinance — inaaprubahan muna ito ng Kapitan bago magagamit ang pera. Ang administrator ay maaari ring magdagdag sa isang badyet (Adjust), at ang pagkansela sa mga earmark na hindi na kailangan ay nagpapalaya sa mga reserbasyon.",
         amountLabel: "Halagang ilalaan",
         purposeLabel: "Layunin",
         notesLabel: "Mga tala (opsyonal)",

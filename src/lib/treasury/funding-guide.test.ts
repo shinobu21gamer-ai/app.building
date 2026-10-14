@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   compareFundingQueue,
+  coversInTotal,
   fundingQueueState,
   fundingShortfall,
   rankFundingOptions,
@@ -215,6 +216,45 @@ describe("rankFundingOptions", () => {
       ],
     });
     expect(ranked[0].option.allocationId).toBe(2);
+  });
+});
+
+describe("coversInTotal", () => {
+  it("is true when the pooled budgets could cover the need by splitting", () => {
+    expect(
+      coversInTotal({
+        shortfall: 18_500,
+        allocations: [
+          option({ allocationId: 1, available: 10_000 }),
+          option({ allocationId: 2, available: 9_000 }),
+        ],
+      })
+    ).toBe(true);
+  });
+
+  it("is false when the money itself is finished", () => {
+    expect(
+      coversInTotal({
+        shortfall: 18_500,
+        allocations: [option({ allocationId: 1, available: 5_000 })],
+      })
+    ).toBe(false);
+  });
+
+  it("tolerates rounding on an exact pooled match", () => {
+    expect(
+      coversInTotal({
+        shortfall: 18_500,
+        allocations: [
+          option({ allocationId: 1, available: 9_250 }),
+          option({ allocationId: 2, available: 9_250.004 }),
+        ],
+      })
+    ).toBe(true);
+  });
+
+  it("is true for a need of zero", () => {
+    expect(coversInTotal({ shortfall: 0, allocations: [] })).toBe(true);
   });
 });
 
