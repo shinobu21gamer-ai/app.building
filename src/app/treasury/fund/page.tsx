@@ -13,13 +13,10 @@ import { requirePermission, userCan } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import {
-  compareFundingQueue,
+  fundingMoneyTotals,
   rankFundingOptions,
 } from "@/lib/treasury/funding-guide";
-import {
-  listAllocations,
-  listCasesAwaitingFunding,
-} from "@/lib/treasury/query";
+import { fundingQueue, listAllocations } from "@/lib/treasury/query";
 
 export const metadata: Metadata = {
   title: "Fund a case",
@@ -60,25 +57,15 @@ export default async function TreasuryFundCasePage({
     officeId: user.officeId ?? null,
   };
 
-  const [cases, allocations, canPrepare, canAddBudget] = await Promise.all([
-    listCasesAwaitingFunding(db),
+  const [funding, allocations, canPrepare, canAddBudget] = await Promise.all([
+    fundingQueue(db),
     listAllocations(db, { actor, status: "APPROVED", take: 200 }),
     userCan(user.role.key, "treasury.earmark.prepare"),
     userCan(user.role.key, "treasury.allocation.prepare"),
   ]);
 
-  const queue = [...cases].sort((a, b) =>
-    compareFundingQueue(
-      {
-        waitingForBudget: a.waitingForBudget,
-        waitingSince: a.awaitingBudgetAt ?? a.submittedAt,
-      },
-      {
-        waitingForBudget: b.waitingForBudget,
-        waitingSince: b.awaitingBudgetAt ?? b.submittedAt,
-      }
-    )
-  );
+  // Already in queue order: AWAITING_BUDGET first, then the longest wait.
+  const queue = funding.rows;
 
   // The queue the funding decision is for. PROPOSED_PENDING stays visible —
   // with an amber card, so "where is case X?" is answered here rather than in
@@ -89,6 +76,13 @@ export default async function TreasuryFundCasePage({
   const notReady = queue.filter(
     (row) => row.state === "NEEDS_ESTIMATE" || row.state === "COVERED"
   );
+
+  // What the cards below cost in total, totalled from exactly those rows — so
+  // the headline cannot disagree with the cards it introduces. The treasurer's
+  // first question on this page is not "how many cases?" but "how much money
+  // is this?", and a proposal is a different conversation from a supplemental
+  // appropriation.
+  const cards = fundingMoneyTotals(actionable);
 
   const presetConcernId = Number(params.concernId ?? "");
   const highlightId = Number.isInteger(presetConcernId)
@@ -133,6 +127,19 @@ export default async function TreasuryFundCasePage({
           <div className="space-y-1">
             <h2 className="text-subtitle text-ink">{t.queueTitle}</h2>
             <p className="text-sm text-ink-subtle">{t.queueLead}</p>
+            <p className="pt-1 text-sm">
+              <span className="font-semibold tabular-nums text-ink">
+                {t.queueNeed
+                  .replaceAll("{count}", String(cards.cases))
+                  .replaceAll("{amount}", formatPeso(cards.need))}
+              </span>
+              <span className="text-ink-subtle">
+                {" · "}
+                {t.queueSplit
+                  .replaceAll("{toPropose}", formatPeso(cards.toPropose))
+                  .replaceAll("{pending}", formatPeso(cards.pending))}
+              </span>
+            </p>
           </div>
           {actionable.map((row) => {
             const highlighted = row.concernId === highlightId;
@@ -157,6 +164,14 @@ export default async function TreasuryFundCasePage({
                       {row.waitingForBudget && (
                         <Badge tone="amber">{desk.caseWaitingForBudget}</Badge>
                       )}
+                      {/* The amount, before the form explains it: this is the
+                          figure the treasurer came to the page for. */}
+                      <Badge tone={row.state === "PROPOSED_PENDING" ? "sky" : "amber"}>
+                        {t.needBadge.replaceAll(
+                          "{amount}",
+                          formatPeso(row.shortfall)
+                        )}
+                      </Badge>
                     </div>
                     <p className="text-sm text-ink">{row.title}</p>
                     <p className="text-xs text-ink-subtle">
@@ -247,6 +262,14 @@ export default async function TreasuryFundCasePage({
                       ? t.stateNeedsEstimate
                       : t.stateCovered}
                   </p>
+                  {row.state === "COVERED" && row.estimate !== null && (
+                    <p className="text-xs font-medium tabular-nums text-ink-muted">
+                      {t.estimateChip.replaceAll(
+                        "{amount}",
+                        formatPeso(row.estimate)
+                      )}
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>

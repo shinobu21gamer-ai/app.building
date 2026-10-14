@@ -1585,6 +1585,22 @@ const en = {
       awaitingApprovalAllocations: "Allocations to approve",
       awaitingApprovalEarmarks: "Earmarks to approve",
       awaitingFundingCases: "Cases waiting for their budget",
+      // ---- "how much money do the cases need?" ----
+      // A case count cannot tell a treasurer whether the barangay is ₱1,500
+      // short or ₱150,000 short, and those need different responses: one is an
+      // earmark, the other is a supplemental appropriation.
+      fundingNeedTitle: "What the cases need",
+      fundingNeedLead:
+        "The money the cases sitting in Awaiting budget are waiting on: the total, the part already with the Captain, and the amount each case needs.",
+      fundingNeedTotal: "{count} case(s) are waiting on this money",
+      fundingNeedToPropose: "{amount} still to propose",
+      fundingNeedPending: "{amount} already with the Captain",
+      fundingNeedPendingPart: "{amount} of it is with the Captain",
+      fundingNeedNone:
+        "No case is waiting on money: every case in Awaiting budget has its estimate set aside.",
+      fundingNeedUnestimated:
+        "{count} case(s) in Awaiting budget have no cost estimate yet, so what they need is not in this total.",
+      fundingNeedMore: "{count} more case(s) on the funding desk",
       awaitingCertification: "Vouchers to certify",
       awaitingApprovalVouchers: "Vouchers to approve",
       awaitingRelease: "Vouchers to release",
@@ -1869,6 +1885,13 @@ const en = {
         queueLead:
           "Waiting in Awaiting budget first, then the longest wait. Each card says what is missing and whose desk it is on.",
         queueEmpty: "No case is waiting on money right now.",
+        // The total over the cards below: the treasurer's first question here
+        // is "how much money is this?", not "how many cases?".
+        queueNeed: "{count} case(s) need {amount} before their work can start",
+        queueSplit:
+          "{toPropose} still to propose, {pending} already with the Captain",
+        needBadge: "Needs {amount}",
+        estimateChip: "Estimate {amount} — fully set aside",
         notReadyTitle: "Open cases not ready for funding",
         notReadyLead:
           "Shown so nothing looks missing: each of these is waiting on something other than the treasury.",
@@ -4310,6 +4333,22 @@ const fil: typeof en = {
       awaitingApprovalAllocations: "Allocation na aaprubahan",
       awaitingApprovalEarmarks: "Earmark na aaprubahan",
       awaitingFundingCases: "Mga kasong naghihintay ng pondo",
+      // ---- "magkano ang kailangan ng mga kaso?" ----
+      // Hindi masasabi ng bilang ng kaso kung ₱1,500 lang o ₱150,000 ang
+      // kulang, at magkaiba ang tugon doon: earmark ang una, supplemental
+      // appropriation ang pangalawa.
+      fundingNeedTitle: "Kung magkano ang kailangan ng mga kaso",
+      fundingNeedLead:
+        "Ang perang hinihintay ng mga kasong nasa Awaiting budget: ang kabuuan, ang bahaging nasa Kapitan na, at ang halagang kailangan ng bawat kaso.",
+      fundingNeedTotal: "{count} kaso ang naghihintay sa perang ito",
+      fundingNeedToPropose: "{amount} pa ang imumungkahi",
+      fundingNeedPending: "{amount} ang nasa Kapitan na",
+      fundingNeedPendingPart: "{amount} dito ang nasa Kapitan",
+      fundingNeedNone:
+        "Walang kasong naghihintay ng pera: nakalaan na ang estimate ng bawat kasong nasa Awaiting budget.",
+      fundingNeedUnestimated:
+        "{count} kasong nasa Awaiting budget ang wala pang cost estimate, kaya wala sa kabuuang ito ang kailangan nila.",
+      fundingNeedMore: "{count} pang kaso sa funding desk",
       awaitingCertification: "Voucher na sesertipikahan",
       awaitingApprovalVouchers: "Voucher na aaprubahan",
       awaitingRelease: "Voucher na ilalabas",
@@ -4579,6 +4618,14 @@ const fil: typeof en = {
         queueLead:
           "Nasa paghihintay ng badyet muna, saka ang pinakamatagal nang naghihintay. Sinasabi ng bawat kard kung ano ang kulang at kaninong desk ito nakasalalay.",
         queueEmpty: "Walang kasong naghihintay ng pondo ngayon.",
+        // Ang kabuuan ng mga kard sa ibaba: ang unang tanong dito ay
+        // "magkano ang pera?", hindi "ilan ang kaso?".
+        queueNeed:
+          "{count} kaso ang nangangailangan ng {amount} bago magsimula ang trabaho",
+        queueSplit:
+          "{toPropose} pa ang imumungkahi, {pending} ang nasa Kapitan na",
+        needBadge: "Kailangan {amount}",
+        estimateChip: "Estimate {amount} — buong nakalaan na",
         notReadyTitle: "Mga bukas na kasong hindi pa handa pondohan",
         notReadyLead:
           "Ipinapakita para walang misteryoso: ang bawat isa ay naghihintay ng iba, hindi ng treasury.",

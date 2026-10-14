@@ -2,12 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   compareFundingQueue,
   coversInTotal,
+  fundingMoneyTotals,
   fundingQueueState,
+  fundingQueueSummary,
   fundingShortfall,
+  pendingTowardNeed,
   rankFundingOptions,
+  sortFundingQueue,
   uncommittedShortfall,
   type FundingAllocationOption,
   type FundingCaseFacts,
+  type FundingQueueRow,
 } from "./funding-guide";
 
 function option(
@@ -277,5 +282,162 @@ describe("compareFundingQueue", () => {
         { waitingForBudget: true, waitingSince: day(3) }
       )
     ).toBeLessThan(0);
+  });
+});
+
+// A queue row derived from facts, so the state under test is the one the
+// funding guide itself assigns rather than one typed in by hand.
+function queueRow(
+  overrides: Partial<FundingCaseFacts> & { waitingForBudget?: boolean } = {}
+): FundingQueueRow {
+  const { waitingForBudget = true, ...factsOverrides } = overrides;
+  const caseFacts = facts(factsOverrides);
+  return {
+    estimate: caseFacts.estimate,
+    setAside: caseFacts.setAside,
+    proposed: caseFacts.proposed,
+    waitingForBudget,
+    state: fundingQueueState(caseFacts),
+  };
+}
+
+describe("pendingTowardNeed", () => {
+  it("is the proposed money when it does not yet cover the need", () => {
+    expect(
+      pendingTowardNeed({ estimate: 20_000, setAside: 0, proposed: 5_000 })
+    ).toBe(5_000);
+  });
+
+  it("stops at what the case is missing, so an over-proposal cannot inflate it", () => {
+    expect(
+      pendingTowardNeed({ estimate: 10_000, setAside: 2_000, proposed: 25_000 })
+    ).toBe(8_000);
+  });
+
+  it("is zero while nothing is proposed or nothing is needed", () => {
+    expect(pendingTowardNeed({ estimate: 10_000, setAside: 0, proposed: 0 })).toBe(0);
+    expect(
+      pendingTowardNeed({ estimate: 10_000, setAside: 10_000, proposed: 4_000 })
+    ).toBe(0);
+  });
+
+  it("is zero without an estimate to measure against", () => {
+    expect(
+      pendingTowardNeed({ estimate: null, setAside: 0, proposed: 5_000 })
+    ).toBe(0);
+  });
+});
+
+describe("fundingMoneyTotals", () => {
+  it("adds the need up and splits it into proposed and still-to-propose", () => {
+    const totals = fundingMoneyTotals([
+      { estimate: 18_500, setAside: 0, proposed: 0 },
+      { estimate: 40_000, setAside: 10_000, proposed: 0 },
+      { estimate: 25_000, setAside: 0, proposed: 25_000 },
+    ]);
+
+    expect(totals).toEqual({
+      cases: 3,
+      need: 73_500,
+      pending: 25_000,
+      toPropose: 48_500,
+    });
+    expect(totals.pending + totals.toPropose).toBe(totals.need);
+  });
+
+  it("reads no cases as no money", () => {
+    expect(fundingMoneyTotals([])).toEqual({
+      cases: 0,
+      need: 0,
+      pending: 0,
+      toPropose: 0,
+    });
+  });
+});
+
+describe("fundingQueueSummary", () => {
+  it("totals only the cases money is holding up", () => {
+    const summary = fundingQueueSummary([
+      queueRow({ concernId: 1, estimate: 18_500 }),
+      queueRow({ concernId: 2, estimate: 40_000, setAside: 10_000 }),
+      queueRow({ concernId: 3, estimate: 25_000, proposed: 25_000 }),
+      // Fully set aside: waiting on its office, not on money.
+      queueRow({ concernId: 4, estimate: 12_000, setAside: 12_000 }),
+      // Not in AWAITING_BUDGET yet, so not waiting on money.
+      queueRow({ concernId: 5, estimate: 9_000, waitingForBudget: false }),
+    ]);
+
+    expect(summary).toEqual({
+      cases: 3,
+      need: 73_500,
+      pending: 25_000,
+      toPropose: 48_500,
+      unestimated: 0,
+    });
+  });
+
+  it("counts an unestimated case instead of pricing it at zero", () => {
+    const summary = fundingQueueSummary([
+      queueRow({ concernId: 1, estimate: null }),
+      queueRow({ concernId: 2, estimate: 18_500 }),
+    ]);
+
+    // Saying "₱18,500 needed" alone would hide a resident waiting on a case
+    // whose cost nobody has worked out yet.
+    expect(summary.unestimated).toBe(1);
+    expect(summary.cases).toBe(1);
+    expect(summary.need).toBe(18_500);
+  });
+
+  it("never counts the same pending proposal twice", () => {
+    const summary = fundingQueueSummary([
+      queueRow({ concernId: 1, estimate: 10_000, setAside: 2_000, proposed: 25_000 }),
+    ]);
+
+    expect(summary.need).toBe(8_000);
+    expect(summary.pending).toBe(8_000);
+    expect(summary.toPropose).toBe(0);
+  });
+
+  it("reads an empty queue as nothing needed", () => {
+    expect(fundingQueueSummary([])).toEqual({
+      cases: 0,
+      need: 0,
+      pending: 0,
+      toPropose: 0,
+      unestimated: 0,
+    });
+  });
+});
+
+describe("sortFundingQueue", () => {
+  const row = (
+    concernId: number,
+    submittedAt: Date,
+    awaitingBudgetAt: Date | null
+  ) => ({ concernId, submittedAt, awaitingBudgetAt, waitingForBudget: awaitingBudgetAt !== null });
+
+  it("puts the money stage first, then the longest wait, without mutating the input", () => {
+    const input = [
+      row(1, new Date(2026, 9, 5), null),
+      row(2, new Date(2026, 9, 1), new Date(2026, 9, 12)),
+      row(3, new Date(2026, 9, 2), new Date(2026, 9, 9)),
+    ];
+
+    expect(sortFundingQueue(input).map((entry) => entry.concernId)).toEqual([
+      3, 2, 1,
+    ]);
+    expect(input.map((entry) => entry.concernId)).toEqual([1, 2, 3]);
+  });
+
+  it("falls back to the submission date for a case with no budget-stage timestamp", () => {
+    const sorted = sortFundingQueue([
+      { concernId: 1, submittedAt: new Date(2026, 9, 8), awaitingBudgetAt: null, waitingForBudget: true },
+      { concernId: 2, submittedAt: new Date(2026, 9, 3), awaitingBudgetAt: new Date(2026, 9, 10), waitingForBudget: true },
+    ]);
+
+    // Case 1 has waited since it was submitted, longer than case 2 has waited
+    // in the money stage itself.
+    expect(sorted.map((entry) => entry.concernId)).toEqual([1, 2]);
   });
 });

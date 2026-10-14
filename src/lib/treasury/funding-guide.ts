@@ -95,6 +95,21 @@ export function uncommittedShortfall(facts: FundingCaseFacts): number {
 }
 
 /**
+ * Pending money that counts toward this case's need.
+ *
+ * A proposal is capped at what the case is actually missing: if two people
+ * proposed for the same case, the second proposal does not make the queue's
+ * "already moving" figure bigger than the need it is moving toward.
+ */
+export function pendingTowardNeed(facts: {
+  estimate: number | null;
+  setAside: number;
+  proposed: number;
+}): number {
+  return money(Math.min(Math.max(0, facts.proposed), fundingShortfall(facts)));
+}
+
+/**
  * Where a case stands in the funding queue.
  *
  * NEEDS_ESTIMATE   — no saved estimate: the case office must finish the
@@ -236,3 +251,132 @@ export function compareFundingQueue(
   }
   return a.waitingSince.getTime() - b.waitingSince.getTime();
 }
+
+/**
+ * The queue order applied to the rows the read layer returns: the same
+ * comparator the funding desk has always used, kept here so the dashboard and
+ * the funding page cannot order the same queue two different ways.
+ */
+export function sortFundingQueue<
+  T extends {
+    waitingForBudget: boolean;
+    awaitingBudgetAt: Date | null;
+    submittedAt: Date;
+  },
+>(rows: readonly T[]): T[] {
+  return [...rows].sort((a, b) =>
+    compareFundingQueue(
+      {
+        waitingForBudget: a.waitingForBudget,
+        waitingSince: a.awaitingBudgetAt ?? a.submittedAt,
+      },
+      {
+        waitingForBudget: b.waitingForBudget,
+        waitingSince: b.awaitingBudgetAt ?? b.submittedAt,
+      }
+    )
+  );
+}
+
+/**
+ * The money position of one case as the queue holds it — only the facts a
+ * queue total needs, so the total can be computed wherever the rows already
+ * are (dashboard, funding page, API) instead of being defined twice.
+ */
+export type FundingQueueRow = {
+  state: FundingQueueState;
+  /** The case is in AWAITING_BUDGET: a resident is waiting on this money. */
+  waitingForBudget: boolean;
+  estimate: number | null;
+  setAside: number;
+  proposed: number;
+};
+
+/**
+ * What a set of cases costs, in money rather than in case counts.
+ *
+ * A count says "three cases are stuck"; it does not say whether the treasury
+ * is ₱1,500 short or ₱150,000 short, and those are different conversations —
+ * one is a proposal, the other is a supplemental appropriation. These are the
+ * figures behind "how much money do the cases need?".
+ */
+export type FundingMoneyTotals = {
+  /** How many cases the figures cover. */
+  cases: number;
+  /** What they still need: estimate minus what is already set aside. */
+  need: number;
+  /** The part of that need already waiting on the Captain's approval. */
+  pending: number;
+  /** The part a new proposal must still cover: `need - pending`. */
+  toPropose: number;
+};
+
+/** The money totals plus the cases whose need cannot be known yet. */
+export type FundingQueueSummary = FundingMoneyTotals & {
+  /** Cases in AWAITING_BUDGET with no cost estimate: their need is unknown. */
+  unestimated: number;
+};
+
+/**
+ * Adds up what a set of cases needs.
+ *
+ * `need` is split into the money already proposed (`pending`, sitting on the
+ * Captain's desk) and the money a new proposal must still cover
+ * (`toPropose`), so the two always add back up to `need` and neither is ever
+ * counted twice.
+ */
+export function fundingMoneyTotals(
+  rows: ReadonlyArray<{
+    estimate: number | null;
+    setAside: number;
+    proposed: number;
+  }>
+): FundingMoneyTotals {
+  const totals: FundingMoneyTotals = {
+    cases: 0,
+    need: 0,
+    pending: 0,
+    toPropose: 0,
+  };
+
+  for (const row of rows) {
+    const need = fundingShortfall(row);
+    const pending = pendingTowardNeed(row);
+    totals.cases += 1;
+    totals.need = money(totals.need + need);
+    totals.pending = money(totals.pending + pending);
+    totals.toPropose = money(totals.toPropose + (need - pending));
+  }
+
+  return totals;
+}
+
+/**
+ * Totals the funding queue in pesos.
+ *
+ * Only cases sitting in AWAITING_BUDGET are counted: a case still being
+ * assessed is not waiting on money yet, and a case whose estimate is fully set
+ * aside is waiting on its office to start the work. Cases in that stage with
+ * no saved estimate cannot be totalled at all, so they are counted separately
+ * — otherwise the total would read as "₱0 needed" while a resident waits.
+ */
+export function fundingQueueSummary(
+  rows: readonly FundingQueueRow[]
+): FundingQueueSummary {
+  let unestimated = 0;
+  const inQueue: FundingQueueRow[] = [];
+
+  for (const row of rows) {
+    if (!row.waitingForBudget) continue;
+    if (row.state === "NEEDS_ESTIMATE") {
+      unestimated += 1;
+      continue;
+    }
+    // COVERED: the money is set aside, so there is nothing to find.
+    if (row.state === "COVERED") continue;
+    inQueue.push(row);
+  }
+
+  return { ...fundingMoneyTotals(inQueue), unestimated };
+}
+

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BalanceCards } from "@/components/treasury/balance-cards";
+import { FundingNeedCard } from "@/components/treasury/funding-need-card";
 import { AgingBars, LedgerTable } from "@/components/treasury/ledger-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { StepGuide } from "@/components/cases/step-guide";
@@ -10,6 +11,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { treasuryDashboard } from "@/lib/treasury/query";
+import { formatPeso } from "@/lib/cases/manpower";
 
 export const metadata: Metadata = {
   title: "Treasury",
@@ -35,10 +37,22 @@ export default async function TreasuryDashboardPage() {
     },
   });
 
-  const pending = [
+  const pending: Array<{
+    label: string;
+    count: number;
+    href: string;
+    /** Money behind a count, for the queue where the count is not the story. */
+    amount?: number | null;
+  }> = [
     {
       label: t.awaitingFundingCases,
       count: dashboard.counts.casesAwaitingFunding,
+      // A count says how many cases are stuck; this says what finding their
+      // money costs, from the same rows the funding desk lists.
+      amount:
+        dashboard.counts.casesAwaitingFunding > 0
+          ? dashboard.funding.summary.need
+          : null,
       href: "/treasury/fund",
     },
     {
@@ -96,6 +110,10 @@ export default async function TreasuryDashboardPage() {
 
       <BalanceCards totals={dashboard.totals} locale={locale} />
 
+      {/* The balances say what the treasury holds; this says what the cases
+          are waiting on, in pesos and per case. */}
+      <FundingNeedCard funding={dashboard.funding} locale={locale} />
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title={t.pendingTitle}>
           <ul className="divide-y divide-line">
@@ -106,6 +124,11 @@ export default async function TreasuryDashboardPage() {
               >
                 <span className="text-sm text-ink-muted">{entry.label}</span>
                 <span className="flex items-center gap-3">
+                  {entry.amount ? (
+                    <span className="text-xs font-semibold tabular-nums text-ink-muted">
+                      {formatPeso(entry.amount)}
+                    </span>
+                  ) : null}
                   <span className="text-sm font-semibold tabular-nums text-ink">
                     {entry.count}
                   </span>
