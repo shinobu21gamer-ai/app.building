@@ -151,6 +151,7 @@ export function VerificationForm({
               value={method}
               onChange={(event) => setMethod(event.target.value)}
               aria-required="true"
+              aria-describedby={fieldErrors.method ? "identity-method-error" : undefined}
               className="h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
             >
               <option value="">{t.verification.methodPlaceholder}</option>
@@ -160,7 +161,9 @@ export function VerificationForm({
                 </option>
               ))}
             </select>
-            {fieldErrors.method && <FieldError>{fieldErrors.method}</FieldError>}
+            {fieldErrors.method && (
+              <FieldError id="identity-method-error">{fieldErrors.method}</FieldError>
+            )}
           </div>
 
           {method === "OTHER" && (
@@ -173,10 +176,11 @@ export function VerificationForm({
                 value={idTypeLabel}
                 onChange={(event) => setIdTypeLabel(event.target.value)}
                 aria-required="true"
+                aria-describedby={fieldErrors.idTypeLabel ? "identity-type-label-error" : undefined}
                 maxLength={80}
               />
               {fieldErrors.idTypeLabel && (
-                <FieldError>{fieldErrors.idTypeLabel}</FieldError>
+                <FieldError id="identity-type-label-error">{fieldErrors.idTypeLabel}</FieldError>
               )}
             </div>
           )}
@@ -192,11 +196,14 @@ export function VerificationForm({
               aria-required="true"
               autoComplete="off"
               maxLength={40}
+              aria-describedby={fieldErrors.idNumber ? "identity-number-error" : "identity-number-hint"}
             />
-            <p className="mt-1 text-xs text-ink-subtle">
+            <p id="identity-number-hint" className="mt-1 text-xs text-ink-subtle">
               {t.verification.idNumberHint}
             </p>
-            {fieldErrors.idNumber && <FieldError>{fieldErrors.idNumber}</FieldError>}
+            {fieldErrors.idNumber && (
+              <FieldError id="identity-number-error">{fieldErrors.idNumber}</FieldError>
+            )}
           </div>
 
           <div>
@@ -211,11 +218,14 @@ export function VerificationForm({
               aria-required="true"
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
               className="block w-full text-sm text-ink-muted file:mr-3 file:rounded-control file:border file:border-line-strong file:bg-surface file:px-3 file:py-2 file:text-sm"
+              aria-describedby={fieldErrors.idImage ? "identity-image-error" : "identity-image-hint"}
             />
-            <p className="mt-1 text-xs text-ink-subtle">
+            <p id="identity-image-hint" className="mt-1 text-xs text-ink-subtle">
               {t.verification.idPhotoHint}
             </p>
-            {fieldErrors.idImage && <FieldError>{fieldErrors.idImage}</FieldError>}
+            {fieldErrors.idImage && (
+              <FieldError id="identity-image-error">{fieldErrors.idImage}</FieldError>
+            )}
           </div>
 
           <fieldset className="space-y-2">
@@ -228,6 +238,7 @@ export function VerificationForm({
                 checked={confirmAccuracy}
                 onChange={(event) => setConfirmAccuracy(event.target.checked)}
                 aria-required="true"
+                aria-describedby={fieldErrors.confirm ? "identity-confirm-error" : undefined}
                 className="mt-0.5 h-4 w-4 rounded border-line-strong"
               />
               <span>{t.verification.confirmAccuracy}</span>
@@ -238,11 +249,14 @@ export function VerificationForm({
                 checked={consent}
                 onChange={(event) => setConsent(event.target.checked)}
                 aria-required="true"
+                aria-describedby={fieldErrors.confirm ? "identity-confirm-error" : undefined}
                 className="mt-0.5 h-4 w-4 rounded border-line-strong"
               />
               <span>{t.verification.consentIdVerification}</span>
             </label>
-            {fieldErrors.confirm && <FieldError>{fieldErrors.confirm}</FieldError>}
+            {fieldErrors.confirm && (
+              <FieldError id="identity-confirm-error">{fieldErrors.confirm}</FieldError>
+            )}
           </fieldset>
 
           <Button type="submit" loading={busy} disabled={busy}>

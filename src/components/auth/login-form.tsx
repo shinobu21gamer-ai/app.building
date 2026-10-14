@@ -44,7 +44,7 @@ export function LoginForm({
       if (!result.success) {
         setFieldErrors((prev) => ({
           ...prev,
-          [name]: extractFieldErrors(result.error.issues)[name] || "Invalid value",
+          [name]: extractFieldErrors(result.error.issues)[name] || t.invalidValue,
         }));
       } else {
         setFieldErrors((prev) => {
@@ -54,7 +54,7 @@ export function LoginForm({
         });
       }
     }
-  }, []);
+  }, [t.invalidValue]);
 
   const handleBlur = (name: "email" | "password", value: string) => {
     setTouched((prev) => ({ ...prev, [name]: true }));
@@ -120,8 +120,11 @@ export function LoginForm({
           disabled={submitting}
           placeholder="you@example.com"
           required
+          aria-describedby={touched.email && fieldErrors.email ? "email-error" : undefined}
         />
-        {touched.email && fieldErrors.email && <FieldError>{fieldErrors.email}</FieldError>}
+        {touched.email && fieldErrors.email && (
+          <FieldError id="email-error">{fieldErrors.email}</FieldError>
+        )}
       </div>
 
       <div>
@@ -139,6 +142,7 @@ export function LoginForm({
             disabled={submitting}
             required
             className="pr-10"
+            aria-describedby={touched.password && fieldErrors.password ? "password-error" : undefined}
           />
           <button
             type="button"
@@ -153,7 +157,9 @@ export function LoginForm({
             )}
           </button>
         </div>
-        {touched.password && fieldErrors.password && <FieldError>{fieldErrors.password}</FieldError>}
+        {touched.password && fieldErrors.password && (
+          <FieldError id="password-error">{fieldErrors.password}</FieldError>
+        )}
       </div>
 
       <Button

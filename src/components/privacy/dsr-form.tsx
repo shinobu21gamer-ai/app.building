@@ -86,6 +86,7 @@ export function DsrRequestForm({ locale = "en" }: { locale?: Locale }) {
           aria-required="true"
           onChange={(event) => setType(event.target.value as DsrType | "")}
           className={selectStyles}
+          aria-describedby={fieldErrors.type ? "dsr-type-error" : undefined}
         >
           <option value="">—</option>
           {DSR_TYPES.map((value) => (
@@ -94,7 +95,7 @@ export function DsrRequestForm({ locale = "en" }: { locale?: Locale }) {
             </option>
           ))}
         </select>
-        {fieldErrors.type && <FieldError>{fieldErrors.type}</FieldError>}
+        {fieldErrors.type && <FieldError id="dsr-type-error">{fieldErrors.type}</FieldError>}
       </div>
 
       <div>
@@ -116,13 +117,16 @@ export function DsrRequestForm({ locale = "en" }: { locale?: Locale }) {
             checked={confirmed}
             onChange={(event) => setConfirmed(event.target.checked)}
             aria-required="true"
+            aria-describedby={fieldErrors.confirmed ? "dsr-confirmed-error" : undefined}
             className="mt-0.5 h-4 w-4 rounded border-line-strong"
           />
           <span>
             {t.confirm}
           </span>
         </label>
-        {fieldErrors.confirmed && <FieldError>{fieldErrors.confirmed}</FieldError>}
+        {fieldErrors.confirmed && (
+          <FieldError id="dsr-confirmed-error">{fieldErrors.confirmed}</FieldError>
+        )}
       </div>
 
       <Button type="submit" loading={busy} disabled={busy}>

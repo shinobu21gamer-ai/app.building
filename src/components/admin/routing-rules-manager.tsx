@@ -361,6 +361,8 @@ export function RoutingRulesManager({
                             .replace("{office}", rule.office.name)}
                           confirmLabel={t.deleteRule}
                           tone="danger"
+                          cancelLabel={t.cancelAction}
+                          busyLabel={t.workingEllipsis}
                           onConfirm={() => deleteRule(rule)}
                         />
                       </div>

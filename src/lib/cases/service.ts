@@ -317,11 +317,17 @@ export async function changeConcernStatus(
     if (fieldBlock) throw createApiError.badRequest(fieldBlock);
   }
 
-  // ---- gate: every case waits in AWAITING_BUDGET, sized and funded ----
-  if (input.status === "AWAITING_BUDGET" || input.status === "IN_PROGRESS") {
+  // ---- gate: every case waits in AWAITING_BUDGET, sized and funded; and a
+  // case cannot be marked resolved if crew changes while it was IN_PROGRESS
+  // quietly raised its cost past what the treasury funded (see budgetStageBlock) ----
+  if (
+    input.status === "AWAITING_BUDGET" ||
+    input.status === "IN_PROGRESS" ||
+    input.status === "RESOLVED"
+  ) {
     const assessment = await tx.caseAssessment.findUnique({
       where: { concernId: concern.id },
-      select: { totalCost: true },
+      select: { totalCost: true, status: true, approvalRequired: true },
     });
     const funding = await fundingGateForConcern(tx, concern.id);
     const block = budgetStageBlock({
@@ -332,6 +338,10 @@ export async function changeConcernStatus(
           ? null
           : Number(assessment.totalCost),
       fundedAmount: funding.total,
+      // DRAFT means the assessment declared it needs a sign-off that has not
+      // been recorded yet (see saveAssessment); SUBMITTED cases never hit this.
+      assessmentApprovalPending:
+        assessment?.approvalRequired === true && assessment.status === "DRAFT",
     });
     if (block) throw createApiError.badRequest(block);
   }

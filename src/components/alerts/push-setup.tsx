@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Bell, BellOff, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api-client";
+import { copy, type Locale } from "@/lib/i18n";
 import { forgetNativeToken, getNativePlatform, getPushMode, ensureSeverityChannels, PushNotifications } from "@/lib/capacitor-types";
 import { nativePushOptedOut, setNativePushEnabled } from "@/lib/native-push-preference";
 import { checkNativePushStatus, currentNativeToken } from "@/lib/native-push-status";
@@ -44,7 +45,8 @@ function waitForNativeRegistration(): Promise<NativeRegistrationEvent> {
   });
 }
 
-export function PushSetup() {
+export function PushSetup({ locale = "en" }: { locale?: Locale } = {}) {
+  const t = copy[locale].alerts.push;
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<PushStatus>("prompt");
   const [message, setMessage] = useState<string | null>(null);
@@ -54,18 +56,19 @@ export function PushSetup() {
     const m = getPushMode();
     setMode(m);
     checkSubscription(m);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
 
   async function checkSubscription(currentMode: PushMode) {
     try {
       if (currentMode === "capacitor") {
-        if (nativePushOptedOut()) { setStatus("disabled"); setMessage("Phone alerts are disabled on this device."); return; }
+        if (nativePushOptedOut()) { setStatus("disabled"); setMessage(t.disabledOnDevice); return; }
         // A build that cannot talk to Firebase says so up front; asking the
         // Capacitor plugin to register anyway is what used to close the app.
         const diagnostics = readPushDiagnostics();
         if (diagnostics && !diagnostics.available) {
           setStatus("error");
-          setMessage(diagnostics.reason ?? "Push alerts are unavailable in this build.");
+          setMessage(diagnostics.reason ?? t.unavailableBuild);
           return;
         }
 
@@ -78,22 +81,17 @@ export function PushSetup() {
           } else if (result.data.registered) {
             setStatus("enabled");
             if (result.data.serverConfigured === false) {
-              setMessage(
-                "This phone is registered, but the server has no Firebase service-account credentials yet, so nothing can be delivered from here."
-              );
+              setMessage(t.serverNotConfigured);
             } else if (diagnostics?.lastError) {
               setMessage(diagnostics.lastError);
             }
           } else {
             setStatus("disabled");
-            setMessage(
-              diagnostics?.lastError ??
-                "Notifications are allowed, but this device is not registered with the server yet."
-            );
+            setMessage(diagnostics?.lastError ?? t.registeredNotOnServer);
           }
         } else if (perm.receive === "denied") {
           setStatus("error");
-          setMessage("Notifications are blocked for this app in Android settings.");
+          setMessage(t.blockedAndroid);
         } else {
           setStatus("prompt");
           if (diagnostics?.lastError) setMessage(diagnostics.lastError);
@@ -144,13 +142,13 @@ export function PushSetup() {
         if (!readPushDiagnostics()) await waitForAlertBridge(2000);
         const diagnostics = readPushDiagnostics();
         if (diagnostics && !diagnostics.available) {
-          setMessage(diagnostics.reason ?? "Push alerts are unavailable in this build.");
+          setMessage(diagnostics.reason ?? t.unavailableBuild);
           setStatus("error");
           return;
         }
         const perm = await PushNotifications.requestPermissions();
         if (perm.receive !== "granted") {
-          setMessage("Allow notifications in system settings to receive phone alerts.");
+          setMessage(t.allowSystemSettings);
           setStatus("error");
           return;
         }
@@ -162,38 +160,35 @@ export function PushSetup() {
         const registration = await registrationResult;
         if (!registration.registered) {
           setStatus("error");
-          setMessage(
-            registration.message ??
-              "The phone did not confirm registration with the alert server. Check your connection and sign in again."
-          );
+          setMessage(registration.message ?? t.registrationTimeout);
           return;
         }
         const current = await checkNativePushStatus();
         if (!current.success || !current.data.registered || !current.data.serverConfigured) {
           setStatus("error");
-          setMessage(current.success ? "This device or the server is not ready for push. Open Alert diagnostics for details." : current.error.message);
+          setMessage(current.success ? t.notReadyDetails : current.error.message);
           return;
         }
         setStatus("enabled");
-        setMessage("Phone alerts are registered. Use Send test to this phone to check delivery.");
+        setMessage(t.registered);
         return;
       }
 
       // Web push
       if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
-        setMessage("Push alerts are not supported by this browser.");
+        setMessage(t.notSupportedBrowser);
         setStatus("unsupported");
         return;
       }
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
-        setMessage("Allow notifications in your browser settings to receive phone alerts.");
+        setMessage(t.allowBrowserSettings);
         setStatus("error");
         return;
       }
       const keyResult = await apiRequest<{ publicKey: string | null }>("/api/v1/alerts/push");
       if (!keyResult.success || !keyResult.data.publicKey) {
-        setMessage("Push alerts are not configured on this server yet.");
+        setMessage(t.notConfiguredServer);
         setStatus("error");
         return;
       }
@@ -208,13 +203,13 @@ export function PushSetup() {
       });
       if (result.success) {
         setStatus("enabled");
-        setMessage("Phone alerts are enabled. Browser and operating-system policies control delivery when the browser is closed.");
+        setMessage(t.enabledBrowserPolicy);
       } else {
         setMessage(result.error.message);
         setStatus("error");
       }
     } catch {
-      setMessage("Could not enable phone alerts. Use HTTPS (the tunnel URL).");
+      setMessage(t.enableFailedHttps);
       setStatus("error");
     } finally {
       setBusy(false);
@@ -252,7 +247,7 @@ export function PushSetup() {
           }
         }
         setStatus("disabled");
-        setMessage("Phone alerts disabled.");
+        setMessage(t.disabled);
         return;
       }
 
@@ -274,38 +269,49 @@ export function PushSetup() {
         }
       }
       setStatus("disabled");
-      setMessage("Phone alerts disabled.");
+      setMessage(t.disabled);
     } catch {
-      setMessage("Failed to disable.");
+      setMessage(t.disableFailed);
     } finally {
       setBusy(false);
     }
   }
 
-  const label = status === "enabled" ? "Disable phone alerts" : "Enable phone alerts";
+  const label = status === "enabled" ? t.disable : t.enable;
   const variant = status === "enabled" ? "destructive" : "secondary";
   const PushIcon = status === "enabled" ? BellOff : Bell;
+  const modeText = mode === "capacitor" ? t.modeNative : mode === "web" ? t.modeWeb : t.modeUnknown;
+  const statusText =
+    status === "enabled"
+      ? t.statusEnabled
+      : status === "disabled"
+        ? t.statusDisabled
+        : status === "prompt"
+          ? t.statusPrompt
+          : status === "error"
+            ? t.statusError
+            : t.statusUnsupported;
 
   return (
     <div className="flex flex-col items-start gap-2">
       <Button type="button" variant={variant} size="sm" onClick={status === "enabled" ? disable : enable} disabled={busy || status === "unsupported"}>
         <PushIcon size={15} aria-hidden="true" />
-        {busy ? "Working…" : label}
+        {busy ? t.working : label}
       </Button>
       {message && <p className="text-xs text-slate-600" role="status">{message}</p>}
       <p className="text-xs text-slate-500">
-        Mode: {mode === "capacitor" ? "📱 Native (FCM/APNs)" : mode === "web" ? "🌐 Web Push" : "❓ Unknown"}
+        {t.modeLabel}: {modeText}
       </p>
       <p className="text-xs text-slate-500">
-        Status: {status === "enabled" ? "✅ Enabled" : status === "disabled" ? "⭕ Disabled" : status === "prompt" ? "❓ Not enabled" : status === "error" ? "❌ Error/Blocked" : "❌ Unsupported"}
+        {t.statusLabel}: {statusText}
       </p>
       {mode === "capacitor" && (
         <>
           <p className="max-w-xl text-xs leading-5 text-slate-600">
-            For lock-screen popups, allow notifications and Android alert-display permissions. Delivery still requires a powered-on phone with a network connection; Android battery settings and force-stop can delay or prevent alerts.
+            {t.nativeHint}
           </p>
           <p className="max-w-xl text-xs leading-5 text-slate-600">
-            If it fails, open “Alert diagnostics” below: it shows the exact error this phone reported and lets you copy it.
+            {t.nativeDiagnosticsHint}
           </p>
           <Button
             type="button"
@@ -315,12 +321,12 @@ export function PushSetup() {
               try {
                 window.AlertBridge?.openAlertPermissions();
               } catch {
-                setMessage("Open BarangayResolve in Android settings to review alert permissions.");
+                setMessage(t.openSettingsFallback);
               }
             }}
           >
             <Settings2 size={15} aria-hidden="true" />
-            Review Android alert permissions
+            {t.reviewPermissions}
           </Button>
         </>
       )}

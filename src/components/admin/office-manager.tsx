@@ -351,6 +351,8 @@ export function OfficeManager({
                       tone="danger"
                       disabled={busy}
                       className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-control px-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:opacity-40"
+                      cancelLabel={t.cancelAction}
+                      busyLabel={t.workingEllipsis}
                       onConfirm={() => deleteOffice(office)}
                     />
                   </div>

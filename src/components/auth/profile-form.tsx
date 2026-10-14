@@ -106,11 +106,12 @@ export function ProfileForm({
             value={form.firstName}
             onChange={(e) => setField("firstName", e.target.value)}
             invalid={Boolean(fieldErrors.firstName)}
+            aria-describedby={fieldErrors.firstName ? "firstName-error" : undefined}
             disabled={submitting}
             required
           />
           {fieldErrors.firstName && (
-            <FieldError>{fieldErrors.firstName}</FieldError>
+            <FieldError id="firstName-error">{fieldErrors.firstName}</FieldError>
           )}
         </div>
         <div>
@@ -120,11 +121,12 @@ export function ProfileForm({
             value={form.lastName}
             onChange={(e) => setField("lastName", e.target.value)}
             invalid={Boolean(fieldErrors.lastName)}
+            aria-describedby={fieldErrors.lastName ? "lastName-error" : undefined}
             disabled={submitting}
             required
           />
           {fieldErrors.lastName && (
-            <FieldError>{fieldErrors.lastName}</FieldError>
+            <FieldError id="lastName-error">{fieldErrors.lastName}</FieldError>
           )}
         </div>
       </div>
@@ -139,6 +141,7 @@ export function ProfileForm({
           value={form.phone}
           onChange={(e) => setField("phone", e.target.value)}
           invalid={Boolean(fieldErrors.phone)}
+          aria-describedby={fieldErrors.phone ? "phone-error" : undefined}
           disabled={submitting}
         />
         {savedPhone && (
@@ -151,7 +154,7 @@ export function ProfileForm({
             </button>
           </div>
         )}
-        {fieldErrors.phone && <FieldError>{fieldErrors.phone}</FieldError>}
+        {fieldErrors.phone && <FieldError id="phone-error">{fieldErrors.phone}</FieldError>}
       </div>
 
       <div>
@@ -161,9 +164,10 @@ export function ProfileForm({
           value={form.address}
           onChange={(e) => setField("address", e.target.value)}
           invalid={Boolean(fieldErrors.address)}
+          aria-describedby={fieldErrors.address ? "address-error" : undefined}
           disabled={submitting}
         />
-        {fieldErrors.address && <FieldError>{fieldErrors.address}</FieldError>}
+        {fieldErrors.address && <FieldError id="address-error">{fieldErrors.address}</FieldError>}
       </div>
 
       <Button type="submit" disabled={submitting}>

@@ -26,7 +26,7 @@ export default async function AlertsPage() {
           <p className="mt-1 text-sm text-slate-600">{t.lead}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <PushSetup />
+          <PushSetup locale={locale} />
           <Button href={roleHome(user.role.key)} variant="outline" size="sm">
             <ArrowLeft size={15} aria-hidden="true" />
             {t.back}

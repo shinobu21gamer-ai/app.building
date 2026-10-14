@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { todayManila } from "@/lib/cases/action-date";
+import { CALENDAR_DAY_RE, isValidCalendarDay, todayManila } from "@/lib/cases/action-date";
 import { booleanFlag } from "@/lib/validations/boolean";
 import {
   ACCOUNT_CLASSES,
@@ -60,10 +60,18 @@ const adjustmentSchema = z.coerce
   )
   .transform((value) => Math.round(value * 100) / 100);
 
+// The regex alone only checks the shape: without the calendar-validity
+// refine, "2026-02-30" (which does not exist) would pass here and then
+// silently roll over to March 2 once `new Date(...)` parses it in
+// `createFiscalYear` — the fiscal year's real start/end would quietly drift
+// away from what was typed, with no error at any point. `isValidCalendarDay`
+// is the same check `src/lib/validations/case.ts` already uses for exactly
+// this reason.
 const calendarDay = z
   .string()
   .trim()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a date in YYYY-MM-DD form.");
+  .regex(CALENDAR_DAY_RE, "Use a date in YYYY-MM-DD form.")
+  .refine(isValidCalendarDay, "That date does not exist. Use a real calendar date (YYYY-MM-DD).");
 
 const httpsOrRelative = z
   .string()

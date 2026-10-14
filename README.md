@@ -15,7 +15,44 @@ Residents submit community concerns online; the system categorizes them, compute
 | UI | Tailwind CSS v4 + custom design system + dependency-free SVG charts |
 | Tests | Vitest unit suite + `tsx` live API/flow scripts |
 
-> Authentication, roles, sessions, protected routes, **resident concern submission**, the **rule-based priority assessment engine** (auto-scoring, official override, admin-configurable rules), the **automatic routing engine** (category → office assignment, admin-configurable rules, office-scoped reassignment), the **official case-management workflow** (search/filter, status lifecycle, progress remarks, actions taken, resolution with date and a proof photo, every status change backed by a proof photo and an action date), **resident case tracking** (My Concerns list, detailed case page with lifecycle stepper, server-side ownership checks), **resident feedback** (resolved check, 1-5 rating, comment, duplicate protection), **role-based dashboards** (live database-driven figures and charts for residents, officials, and administrators), the **administrator management system** (accounts, officials, offices, concern categories, routing rules, priority rules, and key/value system settings — with historical-integrity guards), and the **in-app notification system** (event-driven notifications, unread/read state, related case links, mark-one/mark-all-as-read) are **implemented**. Reports are **not implemented yet** — they are built in the next development stage.
+> **Core workflow** — authentication, roles, sessions, protected routes,
+> resident concern submission, the rule-based priority assessment engine
+> (auto-scoring, official override, admin-configurable rules), the automatic
+> routing engine (category → office assignment, admin-configurable rules,
+> office-scoped reassignment), the full eight-stage case lifecycle
+> (`SUBMITTED → ASSIGNED → UNDER_ASSESSMENT → AWAITING_BUDGET → IN_PROGRESS →
+> RESOLVED → CLOSED`, with field-check verification, cost/crew assessment,
+> resolution + independent resolution verification, proof photos and action
+> dates at every status change), resident case tracking, resident feedback,
+> role-based dashboards, and the in-app notification system are all
+> **implemented**.
+>
+> **Extended modules**, built on top of the core workflow, are also
+> implemented: a **treasury/budgeting subsystem** (COA accounts, fund
+> sources, fiscal years, budget allocations, earmarks, disbursements and
+> approvals, an append-only ledger) that gates work on an approved,
+> sufficient earmark before it can start or be marked resolved; a **crew
+> dispatch and labour-costing module** (roster, availability, per-worker
+> rates, live labour-cost recount on every crew change); an **SLA
+> escalation engine** with a scheduled scan job; a **reports module**
+> (engineering, treasury, privacy, and transparency reports, each with a
+> JSON + streamed-CSV export and a truncation warning when a report is
+> capped); a **public transparency portal** (PII-free case tracking by case
+> number + email, and a published-case browser); a **Data Privacy Act
+> (RA 10173) compliance module** (consent records, identity verification,
+> data-subject requests, erasure execution, a configurable retention
+> policy and scheduled retention sweep, PII access logging); an **audit
+> hash-chain** with a scheduled verification job; **web push and native
+> (FCM/APNs) push notifications** for system alerts, paired with an Android
+> WebView wrapper (`android/`); and the **scheduled jobs** themselves (SLA
+> escalation, audit verification, retention sweep, email-delivery retry),
+> run from `.github/workflows/sla-cron.yml` against the app's own
+> `CRON_SECRET`-guarded routes under `/api/v1/cron/*`.
+>
+> The Database Schema and API Structure sections below list every model and
+> route these modules add; the demo accounts in "Demo Accounts" below cover
+> every role needed to exercise all of them (resident, official, admin,
+> treasurer, captain, crew).
 
 ## Prerequisites
 
@@ -411,6 +448,25 @@ REST endpoints live under `src/app/api/v1/`. All routes return a consistent
 | POST | `/field-checks/[checkId]/submit` | `case.fieldcheck.perform` | The assigned person records the finding (confirmed / not confirmed / could not verify) with notes and a photo |
 | POST | `/field-checks/[checkId]/review` | `case.fieldcheck.review` | The admin approves the finding or sends it back; approving "not confirmed" closes the case as unfounded |
 | GET | `/uploads/[filename]` | Owner / assigned office / ADMIN | Serve a stored concern image |
+
+The table above is the core-workflow API as originally documented. The
+extended modules (§ Technology Stack intro) add their own route trees, kept
+out of this table only because each one is large enough to need its own
+section rather than crowd this one — they follow the same
+`{ success, data | error }` envelope, the same permission-key pattern
+(`requireApiPermission`/`requireApiRole`), and the same `assertSameOrigin`
+CSRF guard on every mutating route:
+
+| Prefix | Module |
+|---|---|
+| `/concerns/[id]/assessment`, `/crew`, `/field-checks`, `/validation`, `/overrides` | Case assessment, crew dispatch, field verification, admin validation, workflow overrides |
+| `/treasury/*`, `/admin/treasury/*` | Fund sources, COA accounts, fiscal years, allocations, earmarks, disbursements, the ledger |
+| `/privacy/*` | Consent, identity verification, data-subject requests, retention |
+| `/sla/*`, `/admin/sla/*` | SLA policy configuration and the manual/scheduled escalation scan |
+| `/reports/*`, `/admin/reports/*` | Engineering, treasury, privacy, transparency, and case-register reports (JSON + streamed CSV) |
+| `/alerts/*` | System alerts, acknowledgements, reactions, push subscription/token registration |
+| `/cron/*` | `CRON_SECRET`-guarded scheduled jobs (SLA escalation, audit verification, retention sweep, email-delivery retry) |
+| `/concerns/track` | Public, PII-free case tracking by case number + email |
 
 ## Authentication & Authorization
 

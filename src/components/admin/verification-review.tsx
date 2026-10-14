@@ -219,8 +219,11 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
                       maxLength={500}
                       onChange={(event) => setReason(event.target.value)}
                       placeholder={t.rejectingHelp}
+                      aria-describedby={reasonError ? `reason-${submission.userId}-error` : undefined}
                     />
-                    {reasonError && <FieldError>{reasonError}</FieldError>}
+                    {reasonError && (
+                      <FieldError id={`reason-${submission.userId}-error`}>{reasonError}</FieldError>
+                    )}
                     <div className="flex gap-2">
                       <Button
                         type="button"

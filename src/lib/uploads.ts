@@ -4,6 +4,7 @@ import path from "node:path";
 import { createApiError } from "@/lib/api";
 import { db } from "@/lib/db";
 import { getUploadDailyQuotaBytes } from "@/lib/cases/settings";
+import { todayManila } from "@/lib/cases/action-date";
 
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_IMAGE_MB = 5;
@@ -219,8 +220,11 @@ export async function saveConcernImage(
   // closes the read-then-insert race between concurrent uploads.
   await withUploadLock(userId, async () => {
     const quota = await getUploadDailyQuotaBytes(db);
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    // The quota resets on the Asia/Manila calendar day, not the server's
+    // local timezone — most hosts run their containers in UTC, which would
+    // otherwise shift the reset point by 8 hours from the day residents and
+    // officials actually experience.
+    const startOfDay = new Date(`${todayManila()}T00:00:00+08:00`);
     const usage = await db.uploadRecord.aggregate({
       where: { userId, createdAt: { gte: startOfDay } },
       _sum: { bytes: true },

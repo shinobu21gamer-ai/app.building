@@ -114,6 +114,8 @@ export function AlertArchive({
                   title={t.removeTitle}
                   description={t.removeDesc.replace("{title}", alert.title)}
                   confirmLabel={t.confirmRemove}
+                  cancelLabel={t.cancelAction}
+                  busyLabel={t.workingEllipsis}
                   tone="danger"
                   disabled={busy === alert.id}
                   onConfirm={() => removeAlert(alert.id)}

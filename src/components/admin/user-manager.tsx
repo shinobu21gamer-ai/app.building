@@ -930,6 +930,8 @@ export function UserManager({
                             confirmLabel={t.deleteAccount}
                             tone="danger"
                             disabled={isSelf}
+                            cancelLabel={t.cancelAction}
+                            busyLabel={t.workingEllipsis}
                             onConfirm={() => deleteUser(user)}
                           />
                           {!isSelf && (
@@ -944,6 +946,8 @@ export function UserManager({
                               confirmLabel={t.generateCode}
                               disabled={busy}
                               className="inline-flex items-center gap-1 text-sm font-semibold text-ink-muted hover:text-ink disabled:opacity-40"
+                              cancelLabel={t.cancelAction}
+                              busyLabel={t.workingEllipsis}
                               onConfirm={() => resetPassword(user)}
                             />
                           )}

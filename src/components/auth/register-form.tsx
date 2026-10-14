@@ -75,7 +75,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
       if (!result.success) {
         setFieldErrors((prev) => ({
           ...prev,
-          [name]: extractFieldErrors(result.error.issues)[name] || "Invalid value",
+          [name]: extractFieldErrors(result.error.issues)[name] || t.invalidValue,
         }));
       } else {
         setFieldErrors((prev) => {
@@ -85,7 +85,7 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
         });
       }
     }
-  }, [form.password, t.mismatch]);
+  }, [form.password, t.mismatch, t.invalidValue]);
 
   const handleBlur = (name: FormFieldName, value: string) => {
     setTouched((prev) => ({ ...prev, [name]: true }));
@@ -173,10 +173,13 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
             onChange={(e) => handleChange("firstName", e.target.value)}
             onBlur={(e) => handleBlur("firstName", e.target.value)}
             invalid={isInvalid("firstName")}
+            aria-describedby={isInvalid("firstName") ? "firstName-error" : undefined}
             disabled={submitting}
             required
           />
-          {isInvalid("firstName") && <FieldError>{fieldErrors.firstName}</FieldError>}
+          {isInvalid("firstName") && (
+            <FieldError id="firstName-error">{fieldErrors.firstName}</FieldError>
+          )}
         </div>
         <div>
           <Label htmlFor="lastName" required>{t.lastName}</Label>
@@ -187,10 +190,13 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
             onChange={(e) => handleChange("lastName", e.target.value)}
             onBlur={(e) => handleBlur("lastName", e.target.value)}
             invalid={isInvalid("lastName")}
+            aria-describedby={isInvalid("lastName") ? "lastName-error" : undefined}
             disabled={submitting}
             required
           />
-          {isInvalid("lastName") && <FieldError>{fieldErrors.lastName}</FieldError>}
+          {isInvalid("lastName") && (
+            <FieldError id="lastName-error">{fieldErrors.lastName}</FieldError>
+          )}
         </div>
       </div>
 
@@ -205,11 +211,14 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
           onChange={(e) => handleChange("email", e.target.value)}
           onBlur={(e) => handleBlur("email", e.target.value)}
           invalid={isInvalid("email")}
+          aria-describedby={isInvalid("email") ? "email-error" : undefined}
           disabled={submitting}
           placeholder="you@example.com"
           required
         />
-        {isInvalid("email") && <FieldError>{fieldErrors.email}</FieldError>}
+        {isInvalid("email") && (
+          <FieldError id="email-error">{fieldErrors.email}</FieldError>
+        )}
       </div>
 
       <div>
@@ -223,10 +232,13 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
           onChange={(e) => handleChange("phone", e.target.value)}
           onBlur={(e) => handleBlur("phone", e.target.value)}
           invalid={isInvalid("phone")}
+          aria-describedby={isInvalid("phone") ? "phone-error" : undefined}
           disabled={submitting}
           placeholder="0917-000-0000"
         />
-        {isInvalid("phone") && <FieldError>{fieldErrors.phone}</FieldError>}
+        {isInvalid("phone") && (
+          <FieldError id="phone-error">{fieldErrors.phone}</FieldError>
+        )}
       </div>
 
       <div>
@@ -238,10 +250,13 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
           onChange={(e) => handleChange("address", e.target.value)}
           onBlur={(e) => handleBlur("address", e.target.value)}
           invalid={isInvalid("address")}
+          aria-describedby={isInvalid("address") ? "address-error" : undefined}
           disabled={submitting}
           placeholder={t.addressPlaceholder}
         />
-        {isInvalid("address") && <FieldError>{fieldErrors.address}</FieldError>}
+        {isInvalid("address") && (
+          <FieldError id="address-error">{fieldErrors.address}</FieldError>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -256,10 +271,13 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
             onChange={(e) => handleChange("password", e.target.value)}
             onBlur={(e) => handleBlur("password", e.target.value)}
             invalid={isInvalid("password")}
+            aria-describedby={isInvalid("password") ? "password-error" : undefined}
             disabled={submitting}
             required
           />
-          {isInvalid("password") && <FieldError>{fieldErrors.password}</FieldError>}
+          {isInvalid("password") && (
+            <FieldError id="password-error">{fieldErrors.password}</FieldError>
+          )}
           <p className="mt-1 text-xs text-ink-subtle">
             {t.passwordHint}
           </p>
@@ -275,10 +293,13 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
             onChange={(e) => handleChange("confirmPassword", e.target.value)}
             onBlur={(e) => handleBlur("confirmPassword", e.target.value)}
             invalid={isInvalid("confirmPassword")}
+            aria-describedby={isInvalid("confirmPassword") ? "confirmPassword-error" : undefined}
             disabled={submitting}
             required
           />
-          {isInvalid("confirmPassword") && <FieldError>{fieldErrors.confirmPassword}</FieldError>}
+          {isInvalid("confirmPassword") && (
+            <FieldError id="confirmPassword-error">{fieldErrors.confirmPassword}</FieldError>
+          )}
         </div>
       </div>
 

@@ -208,8 +208,9 @@ export function CaseWorkflowForm({
           maxLength={1000}
           placeholder={t.remarksPlaceholder}
           invalid={Boolean(remarksError)}
+          aria-describedby={remarksError ? "workflow-remarks-error" : undefined}
         />
-        {remarksError && <FieldError>{remarksError}</FieldError>}
+        {remarksError && <FieldError id="workflow-remarks-error">{remarksError}</FieldError>}
       </div>
 
       <Button type="submit" disabled={submitting}>

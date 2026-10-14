@@ -258,6 +258,8 @@ export function CategoryManager({
                         }
                         confirmLabel={t.deleteCategory}
                         tone="danger"
+                        cancelLabel={t.cancelAction}
+                        busyLabel={t.workingEllipsis}
                         onConfirm={() => deleteCategory(category)}
                       />
                     </div>

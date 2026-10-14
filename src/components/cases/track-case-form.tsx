@@ -85,13 +85,14 @@ export function TrackCaseForm({
             autoComplete="off"
             spellCheck={false}
             invalid={Boolean(fieldErrors.caseNumber)}
+            aria-describedby={fieldErrors.caseNumber ? "caseNumber-error" : "caseNumber-hint"}
             disabled={submitting}
             required
           />
           {fieldErrors.caseNumber ? (
-            <FieldError>{fieldErrors.caseNumber}</FieldError>
+            <FieldError id="caseNumber-error">{fieldErrors.caseNumber}</FieldError>
           ) : (
-            <p className="mt-1 text-xs text-ink-subtle">
+            <p id="caseNumber-hint" className="mt-1 text-xs text-ink-subtle">
               {t.caseHint}
             </p>
           )}
@@ -108,13 +109,14 @@ export function TrackCaseForm({
             autoComplete="email"
             placeholder="you@example.com"
             invalid={Boolean(fieldErrors.email)}
+            aria-describedby={fieldErrors.email ? "email-error" : "email-hint"}
             disabled={submitting}
             required
           />
           {fieldErrors.email ? (
-            <FieldError>{fieldErrors.email}</FieldError>
+            <FieldError id="email-error">{fieldErrors.email}</FieldError>
           ) : (
-            <p className="mt-1 text-xs text-ink-subtle">
+            <p id="email-hint" className="mt-1 text-xs text-ink-subtle">
               {t.emailHint}
             </p>
           )}
