@@ -58,14 +58,14 @@ export function RoleNav({
   return (
     <nav
       aria-label={label}
-      className="no-print sticky top-20 hidden self-start md:block md:w-60 md:shrink-0 2xl:w-72"
+      className="no-print sticky top-20 hidden self-start min-h-0 md:block md:w-60 md:shrink-0 2xl:w-72"
     >
       <div
         ref={scrollerRef}
         tabIndex={0}
         role="region"
         aria-label={label}
-        className="nav-scroll relative max-h-[calc(100dvh-6rem)] overflow-y-scroll overscroll-contain rounded-xl border border-line bg-surface/60 p-2 focus-visible:outline-2 focus-visible:outline-brand-600"
+        className="nav-scroll relative min-h-0 max-h-[calc(100dvh-6rem)] overflow-y-scroll overscroll-contain rounded-xl border border-line bg-surface/60 p-2 focus-visible:outline-2 focus-visible:outline-brand-600"
       >
         <ul className="grid gap-0.5">
           {items.map((item) => {

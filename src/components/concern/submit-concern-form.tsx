@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   Send,
   ArrowLeft,
@@ -95,6 +96,7 @@ export function SubmitConcernForm({
   areas,
   types,
   locale = "en",
+  anonymous = false,
 }: {
   userId: number;
   categories: CategoryOption[];
@@ -102,6 +104,7 @@ export function SubmitConcernForm({
   areas: string[];
   types?: TypeOption[];
   locale?: Locale;
+  anonymous?: boolean;
 }) {
   const t = copy[locale].submit;
   const router = useRouter();
@@ -244,7 +247,7 @@ export function SubmitConcernForm({
 
     setSubmitting(true);
     const result = await apiRequest<{ redirect: string }>(
-      "/api/v1/concerns",
+      anonymous ? "/api/v1/concerns?anonymous=1" : "/api/v1/concerns",
       { method: "POST", body: payload }
     );
     setSubmitting(false);
@@ -548,9 +551,12 @@ export function SubmitConcernForm({
         {selectedFile && (
           <div className="mt-2 flex items-start gap-3">
             {previewUrl ? (
-              <img
+              <Image
                 src={previewUrl}
                 alt="Selected proof"
+                width={80}
+                height={80}
+                unoptimized
                 className="h-20 w-20 rounded-control border border-line object-cover"
               />
             ) : null}

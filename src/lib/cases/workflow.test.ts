@@ -52,7 +52,7 @@ describe("case workflow transitions", () => {
   describe("budgetStageBlock (no case skips AWAITING_BUDGET)", () => {
     const base = { estimatedCost: 5000, fundedAmount: 5000 };
 
-    it("blocks every case from skipping straight to IN_PROGRESS, with no override", () => {
+    it("blocks money cases from skipping straight to IN_PROGRESS, with no override", () => {
       expect(
         budgetStageBlock({ ...base, fromStatus: "UNDER_ASSESSMENT", toStatus: "IN_PROGRESS" })
       ).toMatch(/cannot skip/);
@@ -64,6 +64,15 @@ describe("case workflow transitions", () => {
           fundedAmount: 0,
         })
       ).toMatch(/cannot skip/);
+      // A case that costs nothing never enters the budget stage.
+      expect(
+        budgetStageBlock({
+          fromStatus: "UNDER_ASSESSMENT",
+          toStatus: "IN_PROGRESS",
+          estimatedCost: 0,
+          fundedAmount: 0,
+        })
+      ).toBeNull();
     });
 
     it("needs a saved cost estimate before the case starts waiting for budget", () => {
