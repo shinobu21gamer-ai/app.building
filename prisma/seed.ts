@@ -9,7 +9,19 @@ const prisma = new PrismaClient();
 // ------------------------------------------------------------------
 
 async function main() {
+  const resetDemoPasswords = process.env.RESET_DEMO_PASSWORDS === "true";
+  if (resetDemoPasswords && process.env.NODE_ENV === "production") {
+    throw new Error(
+      "RESET_DEMO_PASSWORDS is for development/testing only and cannot be used in production."
+    );
+  }
+
   console.log("Seeding BarangayResolve database...");
+  if (resetDemoPasswords) {
+    console.warn(
+      "RESET_DEMO_PASSWORDS=true: existing seeded demo-account passwords will be reset; inactive accounts will remain inactive."
+    );
+  }
 
   // ---- Roles -----------------------------------------------------
   const [resident, official, admin, treasurer, captain, crew] =
@@ -336,11 +348,16 @@ async function main() {
 
   // ---- Demo users (development/testing only) ----------------------
   const passwordHash = await bcrypt.hash("BarangayResolve123!", 12);
+  // Preserve existing credentials by default. The one-time recovery flag is
+  // explicit because these upserts may target an existing database.
+  const demoUserUpdate = resetDemoPasswords
+    ? { passwordHash, tokenVersion: { increment: 1 } }
+    : {};
 
   // Default administrator
   await prisma.user.upsert({
     where: { email: "admin@barangayresolve.dev" },
-    update: {},
+    update: demoUserUpdate,
     create: {
       email: "admin@barangayresolve.dev",
       passwordHash,
@@ -355,7 +372,7 @@ async function main() {
   for (const [code, office] of offices) {
     await prisma.user.upsert({
       where: { email: `official.${code.toLowerCase()}@barangayresolve.dev` },
-      update: {},
+      update: demoUserUpdate,
       create: {
         email: `official.${code.toLowerCase()}@barangayresolve.dev`,
         passwordHash,
@@ -388,7 +405,7 @@ async function main() {
     const office = offices.get(e.code)!;
     await prisma.user.upsert({
       where: { email: e.email },
-      update: {},
+      update: demoUserUpdate,
       create: {
         email: e.email,
         passwordHash,
@@ -404,7 +421,7 @@ async function main() {
   // Sample resident
   const sampleResident = await prisma.user.upsert({
     where: { email: "resident@barangayresolve.dev" },
-    update: {},
+    update: demoUserUpdate,
     create: {
       email: "resident@barangayresolve.dev",
       passwordHash,
@@ -438,7 +455,7 @@ async function main() {
   // official, and two maintenance crew members with crew profiles.
   const treasurerUser = await prisma.user.upsert({
     where: { email: "treasurer@barangayresolve.dev" },
-    update: {},
+    update: demoUserUpdate,
     create: {
       email: "treasurer@barangayresolve.dev",
       passwordHash,
@@ -453,7 +470,7 @@ async function main() {
 
   await prisma.user.upsert({
     where: { email: "captain@barangayresolve.dev" },
-    update: {},
+    update: demoUserUpdate,
     create: {
       email: "captain@barangayresolve.dev",
       passwordHash,
@@ -488,7 +505,7 @@ async function main() {
   for (const c of crewSeed) {
     const crewUser = await prisma.user.upsert({
       where: { email: c.email },
-      update: {},
+      update: demoUserUpdate,
       create: {
         email: c.email,
         passwordHash,

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { VerifyRecordForm } from "@/components/treasury/verify-record-form";
 import { PageHeader } from "@/components/ui/page-header";
@@ -45,6 +46,18 @@ export default async function TreasuryCodesPage() {
     <div className="space-y-6">
       <PageHeader title={t.codesTitle} description={t.codesLead} />
 
+      <Card
+        title={t.codesAreReferencesTitle}
+        description={t.codesAreReferencesLead}
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-ink-muted">{t.codesAreReferencesNext}</p>
+          <Button href="/treasury/budgets" size="sm" variant="outline">
+            {t.navBudgets}
+          </Button>
+        </div>
+      </Card>
+
       <Card title={t.coaAccount}>
         <ul className="divide-y divide-line">
           {accounts.map((account) => (
@@ -65,7 +78,7 @@ export default async function TreasuryCodesPage() {
                 {account.subObjectCodes
                   ? ` · ${t.subObjectCodes}: ${account.subObjectCodes}`
                   : ""}
-                {` · ${account._count.allocations} ${t.budgetsTitle.toLowerCase()}`}
+                {` · ${account._count.allocations} ${t.linkedAllocationsLabel}`}
               </p>
               {account.verificationStatus === "VERIFIED" &&
                 account.verificationSource && (
@@ -105,7 +118,7 @@ export default async function TreasuryCodesPage() {
               </div>
               <p className="text-xs text-ink-subtle">
                 {source.description ?? "—"} · {source._count.allocations}{" "}
-                {t.budgetsTitle.toLowerCase()}
+                {t.linkedAllocationsLabel}
               </p>
               <VerifyRecordForm
                 kind="FUND"

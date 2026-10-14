@@ -1602,12 +1602,32 @@ const en = {
       noEntries: "No ledger entries yet.",
       budgetsTitle: "Budgets",
       budgetsLead: "Appropriations per fiscal year, fund source, COA account and office, with the live balance of each.",
+      allocationCountLabel: "allocations",
+      linkedAllocationsLabel: "linked allocations",
+      budgetWorkflowTitle: "Where budget balances come from",
+      budgetWorkflowLead:
+        "Opening a fiscal year creates only the time period. To add funds, verify a source, prepare an allocation with the authorized amount, then have a Captain or Admin approve it. A draft is not spendable money.",
       newAllocation: "New allocation",
-      allocationLabel: "What is it for",
+      allocationLabel: "Allocation label",
+      allocationLabelAuto:
+        "Generated automatically from the fiscal year, fund source, COA account, and office you choose.",
       appropriation: "Appropriation",
+      appropriationAmount: "Approved appropriation amount",
+      appropriationHelp:
+        "Enter the exact amount authorized in the approved budget or appropriation ordinance. Do not estimate.",
       fundSource: "Fund source",
+      selectFundSource: "Choose a verified fund source",
+      verifiedFundSourceHelp: "Only active, verified fund sources are listed.",
       coaAccount: "COA account",
+      selectCoaAccount: "Choose a verified COA account",
+      verifiedCoaAccountHelp:
+        "Only active, verified MOOE COA accounts are listed.",
       fiscalYear: "Fiscal year",
+      recommended: "recommended",
+      noOpenFiscalYear:
+        "No open fiscal year is available. An administrator must open one before an allocation can be prepared.",
+      askAdminToOpenFiscalYear:
+        "Ask an administrator to open a fiscal year in Admin → Treasury.",
       office: "Office",
       officeWideWard: "Barangay-wide",
       createAllocation: "Prepare allocation",
@@ -1671,6 +1691,15 @@ const en = {
       fundingCommitted: "In the approval chain",
       codesTitle: "COA codes and fund sources",
       codesLead: "Codes ship verified against the COA Government Accounting Manual; fund sources stay unverified until the treasurer confirms them against the barangay's appropriation ordinance.",
+      codesAreReferencesTitle: "Codes are references, not money",
+      codesAreReferencesLead:
+        "COA codes are spending categories; fund sources identify where money comes from. ‘0 linked allocations’ means no budget allocation is attached to that code yet.",
+      codesAreReferencesNext:
+        "Verify a fund source against the approved appropriation ordinance, then create an allocation in Treasury → Budgets using the authorized amount.",
+      noVerifiedFundSource:
+        "No active fund source is verified yet. Verify one against the barangay appropriation ordinance in Treasury → Codes before preparing an allocation.",
+      noVerifiedMooeAccount:
+        "No active, verified MOOE COA account is available. Check the accounts in Treasury → Codes.",
       verifyCode: "Verify",
       verifiedOn: "Verified on {date}",
       verificationSource: "Where was it checked?",
@@ -1687,6 +1716,8 @@ const en = {
       fundName: "Fund name",
       verifyFundSource: "Confirm fund source",
       fiscalYearsTitle: "Fiscal years",
+      fiscalYearBudgetHelp:
+        "Opening a fiscal year creates only the date period. ‘0 allocations · ₱0.00’ means no budget allocations have been entered for that year yet.",
       fiscalYearYear: "Year",
       yearName: "Name (optional)",
       startsOn: "Starts",
@@ -1704,6 +1735,42 @@ const en = {
       actionBlocked: "Not available to you",
       amountLabel: "Amount",
       noAccess: "Your role cannot open the treasury desk.",
+      guide: {
+        title: "Treasury, step by step",
+        lead: "Follow these steps in order. An open fiscal year or a draft allocation is not spendable money yet.",
+        steps: [
+          {
+            title: "Open a fiscal year",
+            detail:
+              "An administrator opens the year under Admin → Treasury. Only an open year can be used for allocations.",
+          },
+          {
+            title: "Verify a fund source",
+            detail:
+              "In Treasury → Codes, confirm the source against the barangay appropriation ordinance. Unverified sources cannot be used.",
+          },
+          {
+            title: "Prepare an allocation",
+            detail:
+              "In Budgets, choose the open year, verified fund source and COA account, then enter the authorized amount and office. It starts as a draft.",
+          },
+          {
+            title: "Approve the allocation",
+            detail:
+              "A Captain or Admin approves the draft. The approved amount then appears on the ledger as available funds.",
+          },
+          {
+            title: "Set aside money for a case",
+            detail:
+              "Create an earmark from an approved allocation and link it to the case. A Captain approves the earmark to reserve the funds.",
+          },
+          {
+            title: "Pay and liquidate",
+            detail:
+              "Prepare a voucher; the Treasurer certifies funds, the Captain approves release, and the payment is later liquidated with its supporting documents.",
+          },
+        ],
+      },
     },
     captain: {
       title: "Captain",
@@ -3963,12 +4030,32 @@ const fil: typeof en = {
       noEntries: "Wala pang ledger entry.",
       budgetsTitle: "Badyet",
       budgetsLead: "Appropriation kada fiscal year, fund source, COA account at opisina, kasama ang buhay na balanse ng bawat isa.",
+      allocationCountLabel: "allocations",
+      linkedAllocationsLabel: "mga allocation na naka-link",
+      budgetWorkflowTitle: "Saan nanggagaling ang balanse ng budget",
+      budgetWorkflowLead:
+        "Panahon lang ang ginagawa kapag nagbukas ng fiscal year. Para magdagdag ng pondo, beripikahin ang pinagmumulan, maghanda ng allocation gamit ang awtorisadong halaga, at ipapaapruba ito sa Captain o Admin. Hindi pa puwedeng gastusin ang draft.",
       newAllocation: "Bagong allocation",
-      allocationLabel: "Para saan ito",
+      allocationLabel: "Label ng allocation",
+      allocationLabelAuto:
+        "Awtomatikong bubuuin mula sa fiscal year, fund source, COA account, at opisina na pipiliin.",
       appropriation: "Appropriation",
+      appropriationAmount: "Halaga ng aprubadong appropriation",
+      appropriationHelp:
+        "Ilagay ang eksaktong halagang awtorisado sa aprubadong budget o appropriation ordinance. Huwag tantiyahin.",
       fundSource: "Fund source",
+      selectFundSource: "Pumili ng beripikadong fund source",
+      verifiedFundSourceHelp: "Aktibo at beripikadong fund source lang ang nakalista.",
       coaAccount: "COA account",
+      selectCoaAccount: "Pumili ng beripikadong COA account",
+      verifiedCoaAccountHelp:
+        "Aktibo at beripikadong MOOE COA account lang ang nakalista.",
       fiscalYear: "Fiscal year",
+      recommended: "inirerekomenda",
+      noOpenFiscalYear:
+        "Walang bukas na fiscal year. Kailangang magbukas ang administrator ng fiscal year bago makapaghanda ng allocation.",
+      askAdminToOpenFiscalYear:
+        "Hilingin sa administrator na magbukas ng fiscal year sa Admin → Treasury.",
       office: "Opisina",
       officeWideWard: "Buong barangay",
       createAllocation: "Ihanda ang allocation",
@@ -4032,6 +4119,15 @@ const fil: typeof en = {
       fundingCommitted: "Nasa approval chain",
       codesTitle: "COA code at fund source",
       codesLead: "Ang mga code ay beripikado laban sa COA Government Accounting Manual; ang fund source ay nananatiling hindi beripikado hanggang kumpirmahin ito ng treasurer laban sa appropriation ordinance ng barangay.",
+      codesAreReferencesTitle: "Mga reference ang code, hindi pera",
+      codesAreReferencesLead:
+        "Kategorya ng gastusin ang COA code; ipinapakita ng fund source kung saan manggagaling ang pera. Ang ‘0 allocations na naka-link’ ay nangangahulugang wala pang budget allocation na nakakabit sa code.",
+      codesAreReferencesNext:
+        "Beripikahin ang fund source gamit ang aprubadong appropriation ordinance, pagkatapos ay gumawa ng allocation sa Treasury → Budgets gamit ang awtorisadong halaga.",
+      noVerifiedFundSource:
+        "Wala pang aktibong fund source na beripikado. Beripikahin ito laban sa appropriation ordinance ng barangay sa Treasury → Codes bago maghanda ng allocation.",
+      noVerifiedMooeAccount:
+        "Walang aktibo at beripikadong MOOE COA account. Tingnan ang mga account sa Treasury → Codes.",
       verifyCode: "Beripikahin",
       verifiedOn: "Beripikado noong {date}",
       verificationSource: "Saan ito sinuri?",
@@ -4048,6 +4144,8 @@ const fil: typeof en = {
       fundName: "Pangalan ng pondo",
       verifyFundSource: "Kumpirmahin ang fund source",
       fiscalYearsTitle: "Fiscal year",
+      fiscalYearBudgetHelp:
+        "Panahon lang ang ginagawa kapag nagbukas ng fiscal year. Ibig sabihin ng ‘0 allocations · ₱0.00’ ay wala pang nagagawang budget allocation para sa taong iyon.",
       fiscalYearYear: "Taon",
       yearName: "Pangalan (opsyonal)",
       startsOn: "Simula",
@@ -4065,6 +4163,42 @@ const fil: typeof en = {
       actionBlocked: "Hindi available sa iyo",
       amountLabel: "Halaga",
       noAccess: "Hindi maaaring buksan ng iyong role ang treasury desk.",
+      guide: {
+        title: "Treasury, hakbang-hakbang",
+        lead: "Sundin ang mga hakbang ayon sa pagkakasunod-sunod. Hindi pa magagamit ang pondo dahil lang may bukas na fiscal year o draft na allocation.",
+        steps: [
+          {
+            title: "Magbukas ng fiscal year",
+            detail:
+              "Administrator ang nagbubukas nito sa Admin → Treasury. Tanging bukas na taon ang puwedeng gamitin sa allocation.",
+          },
+          {
+            title: "Beripikahin ang pinagmumulan ng pondo",
+            detail:
+              "Sa Treasury → Codes, kumpirmahin ito gamit ang appropriation ordinance ng barangay. Hindi puwedeng gamitin ang hindi beripikadong pondo.",
+          },
+          {
+            title: "Maghanda ng allocation",
+            detail:
+              "Sa Budgets, piliin ang bukas na taon, beripikadong fund source at COA account; ilagay ang awtorisadong halaga at opisina. Draft muna ito.",
+          },
+          {
+            title: "Aprubahan ang allocation",
+            detail:
+              "Inaaprubahan ng Captain o Admin ang draft. Pagkatapos, lalabas sa ledger ang halagang maaaring gamitin.",
+          },
+          {
+            title: "Magtakda ng pondo para sa kaso",
+            detail:
+              "Gumawa ng earmark mula sa aprubadong allocation at i-link ito sa kaso. Inaaprubahan ng Captain ang earmark para maireserba ang pondo.",
+          },
+          {
+            title: "Magbayad at mag-liquidate",
+            detail:
+              "Maghanda ng voucher; ise-certify ng Treasurer ang pondo, aaprubahan ng Captain ang paglabas, at pagkatapos ay i-liquidate ang bayad kasama ang mga dokumento.",
+          },
+        ],
+      },
     },
     captain: {
       title: "Punong Barangay",

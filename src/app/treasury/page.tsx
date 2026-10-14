@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { BalanceCards } from "@/components/treasury/balance-cards";
 import { AgingBars, LedgerTable } from "@/components/treasury/ledger-table";
 import { PageHeader } from "@/components/ui/page-header";
+import { StepGuide } from "@/components/cases/step-guide";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
@@ -24,6 +25,7 @@ export default async function TreasuryDashboardPage() {
   const user = await requirePermission("treasury.balance.view");
   const locale = await getLocale();
   const t = copy[locale].revamp.treasuryDesk;
+  const guide = t.guide;
 
   const dashboard = await treasuryDashboard(db, {
     actor: {
@@ -79,6 +81,10 @@ export default async function TreasuryDashboardPage() {
           </Button>
         </div>
       </div>
+
+      <Card title={guide.title} description={guide.lead}>
+        <StepGuide steps={guide.steps} />
+      </Card>
 
       <BalanceCards totals={dashboard.totals} locale={locale} />
 

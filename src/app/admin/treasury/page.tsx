@@ -62,7 +62,10 @@ export default async function AdminTreasuryPage() {
         </div>
       </div>
 
-      <Card title={t.fiscalYearsTitle}>
+      <Card
+        title={t.fiscalYearsTitle}
+        description={t.fiscalYearBudgetHelp}
+      >
         <div className="mb-4">
           <FiscalYearForm locale={locale} />
         </div>
@@ -81,7 +84,7 @@ export default async function AdminTreasuryPage() {
                 </span>
               </div>
               <p className="text-xs text-ink-subtle">
-                {year.allocations.length} {t.budgetsTitle.toLowerCase()} ·{" "}
+                {year.allocations.length} {t.allocationCountLabel} ·{" "}
                 {formatPeso(
                   year.allocations.reduce(
                     (sum, allocation) => sum + Number(allocation.appropriation),

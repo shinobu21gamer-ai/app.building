@@ -71,6 +71,15 @@ export default async function TreasuryBudgetsPage() {
     <div className="space-y-6">
       <PageHeader title={t.budgetsTitle} description={t.budgetsLead} />
 
+      <Card
+        title={t.budgetWorkflowTitle}
+        description={t.budgetWorkflowLead}
+      >
+        <Button href="/treasury/codes" size="sm" variant="outline">
+          {t.navCodes}
+        </Button>
+      </Card>
+
       {canPrepare && (
         <Card
           title={t.newAllocation}
@@ -82,7 +91,16 @@ export default async function TreasuryBudgetsPage() {
         >
           {fundSources.length === 0 || coaAccounts.length === 0 ? (
             <div className="space-y-3">
-              <p className="text-sm text-ink-muted">{t.codesLead}</p>
+              {fundSources.length === 0 && (
+                <p className="text-sm text-ink-muted">
+                  {t.noVerifiedFundSource}
+                </p>
+              )}
+              {coaAccounts.length === 0 && (
+                <p className="text-sm text-ink-muted">
+                  {t.noVerifiedMooeAccount}
+                </p>
+              )}
               <Button href="/treasury/codes" size="sm" variant="outline">
                 {t.navCodes}
               </Button>
@@ -90,6 +108,7 @@ export default async function TreasuryBudgetsPage() {
           ) : (
             <AllocationForm
               fiscalYears={fiscalYears}
+              canOpenFiscalYear={user.role.key === "ADMIN"}
               fundSources={fundSources}
               coaAccounts={coaAccounts}
               offices={offices}
