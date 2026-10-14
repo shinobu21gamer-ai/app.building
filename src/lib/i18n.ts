@@ -1634,6 +1634,79 @@ const en = {
       officeWideWard: "Barangay-wide",
       createAllocation: "Prepare allocation",
       allocationCreated: "Allocation prepared.",
+      // ---- the guided "prepare an allocation" form ----
+      // Preparing an allocation is four accounting facts in one form. These
+      // strings turn that into three questions with a preview underneath: what
+      // the money is for, where it comes from, how much may be spent — then the
+      // exact line the register will hold, and the one desk standing between it
+      // and spendable money.
+      allocationGuide: {
+        lead: "An allocation is one budget line: an amount of money, for one spending category, out of one fund, for one fiscal year. Prepare it here; the Captain approves it before any of it can be spent.",
+        steps: [
+          {
+            title: "What the money is for",
+            detail:
+              "The COA account is the spending category the ordinance funds — repairs, supplies, fuel.",
+          },
+          {
+            title: "Where the money comes from",
+            detail:
+              "The fund source that holds the money, and the fiscal year it belongs to.",
+          },
+          {
+            title: "How much, and who may spend it",
+            detail:
+              "The exact amount authorized, and whether the line is barangay-wide or one office's.",
+          },
+        ],
+        stepWhatTitle: "What is the money for?",
+        stepWhatDetail:
+          "Pick the spending category. Only codes verified against the COA manual are listed.",
+        stepWhereTitle: "Where does the money come from?",
+        stepWhereDetail:
+          "Pick the fund that holds the money and the year it belongs to.",
+        stepHowMuchTitle: "How much, and who may spend it?",
+        stepHowMuchDetail:
+          "Copy the amount from the approved budget or ordinance exactly. Do not estimate.",
+        fiscalYearHelp:
+          "The year this money belongs to. The newest open year is suggested.",
+        officeWideHelp:
+          "Barangay-wide: any office's cases and vouchers may draw on this line.",
+        officeHelp:
+          "Only this office's cases and vouchers may draw on this line.",
+        singleFundSourceHelp:
+          "This is the only verified fund source, so it is already chosen.",
+        amountExample: "150000.00",
+        amountNotPositive: "The appropriation must be more than zero.",
+        amountTooLarge:
+          "That is larger than this system allows (₱1,000,000,000).",
+        summaryTitle: "The line you are about to prepare",
+        summaryFor: "Money for",
+        summaryFrom: "Fund source",
+        summaryYear: "Fiscal year",
+        summaryOffice: "Who may spend it",
+        summaryAmount: "Appropriation",
+        summaryNotChosen: "not chosen yet",
+        summaryAmountHint: "Type the amount above.",
+        summarySavedAs: "Saved as",
+        summaryNext:
+          "It is saved as a draft. Nothing can be drawn from it until the Captain approves it.",
+        duplicateTitle: "This budget line already exists",
+        duplicateLead:
+          "{label} (#{id}, {status}) already uses this fiscal year, fund source, COA account and office. Two lines cannot share them, so adjust that one instead.",
+        duplicateOpen: "Open it and adjust it",
+        prefilledTitle: "Filled in from case {case}",
+        prefilledBody:
+          "That case still needs {amount}, so the amount and the office are ready. Check the fund source and the COA account before you prepare it.",
+        createdTitle: "Allocation prepared — waiting on the Captain",
+        createdBody:
+          "It stays a draft until the Captain approves it. Only then can earmarks, vouchers and cases draw on it.",
+        openAllocation: "Open the allocation",
+        backToFunding:
+          "This was prepared for a case that is waiting: once the Captain approves it, its funding panel is where the earmark is proposed.",
+        backToFundingAction: "Back to the case",
+        prepareAnother: "Prepare another allocation",
+      },
       approveAllocation: "Approve",
       allocationApproved: "Appropriation opened on the ledger.",
       adjustAllocation: "Adjust",
@@ -4265,6 +4338,74 @@ const fil: typeof en = {
       officeWideWard: "Buong barangay",
       createAllocation: "Ihanda ang allocation",
       allocationCreated: "Naihanda ang allocation.",
+      // ---- ang guided na form para sa paghahanda ng allocation (EN sa itaas) ----
+      allocationGuide: {
+        lead: "Ang allocation ay isang linya ng badyet: isang halaga ng pera, para sa isang kategorya ng gagastusin, mula sa isang pondo, para sa isang fiscal year. Ihanda ito rito; ang Kapitan ang mag-aapruba bago ito magastos.",
+        steps: [
+          {
+            title: "Para saan ang pera",
+            detail:
+              "Ang COA account ay ang kategorya ng gagastusin na pinopondohan ng ordinansa — pagkukumpuni, supplies, gasolina.",
+          },
+          {
+            title: "Saan galing ang pera",
+            detail:
+              "Ang fund source na may hawak ng pera, at ang fiscal year na kinabibilangan nito.",
+          },
+          {
+            title: "Magkano, at sino ang puwedeng gumastos",
+            detail:
+              "Ang eksaktong halagang pinahintulutan, at kung barangay-wide o para sa isang tanggapan lang ang linya.",
+          },
+        ],
+        stepWhatTitle: "Para saan ang pera?",
+        stepWhatDetail:
+          "Piliin ang kategorya ng gagastusin. Mga code lang na na-verify laban sa COA manual ang nakalista.",
+        stepWhereTitle: "Saan galing ang pera?",
+        stepWhereDetail:
+          "Piliin ang pondong may hawak ng pera at ang taon na kinabibilangan nito.",
+        stepHowMuchTitle: "Magkano, at sino ang puwedeng gumastos?",
+        stepHowMuchDetail:
+          "Kopyahin nang eksakto ang halaga mula sa aprobadong badyet o ordinansa. Huwag tantiyahin.",
+        fiscalYearHelp:
+          "Ang taon na kinabibilangan ng perang ito. Ang pinakabagong bukas na taon ang iminumungkahi.",
+        officeWideHelp:
+          "Barangay-wide: makakakuha rito ang mga kaso at voucher ng kahit anong tanggapan.",
+        officeHelp:
+          "Mga kaso at voucher lang ng tanggapang ito ang makakakuha rito.",
+        singleFundSourceHelp:
+          "Ito lang ang verified na fund source, kaya napili na ito.",
+        amountExample: "150000.00",
+        amountNotPositive: "Kailangang mas malaki sa zero ang appropriation.",
+        amountTooLarge:
+          "Lumalaki ito nang higit sa tinatanggap ng system (₱1,000,000,000).",
+        summaryTitle: "Ang linyang ihahanda mo",
+        summaryFor: "Pera para sa",
+        summaryFrom: "Fund source",
+        summaryYear: "Fiscal year",
+        summaryOffice: "Sino ang puwedeng gumastos",
+        summaryAmount: "Appropriation",
+        summaryNotChosen: "wala pang napili",
+        summaryAmountHint: "Isulat ang halaga sa itaas.",
+        summarySavedAs: "Maitatala bilang",
+        summaryNext:
+          "Maitatabi ito bilang draft. Walang makukuha rito hangga't hindi inaprubahan ng Kapitan.",
+        duplicateTitle: "May ganito nang budget line",
+        duplicateLead:
+          "Ginagamit na ng {label} (#{id}, {status}) ang fiscal year, fund source, COA account at tanggapan na ito. Hindi puwedeng magkatulad ang dalawang linya, kaya i-adjust na lang ang isang iyon.",
+        duplicateOpen: "Buksan at i-adjust iyon",
+        prefilledTitle: "Punan mula sa kasong {case}",
+        prefilledBody:
+          "Kailangan pa ng kasong iyon ang {amount}, kaya nakahanda na ang halaga at tanggapan. Tingnan ang fund source at COA account bago ihanda.",
+        createdTitle: "Naihanda ang allocation — hinihintay ang Kapitan",
+        createdBody:
+          "Draft pa ito hangga't hindi inaprubahan ng Kapitan. Doon pa lang makakakuha rito ang mga earmark, voucher at kaso.",
+        openAllocation: "Buksan ang allocation",
+        backToFunding:
+          "Inihanda ito para sa isang kasong naghihintay: kapag inaprubahan ito ng Kapitan, sa funding panel nito ihahain ang earmark.",
+        backToFundingAction: "Bumalik sa kaso",
+        prepareAnother: "Maghanda ng isa pang allocation",
+      },
       approveAllocation: "Aprubahan",
       allocationApproved: "Nabuksan ang appropriation sa ledger.",
       adjustAllocation: "I-adjust",
