@@ -14,6 +14,10 @@ export type ConcernListFilters = {
   to: Date | null;
   // Restrict to a single assigned office. null means no office restriction.
   officeId: number | null;
+  // 1-based page number into the result set (CONCERN_LIST_LIMIT rows per
+  // page). Defaults to 1. Lets a caseload larger than one page still be
+  // reached instead of silently hiding everything past the first page.
+  page: number;
 };
 
 type RawParams =
@@ -99,6 +103,7 @@ export function parseConcernFilters(
     from,
     to: toStart ? new Date(toStart.getTime() + DAY_MS) : null,
     officeId: toPositiveInt(nonEmpty(readParam(params, "officeId"))),
+    page: toPositiveInt(nonEmpty(readParam(params, "page"))) ?? 1,
   };
 }
 
@@ -150,10 +155,12 @@ export type ConcernListItem = Awaited<
 
 export async function listConcerns(filters: ConcernListFilters) {
   const where = buildConcernWhere(filters);
+  const page = Number.isInteger(filters.page) && filters.page > 0 ? filters.page : 1;
 
   const [concerns, total] = await Promise.all([
     db.concern.findMany({
       where,
+      skip: (page - 1) * CONCERN_LIST_LIMIT,
       include: {
         category: true,
         user: {
@@ -184,5 +191,16 @@ export async function listConcerns(filters: ConcernListFilters) {
     db.concern.count({ where }),
   ]);
 
-  return { concerns, total, truncated: total > CONCERN_LIST_LIMIT };
+  const pageCount = Math.max(1, Math.ceil(total / CONCERN_LIST_LIMIT));
+  return {
+    concerns,
+    total,
+    // Kept for existing callers: whether the full result set spans more than
+    // one page at all.
+    truncated: total > CONCERN_LIST_LIMIT,
+    page,
+    pageCount,
+    hasNextPage: page < pageCount,
+    hasPrevPage: page > 1,
+  };
 }

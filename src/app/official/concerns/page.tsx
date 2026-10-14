@@ -6,7 +6,12 @@ import { Card } from "@/components/ui/card";
 import { PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { ConcernFilters } from "@/components/cases/concern-filters";
 import { PageHeader } from "@/components/ui/page-header";
-import { listConcerns, parseConcernFilters } from "@/lib/cases/query";
+import { Pagination } from "@/components/ui/pagination";
+import {
+  CONCERN_LIST_LIMIT,
+  listConcerns,
+  parseConcernFilters,
+} from "@/lib/cases/query";
 import { concernProcessFlow } from "@/lib/cases/process-flow";
 import { fundedAmountsByConcern } from "@/lib/treasury/query";
 import { formatDate } from "@/lib/format";
@@ -67,8 +72,19 @@ export default async function OfficialConcernsPage({
     listConcerns(filters),
   ]);
 
-  const { concerns, total, truncated } = result;
+  const { concerns, total, truncated, page, pageCount } = result;
   const now = Date.now();
+  // Preserves every current filter while only changing the page number.
+  const pageHrefFor = (targetPage: number) => {
+    const query = new URLSearchParams();
+    for (const key of ["q", "status", "priority", "categoryId", "officeId", "from", "to"]) {
+      const value = firstParam(params, key);
+      if (value) query.set(key, value);
+    }
+    if (targetPage > 1) query.set("page", String(targetPage));
+    const search = query.toString();
+    return search ? `/official/concerns?${search}` : "/official/concerns";
+  };
   // Which flow step each case is on. The step number and title come from the
   // same engine the case page uses, so the queue and the case agree.
   const flowCopy = copy[locale].flow;
@@ -306,6 +322,16 @@ export default async function OfficialConcernsPage({
               </tbody>
             </table>
             </div>
+            <Pagination
+              page={page}
+              pageCount={pageCount}
+              total={total}
+              pageSize={CONCERN_LIST_LIMIT}
+              showingLabel={t.pagerShown}
+              previousLabel={t.pagerPrevious}
+              nextLabel={t.pagerNext}
+              hrefFor={pageHrefFor}
+            />
           </>
         )}
       </Card>

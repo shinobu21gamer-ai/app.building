@@ -12,18 +12,12 @@ import { dsrDeadlineLabel } from "@/lib/privacy/dates";
 import {
   countRecentDsr,
   createDataSubjectRequest,
+  DSR_MAX_PER_DAY,
   listMyDataSubjectRequests,
 } from "@/lib/privacy/service";
 import { dsrCreateSchema } from "@/lib/validations/privacy";
 
 export const runtime = "nodejs";
-
-/**
- * Requests a resident may file per 24 hours. Counted from the request table
- * itself so the limit cannot be gamed by switching networks, and so it never
- * consumes the shared login/registration throttle bucket.
- */
-const DSR_MAX_PER_DAY = 5;
 
 function dsrView(row: {
   id: number;
@@ -82,6 +76,12 @@ export const POST = withErrorBoundary(async (req: Request) => {
   const meta = requestMeta(req);
   const body = await parseBody(req, dsrCreateSchema);
 
+  // Fast-path rejection so an obviously-over-the-limit resident gets a quick
+  // 429 without opening a transaction. This check alone is a race (several
+  // requests arriving at once could all read the same "under the limit"
+  // count) — the authoritative check is the row-locked recount inside
+  // `createDataSubjectRequest`'s own transaction, which is what actually
+  // enforces the cap under concurrency.
   if ((await countRecentDsr(user.id)) >= DSR_MAX_PER_DAY) {
     throw createApiError.tooManyRequests(
       `You have already filed ${DSR_MAX_PER_DAY} requests today. Call the barangay hall if it is urgent.`

@@ -241,6 +241,14 @@ export type BudgetStageInput = {
   estimatedCost: number | null;
   /** Approved earmarks set aside for this case (the treasury's figure). */
   fundedAmount: number;
+  /**
+   * True when the assessment itself declared that a supervisor must sign off
+   * before the case proceeds (`approvalRequired`), and that sign-off has not
+   * been recorded (the assessment is still `DRAFT`). Without this check the
+   * approval checkbox was purely cosmetic: a case could reach AWAITING_BUDGET
+   * and even IN_PROGRESS with an assessment nobody ever approved.
+   */
+  assessmentApprovalPending?: boolean;
 };
 
 function peso(value: number): string {
@@ -254,11 +262,27 @@ function peso(value: number): string {
  *   1. it may never skip AWAITING_BUDGET (there is no override for this);
  *   2. it must state how much it needs (a saved cost estimate) before it starts
  *      waiting — a saved ₱0 says "this costs nothing", which is an answer;
- *   3. the approved funds must cover that estimate before work starts.
+ *   3. the approved funds must cover that estimate before work starts;
+ *   4. and because labour is recounted live off whoever is actually on the
+ *      crew (see `refreshCaseLabour`), a crew swap or addition during
+ *      IN_PROGRESS can raise the cost after the treasury already set money
+ *      aside for the smaller, original figure — so the cover is checked again
+ *      before the case is marked resolved. Like step 1, this has no override:
+ *      the fix is an additional earmark, not a reason typed into a box.
  */
 export function budgetStageBlock(input: BudgetStageInput): string | null {
   const estimate = input.estimatedCost;
   const hasEstimate = estimate !== null;
+
+  // The assessment can demand its own sign-off before the case is allowed to
+  // move on at all — checked first so a pending approval blocks both the
+  // zero-cost shortcut below and the normal AWAITING_BUDGET path.
+  if (
+    input.assessmentApprovalPending &&
+    (input.toStatus === "AWAITING_BUDGET" || input.toStatus === "IN_PROGRESS")
+  ) {
+    return "This case's assessment requires approval before it can move forward. Record the approval on the assessment first.";
+  }
 
   // A concern that needs no money (a saved estimate of ₱0) never enters the
   // budget stage: there is nothing for the treasury to set aside, so it can go
@@ -279,6 +303,11 @@ export function budgetStageBlock(input: BudgetStageInput): string | null {
     }
     if (input.fundedAmount + 0.005 < estimate) {
       return `Only ${peso(input.fundedAmount)} is set aside for this case, but the estimate is ${peso(estimate)}. The treasury must approve an earmark for the rest before work starts.`;
+    }
+  }
+  if (input.toStatus === "RESOLVED" && hasEstimate && estimate > 0) {
+    if (input.fundedAmount + 0.005 < estimate) {
+      return `Crew changes since the budget was set aside raised this case's cost to ${peso(estimate)}, but only ${peso(input.fundedAmount)} is funded. The treasury must approve an additional earmark before this case can be marked resolved.`;
     }
   }
   return null;

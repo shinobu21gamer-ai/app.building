@@ -139,8 +139,9 @@ export function CaseNoteForm({
           maxLength={1000}
           placeholder={t.notePlaceholder}
           invalid={Boolean(remarksError)}
+          aria-describedby={remarksError ? "note-remarks-error" : undefined}
         />
-        {remarksError && <FieldError>{remarksError}</FieldError>}
+        {remarksError && <FieldError id="note-remarks-error">{remarksError}</FieldError>}
       </div>
 
       <Button type="submit" disabled={submitting} variant="secondary">

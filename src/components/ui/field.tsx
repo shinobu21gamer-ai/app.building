@@ -36,8 +36,8 @@ export function RequiredLegend({ children }: { children: React.ReactNode }) {
 }
 
 /** Short helper under a control: what to type, or why the field exists. */
-export function FieldHint({ children }: { children: React.ReactNode }) {
-  return <p className="mt-1 text-caption text-ink-subtle">{children}</p>;
+export function FieldHint({ children, id }: { children: React.ReactNode; id?: string }) {
+  return <p id={id} className="mt-1 text-caption text-ink-subtle">{children}</p>;
 }
 
 const controlClass =
@@ -116,9 +116,15 @@ export function Textarea({
   );
 }
 
-export function FieldError({ children }: { children: React.ReactNode }) {
+export function FieldError({
+  id,
+  children,
+}: {
+  id?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <p role="alert" className="mt-1 text-caption text-danger-600">
+    <p id={id} role="alert" className="mt-1 text-caption text-danger-600">
       {children}
     </p>
   );

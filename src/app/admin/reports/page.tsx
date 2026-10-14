@@ -10,7 +10,8 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { ConcernFilters } from "@/components/cases/concern-filters";
 import { PrintButton } from "@/components/ui/print-button";
 import { PageHeader } from "@/components/ui/page-header";
-import { parseConcernFilters } from "@/lib/cases/query";
+import { Pagination } from "@/components/ui/pagination";
+import { CONCERN_LIST_LIMIT, parseConcernFilters } from "@/lib/cases/query";
 import { ReportTabs } from "@/components/reports/report-view";
 import { reportTabs } from "@/lib/reports/catalog";
 import { getConcernReport } from "@/lib/admin/reports";
@@ -64,6 +65,14 @@ export default async function AdminReportsPage({
   const csvHref = csvQuery.toString()
     ? `/api/v1/admin/reports/concerns?${csvQuery.toString()}`
     : "/api/v1/admin/reports/concerns";
+
+  // Preserves every current filter while only changing the page number.
+  const pageHrefFor = (targetPage: number) => {
+    const query = new URLSearchParams(csvQuery);
+    if (targetPage > 1) query.set("page", String(targetPage));
+    const search = query.toString();
+    return search ? `/admin/reports?${search}` : "/admin/reports";
+  };
 
   const generatedAt = formatDateTime(new Date());
 
@@ -243,6 +252,18 @@ export default async function AdminReportsPage({
             </table>
           </div>
         )}
+        {report.concerns.length > 0 ? (
+          <Pagination
+            page={report.page}
+            pageCount={report.pageCount}
+            total={report.total}
+            pageSize={CONCERN_LIST_LIMIT}
+            showingLabel={t.pagerShown}
+            previousLabel={t.pagerPrevious}
+            nextLabel={t.pagerNext}
+            hrefFor={pageHrefFor}
+          />
+        ) : null}
       </Card>
     </div>
   );

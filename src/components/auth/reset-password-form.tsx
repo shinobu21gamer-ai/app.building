@@ -79,11 +79,12 @@ export function ResetPasswordForm({ locale = "en" }: { locale?: Locale }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           invalid={Boolean(fieldErrors.email)}
+          aria-describedby={fieldErrors.email ? "email-error" : undefined}
           disabled={submitting}
           placeholder="you@example.com"
           required
         />
-        {fieldErrors.email && <FieldError>{fieldErrors.email}</FieldError>}
+        {fieldErrors.email && <FieldError id="email-error">{fieldErrors.email}</FieldError>}
       </div>
 
       <div>
@@ -94,6 +95,7 @@ export function ResetPasswordForm({ locale = "en" }: { locale?: Locale }) {
           value={code}
           onChange={(e) => setCode(e.target.value)}
           invalid={Boolean(fieldErrors.code)}
+          aria-describedby={fieldErrors.code ? "code-error" : undefined}
           disabled={submitting}
           placeholder="e.g. 8F2C41D77E3A09B5"
           autoCapitalize="characters"
@@ -101,7 +103,7 @@ export function ResetPasswordForm({ locale = "en" }: { locale?: Locale }) {
           autoComplete="one-time-code"
           required
         />
-        {fieldErrors.code && <FieldError>{fieldErrors.code}</FieldError>}
+        {fieldErrors.code && <FieldError id="code-error">{fieldErrors.code}</FieldError>}
       </div>
 
       <div>
@@ -114,12 +116,13 @@ export function ResetPasswordForm({ locale = "en" }: { locale?: Locale }) {
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           invalid={Boolean(fieldErrors.newPassword)}
+          aria-describedby={fieldErrors.newPassword ? "newPassword-error" : undefined}
           disabled={submitting}
           placeholder={t.newPasswordPlaceholder}
           required
         />
         {fieldErrors.newPassword && (
-          <FieldError>{fieldErrors.newPassword}</FieldError>
+          <FieldError id="newPassword-error">{fieldErrors.newPassword}</FieldError>
         )}
       </div>
 

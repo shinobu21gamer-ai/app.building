@@ -179,8 +179,9 @@ export function ReassignForm({
           maxLength={500}
           placeholder={t.assignReasonPlaceholder}
           invalid={Boolean(reasonError)}
+          aria-describedby={reasonError ? "assign-reason-error" : undefined}
         />
-        {reasonError && <FieldError>{reasonError}</FieldError>}
+        {reasonError && <FieldError id="assign-reason-error">{reasonError}</FieldError>}
       </div>
 
       <Button type="submit" disabled={submitting}>

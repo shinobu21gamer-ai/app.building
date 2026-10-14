@@ -4,11 +4,15 @@ import { assertSameOrigin, withErrorBoundary } from "@/lib/api";
 import { requireApiRole } from "@/lib/auth/session";
 import { buildConcernWhere, parseConcernFilters } from "@/lib/cases/query";
 import { db } from "@/lib/db";
-import { textColumn, type ReportSection } from "@/lib/reports/document";
+import { capRows, textColumn, type ReportSection } from "@/lib/reports/document";
 import { csvStreamHeaders, streamSectionCsv } from "@/lib/reports/stream";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/** Matches the cap every other report in `src/lib/reports/*` reads past by one
+ * row to detect (see `capRows`); this export used to cap silently instead. */
+const CONCERN_REGISTER_ROW_LIMIT = 5000;
 
 /**
  * The case register as a CSV a spreadsheet can open.
@@ -24,7 +28,7 @@ export const GET = withErrorBoundary(async (req: Request) => {
   await requireApiRole(["ADMIN"]);
 
   const filters = parseConcernFilters(new URL(req.url).searchParams);
-  const concerns = await db.concern.findMany({
+  const found = await db.concern.findMany({
     where: buildConcernWhere(filters),
     include: {
       category: { select: { name: true } },
@@ -32,8 +36,11 @@ export const GET = withErrorBoundary(async (req: Request) => {
       assignedOffice: { select: { name: true } },
     },
     orderBy: { createdAt: "desc" },
-    take: 5000,
+    // One row past the limit, purely to tell "exactly at the limit" from
+    // "more rows match than this export carries" — see capRows below.
+    take: CONCERN_REGISTER_ROW_LIMIT + 1,
   });
+  const { rows: concerns, truncated } = capRows(found, CONCERN_REGISTER_ROW_LIMIT);
 
   const now = Date.now();
   const section: ReportSection = {
@@ -73,6 +80,27 @@ export const GET = withErrorBoundary(async (req: Request) => {
       };
     }),
   };
+
+  if (truncated) {
+    // A file that silently stops at the limit looks complete to whoever
+    // opens it — it must say so, in the file itself, not only in a response
+    // header a spreadsheet application will never show. Newest-first
+    // ordering means it is the oldest matching cases that are missing.
+    section.rows.push({
+      caseNumber: `⚠ TRUNCATED — showing only the newest ${CONCERN_REGISTER_ROW_LIMIT.toLocaleString("en-US")} of this filter's matching cases.`,
+      title: "Narrow the date range or filters to see the rest.",
+      category: "",
+      resident: "",
+      residentEmail: "",
+      status: "",
+      priority: "",
+      office: "",
+      submitted: "",
+      slaDue: "",
+      slaStatus: "",
+      duplicateOf: "",
+    });
+  }
 
   return new NextResponse(streamSectionCsv(section), {
     headers: csvStreamHeaders(

@@ -83,11 +83,12 @@ export function PasswordForm({ locale = "en" }: { locale?: Locale }) {
           value={form.currentPassword}
           onChange={(e) => setField("currentPassword", e.target.value)}
           invalid={Boolean(fieldErrors.currentPassword)}
+          aria-describedby={fieldErrors.currentPassword ? "currentPassword-error" : undefined}
           disabled={submitting}
           required
         />
         {fieldErrors.currentPassword && (
-          <FieldError>{fieldErrors.currentPassword}</FieldError>
+          <FieldError id="currentPassword-error">{fieldErrors.currentPassword}</FieldError>
         )}
       </div>
 
@@ -101,11 +102,12 @@ export function PasswordForm({ locale = "en" }: { locale?: Locale }) {
             value={form.newPassword}
             onChange={(e) => setField("newPassword", e.target.value)}
             invalid={Boolean(fieldErrors.newPassword)}
+            aria-describedby={fieldErrors.newPassword ? "newPassword-error" : undefined}
             disabled={submitting}
             required
           />
           {fieldErrors.newPassword && (
-            <FieldError>{fieldErrors.newPassword}</FieldError>
+            <FieldError id="newPassword-error">{fieldErrors.newPassword}</FieldError>
           )}
         </div>
         <div>
@@ -117,11 +119,12 @@ export function PasswordForm({ locale = "en" }: { locale?: Locale }) {
             value={form.confirmNewPassword}
             onChange={(e) => setField("confirmNewPassword", e.target.value)}
             invalid={Boolean(fieldErrors.confirmNewPassword)}
+            aria-describedby={fieldErrors.confirmNewPassword ? "confirmNewPassword-error" : undefined}
             disabled={submitting}
             required
           />
           {fieldErrors.confirmNewPassword && (
-            <FieldError>{fieldErrors.confirmNewPassword}</FieldError>
+            <FieldError id="confirmNewPassword-error">{fieldErrors.confirmNewPassword}</FieldError>
           )}
         </div>
       </div>

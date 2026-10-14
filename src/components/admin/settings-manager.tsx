@@ -176,6 +176,8 @@ export function SettingsManager({
                           description={t.deleteSettingDesc}
                           confirmLabel={t.deleteSetting}
                           tone="danger"
+                          cancelLabel={t.cancelAction}
+                          busyLabel={t.workingEllipsis}
                           onConfirm={() => deleteSetting(setting)}
                         />
                       </div>

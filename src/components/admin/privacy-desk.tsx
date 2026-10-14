@@ -220,8 +220,11 @@ export function DsrQueue({
                     rows={3}
                     maxLength={2000}
                     onChange={(event) => setNotes(event.target.value)}
+                    aria-describedby={fieldErrors.notes ? `notes-${request.id}-error` : undefined}
                   />
-                  {fieldErrors.notes && <FieldError>{fieldErrors.notes}</FieldError>}
+                  {fieldErrors.notes && (
+                    <FieldError id={`notes-${request.id}-error`}>{fieldErrors.notes}</FieldError>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button

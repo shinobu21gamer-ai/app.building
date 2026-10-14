@@ -110,12 +110,85 @@ describe("case workflow transitions", () => {
       ).toBeNull();
     });
 
+    it("blocks AWAITING_BUDGET and IN_PROGRESS while a required assessment approval is pending", () => {
+      expect(
+        budgetStageBlock({
+          ...base,
+          fromStatus: "UNDER_ASSESSMENT",
+          toStatus: "AWAITING_BUDGET",
+          assessmentApprovalPending: true,
+        })
+      ).toMatch(/requires approval/);
+      expect(
+        budgetStageBlock({
+          ...base,
+          fromStatus: "AWAITING_BUDGET",
+          toStatus: "IN_PROGRESS",
+          assessmentApprovalPending: true,
+        })
+      ).toMatch(/requires approval/);
+      // The zero-cost shortcut from UNDER_ASSESSMENT straight to IN_PROGRESS
+      // is blocked too — a pending approval cannot be dodged by a ₱0 estimate.
+      expect(
+        budgetStageBlock({
+          fromStatus: "UNDER_ASSESSMENT",
+          toStatus: "IN_PROGRESS",
+          estimatedCost: 0,
+          fundedAmount: 0,
+          assessmentApprovalPending: true,
+        })
+      ).toMatch(/requires approval/);
+      // Once approved (the flag is false/absent), the normal rules apply again.
+      expect(
+        budgetStageBlock({ ...base, fromStatus: "UNDER_ASSESSMENT", toStatus: "AWAITING_BUDGET" })
+      ).toBeNull();
+    });
+
     it("the retired skip kind can no longer be created, but still reads", () => {
       expect(CREATABLE_OVERRIDE_KINDS).not.toContain("BUDGET_STAGE_SKIP");
       expect(OVERRIDE_KINDS).not.toContain("BUDGET_STAGE_SKIP");
       expect(overrideLabel("BUDGET_STAGE_SKIP")).toMatch(/no longer allowed/);
       expect(overrideLabel("CREW_SHORTFALL")).toMatch(/fewer crew/);
       expect(overrideLabel("SOMETHING_ELSE")).toBe("SOMETHING_ELSE");
+    });
+
+    it("re-checks funding before a case is marked resolved, with no override", () => {
+      const drifted = budgetStageBlock({
+        fromStatus: "IN_PROGRESS",
+        toStatus: "RESOLVED",
+        estimatedCost: 7000,
+        fundedAmount: 5000,
+      });
+      expect(drifted).toMatch(/Crew changes/);
+      expect(drifted).toMatch(/₱7,000\.00/);
+      expect(drifted).toMatch(/₱5,000\.00/);
+
+      expect(
+        budgetStageBlock({
+          fromStatus: "IN_PROGRESS",
+          toStatus: "RESOLVED",
+          estimatedCost: 5000,
+          fundedAmount: 5000,
+        })
+      ).toBeNull();
+
+      expect(
+        budgetStageBlock({
+          fromStatus: "IN_PROGRESS",
+          toStatus: "RESOLVED",
+          estimatedCost: 0,
+          fundedAmount: 0,
+        })
+      ).toBeNull();
+
+      expect(
+        budgetStageBlock({
+          fromStatus: "IN_PROGRESS",
+          toStatus: "RESOLVED",
+          estimatedCost: null,
+          fundedAmount: 0,
+        })
+      ).toBeNull();
     });
   });
 });

@@ -190,7 +190,7 @@ export const officeCreateSchema = z.object({
 
 export const officeUpdateSchema = z
   .object({
-    name: z.string().trim().min(2).max(120).optional(),
+    name: z.string().trim().min(2, "Name is too short.").max(120, "Name is too long.").optional(),
     code: codeSchema.optional(),
     description: optionalText(500),
     headOfficer: optionalText(120),
@@ -214,7 +214,7 @@ export const categoryCreateSchema = z.object({
 
 export const categoryUpdateSchema = z
   .object({
-    name: z.string().trim().min(2).max(120).optional(),
+    name: z.string().trim().min(2, "Name is too short.").max(120, "Name is too long.").optional(),
     code: codeSchema.optional(),
     description: optionalText(500),
     isActive: booleanFlag.optional(),

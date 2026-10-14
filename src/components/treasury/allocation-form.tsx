@@ -460,12 +460,13 @@ export function AllocationForm({
               required
               value={amount}
               invalid={amountError !== null}
+              aria-describedby={amountError !== null ? "allocation-appropriation-error" : "allocation-appropriation-hint"}
               onChange={(event) => setAmount(event.target.value)}
             />
             {amountError ? (
-              <FieldError>{amountError}</FieldError>
+              <FieldError id="allocation-appropriation-error">{amountError}</FieldError>
             ) : (
-              <FieldHint>{t.appropriationHelp}</FieldHint>
+              <FieldHint id="allocation-appropriation-hint">{t.appropriationHelp}</FieldHint>
             )}
           </div>
           <div>

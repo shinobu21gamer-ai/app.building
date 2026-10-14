@@ -312,6 +312,7 @@ export function SubmitConcernForm({
             maxLength={150}
             invalid={Boolean(fieldErrors.title)}
             onBlur={() => handleBlur("title")}
+            aria-describedby={fieldErrors.title && touched.title ? "title-error" : undefined}
             className={cn(
               "pr-9",
               fieldErrors.title && touched.title && "border-red-500"
@@ -328,7 +329,7 @@ export function SubmitConcernForm({
           )}
         </div>
         {fieldErrors.title && touched.title && (
-          <FieldError>{fieldErrors.title}</FieldError>
+          <FieldError id="title-error">{fieldErrors.title}</FieldError>
         )}
       </div>
 
@@ -345,6 +346,7 @@ export function SubmitConcernForm({
           defaultValue=""
           className={cn(selectStyles(Boolean(fieldErrors.categoryId)), "pr-9")}
           onBlur={() => handleBlur("categoryId")}
+          aria-describedby={fieldErrors.categoryId ? "categoryId-error" : undefined}
         >
           <option value="" disabled>
             {t.categoryPlaceholder}
@@ -356,7 +358,7 @@ export function SubmitConcernForm({
           ))}
         </select>
         {fieldErrors.categoryId && (
-          <FieldError>{fieldErrors.categoryId}</FieldError>
+          <FieldError id="categoryId-error">{fieldErrors.categoryId}</FieldError>
         )}
       </div>
 
@@ -393,9 +395,10 @@ export function SubmitConcernForm({
           maxLength={2000}
           invalid={Boolean(fieldErrors.description)}
           onBlur={() => handleBlur("description")}
+          aria-describedby={fieldErrors.description && touched.description ? "description-error" : undefined}
         />
         {fieldErrors.description && touched.description && (
-          <FieldError>{fieldErrors.description}</FieldError>
+          <FieldError id="description-error">{fieldErrors.description}</FieldError>
         )}
       </div>
 
@@ -412,6 +415,7 @@ export function SubmitConcernForm({
           defaultValue=""
           className={cn(selectStyles(Boolean(fieldErrors.locationArea)), "pr-9")}
           onBlur={() => handleBlur("locationArea")}
+          aria-describedby={fieldErrors.locationArea && touched.locationArea ? "locationArea-error" : undefined}
         >
           <option value="" disabled>
             {t.areaPlaceholder}
@@ -423,7 +427,7 @@ export function SubmitConcernForm({
           ))}
         </select>
         {fieldErrors.locationArea && touched.locationArea && (
-          <FieldError>{fieldErrors.locationArea}</FieldError>
+          <FieldError id="locationArea-error">{fieldErrors.locationArea}</FieldError>
         )}
       </div>
 
@@ -442,6 +446,7 @@ export function SubmitConcernForm({
             maxLength={220}
             invalid={Boolean(fieldErrors.locationAddress)}
             onBlur={() => handleBlur("locationAddress")}
+            aria-describedby={fieldErrors.locationAddress && touched.locationAddress ? "locationAddress-error" : undefined}
             className={cn("pr-9")}
           />
           {touched.locationAddress && (
@@ -455,7 +460,7 @@ export function SubmitConcernForm({
           )}
         </div>
         {fieldErrors.locationAddress && touched.locationAddress && (
-          <FieldError>{fieldErrors.locationAddress}</FieldError>
+          <FieldError id="locationAddress-error">{fieldErrors.locationAddress}</FieldError>
         )}
       </div>
 
@@ -497,9 +502,12 @@ export function SubmitConcernForm({
                   defaultValue=""
                   className={selectStyles(Boolean(fieldErrors[fieldKey]))}
                   onBlur={() => handleBlur(fieldKey)}
+                  aria-describedby={
+                    fieldErrors[fieldKey] && touched[fieldKey] ? `${fieldKey}-error` : undefined
+                  }
                 >
                   <option value="" disabled>
-                    Select a rating
+                    {t.selectRating}
                   </option>
                   {options.map((value) => (
                     <option key={value} value={value}>
@@ -514,7 +522,7 @@ export function SubmitConcernForm({
                   ))}
                 </select>
                 {fieldErrors[fieldKey] && touched[fieldKey] && (
-                  <FieldError>{fieldErrors[fieldKey]}</FieldError>
+                  <FieldError id={`${fieldKey}-error`}>{fieldErrors[fieldKey]}</FieldError>
                 )}
               </div>
             );
@@ -538,6 +546,7 @@ export function SubmitConcernForm({
           required
           onChange={handleFileChange}
           onBlur={() => handleBlur("image")}
+          aria-describedby={fieldErrors.image && touched.image ? "image-error" : undefined}
           className={cn(
             "block w-full cursor-pointer rounded-control border bg-surface text-sm text-ink-muted file:mr-3 file:rounded-l-lg file:border-0 file:bg-surface-sunken file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink-muted hover:file:bg-line",
             fieldErrors.image && !selectedFile
@@ -553,7 +562,7 @@ export function SubmitConcernForm({
             {previewUrl ? (
               <Image
                 src={previewUrl}
-                alt="Selected proof"
+                alt={t.imageAlt}
                 width={80}
                 height={80}
                 unoptimized
@@ -568,7 +577,7 @@ export function SubmitConcernForm({
           </div>
         )}
         {fieldErrors.image && touched.image && (
-          <FieldError>{fieldErrors.image}</FieldError>
+          <FieldError id="image-error">{fieldErrors.image}</FieldError>
         )}
       </div>
 

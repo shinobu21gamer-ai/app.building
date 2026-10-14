@@ -33,6 +33,18 @@ import {
 
 type Tx = Prisma.TransactionClient;
 
+/**
+ * Requests a resident may file per 24 hours. Counted from the request table
+ * itself so the limit cannot be gamed by switching networks, and so it never
+ * consumes the shared login/registration throttle bucket.
+ *
+ * Enforced inside `createDataSubjectRequest`'s own transaction (see the
+ * `FOR UPDATE` lock there) — a pre-check in the API route alone would be a
+ * check-then-act race: several requests arriving at once could each read
+ * "4 so far" and all proceed, filing far more than the limit.
+ */
+export const DSR_MAX_PER_DAY = 5;
+
 /** Clear error when a deployment has no key but tries to store personal data. */
 export function assertPiiConfigured(): void {
   const status = piiKeyStatus();
@@ -82,6 +94,23 @@ export async function createDataSubjectRequest(input: CreateDsrInput) {
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       return await db.$transaction(async (tx) => {
+        // Lock this resident's user row before counting today's requests, so
+        // two (or fifteen) submissions racing in parallel cannot each read
+        // "4 so far" under the limit and all be allowed through — the second
+        // and later transactions block here until the first commits, then
+        // see its row and correctly hit the cap.
+        await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${input.userId} FOR UPDATE`;
+
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recent = await tx.dataSubjectRequest.count({
+          where: { userId: input.userId, requestedAt: { gte: since } },
+        });
+        if (recent >= DSR_MAX_PER_DAY) {
+          throw createApiError.tooManyRequests(
+            `You have already filed ${DSR_MAX_PER_DAY} requests today. Call the barangay hall if it is urgent.`
+          );
+        }
+
         const referenceCode = await generateDsrReference(tx);
         return tx.dataSubjectRequest.create({
           data: {

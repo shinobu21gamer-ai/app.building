@@ -9,6 +9,7 @@ export function ConfirmActionButton({
   description,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
+  busyLabel = "Working...",
   tone = "default",
   disabled = false,
   className,
@@ -20,6 +21,7 @@ export function ConfirmActionButton({
   description: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  busyLabel?: string;
   tone?: "default" | "danger";
   disabled?: boolean;
   className?: string;
@@ -30,6 +32,7 @@ export function ConfirmActionButton({
   const [error, setError] = useState<string | null>(null);
 
   const titleId = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
 
@@ -69,6 +72,19 @@ export function ConfirmActionButton({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, busy]);
 
+  const wasOpenRef = useRef(false);
+  useEffect(() => {
+    if (open) {
+      wasOpenRef.current = true;
+      return;
+    }
+    if (!wasOpenRef.current) return;
+    wasOpenRef.current = false;
+    // Closing the dialog unmounts the focused cancel/confirm button; send
+    // focus back to the trigger instead of letting it fall back to <body>.
+    triggerRef.current?.focus();
+  }, [open]);
+
   async function confirm() {
     setBusy(true);
     setError(null);
@@ -84,6 +100,7 @@ export function ConfirmActionButton({
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => {
@@ -148,7 +165,7 @@ export function ConfirmActionButton({
                     : "inline-flex h-10 items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
                 }
               >
-                {busy ? "Working..." : confirmLabel}
+                {busy ? busyLabel : confirmLabel}
               </button>
             </div>
           </div>

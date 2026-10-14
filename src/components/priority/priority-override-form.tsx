@@ -176,8 +176,9 @@ export function PriorityOverrideForm({
           maxLength={500}
           placeholder={t.overrideReasonPlaceholder}
           invalid={Boolean(reasonError)}
+          aria-describedby={reasonError ? "reason-error" : undefined}
         />
-        {reasonError && <FieldError>{reasonError}</FieldError>}
+        {reasonError && <FieldError id="reason-error">{reasonError}</FieldError>}
       </div>
 
       <Button type="submit" disabled={submitting}>

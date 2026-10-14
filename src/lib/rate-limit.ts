@@ -38,7 +38,7 @@ export type RateLimitDecision = {
 
 const buckets = new Map<string, Bucket>();
 
-function key(scope: "email" | "ip", value: string): string {
+function key(scope: "email" | "ip" | "submission", value: string): string {
   return `${scope}:${value}`;
 }
 
@@ -83,7 +83,7 @@ async function persist(bucketKey: string, bucket: Bucket): Promise<void> {
   });
 }
 
-async function readBucket(scope: "email" | "ip", value: string, now: number): Promise<Bucket> {
+async function readBucket(scope: "email" | "ip" | "submission", value: string, now: number): Promise<Bucket> {
   const bucketKey = key(scope, value);
   let bucket = buckets.get(bucketKey);
   if (!bucket) {
@@ -104,7 +104,7 @@ function decide(bucket: Bucket, maxFailures: number, now: number): RateLimitDeci
   return { allowed: true, retryAfterSeconds: null };
 }
 
-async function bump(scope: "email" | "ip", value: string, now: number): Promise<void> {
+async function bump(scope: "email" | "ip" | "submission", value: string, now: number): Promise<void> {
   trimMemory(now);
   const bucketKey = key(scope, value);
   const windowStart = new Date(now - WINDOW_MS);
@@ -236,6 +236,62 @@ export async function checkTrackAllowed(ip: string | null): Promise<RateLimitDec
 export async function recordTrackFailure(ip: string | null): Promise<void> {
   const reliableIp = reliableClientIp(ip);
   if (reliableIp !== null) await bump("ip", `track:${reliableIp}`, Date.now());
+}
+
+/**
+ * Volume throttle for concern submission (`POST /api/v1/concerns`).
+ *
+ * Unlike the buckets above, this counts every attempt — not just rejected
+ * ones — because the thing being bounded is request/storage/notification
+ * volume, not credential guessing. Two buckets apply together:
+ *  - a per-account bucket, for a signed-in resident scripting rapid
+ *    submissions from one account; and
+ *  - a per-IP bucket, which is the *only* real throttle on the anonymous
+ *    submission path (`?anonymous=1`): that path creates a brand-new
+ *    tracking account on every call specifically so a resident without one
+ *    can still report something, which means a per-account limit can never
+ *    bind there — every "account" is used exactly once. The IP bucket is
+ *    what stops a script from calling it in a loop.
+ */
+const SUBMISSION_USER_MAX = 15;
+const SUBMISSION_IP_MAX = 8;
+
+export async function checkConcernSubmissionAllowed(
+  userId: number | null,
+  ip: string | null
+): Promise<RateLimitDecision> {
+  const now = Date.now();
+
+  if (userId !== null) {
+    const userDecision = decide(
+      await readBucket("submission", `user:${userId}`, now),
+      SUBMISSION_USER_MAX,
+      now
+    );
+    if (!userDecision.allowed) return userDecision;
+  }
+
+  const reliableIp = reliableClientIp(ip);
+  if (reliableIp !== null) {
+    const ipDecision = decide(
+      await readBucket("submission", `ip:${reliableIp}`, now),
+      SUBMISSION_IP_MAX,
+      now
+    );
+    if (!ipDecision.allowed) return ipDecision;
+  }
+
+  return { allowed: true, retryAfterSeconds: null };
+}
+
+export async function recordConcernSubmission(
+  userId: number | null,
+  ip: string | null
+): Promise<void> {
+  const now = Date.now();
+  if (userId !== null) await bump("submission", `user:${userId}`, now);
+  const reliableIp = reliableClientIp(ip);
+  if (reliableIp !== null) await bump("submission", `ip:${reliableIp}`, now);
 }
 
 /** A successful login clears only the caller's email bucket. The IP bucket is

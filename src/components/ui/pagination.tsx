@@ -35,10 +35,17 @@ export function Pagination({
   const last = Math.min(total, page * pageSize);
   const hasPrevious = page > 1;
   const hasNext = page < pageCount;
+  // Interpolated once so the visible text and the screen-reader label never
+  // disagree — the raw "{from}-{to} of {total}" template is not useful to
+  // announce as-is.
+  const resolvedShowingLabel = showingLabel
+    .replace("{from}", String(first))
+    .replace("{to}", String(last))
+    .replace("{total}", String(total));
 
   return (
     <nav
-      aria-label={showingLabel}
+      aria-label={resolvedShowingLabel}
       className="no-print mt-4 flex flex-wrap items-center justify-between gap-3"
     >
       {hasPrevious ? (
@@ -52,10 +59,7 @@ export function Pagination({
       )}
 
       <p className="text-caption text-ink-subtle tabular-nums">
-        {showingLabel
-          .replace("{from}", String(first))
-          .replace("{to}", String(last))
-          .replace("{total}", String(total))}
+        {resolvedShowingLabel}
       </p>
 
       {hasNext ? (

@@ -34,6 +34,10 @@ import { findLikelyDuplicate } from "@/lib/cases/duplicates";
 import { resolveStageWindow } from "@/lib/sla/escalation";
 import { slaDueAt } from "@/lib/sla/policy";
 import { encodeGeohash } from "@/lib/cases/geo";
+import {
+  checkConcernSubmissionAllowed,
+  recordConcernSubmission,
+} from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -174,12 +178,21 @@ export const GET = withErrorBoundary(async (req: Request) => {
   if (user.role.key === "OFFICIAL") {
     // Officials only ever see cases assigned to their own office.
     if (user.officeId === null) {
-      return ok({ concerns: [], total: 0, truncated: false });
+      return ok({
+        concerns: [],
+        total: 0,
+        truncated: false,
+        page: 1,
+        pageCount: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      });
     }
     filters.officeId = user.officeId;
   }
 
-  const { concerns, total, truncated } = await listConcerns(filters);
+  const { concerns, total, truncated, page, pageCount, hasNextPage, hasPrevPage } =
+    await listConcerns(filters);
 
   return ok({
     concerns: concerns.map((concern) => ({
@@ -213,6 +226,10 @@ export const GET = withErrorBoundary(async (req: Request) => {
     })),
     total,
     truncated,
+    page,
+    pageCount,
+    hasNextPage,
+    hasPrevPage,
   });
 });
 
@@ -220,9 +237,24 @@ export const POST = withErrorBoundary(async (req: Request) => {
   assertSameOrigin(req);
   const url = new URL(req.url);
   const anonymous = url.searchParams.get("anonymous") === "1";
+  const { ip } = requestMeta(req);
 
   let user;
   if (anonymous) {
+    // The anonymous path hands out a brand-new tracking account on every
+    // call, so a per-account submission cap can never bind here — check the
+    // IP bucket *before* creating that account (and the bcrypt hash that
+    // goes with it), so a scripted flood cannot even pay for a throwaway
+    // user row, let alone a concern.
+    const submissionCheck = await checkConcernSubmissionAllowed(null, ip);
+    if (!submissionCheck.allowed) {
+      throw createApiError.tooManyRequests(
+        `Too many concern submissions from this connection. Try again in ${submissionCheck.retryAfterSeconds} seconds, or sign in to submit.`,
+        submissionCheck.retryAfterSeconds ?? undefined
+      );
+    }
+    await recordConcernSubmission(null, ip);
+
     const residentRole = await db.role.findUnique({ where: { key: "RESIDENT" } });
     if (!residentRole) throw createApiError.internal("Resident role is not configured.");
     const trackingEmail = `anonymous-${crypto.randomUUID()}@anonymous.local`;
@@ -239,6 +271,14 @@ export const POST = withErrorBoundary(async (req: Request) => {
     });
   } else {
     user = await requireApiRole(["RESIDENT"]);
+    const submissionCheck = await checkConcernSubmissionAllowed(user.id, ip);
+    if (!submissionCheck.allowed) {
+      throw createApiError.tooManyRequests(
+        `Too many concern submissions. Try again in ${submissionCheck.retryAfterSeconds} seconds.`,
+        submissionCheck.retryAfterSeconds ?? undefined
+      );
+    }
+    await recordConcernSubmission(user.id, ip);
     await assertConsent(
       user.id,
       "DATA_PROCESSING",

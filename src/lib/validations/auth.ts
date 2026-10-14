@@ -26,7 +26,7 @@ const nameSchema = z
 const optionalString = z
   .string()
   .trim()
-  .max(255)
+  .max(255, "Must be at most 255 characters.")
   .transform((v) => (v === "" ? null : v))
   .nullable()
   .optional();
