@@ -1567,6 +1567,7 @@ const en = {
       navLedger: "Ledger",
       navCodes: "Codes and funds",
       navApprovals: "Approvals",
+      navFundCase: "Fund a case",
       requiredLegend: "* Required field",
       open: "Open",
       dashboardTitle: "Treasury",
@@ -1580,6 +1581,7 @@ const en = {
       pendingTitle: "Waiting for a decision",
       awaitingApprovalAllocations: "Allocations to approve",
       awaitingApprovalEarmarks: "Earmarks to approve",
+      awaitingFundingCases: "Cases waiting for their budget",
       awaitingCertification: "Vouchers to certify",
       awaitingApprovalVouchers: "Vouchers to approve",
       awaitingRelease: "Vouchers to release",
@@ -1667,6 +1669,26 @@ const en = {
       earmarkReview: {
         title: "Check this before you approve",
         lead: "The earmark read against the resident's concern and the budget it comes out of.",
+        // The three-question summary of the brief below it. The full figures
+        // stay; this is the strip that answers "am I good to approve?" before
+        // the reader has to read them.
+        checklist: {
+          title: "Three checks",
+          caseCheck: {
+            pass: "For the right case",
+            warn: "Amount needs a second look",
+            fail: "Not linked to a case",
+          },
+          fundsCheck: {
+            pass: "Budget covers it",
+            fail: "Budget cannot cover it",
+            unknown: "Balance not loaded",
+          },
+          proposerCheck: {
+            pass: "Proposed by someone else",
+            warn: "You proposed this yourself",
+          },
+        },
         caseSection: "The resident's concern",
         caseNotLinked:
           "Not linked to a case. This earmark funds a purpose, so there is no cost estimate to measure it against.",
@@ -1740,6 +1762,79 @@ const en = {
           CANCELLED: "Cancelled — this earmark sets nothing aside.",
         },
         nothingReserved: "Nothing is reserved until an earmark is approved.",
+      },
+      // ---- the guided funding flow: propose the earmark from the case ----
+      // The treasurer cannot open the case screens (those are scoped to the
+      // case's office), so the money side of "what does this case need?" is
+      // answered here instead of guessed from the earmark form's dropdowns.
+      fundCase: {
+        title: "Fund a case",
+        lead: "Work on a resident's concern cannot start until its budget is set aside. Three steps: what the case needs, which budget pays, and the hand-over to the Captain.",
+        howTitle: "How the money stage works",
+        howLead: "Three steps, two desks. You propose; the Captain approves.",
+        howSteps: [
+          {
+            title: "The case office saves the cost estimate",
+            detail:
+              "The assessment states what the work costs, labour and materials included. Until then there is no figure to set money aside against.",
+          },
+          {
+            title: "You propose the earmark",
+            detail:
+              "Pick the case, check the one recommended budget, and propose. The page already fills in the amount and the purpose.",
+          },
+          {
+            title: "The Captain approves it",
+            detail:
+              "Approval reserves the money on the ledger and the case can leave Awaiting budget. The Captain is notified the moment you propose.",
+          },
+        ],
+        queueTitle: "Cases that need money",
+        queueLead:
+          "Waiting in Awaiting budget first, then the longest wait. Each card says what is missing and whose desk it is on.",
+        queueEmpty: "No case is waiting on money right now.",
+        notReadyTitle: "Open cases not ready for funding",
+        notReadyLead:
+          "Shown so nothing looks missing: each of these is waiting on something other than the treasury.",
+        stateNeedsEstimate:
+          "No cost estimate yet. The case office saves it during assessment.",
+        statePending:
+          "A proposal of {amount} is waiting on the Captain\u2019s approval. If they approve it, this case is fully funded.",
+        statePendingPartial:
+          "{amount} of this case\u2019s estimate is already waiting on the Captain\u2019s approval. The amount below is only what is left after that, so approving both sets aside exactly the estimate.",
+        stateCovered:
+          "The full estimate is set aside. The case office can start the work.",
+        caseEstimateLabel: "Cost estimate",
+        setAsideLabel: "Already set aside",
+        pendingLabel: "Waiting on the Captain",
+        stillNeededLabel: "Still to set aside",
+        officeLabel: "Office",
+        noOffice: "No office yet",
+        waitingSince: "Waiting since {date}",
+        stepNeed: "What the case needs",
+        stepBudget: "Which budget pays",
+        stepPropose: "Propose the earmark",
+        recommended: "Recommended",
+        reasonOffice: "This budget belongs to the office holding the case.",
+        reasonBarangayWide: "Barangay-wide: any case may draw on it.",
+        reasonOtherOffice:
+          "Another office\u2019s budget — use it only if the others do not fit.",
+        coversDetail:
+          "{available} available — {remaining} left after this reservation.",
+        notCovers: "Not enough on its own: {available} available for a {need} need.",
+        noOptionCovers:
+          "No approved budget covers this need on its own. Split it across more than one earmark, or ask an administrator to adjust the budgets.",
+        noAllocations:
+          "There is no approved budget to draw from yet. An administrator has to open the fiscal year and approve an allocation first.",
+        amountLabel: "Amount to set aside",
+        purposeLabel: "Purpose",
+        notesLabel: "Notes (optional)",
+        submit: "Propose earmark",
+        successTitle: "Earmark {code} proposed",
+        successLead:
+          "{amount} is proposed from {allocation}. The Captain has been notified: approving it reserves the money and lets {case} leave Awaiting budget.",
+        successQueue: "It now waits at Captain \u2192 Approvals.",
+        viewEarmark: "Open the earmark",
       },
       // ---- the funding panel's exit sign, for a case stuck in AWAITING_BUDGET ----
       fundingStillNeeded: "Still needed",
@@ -4093,6 +4188,7 @@ const fil: typeof en = {
       navLedger: "Ledger",
       navCodes: "Codes at pondo",
       navApprovals: "Mga aprobasyon",
+      navFundCase: "Pondohan ang kaso",
       requiredLegend: "* Kinakailangang field",
       open: "Buksan",
       dashboardTitle: "Treasury",
@@ -4106,6 +4202,7 @@ const fil: typeof en = {
       pendingTitle: "Naghihintay ng desisyon",
       awaitingApprovalAllocations: "Allocation na aaprubahan",
       awaitingApprovalEarmarks: "Earmark na aaprubahan",
+      awaitingFundingCases: "Mga kasong naghihintay ng pondo",
       awaitingCertification: "Voucher na sesertipikahan",
       awaitingApprovalVouchers: "Voucher na aaprubahan",
       awaitingRelease: "Voucher na ilalabas",
@@ -4193,6 +4290,23 @@ const fil: typeof en = {
       earmarkReview: {
         title: "Suriin ito bago aprubahan",
         lead: "Ang earmark na inihambing sa reklamo ng residente at sa budget na pinagkukunan nito.",
+        checklist: {
+          title: "Tatlong pagsusuri",
+          caseCheck: {
+            pass: "Para sa tamang kaso",
+            warn: "Kailangang tingnan muli ang halaga",
+            fail: "Walang nakalink na kaso",
+          },
+          fundsCheck: {
+            pass: "Kaya ng badyet",
+            fail: "Hindi kaya ng badyet",
+            unknown: "Hindi nai-load ang balanse",
+          },
+          proposerCheck: {
+            pass: "Ibang tao ang nagmungkahi",
+            warn: "Ikaw mismo ang nagmungkahi nito",
+          },
+        },
         caseSection: "Ang reklamo ng residente",
         caseNotLinked:
           "Walang nakalink na kaso. Ang earmark na ito ay para sa isang layunin, kaya walang cost estimate na maipaghahambing dito.",
@@ -4263,6 +4377,75 @@ const fil: typeof en = {
           CANCELLED: "Nakansela — walang inilalaan ang earmark na ito.",
         },
         nothingReserved: "Walang naireserba hangga't walang naaaprubahang earmark.",
+      },
+      fundCase: {
+        title: "Pondohan ang kaso",
+        lead: "Hindi maaaring simulan ang trabaho sa reklamo ng residente hangga't walang nakalaang pondo. Tatlong hakbang: kung magkano ang kailangan ng kaso, aling badyet ang babayad, at ang pag-abot sa Kapitan.",
+        howTitle: "Paano gumagana ang yugto ng pondo",
+        howLead: "Tatlong hakbang, dalawang desk. Ikaw ang magmumungkahi; ang Kapitan ang mag-aaprubahan.",
+        howSteps: [
+          {
+            title: "Sine-save ng case office ang cost estimate",
+            detail:
+              "Sinasabi ng assessment kung magkano ang gastos ng trabaho, kasama ang paggawa at materyales. Hangga't wala ito, walang halagang maaaring ilaan.",
+          },
+          {
+            title: "Magmumungkahi ka ng earmark",
+            detail:
+              "Piliin ang kaso, tingnan ang inirerekomendang badyet, at magmungkahi. Napupunan na ng pahina ang halaga at ang layunin.",
+          },
+          {
+            title: "Aaprubahan ito ng Kapitan",
+            detail:
+              "Inireserba ng aprobasyon ang pera sa ledger at makakalabas na ang kaso sa paghihintay ng badyet. Aabisuhan ang Kapitan sa sandaling magmungkahi ka.",
+          },
+        ],
+        queueTitle: "Mga kasong nangangailangan ng pondo",
+        queueLead:
+          "Nasa paghihintay ng badyet muna, saka ang pinakamatagal nang naghihintay. Sinasabi ng bawat kard kung ano ang kulang at kaninong desk ito nakasalalay.",
+        queueEmpty: "Walang kasong naghihintay ng pondo ngayon.",
+        notReadyTitle: "Mga bukas na kasong hindi pa handa pondohan",
+        notReadyLead:
+          "Ipinapakita para walang misteryoso: ang bawat isa ay naghihintay ng iba, hindi ng treasury.",
+        stateNeedsEstimate:
+          "Wala pang cost estimate. Sine-save ito ng case office habang nasa assessment.",
+        statePending:
+          "May naghihintay na aprobasyon ng Kapitan na ₱{amount}. Kapag inaprubahan nila ito, ganap nang pondado ang kaso na ito.",
+        statePendingPartial:
+          "Ang {amount} ng estimate ng kasong ito ay naghihintay na sa aprobasyon ng Kapitan. Ang halagang nasa ibaba ay ang natitira lang pagkatapos noon, kaya ang pag-aprubaha sa pareho ay maglalagay ng eksaktong estimate.",
+        stateCovered:
+          "Buo nang nakalaan ang estimate. Maaari nang simulan ng case office ang trabaho.",
+        caseEstimateLabel: "Cost estimate",
+        setAsideLabel: "Nakalaan na",
+        pendingLabel: "Naghihintay sa Kapitan",
+        stillNeededLabel: "Ilaan pa",
+        officeLabel: "Opisina",
+        noOffice: "Wala pang opisina",
+        waitingSince: "Naghihintay mula {date}",
+        stepNeed: "Kung ano ang kailangan ng kaso",
+        stepBudget: "Aling badyet ang babayad",
+        stepPropose: "Imungkahi ang earmark",
+        recommended: "Inirerekomenda",
+        reasonOffice: "Kabilang ang badyet na ito sa opisinang hawak ng kaso.",
+        reasonBarangayWide: "Badyet ng buong barangay: maaaring humingi dito ang alinmang kaso.",
+        reasonOtherOffice:
+          "Badyet ng ibang opisina — gamitin lamang kung hindi umaangkop ang iba.",
+        coversDetail:
+          "{available} ang magagamit — {remaining} ang matitira pagkatapos ng reserbasyon.",
+        notCovers: "Hindi kaya nang mag-isa: {available} lang ang magagamit para sa {need} na kailangan.",
+        noOptionCovers:
+          "Walang aprubadong badyet na kayang takpan ang kailangang ito nang mag-isa. Hatiin sa mahigit isang earmark, o hingin sa administrator na ayusin ang mga badyet.",
+        noAllocations:
+          "Wala pang aprubadong badyet na pagkukunan. Kailangan muna ng administrator na buksan ang fiscal year at aprubahan ang isang allocation.",
+        amountLabel: "Halagang ilalaan",
+        purposeLabel: "Layunin",
+        notesLabel: "Mga tala (opsyonal)",
+        submit: "Imungkahi ang earmark",
+        successTitle: "Naiungkahi ang earmark {code}",
+        successLead:
+          "Ang {amount} ay mungkahi mula sa {allocation}. Aabisuhin ang Kapitan: ang pag-aprubaha nito ay magrereserba ng pera at papayagan ang {case} na umalis sa paghihintay ng badyet.",
+        successQueue: "Naghihintay na ito sa Kapitan \u2192 Mga aprobasyon.",
+        viewEarmark: "Buksan ang earmark",
       },
       // ---- ang karatula ng funding panel para sa kasong nakatigil sa AWAITING_BUDGET ----
       fundingStillNeeded: "Kailangan pa",

@@ -139,7 +139,7 @@ export function FundingPanel({
         )}
         {canPrepareEarmark && !funded && shortfall > 0 && (
           <Button
-            href={`/treasury/earmarks?concernId=${concernId}`}
+            href={`/treasury/fund?concernId=${concernId}`}
             size="sm"
             variant="outline"
           >

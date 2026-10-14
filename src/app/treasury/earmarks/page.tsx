@@ -221,11 +221,16 @@ export default async function TreasuryEarmarksPage({
         title={t.earmarksTitle}
         description={t.earmarksLead}
         actions={
-          waitingCount > 0 ? (
-            <Badge tone="amber">
-              {t.earmarkQueueCount.replace("{count}", String(waitingCount))}
-            </Badge>
-          ) : undefined
+          <>
+            {waitingCount > 0 && (
+              <Badge tone="amber">
+                {t.earmarkQueueCount.replace("{count}", String(waitingCount))}
+              </Badge>
+            )}
+            <Button href="/treasury/fund" size="sm" variant="outline">
+              {t.navFundCase}
+            </Button>
+          </>
         }
       />
 

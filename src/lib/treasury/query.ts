@@ -15,6 +15,13 @@ import {
 } from "@/lib/treasury/budget";
 import { setAsideBeforeThis } from "@/lib/treasury/approval";
 import {
+  fundingQueueState,
+  fundingShortfall,
+  uncommittedShortfall,
+  type FundingCaseFacts,
+  type FundingQueueState,
+} from "@/lib/treasury/funding-guide";
+import {
   agingSummary,
   liquidationState,
   roundMoney,
@@ -520,6 +527,8 @@ export type TreasuryDashboard = {
     vouchersAwaitingLiquidation: number;
     unverifiedCoaAccounts: number;
     unverifiedFundSources: number;
+    /** Open cases sitting in AWAITING_BUDGET without approved money covering them. */
+    casesAwaitingFunding: number;
   };
   aging: ReturnType<typeof agingSummary>;
   recentLedger: Array<{
@@ -608,6 +617,17 @@ export async function treasuryDashboard(
     }),
   ]);
 
+  // Cases a resident is waiting on that the money has not unblocked yet —
+  // the queue the guided funding flow works. Counted from the same rows the
+  // funding page lists, so the dashboard's number and the page's queue can
+  // never disagree.
+  const fundingRows = await listCasesAwaitingFunding(tx);
+  const casesAwaitingFunding = fundingRows.filter(
+    (row) =>
+      row.waitingForBudget &&
+      (row.state === "NEEDS_MONEY" || row.state === "PROPOSED_PENDING")
+  ).length;
+
   return {
     totals,
     counts: {
@@ -619,6 +639,7 @@ export async function treasuryDashboard(
       vouchersAwaitingLiquidation,
       unverifiedCoaAccounts,
       unverifiedFundSources,
+      casesAwaitingFunding,
     },
     aging: agingSummary(
       pendingVouchers.map((voucher) => ({
@@ -687,6 +708,90 @@ export async function ledgerRegister(
     createdAt: row.createdAt,
     actorName: row.actor ? `${row.actor.firstName} ${row.actor.lastName}` : null,
   }));
+}
+
+/**
+ * The treasury's own view of the cases that may need money: the case numbers,
+ * estimates and set-aside figures the guided funding flow runs on. The
+ * treasurer cannot open the case pages themselves (`case.view.office` scopes
+ * those to the case's office), so this — not a case screen — is where the
+ * money side of "what does this case need?" is answered.
+ *
+ * Rows come back for every open case; callers filter on `state`
+ * (`fundingQueueState`) — NEEDS_MONEY is the queue the funding form is for,
+ * PROPOSED_PENDING is waiting on the Captain, NEEDS_ESTIMATE is waiting on
+ * the case office, COVERED is waiting on nobody's money.
+ */
+export async function listCasesAwaitingFunding(tx: Tx): Promise<
+  Array<
+    FundingCaseFacts & {
+      officeName: string | null;
+      waitingForBudget: boolean;
+      awaitingBudgetAt: Date | null;
+      submittedAt: Date;
+      state: FundingQueueState;
+      shortfall: number;
+      uncommitted: number;
+    }
+  >
+> {
+  const concerns = await tx.concern.findMany({
+    where: { status: { notIn: ["RESOLVED", "CLOSED"] } },
+    orderBy: { submittedAt: "asc" },
+    take: 200,
+    select: {
+      id: true,
+      caseNumber: true,
+      title: true,
+      status: true,
+      submittedAt: true,
+      awaitingBudgetAt: true,
+      assignedOffice: { select: { id: true, name: true } },
+      caseAssessment: { select: { totalCost: true } },
+    },
+  });
+  if (concerns.length === 0) return [];
+
+  const ids = concerns.map((concern) => concern.id);
+  const [setAsideMap, proposedRows] = await Promise.all([
+    fundedAmountsByConcern(tx, ids),
+    tx.budgetEarmark.groupBy({
+      by: ["concernId"],
+      where: { concernId: { in: ids }, status: "PROPOSED" },
+      _sum: { amount: true },
+    }),
+  ]);
+  const proposedMap = new Map<number, number>();
+  for (const row of proposedRows) {
+    if (row.concernId === null) continue;
+    proposedMap.set(row.concernId, toMoney(row._sum.amount ?? 0));
+  }
+
+  return concerns.map((concern) => {
+    const facts: FundingCaseFacts = {
+      concernId: concern.id,
+      caseNumber: concern.caseNumber,
+      title: concern.title,
+      status: concern.status,
+      officeId: concern.assignedOffice?.id ?? null,
+      estimate:
+        concern.caseAssessment === null
+          ? null
+          : toMoney(concern.caseAssessment.totalCost ?? 0),
+      setAside: setAsideMap.get(concern.id) ?? 0,
+      proposed: proposedMap.get(concern.id) ?? 0,
+    };
+    return {
+      ...facts,
+      officeName: concern.assignedOffice?.name ?? null,
+      waitingForBudget: concern.status === "AWAITING_BUDGET",
+      awaitingBudgetAt: concern.awaitingBudgetAt,
+      submittedAt: concern.submittedAt,
+      state: fundingQueueState(facts),
+      shortfall: fundingShortfall(facts),
+      uncommitted: uncommittedShortfall(facts),
+    };
+  });
 }
 
 /**

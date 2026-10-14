@@ -757,8 +757,33 @@ Administrators can view and act on any office's cases.
   needs-a-decision / set-aside / cancelled. A case's funding panel is the other
   end of the same thread — it states the estimate, the amount set aside, the
   shortfall and whose desk the proposal is waiting on, and for a reader who may
-  propose an earmark it links straight to the treasury form with that case
-  picked and the shortfall already filled in.
+  propose an earmark it links straight to the guided funding flow with that
+  case's card highlighted.
+- **Funding a case is guided, not re-derived from dropdowns:** the treasurer
+  cannot open the case screens (those are scoped to the case's office), so
+  `/treasury/fund` (`src/lib/treasury/funding-guide.ts`, pure and unit-tested)
+  brings the cases to the money instead. The page opens with the three-step
+  explanation of the money stage (estimate → proposal → approval), then lists
+  the open cases: those still short of money first (each with the treasury's
+  own figures — estimate, set aside, waiting on the Captain, still to set
+  aside), then an "not ready" list that says why (no estimate yet, or already
+  covered). Each card carries the proposal form with the numbers already in
+  it, and — the decision that used to mean reading a dropdown of COA object
+  codes — a **recommended budget line**: allocations that can cover the need on
+  their own, ranked with the case office's own money first, barangay-wide
+  next, then other offices, each by the headroom left after the reservation
+  (`rankFundingOptions`; no recommendation when nothing covers the need alone,
+  because preselecting a line that would fail the approval's ledger check
+  would just be a button that can only fail). Proposing states the hand-over
+  out loud — the Captain approves, and only that approval reserves the money.
+  The pending-proposal arithmetic never double-books: a proposal waiting on
+  the Captain counts towards what a new one must cover
+  (`uncommittedShortfall`), and a card whose pending proposal already covers
+  the case says so instead of offering a second one. The treasury dashboard
+  counts "cases waiting for their budget" from the same rows the page lists,
+  and the Captain's approval brief opens with a three-tick summary (right
+  case · budget covers it · proposed by someone else) ahead of the full
+  figures, so "am I good to approve?" is answered at a glance.
 - **Field checks — is the report real?** Step 1 of every case, and the first
   thing the admin does with a new report: the admin desk (or the assigned
   office) picks an official or crew member, who sees the location the resident

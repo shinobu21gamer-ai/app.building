@@ -37,6 +37,11 @@ export default async function TreasuryDashboardPage() {
 
   const pending = [
     {
+      label: t.awaitingFundingCases,
+      count: dashboard.counts.casesAwaitingFunding,
+      href: "/treasury/fund",
+    },
+    {
       label: t.awaitingApprovalAllocations,
       count: dashboard.counts.allocationsAwaitingApproval,
       href: "/treasury/budgets",
@@ -73,6 +78,9 @@ export default async function TreasuryDashboardPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageHeader title={t.dashboardTitle} description={t.dashboardLead} />
         <div className="flex gap-2">
+          <Button href="/treasury/fund" size="sm">
+            {t.navFundCase}
+          </Button>
           <Button href="/treasury/budgets" size="sm" variant="outline">
             {t.navBudgets}
           </Button>

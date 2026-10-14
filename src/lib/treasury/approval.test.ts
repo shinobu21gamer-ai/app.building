@@ -56,6 +56,25 @@ describe("earmarkApprovalBrief — the money maths", () => {
     expect(brief.canDecide).toBe(false);
   });
 
+  it("does not subtract an approved row's amount from a balance that already includes it", () => {
+    // The live balance of an allocation with an approved earmark already
+    // counts its reservation. Reading that row on the register used to show
+    // "available after" as if the money were about to leave again.
+    const brief = earmarkApprovalBrief(
+      base({ status: "APPROVED", allocationAvailable: 38000 })
+    );
+    expect(brief.availableBefore).toBe(38000);
+    expect(brief.availableAfter).toBe(38000);
+    expect(brief.fits).toBe(true);
+  });
+
+  it("does not subtract a released row's amount from a balance that already includes it", () => {
+    const brief = earmarkApprovalBrief(
+      base({ status: "RELEASED", allocationAvailable: 38000 })
+    );
+    expect(brief.availableAfter).toBe(38000);
+  });
+
   it("adds this earmark to what is already set aside for the case", () => {
     const brief = earmarkApprovalBrief(
       base({ caseEstimate: 20000, caseSetAside: 8000 })
