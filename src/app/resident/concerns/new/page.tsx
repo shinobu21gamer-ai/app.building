@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ReportingGuide } from "@/components/concern/reporting-guide";
 import { SubmitConcernForm } from "@/components/concern/submit-concern-form";
 import { ConsentGate } from "@/components/privacy/consent-gate";
 import { PageHeader } from "@/components/ui/page-header";
@@ -89,6 +90,8 @@ export default async function NewConcernPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader title={t.title} description={t.lead} />
 
+      <ReportingGuide locale={locale} />
+      <Button href="/resident/concerns" variant="outline" size="sm">{copy[locale].reportingExperience.checkExisting}</Button>
       <Card>
         {categories.length === 0 || factors.length === 0 ? (
           <div className="py-8 text-center">
@@ -104,6 +107,7 @@ export default async function NewConcernPage() {
           </div>
         ) : (
           <SubmitConcernForm
+            userId={user.id}
             categories={categories}
             factors={factors}
             areas={areas}

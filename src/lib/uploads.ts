@@ -34,14 +34,15 @@ export function getUploadDir(): string {
  *
  * Serverless hosts (Vercel) mount a read-only filesystem, so writing to
  * `uploads/` fails outright. There the bytes are stored in Postgres instead.
- * `UPLOAD_STORAGE` can force either mode; otherwise disk is used except on
- * Vercel.
+ * Database storage is the safe default on every host: container filesystems
+ * may be ephemeral, and multiple app instances do not share local disk.
+ * Disk storage must be explicitly opted into with a persistent shared volume.
  */
 export function usingDatabaseUploads(): boolean {
   const configured = process.env.UPLOAD_STORAGE?.toLowerCase();
   if (configured === "database" || configured === "db") return true;
   if (configured === "disk" || configured === "filesystem") return false;
-  return Boolean(process.env.VERCEL);
+  return true;
 }
 
 /**

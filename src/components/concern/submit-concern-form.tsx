@@ -20,6 +20,8 @@ import { apiRequest } from "@/lib/api-client";
 import { createConcernSchema } from "@/lib/validations/concern";
 import { cn } from "@/lib/utils";
 import { copy, type Locale } from "@/lib/i18n";
+import { DraftControls } from "@/components/concern/draft-controls";
+import { removeConcernDraft } from "@/lib/concerns/draft";
 import { GeotagPicker } from "@/components/concern/geotag-picker";
 
 type CategoryOption = { id: number; name: string };
@@ -87,12 +89,14 @@ function selectStyles(invalid: boolean) {
 }
 
 export function SubmitConcernForm({
+  userId,
   categories,
   factors,
   areas,
   types,
   locale = "en",
 }: {
+  userId: number;
   categories: CategoryOption[];
   factors: FactorOption[];
   areas: string[];
@@ -102,6 +106,7 @@ export function SubmitConcernForm({
   const t = copy[locale].submit;
   const router = useRouter();
   const { showToast } = useToast();
+  const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -208,6 +213,7 @@ export function SubmitConcernForm({
       }
       setTouched((prev) => ({ ...prev, ...allTouched }));
       showToast("error", t.fix);
+      document.getElementById(Object.keys(nextErrors)[0])?.focus();
       return;
     }
 
@@ -265,15 +271,27 @@ export function SubmitConcernForm({
       return;
     }
 
+    try { removeConcernDraft(sessionStorage, userId); } catch { /* optional storage */ }
     showToast("success", t.success);
     router.push(`${result.data.redirect}?created=1`);
     router.refresh();
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5" noValidate>
+      <DraftControls userId={userId} formRef={formRef} locale={locale} />
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
 
+      {Object.values(fieldErrors).some(Boolean) && (
+        <div role="alert" className="rounded-control border border-danger-100 bg-danger-50 p-3 text-sm text-danger-700">
+          <p className="font-semibold">{copy[locale].reportingExperience.errorSummary}</p>
+          <ul className="mt-2 list-inside list-disc">
+            {Object.entries(fieldErrors).filter(([, message]) => Boolean(message)).map(([field, message]) => (
+              <li key={field}><a href={`#${field}`} className="underline" onClick={() => document.getElementById(field)?.focus()}>{message}</a></li>
+            ))}
+          </ul>
+        </div>
+      )}
       <RequiredLegend>{t.requiredLegend}</RequiredLegend>
 
       <div>

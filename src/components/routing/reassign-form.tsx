@@ -7,6 +7,7 @@ import {
   FieldError,
   FormMessage,
   Label,
+  RequiredLegend,
   Textarea,
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
@@ -123,13 +124,15 @@ export function ReassignForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+        <RequiredLegend>{copy[locale].register.requiredLegend}</RequiredLegend>
       {success && <FormMessage tone="success">{success}</FormMessage>}
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
 
       <div>
-        <Label htmlFor="assign-office">{t.assignOffice}</Label>
+        <Label htmlFor="assign-office" required>{t.assignOffice}</Label>
         <select
           id="assign-office"
+          required
           value={officeId ?? ""}
           onChange={(e) => {
             setOfficeId(e.target.value ? Number(e.target.value) : null);
@@ -166,9 +169,11 @@ export function ReassignForm({
       </div>
 
       <div>
-        <Label htmlFor="assign-reason">{t.assignReason}</Label>
+        <Label htmlFor="assign-reason" required>{t.assignReason}</Label>
         <Textarea
           id="assign-reason"
+          required
+          minLength={5}
           name="reason"
           rows={3}
           maxLength={500}

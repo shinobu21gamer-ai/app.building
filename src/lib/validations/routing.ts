@@ -35,12 +35,10 @@ export const reassignSchema = z.object({
     .number()
     .int("Select a valid office.")
     .positive("Select a valid office."),
-  officialId: z.coerce
-    .number()
-    .int()
-    .positive("Select a valid official.")
-    .optional()
-    .nullable(),
+  officialId: z.preprocess(
+    (value) => typeof value === "string" && value.trim() === "" ? null : value,
+    z.coerce.number().int().positive("Select a valid official.").optional().nullable()
+  ),
   reason: z
     .string()
     .trim()

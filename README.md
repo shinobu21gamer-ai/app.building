@@ -505,13 +505,22 @@ category, and the four factor ratings (must fall within the configured
 range). Residents may only submit as themselves and may only view their own
 cases — requests for another resident's case return 404.
 
-**Image uploads** are optional and validated by real content (magic bytes),
-not just the declared MIME type: JPEG/PNG/WebP only, max 5 MB. Files are
-stored under `UPLOAD_DIR` (default `<project>/uploads`, git-ignored) with a
-random UUID filename; executables, SVG, and type-mismatched files are
-rejected. Images are served through `GET /api/v1/uploads/[filename]`, which
-requires a session and allows only the owner, the assigned office's officials,
-or an ADMIN.
+**A proof image is required when submitting a concern.** Photos are validated
+by real content (magic bytes), not just the declared MIME type: JPEG/PNG/WebP
+only, max 5 MB. New uploads default to Postgres storage (`UploadRecord.data`),
+so redeploys and multiple app instances do not lose access to the bytes.
+For persistent shared filesystems, explicitly set `UPLOAD_STORAGE=disk` and
+`UPLOAD_DIR` (default `<project>/uploads`, git-ignored). Existing disk uploads
+remain readable from that directory; files already lost from an ephemeral
+filesystem cannot be reconstructed from their URLs and must be restored from
+backup or re-uploaded.
+
+Images are served through authenticated `GET /api/v1/uploads/[filename]`.
+Case and proof photos allow the resident, assigned office officials, ADMIN,
+and CAPTAIN; field-check assignees may also view their check's photo. Identity
+documents remain restricted to the resident and ADMIN, with administrator
+access audited. The photo viewer loads directly with the browser's session
+cookie, shows a retry message on failure, and offers a scrollable full-size view.
 
 ## Per-User Daily Upload Quota
 
@@ -1214,3 +1223,12 @@ src/
 - `CaseAssignment.assignedById` is nullable: `null` marks a system-generated
   assignment from the automatic routing engine, while a value identifies the
   official/admin who performed a manual reassignment.
+
+### Civic reporting review and phone-alert troubleshooting (October 2026)
+
+See [the civic UX review and Android alert checklist](docs/reviews/2026-10-14-civic-reporting-and-android-alerts.md)
+for the reference-site comparison, applied improvements, remaining priorities,
+and a real-phone verification procedure. The Alerts page now checks the exact
+current device and offers a rate-limited **Send test to this phone** control.
+A successful Firebase response means provider acceptance, not confirmed phone
+receipt. Firebase keys belong in deployment settings, never in Git or chat.

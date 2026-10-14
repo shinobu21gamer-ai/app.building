@@ -167,16 +167,18 @@ body {
    box never reaches. A thin, quiet bar is the affordance that says "more
    below"; the track stays transparent so it does not read as a second column. */
 .nav-scroll {
-  scrollbar-width: thin;
+  scrollbar-width: auto;
+  scrollbar-color: #94a3b8 #edf2f7;
   scrollbar-gutter: stable;
 }
 
 .nav-scroll::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .nav-scroll::-webkit-scrollbar-track {
-  background: transparent;
+  background: #edf2f7;
+  border-radius: 999px;
 }
 
 .nav-scroll::-webkit-scrollbar-thumb {

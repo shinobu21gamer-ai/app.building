@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Pencil, Plus, Power, Save, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FormMessage, Input, Label, Textarea } from "@/components/ui/field";
+import { FormMessage, Input, Label, RequiredLegend, Textarea } from "@/components/ui/field";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
 import { apiRequest } from "@/lib/api-client";
 import { extractApiError } from "@/lib/utils";
@@ -181,6 +181,7 @@ export function OfficeManager({
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        <RequiredLegend>{copy[locale].register.requiredLegend}</RequiredLegend>
         <div>
           <h2 className="text-lg font-semibold text-ink">
             {editingId ? t.editOffice : t.addOffice}
@@ -190,7 +191,7 @@ export function OfficeManager({
 
         <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="office-name">{t.officeName}</Label>
+            <Label htmlFor="office-name" required>{t.officeName}</Label>
             <Input
               id="office-name"
               value={name}
@@ -200,7 +201,7 @@ export function OfficeManager({
             />
           </div>
           <div>
-            <Label htmlFor="office-code">{t.officeCode}</Label>
+            <Label htmlFor="office-code" required>{t.officeCode}</Label>
             <Input
               id="office-code"
               value={code}

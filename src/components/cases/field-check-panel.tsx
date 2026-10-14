@@ -1,5 +1,7 @@
 "use client";
 
+import { UploadedPhoto } from "@/components/ui/uploaded-photo";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -302,14 +304,7 @@ export function FieldCheckPanel({
                     </p>
                     {check.findingNotes && <p className="text-ink-subtle">{check.findingNotes}</p>}
                     {check.findingPhotoUrl && (
-                      <a
-                        href={check.findingPhotoUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-brand underline"
-                      >
-                        {t.photo}
-                      </a>
+                      <UploadedPhoto src={check.findingPhotoUrl} alt={t.photo} locale={locale} />
                     )}
                   </div>
                 )}

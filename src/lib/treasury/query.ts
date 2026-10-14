@@ -16,10 +16,14 @@ import {
 import { setAsideBeforeThis } from "@/lib/treasury/approval";
 import {
   fundingQueueState,
+  fundingQueueSummary,
   fundingShortfall,
+  pendingTowardNeed,
+  sortFundingQueue,
   uncommittedShortfall,
   type FundingCaseFacts,
   type FundingQueueState,
+  type FundingQueueSummary,
 } from "@/lib/treasury/funding-guide";
 import {
   agingSummary,
@@ -530,6 +534,17 @@ export type TreasuryDashboard = {
     /** Open cases sitting in AWAITING_BUDGET without approved money covering them. */
     casesAwaitingFunding: number;
   };
+  /**
+   * How much money the cases are waiting on. The count above says how many
+   * cases are stuck; this says what finding their money costs — the total,
+   * the part already proposed, the part still to propose, and the amount per
+   * case.
+   */
+  funding: {
+    summary: FundingQueueSummary;
+    /** The cases money is holding up, queue order, with the amount each needs. */
+    needs: FundingNeedRow[];
+  };
   aging: ReturnType<typeof agingSummary>;
   recentLedger: Array<{
     id: number;
@@ -618,15 +633,11 @@ export async function treasuryDashboard(
   ]);
 
   // Cases a resident is waiting on that the money has not unblocked yet —
-  // the queue the guided funding flow works. Counted from the same rows the
-  // funding page lists, so the dashboard's number and the page's queue can
-  // never disagree.
-  const fundingRows = await listCasesAwaitingFunding(tx);
-  const casesAwaitingFunding = fundingRows.filter(
-    (row) =>
-      row.waitingForBudget &&
-      (row.state === "NEEDS_MONEY" || row.state === "PROPOSED_PENDING")
-  ).length;
+  // the queue the guided funding flow works. The count and the pesos both
+  // come from the same rows the funding page lists, so the dashboard's
+  // figures and the page's queue can never disagree.
+  const { summary: fundingSummary, needs: fundingNeeds } =
+    await fundingQueue(tx);
 
   return {
     totals,
@@ -639,7 +650,13 @@ export async function treasuryDashboard(
       vouchersAwaitingLiquidation,
       unverifiedCoaAccounts,
       unverifiedFundSources,
-      casesAwaitingFunding,
+      // The same helper that totals the money, so the count and the pesos are
+      // never two different readings of the queue.
+      casesAwaitingFunding: fundingSummary.cases,
+    },
+    funding: {
+      summary: fundingSummary,
+      needs: fundingNeeds,
     },
     aging: agingSummary(
       pendingVouchers.map((voucher) => ({
@@ -711,6 +728,21 @@ export async function ledgerRegister(
 }
 
 /**
+ * One open case as the funding desk sees it: the facts the funding guide runs
+ * on, plus where the case is (`state`) and what it costs (`shortfall` is the
+ * need, `uncommitted` is what a new proposal must cover).
+ */
+export type FundingCaseRow = FundingCaseFacts & {
+  officeName: string | null;
+  waitingForBudget: boolean;
+  awaitingBudgetAt: Date | null;
+  submittedAt: Date;
+  state: FundingQueueState;
+  shortfall: number;
+  uncommitted: number;
+};
+
+/**
  * The treasury's own view of the cases that may need money: the case numbers,
  * estimates and set-aside figures the guided funding flow runs on. The
  * treasurer cannot open the case pages themselves (`case.view.office` scopes
@@ -722,19 +754,9 @@ export async function ledgerRegister(
  * PROPOSED_PENDING is waiting on the Captain, NEEDS_ESTIMATE is waiting on
  * the case office, COVERED is waiting on nobody's money.
  */
-export async function listCasesAwaitingFunding(tx: Tx): Promise<
-  Array<
-    FundingCaseFacts & {
-      officeName: string | null;
-      waitingForBudget: boolean;
-      awaitingBudgetAt: Date | null;
-      submittedAt: Date;
-      state: FundingQueueState;
-      shortfall: number;
-      uncommitted: number;
-    }
-  >
-> {
+export async function listCasesAwaitingFunding(
+  tx: Tx
+): Promise<FundingCaseRow[]> {
   const concerns = await tx.concern.findMany({
     where: { status: { notIn: ["RESOLVED", "CLOSED"] } },
     orderBy: { submittedAt: "asc" },
@@ -792,6 +814,86 @@ export async function listCasesAwaitingFunding(tx: Tx): Promise<
       uncommitted: uncommittedShortfall(facts),
     };
   });
+}
+
+/**
+ * One case's need as money, for the screens that have to say the amount rather
+ * than the case count: what the case costs, how much of that is already
+ * waiting on the Captain, and what a new proposal must still find.
+ */
+export type FundingNeedRow = {
+  concernId: number;
+  caseNumber: string;
+  title: string;
+  officeName: string | null;
+  state: FundingQueueState;
+  /** The saved cost estimate; null when the case has none yet. */
+  estimate: number | null;
+  setAside: number;
+  /** Pending proposals, capped at what the case is missing. */
+  pending: number;
+  /** What the case still needs beyond the set-aside. */
+  need: number;
+  /** The part of the need no proposal has claimed yet. */
+  toPropose: number;
+  awaitingBudgetAt: Date | null;
+  submittedAt: Date;
+};
+
+/** How many of the queue's cases the dashboard lists before "open the desk". */
+export const FUNDING_NEED_ROWS = 12;
+
+/** The funding queue as one answer: the cases, and what they cost. */
+export type FundingQueue = {
+  summary: FundingQueueSummary;
+  /** Every open case, in queue order (AWAITING_BUDGET first, longest wait first). */
+  rows: FundingCaseRow[];
+  /**
+   * The cases money is holding up, queue order, with the amount each one
+   * needs — capped at {@link FUNDING_NEED_ROWS}, since the summary carries
+   * the total and the funding page carries the rest.
+   */
+  needs: FundingNeedRow[];
+};
+
+/**
+ * The funding queue and its money in one read.
+ *
+ * The dashboard's headline ("₱45,000 still to find across 3 cases") and the
+ * funding page's cards are the same answer at two altitudes, so both are built
+ * from these rows: `summary` for the total, `rows` for the queue, `needs` for
+ * the per-case amounts. Computing the total anywhere else is how the count on
+ * the dashboard and the money on the page drift apart.
+ */
+export async function fundingQueue(tx: Tx): Promise<FundingQueue> {
+  const rows = sortFundingQueue(await listCasesAwaitingFunding(tx));
+  const needs = rows
+    .filter(
+      (row) =>
+        row.waitingForBudget &&
+        (row.state === "NEEDS_MONEY" || row.state === "PROPOSED_PENDING")
+    )
+    .slice(0, FUNDING_NEED_ROWS)
+    .map((row) => {
+      const need = row.shortfall;
+      const pending = pendingTowardNeed(row);
+      return {
+        concernId: row.concernId,
+        caseNumber: row.caseNumber,
+        title: row.title,
+        officeName: row.officeName,
+        state: row.state,
+        estimate: row.estimate,
+        setAside: row.setAside,
+        pending,
+        need,
+        toPropose: roundMoney(need - pending),
+        awaitingBudgetAt: row.awaitingBudgetAt,
+        submittedAt: row.submittedAt,
+      };
+    });
+
+  return { summary: fundingQueueSummary(rows), rows, needs };
 }
 
 /**

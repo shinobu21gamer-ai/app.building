@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FormMessage, Input, Label, Textarea } from "@/components/ui/field";
+import { FormMessage, Input, Label, RequiredLegend, Textarea } from "@/components/ui/field";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
 import { apiRequest } from "@/lib/api-client";
 import { extractApiError } from "@/lib/utils";
@@ -127,12 +127,13 @@ export function CategoryManager({
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <RequiredLegend>{copy[locale].register.requiredLegend}</RequiredLegend>
         <h2 className="text-base font-semibold text-ink">
           {editingId ? t.editCategory : t.addCategory}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label htmlFor="category-name">{t.name}</Label>
+            <Label htmlFor="category-name" required>{t.name}</Label>
             <Input
               id="category-name"
               value={name}
@@ -141,7 +142,7 @@ export function CategoryManager({
             />
           </div>
           <div>
-            <Label htmlFor="category-code">{t.code}</Label>
+            <Label htmlFor="category-code" required>{t.code}</Label>
             <Input
               id="category-code"
               value={code}

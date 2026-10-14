@@ -11,6 +11,30 @@ const en = {
   openMenu: "Open menu",
   closeMenu: "Close menu",
   language: "Language",
+  reportingExperience: {
+    draftTitle: "Keep a draft before you leave",
+    draftHint: "Save only if this is your own device. Text is kept in this tab session for up to 24 hours and cleared at sign-out. Photos and GPS pins are not saved. A draft is not submitted automatically.",
+    saveDraft: "Save draft", restoreDraft: "Restore draft", discardDraft: "Discard draft",
+    draftSaved: "Draft saved on this device. It has not been submitted.",
+    draftRestored: "Draft restored. Check the details, reattach your photo, and add a location pin if needed.",
+    draftUnavailable: "Draft storage is unavailable. Keep this page open or copy your text before leaving.",
+    offline: "You are offline. You can save a draft, then reconnect to submit.",
+    locationHint: "Include the purok, nearest landmark, and a clear photo so staff can find the problem.",
+    privacyHint: "Avoid ID numbers, passwords, or unnecessary photos of other people. Check your existing concerns before reporting the same issue again.",
+    checkExisting: "Check my existing concerns",
+    errorSummary: "Please correct these fields before submitting:",
+    searchLabel: "Search my concerns", searchPlaceholder: "Case number or title",
+    statusLabel: "Status", allStatuses: "All statuses", filter: "Search", clear: "Clear filters",
+    noMatches: "No concerns match your search.", results: "{count} concern(s) found",
+    previous: "Previous", next: "Next", page: "Page {page} of {pages}",
+  },
+  photoViewer: {
+    open: "View full photo",
+    close: "Close photo",
+    retry: "Try again",
+    unavailable: "This photo could not be loaded. Try again or sign in again. If it is still missing, contact the hall.",
+    scrollHint: "Scroll to inspect the full-size photo.",
+  },
   loading: {
     label: "Loading…",
   },
@@ -378,8 +402,11 @@ const en = {
     emailLocked: "Email cannot be changed.",
     firstName: "First name",
     lastName: "Last name",
-    phone: "Phone",
-    address: "Address",
+    phone: "Phone (optional)",
+    phoneKeep: "Saved number: {phone}. Leave blank to keep it, or enter a new number.",
+    phoneRemove: "Remove saved number",
+    phoneRemoved: "The saved number will be removed when you save.",
+    address: "Address (optional)",
     save: "Save changes",
     saving: "Saving…",
     saved: "Profile updated.",
@@ -1585,6 +1612,22 @@ const en = {
       awaitingApprovalAllocations: "Allocations to approve",
       awaitingApprovalEarmarks: "Earmarks to approve",
       awaitingFundingCases: "Cases waiting for their budget",
+      // ---- "how much money do the cases need?" ----
+      // A case count cannot tell a treasurer whether the barangay is ₱1,500
+      // short or ₱150,000 short, and those need different responses: one is an
+      // earmark, the other is a supplemental appropriation.
+      fundingNeedTitle: "What the cases need",
+      fundingNeedLead:
+        "The money the cases sitting in Awaiting budget are waiting on: the total, the part already with the Captain, and the amount each case needs.",
+      fundingNeedTotal: "{count} case(s) are waiting on this money",
+      fundingNeedToPropose: "{amount} still to propose",
+      fundingNeedPending: "{amount} already with the Captain",
+      fundingNeedPendingPart: "{amount} of it is with the Captain",
+      fundingNeedNone:
+        "No case is waiting on money: every case in Awaiting budget has its estimate set aside.",
+      fundingNeedUnestimated:
+        "{count} case(s) in Awaiting budget have no cost estimate yet, so what they need is not in this total.",
+      fundingNeedMore: "{count} more case(s) on the funding desk",
       awaitingCertification: "Vouchers to certify",
       awaitingApprovalVouchers: "Vouchers to approve",
       awaitingRelease: "Vouchers to release",
@@ -1869,6 +1912,13 @@ const en = {
         queueLead:
           "Waiting in Awaiting budget first, then the longest wait. Each card says what is missing and whose desk it is on.",
         queueEmpty: "No case is waiting on money right now.",
+        // The total over the cards below: the treasurer's first question here
+        // is "how much money is this?", not "how many cases?".
+        queueNeed: "{count} case(s) need {amount} before their work can start",
+        queueSplit:
+          "{toPropose} still to propose, {pending} already with the Captain",
+        needBadge: "Needs {amount}",
+        estimateChip: "Estimate {amount} — fully set aside",
         notReadyTitle: "Open cases not ready for funding",
         notReadyLead:
           "Shown so nothing looks missing: each of these is waiting on something other than the treasury.",
@@ -2734,6 +2784,30 @@ const fil: typeof en = {
   openMenu: "Buksan ang menu",
   closeMenu: "Isara ang menu",
   language: "Wika",
+  reportingExperience: {
+    draftTitle: "Mag-save ng draft bago umalis",
+    draftHint: "Mag-save lang sa sarili mong device. Ang teksto ay nasa tab session nang hanggang 24 oras at nabubura sa pag-sign out. Hindi kasama ang larawan o GPS pin. Hindi awtomatikong ipinapasa ang draft.",
+    saveDraft: "I-save ang draft", restoreDraft: "Ibalik ang draft", discardDraft: "Burahin ang draft",
+    draftSaved: "Na-save ang draft sa device na ito. Hindi pa ito naipapasa.",
+    draftRestored: "Naibalik ang draft. Suriin ang detalye, ilakip muli ang larawan, at ilagay ang pin kung kailangan.",
+    draftUnavailable: "Hindi magamit ang draft storage. Panatilihing bukas ang pahina o kopyahin ang teksto bago umalis.",
+    offline: "Offline ka. Mag-save ng draft at kumonekta muli bago magpasa.",
+    locationHint: "Isama ang purok, pinakamalapit na palatandaan, at malinaw na larawan para mahanap ng staff ang problema.",
+    privacyHint: "Iwasang ilagay ang ID number, password, o hindi kailangang larawan ng ibang tao. Tingnan ang dati mong concern bago ulitin ang parehong ulat.",
+    checkExisting: "Tingnan ang dati kong concern",
+    errorSummary: "Itama ang mga field na ito bago magpasa:",
+    searchLabel: "Hanapin ang concern ko", searchPlaceholder: "Case number o pamagat",
+    statusLabel: "Status", allStatuses: "Lahat ng status", filter: "Hanapin", clear: "Alisin ang filter",
+    noMatches: "Walang concern na tumugma sa paghahanap.", results: "{count} concern ang nakita",
+    previous: "Nakaraan", next: "Susunod", page: "Pahina {page} ng {pages}",
+  },
+  photoViewer: {
+    open: "Tingnan ang buong larawan",
+    close: "Isara ang larawan",
+    retry: "Subukan muli",
+    unavailable: "Hindi ma-load ang larawan. Subukan muli o mag-sign in ulit. Kung wala pa rin, makipag-ugnayan sa hall.",
+    scrollHint: "Mag-scroll para makita ang buong larawan.",
+  },
   loading: {
     label: "Naglo-load…",
   },
@@ -3101,8 +3175,11 @@ const fil: typeof en = {
     emailLocked: "Hindi puwedeng palitan ang email.",
     firstName: "Pangalan",
     lastName: "Apelyido",
-    phone: "Telepono",
-    address: "Address",
+    phone: "Telepono (opsyonal)",
+    phoneKeep: "Naka-save na numero: {phone}. Iwang blangko para panatilihin, o ilagay ang bagong numero.",
+    phoneRemove: "Alisin ang naka-save na numero",
+    phoneRemoved: "Maaalis ang naka-save na numero kapag nag-save ka.",
+    address: "Address (opsyonal)",
     save: "I-save",
     saving: "Sine-save…",
     saved: "Na-update ang profile.",
@@ -4310,6 +4387,22 @@ const fil: typeof en = {
       awaitingApprovalAllocations: "Allocation na aaprubahan",
       awaitingApprovalEarmarks: "Earmark na aaprubahan",
       awaitingFundingCases: "Mga kasong naghihintay ng pondo",
+      // ---- "magkano ang kailangan ng mga kaso?" ----
+      // Hindi masasabi ng bilang ng kaso kung ₱1,500 lang o ₱150,000 ang
+      // kulang, at magkaiba ang tugon doon: earmark ang una, supplemental
+      // appropriation ang pangalawa.
+      fundingNeedTitle: "Kung magkano ang kailangan ng mga kaso",
+      fundingNeedLead:
+        "Ang perang hinihintay ng mga kasong nasa Awaiting budget: ang kabuuan, ang bahaging nasa Kapitan na, at ang halagang kailangan ng bawat kaso.",
+      fundingNeedTotal: "{count} kaso ang naghihintay sa perang ito",
+      fundingNeedToPropose: "{amount} pa ang imumungkahi",
+      fundingNeedPending: "{amount} ang nasa Kapitan na",
+      fundingNeedPendingPart: "{amount} dito ang nasa Kapitan",
+      fundingNeedNone:
+        "Walang kasong naghihintay ng pera: nakalaan na ang estimate ng bawat kasong nasa Awaiting budget.",
+      fundingNeedUnestimated:
+        "{count} kasong nasa Awaiting budget ang wala pang cost estimate, kaya wala sa kabuuang ito ang kailangan nila.",
+      fundingNeedMore: "{count} pang kaso sa funding desk",
       awaitingCertification: "Voucher na sesertipikahan",
       awaitingApprovalVouchers: "Voucher na aaprubahan",
       awaitingRelease: "Voucher na ilalabas",
@@ -4579,6 +4672,14 @@ const fil: typeof en = {
         queueLead:
           "Nasa paghihintay ng badyet muna, saka ang pinakamatagal nang naghihintay. Sinasabi ng bawat kard kung ano ang kulang at kaninong desk ito nakasalalay.",
         queueEmpty: "Walang kasong naghihintay ng pondo ngayon.",
+        // Ang kabuuan ng mga kard sa ibaba: ang unang tanong dito ay
+        // "magkano ang pera?", hindi "ilan ang kaso?".
+        queueNeed:
+          "{count} kaso ang nangangailangan ng {amount} bago magsimula ang trabaho",
+        queueSplit:
+          "{toPropose} pa ang imumungkahi, {pending} ang nasa Kapitan na",
+        needBadge: "Kailangan {amount}",
+        estimateChip: "Estimate {amount} — buong nakalaan na",
         notReadyTitle: "Mga bukas na kasong hindi pa handa pondohan",
         notReadyLead:
           "Ipinapakita para walang misteryoso: ang bawat isa ay naghihintay ng iba, hindi ng treasury.",

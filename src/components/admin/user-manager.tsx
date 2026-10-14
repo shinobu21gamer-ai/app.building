@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FormMessage, Input, Label, Select, Textarea } from "@/components/ui/field";
+import { FormMessage, Input, Label, RequiredLegend, Select, Textarea } from "@/components/ui/field";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
 import { useToast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api-client";
@@ -411,6 +411,7 @@ export function UserManager({
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <RequiredLegend>{copy[locale].register.requiredLegend}</RequiredLegend>
         <h2 className="inline-flex items-center gap-2 text-base font-semibold text-ink">
           {editingId ? (
             <>
@@ -432,7 +433,7 @@ export function UserManager({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label htmlFor="user-first">
+            <Label htmlFor="user-first" required>
               <span className="inline-flex items-center gap-1.5">
                 <User size={14} className="text-ink-subtle" />
                 {t.firstName}
@@ -463,7 +464,7 @@ export function UserManager({
             )}
           </div>
           <div>
-            <Label htmlFor="user-last">
+            <Label htmlFor="user-last" required>
               <span className="inline-flex items-center gap-1.5">
                 <User size={14} className="text-ink-subtle" />
                 {t.lastName}
@@ -494,7 +495,7 @@ export function UserManager({
             )}
           </div>
           <div>
-            <Label htmlFor="user-email">
+            <Label htmlFor="user-email" required>
               <span className="inline-flex items-center gap-1.5">
                 <Mail size={14} className="text-ink-subtle" />
                 {t.email}
@@ -548,7 +549,7 @@ export function UserManager({
             )}
           </div>
           <div>
-            <Label htmlFor="user-password">
+            <Label htmlFor="user-password" required={!editingId}>
               <span className="inline-flex items-center gap-1.5">
                 <Lock size={14} className="text-ink-subtle" />
                 {t.password} {editingId ? t.passwordKeep : ""}
@@ -563,6 +564,7 @@ export function UserManager({
                 onBlur={() => setTouched((p) => ({ ...p, password: true }))}
                 placeholder={editingId ? t.passwordUnchanged : t.passwordPlaceholder}
                 autoComplete="new-password"
+                required={!editingId}
                 invalid={isPasswordInvalid()}
                 className="pr-9"
               />
@@ -599,7 +601,7 @@ export function UserManager({
 
           {fixedRole ? null : (
             <div>
-              <Label htmlFor="user-role">
+              <Label htmlFor="user-role" required>
                 <span className="inline-flex items-center gap-1.5">
                   <Shield size={14} className="text-ink-subtle" />
                   {t.role}
@@ -622,7 +624,7 @@ export function UserManager({
 
           {showOffice && (
             <div>
-              <Label htmlFor="user-office">
+              <Label htmlFor="user-office" required={roleKey === "OFFICIAL"}>
                 <span className="inline-flex items-center gap-1.5">
                   <Building2 size={14} className="text-ink-subtle" />
                   {t.office}
@@ -630,6 +632,7 @@ export function UserManager({
               </Label>
               <select
                 id="user-office"
+                required={roleKey === "OFFICIAL"}
                 value={officeId}
                 onChange={(event) => setOfficeId(event.target.value)}
                 className={selectStyles}
@@ -731,7 +734,7 @@ export function UserManager({
               </div>
 
               <div>
-                <Label htmlFor="crew-max">{crewCopy.maxCases}</Label>
+                <Label htmlFor="crew-max" required>{crewCopy.maxCases}</Label>
                 <Input
                   id="crew-max"
                   type="number"

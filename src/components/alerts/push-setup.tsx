@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { Bell, BellOff, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api-client";
-import { forgetNativeToken, getNativePlatform, getPushMode, readNativeToken, ensureSeverityChannels, PushNotifications } from "@/lib/capacitor-types";
-import { readPushDiagnostics, requestNativePushToken, waitForAlertBridge } from "@/lib/native-diagnostics";
+import { forgetNativeToken, getNativePlatform, getPushMode, ensureSeverityChannels, PushNotifications } from "@/lib/capacitor-types";
+import { nativePushOptedOut, setNativePushEnabled } from "@/lib/native-push-preference";
+import { checkNativePushStatus, currentNativeToken } from "@/lib/native-push-status";
+import { readPushDiagnostics, waitForAlertBridge } from "@/lib/native-diagnostics";
 
 function decodeKey(value: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (value.length % 4)) % 4);
@@ -57,6 +59,7 @@ export function PushSetup() {
   async function checkSubscription(currentMode: PushMode) {
     try {
       if (currentMode === "capacitor") {
+        if (nativePushOptedOut()) { setStatus("disabled"); setMessage("Phone alerts are disabled on this device."); return; }
         // A build that cannot talk to Firebase says so up front; asking the
         // Capacitor plugin to register anyway is what used to close the app.
         const diagnostics = readPushDiagnostics();
@@ -68,9 +71,7 @@ export function PushSetup() {
 
         const perm = await PushNotifications.checkPermissions();
         if (perm.receive === "granted") {
-          const result = await apiRequest<{ registered: boolean; serverConfigured?: boolean }>(
-            `/api/v1/alerts/push/token?platform=${getNativePlatform()}`
-          );
+          const result = await checkNativePushStatus();
           if (!result.success) {
             setStatus("error");
             setMessage(result.error.message);
@@ -155,11 +156,9 @@ export function PushSetup() {
         }
         await ensureSeverityChannels();
         const registrationResult = waitForNativeRegistration();
-        // The app's own registration (current APKs) reports every failure; the
-        // plugin call stays as the fallback for APKs built without it.
-        if (!requestNativePushToken()) {
-          await PushNotifications.register();
-        }
+        // Let the global listener own registration/retries and error reporting.
+        setNativePushEnabled(true);
+        window.dispatchEvent(new Event("native-push-retry"));
         const registration = await registrationResult;
         if (!registration.registered) {
           setStatus("error");
@@ -169,8 +168,14 @@ export function PushSetup() {
           );
           return;
         }
+        const current = await checkNativePushStatus();
+        if (!current.success || !current.data.registered || !current.data.serverConfigured) {
+          setStatus("error");
+          setMessage(current.success ? "This device or the server is not ready for push. Open Alert diagnostics for details." : current.error.message);
+          return;
+        }
         setStatus("enabled");
-        setMessage("Phone alerts are registered. The phone must remain powered on and connected.");
+        setMessage("Phone alerts are registered. Use Send test to this phone to check delivery.");
         return;
       }
 
@@ -221,7 +226,7 @@ export function PushSetup() {
     setMessage(null);
     try {
       if (mode === "capacitor") {
-        const token = readNativeToken();
+        const token = currentNativeToken();
         if (token) {
           const result = await apiRequest("/api/v1/alerts/push/token", {
             method: "POST",
@@ -234,6 +239,8 @@ export function PushSetup() {
           }
           forgetNativeToken();
         }
+        setNativePushEnabled(false);
+        window.dispatchEvent(new Event("native-push-disabled"));
         // Unregistering touches Firebase; skip it when the build cannot talk to
         // Firebase at all (the server-side deactivation above is what matters).
         const diagnostics = readPushDiagnostics();

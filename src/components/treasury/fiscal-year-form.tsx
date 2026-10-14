@@ -46,7 +46,7 @@ export function FiscalYearForm({ locale = "en" }: { locale?: Locale }) {
         method: "POST",
         body: JSON.stringify({
           year: Number(formData.get("year")),
-          name: name === "" ? null : name,
+          name: name.trim() || undefined,
           startsOn: String(formData.get("startsOn") ?? ""),
           endsOn: String(formData.get("endsOn") ?? ""),
         }),

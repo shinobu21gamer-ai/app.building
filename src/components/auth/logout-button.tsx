@@ -4,6 +4,7 @@ import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { apiRequest } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
+import { clearConcernDrafts } from "@/lib/concerns/draft";
 import { forgetNativeToken } from "@/lib/capacitor-types";
 import {
   collectPushDeviceIdentity,
@@ -38,6 +39,7 @@ export function LogoutButton({
       // can claim it instead of hitting the cross-account token guard.
       setNativeSessionActive(false);
       forgetNativeToken();
+      try { clearConcernDrafts(sessionStorage); } catch { /* storage blocked */ }
       window.location.replace("/login");
       return;
     }

@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import { createSign } from "node:crypto";
+import { createPrivateKey, createSign } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { db } from "@/lib/db";
 import { isIP } from "node:net";
@@ -61,29 +61,29 @@ interface ServiceAccount {
  * the repository. Prefer a file path; fall back to an inline JSON env var.
  */
 async function loadServiceAccount(): Promise<ServiceAccount | null> {
-  const path = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
-  if (path) {
+  const parse = (json: string): ServiceAccount | null => {
     try {
-      return JSON.parse(await readFile(path, "utf8")) as ServiceAccount;
-    } catch (error) {
-      console.error("[push] could not read FIREBASE_SERVICE_ACCOUNT_PATH:", error);
-      return null;
-    }
+      const value = JSON.parse(json) as Partial<ServiceAccount>;
+      if (!value || typeof value.project_id !== "string" || !/^[a-z0-9-]+$/.test(value.project_id) ||
+          typeof value.client_email !== "string" || !value.client_email.includes("@") ||
+          typeof value.private_key !== "string") return null;
+      const privateKey = value.private_key.replaceAll("\\n", "\n");
+      if (createPrivateKey(privateKey).asymmetricKeyType !== "rsa") return null;
+      return { project_id: value.project_id, client_email: value.client_email, private_key: privateKey };
+    } catch { return null; }
+  };
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+    try {
+      const account = parse(await readFile(process.env.FIREBASE_SERVICE_ACCOUNT_PATH, "utf8"));
+      if (account) return account;
+    } catch { /* A local file may not exist on Vercel. Try inline config next. */ }
   }
   const inline = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (inline) {
-    try {
-      return JSON.parse(inline) as ServiceAccount;
-    } catch {
-      console.error("[push] FIREBASE_SERVICE_ACCOUNT is not valid JSON");
-      return null;
-    }
-  }
-  return null;
+  return inline ? parse(inline) : null;
 }
 
 const ACCESS_TOKEN_TTL_MS = 50 * 60 * 1000;
-let cachedAccessToken: { value: string; expiresAt: number } | null = null;
+let cachedAccessToken: { value: string; expiresAt: number; account: string } | null = null;
 
 function base64url(input: Buffer | string): string {
   return Buffer.from(input)
@@ -93,8 +93,23 @@ function base64url(input: Buffer | string): string {
     .replace(/=+$/, "");
 }
 
+let pendingAccessToken: { account: string; promise: Promise<string> } | null = null;
+
 async function getFcmAccessToken(account: ServiceAccount): Promise<string> {
-  if (cachedAccessToken && cachedAccessToken.expiresAt > Date.now()) {
+  const identity = `${account.project_id}:${account.client_email}`;
+  if (cachedAccessToken?.account === identity && cachedAccessToken.expiresAt > Date.now()) return cachedAccessToken.value;
+  if (pendingAccessToken?.account === identity) return pendingAccessToken.promise;
+  // A broadcast fans out to many phones. Share one OAuth exchange instead of
+  // hammering Google's token endpoint once per device on a cold serverless start.
+  const promise = requestFcmAccessToken(account);
+  pendingAccessToken = { account: identity, promise };
+  try { return await promise; }
+  finally { if (pendingAccessToken?.promise === promise) pendingAccessToken = null; }
+}
+
+async function requestFcmAccessToken(account: ServiceAccount): Promise<string> {
+  const identity = `${account.project_id}:${account.client_email}`;
+  if (cachedAccessToken && cachedAccessToken.account === identity && cachedAccessToken.expiresAt > Date.now()) {
     return cachedAccessToken.value;
   }
 
@@ -122,6 +137,7 @@ async function getFcmAccessToken(account: ServiceAccount): Promise<string> {
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    signal: AbortSignal.timeout(10000),
     body: new URLSearchParams({
       grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
       assertion,
@@ -136,11 +152,12 @@ async function getFcmAccessToken(account: ServiceAccount): Promise<string> {
   cachedAccessToken = {
     value: data.access_token,
     expiresAt: Date.now() + Math.min(data.expires_in * 1000, ACCESS_TOKEN_TTL_MS),
+    account: identity,
   };
   return cachedAccessToken.value;
 }
 
-async function sendFcmMessage(token: string, payload: AlertPayload, account: ServiceAccount): Promise<void> {
+async function sendFcmMessage(token: string, payload: AlertPayload, account: ServiceAccount, test = false): Promise<void> {
   const accessToken = await getFcmAccessToken(account);
   const settings = severitySettings(payload.severity);
 
@@ -152,11 +169,12 @@ async function sendFcmMessage(token: string, payload: AlertPayload, account: Ser
       "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
+    signal: AbortSignal.timeout(10000),
     body: JSON.stringify({
       message: {
         token,
         data: {
-          alertId: String(payload.alertId),
+          ...(test ? { test: "true" } : { alertId: String(payload.alertId) }),
           title: payload.title,
           body: payload.message,
           severity: payload.severity,
@@ -168,7 +186,7 @@ async function sendFcmMessage(token: string, payload: AlertPayload, account: Ser
         },
         android: {
           priority: "HIGH",
-          ttl: "43200s",
+          ttl: test ? "60s" : "43200s",
         },
         apns: {
           headers: { "apns-priority": "10" },
@@ -324,6 +342,38 @@ export async function isNativePushConfigured(): Promise<boolean> {
   } catch (error) {
     console.error("[push] could not read the Firebase service account:", error);
     return false;
+  }
+}
+
+/** Only public project identity is returned, never keys, tokens, or emails. */
+export async function nativePushConfiguration(platform: "android" | "ios") {
+  if (platform === "ios") {
+    return { serverConfigured: Boolean(process.env.APNS_BUNDLE_ID && process.env.APNS_KEY_PATH &&
+      process.env.APNS_KEY_ID && process.env.APNS_TEAM_ID), projectId: null };
+  }
+  const account = await loadServiceAccount();
+  return { serverConfigured: Boolean(account), projectId: account?.project_id ?? null };
+}
+
+/** A harmless, one-phone diagnostic. No SystemAlert row, alarm, or acknowledgement.
+ * Omitting alertId uses the existing APK's plain-notification path. */
+export async function sendAndroidPushTest(token: string): Promise<{ accepted: boolean; message: string; stale?: boolean }> {
+  const account = await loadServiceAccount();
+  if (!account) return { accepted: false, message: "The server has no valid Firebase service account. Configure FIREBASE_SERVICE_ACCOUNT on the deployed server." };
+  try {
+    await sendFcmMessage(token, {
+      alertId: 0, title: "BarangayResolve notification test",
+      message: "This is a test sent only to your phone, not an emergency alert.",
+      severity: "INFO", sound: false, createdAt: new Date().toISOString(), expiresAt: null,
+    }, account, true);
+    return { accepted: true, message: "Firebase accepted the test. Check this phone's notification tray; acceptance is not confirmation of delivery." };
+  } catch (error) {
+    const code = (error as { fcmCode?: string }).fcmCode;
+    if (code === "UNREGISTERED") return { accepted: false, stale: true, message: "Firebase says this token is no longer valid. Register this phone again." };
+    if (code === "SENDER_ID_MISMATCH") return { accepted: false, message: "The APK and server use different Firebase projects. Rebuild the APK with the matching google-services.json." };
+    if (code === "PERMISSION_DENIED" || code === "UNAUTHENTICATED") return { accepted: false, message: "Firebase rejected the server credentials or permissions. Check the service account and FCM API configuration." };
+    console.error("[push] device test failed", code ?? "network/auth/provider error");
+    return { accepted: false, message: "The server could not send the test to Firebase. Check server connectivity and Firebase configuration, then try again." };
   }
 }
 
