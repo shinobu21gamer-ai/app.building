@@ -240,9 +240,15 @@ public class AlertMessagingService extends FirebaseMessagingService {
       boolean sound,
       String createdAt,
       String expiresAt) {
+    // Emit both key spellings: the web queue reads `id`/`body` (AlertView)
+    // while the FCM payload and older web builds use `alertId`/`message`.
+    // Sending only `alertId` once made the foreground WebView silently drop
+    // every push (it read `.id`, found nothing, and ignored the event).
     StringBuilder sb = new StringBuilder("{\"alertId\":");
     sb.append(id);
+    sb.append(",\"id\":").append(id);
     sb.append(",\"title\":").append(jsonEscape(title));
+    sb.append(",\"body\":").append(jsonEscape(body));
     sb.append(",\"message\":").append(jsonEscape(body));
     sb.append(",\"severity\":").append(jsonEscape(severity));
     sb.append(",\"url\":").append(jsonEscape(url));

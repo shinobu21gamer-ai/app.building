@@ -56,30 +56,76 @@ interface ServiceAccount {
   client_email: string;
 }
 
+function parseServiceAccountJson(json: string): ServiceAccount | null {
+  try {
+    const value = JSON.parse(json) as Partial<ServiceAccount>;
+    if (!value || typeof value.project_id !== "string" || !/^[a-z0-9-]+$/.test(value.project_id) ||
+        typeof value.client_email !== "string" || !value.client_email.includes("@") ||
+        typeof value.private_key !== "string") return null;
+    const privateKey = value.private_key.replaceAll("\\n", "\n");
+    if (createPrivateKey(privateKey).asymmetricKeyType !== "rsa") return null;
+    return { project_id: value.project_id, client_email: value.client_email, private_key: privateKey };
+  } catch { return null; }
+}
+
+/**
+ * Parses the inline env value tolerantly. On serverless hosts this variable
+ * is pasted by hand, and the copy usually arrives in one of the shapes from
+ * `.env.example` — surrounding quotes included — or base64-encoded to keep
+ * the private key's newlines intact. All of those mean the same credential;
+ * rejecting them silently left every phone unregistered-looking while the
+ * server simply never sent. (Never logs the value itself.)
+ */
+function parseServiceAccountValue(raw: string): ServiceAccount | null {
+  const candidate = raw.trim().replace(/^\uFEFF/, "").trim();
+  if (!candidate) return null;
+
+  const direct = parseServiceAccountJson(candidate);
+  if (direct) return direct;
+
+  // `.env`-style surrounding quotes: FIREBASE_SERVICE_ACCOUNT='{...}'
+  if (
+    candidate.length > 1 &&
+    ((candidate.startsWith("'") && candidate.endsWith("'")) ||
+      (candidate.startsWith('"') && candidate.endsWith('"')))
+  ) {
+    const unquoted = parseServiceAccountJson(candidate.slice(1, -1).trim());
+    if (unquoted) return unquoted;
+  }
+
+  // Base64-encoded JSON, a common way to paste multi-line JSON into a
+  // single-line dashboard field.
+  if (/^[A-Za-z0-9+/=_-]+$/.test(candidate)) {
+    try {
+      const decoded = Buffer.from(candidate, "base64").toString("utf8");
+      const fromBase64 = parseServiceAccountJson(decoded.trim());
+      if (fromBase64) return fromBase64;
+    } catch { /* not base64 JSON either */ }
+  }
+  return null;
+}
+
 /**
  * Loads the Firebase service account without ever persisting credentials in
  * the repository. Prefer a file path; fall back to an inline JSON env var.
  */
 async function loadServiceAccount(): Promise<ServiceAccount | null> {
-  const parse = (json: string): ServiceAccount | null => {
-    try {
-      const value = JSON.parse(json) as Partial<ServiceAccount>;
-      if (!value || typeof value.project_id !== "string" || !/^[a-z0-9-]+$/.test(value.project_id) ||
-          typeof value.client_email !== "string" || !value.client_email.includes("@") ||
-          typeof value.private_key !== "string") return null;
-      const privateKey = value.private_key.replaceAll("\\n", "\n");
-      if (createPrivateKey(privateKey).asymmetricKeyType !== "rsa") return null;
-      return { project_id: value.project_id, client_email: value.client_email, private_key: privateKey };
-    } catch { return null; }
-  };
   if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
     try {
-      const account = parse(await readFile(process.env.FIREBASE_SERVICE_ACCOUNT_PATH, "utf8"));
+      const account = parseServiceAccountValue(await readFile(process.env.FIREBASE_SERVICE_ACCOUNT_PATH, "utf8"));
       if (account) return account;
     } catch { /* A local file may not exist on Vercel. Try inline config next. */ }
   }
   const inline = process.env.FIREBASE_SERVICE_ACCOUNT;
-  return inline ? parse(inline) : null;
+  if (!inline) return null;
+  const account = parseServiceAccountValue(inline);
+  if (!account) {
+    console.error(
+      "[push] FIREBASE_SERVICE_ACCOUNT is set but is not a valid Firebase service account " +
+        "(expected the service-account JSON, optionally quoted or base64-encoded); skipping Android FCM delivery."
+    );
+  }
+  return account;
 }
 
 const ACCESS_TOKEN_TTL_MS = 50 * 60 * 1000;
