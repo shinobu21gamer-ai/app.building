@@ -5,7 +5,7 @@ import {
   hashToken,
   verifySessionToken,
 } from "@/lib/auth/session";
-import { PORTAL_GUARDS, roleHome } from "@/lib/auth/roles";
+import { PORTAL_GUARDS, canOpenPath, roleHome } from "@/lib/auth/roles";
 
 export const runtime = "nodejs";
 
@@ -140,13 +140,12 @@ export async function middleware(request: NextRequest) {
     return redirectTo(url, roleHome(role), false);
   }
 
-  // Role gates: each portal lists the roles allowed inside it. A user who
-  // knocks on the wrong door is sent to their own portal, never to a dead end.
-  for (const guard of PORTAL_GUARDS) {
-    if (!matchesPrefix(pathname, guard.prefix)) continue;
-    if (!(guard.roles as readonly string[]).includes(role)) {
-      return redirectTo(url, roleHome(role), false);
-    }
+  // Role gates: each portal lists the roles allowed inside it, and the routes
+  // it shares with another desk — the case sheet the Captain verifies and
+  // closes a case from — name the roles that may open them. A user who knocks
+  // on the wrong door is sent to their own portal, never to a dead end.
+  if (!canOpenPath(role, pathname)) {
+    return redirectTo(url, roleHome(role), false);
   }
 
   return addNoStoreHeaders(NextResponse.next());

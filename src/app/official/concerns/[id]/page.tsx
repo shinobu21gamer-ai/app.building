@@ -3,6 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireRole, userCan } from "@/lib/auth/session";
+import { CASE_SHEET_ROLES } from "@/lib/auth/roles";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, PriorityBadge, StatusBadge } from "@/components/ui/badge";
@@ -145,8 +146,10 @@ export default async function OfficialConcernDetailPage({
 }: PageProps) {
   // The Captain (the approving official) closes cases and verifies resolutions
   // from this same case sheet, so they are let in here with their own
-  // permissions deciding what they can do — see the `can*` flags below.
-  const user = await requireRole(["OFFICIAL", "ADMIN", "CAPTAIN"]);
+  // permissions deciding what they can do — see the `can*` flags below. The
+  // list is the same one the route guard opens to (`CASE_SHEET_ROLES` in
+  // `@/lib/auth/roles`), so the door and this page cannot drift apart.
+  const user = await requireRole([...CASE_SHEET_ROLES]);
   const locale = await getLocale();
   const t = copy[locale].official;
   const desk = copy[locale].desk;

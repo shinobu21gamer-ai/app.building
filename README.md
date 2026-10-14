@@ -371,8 +371,9 @@ REST endpoints live under `src/app/api/v1/`. All routes return a consistent
 | POST | `/concerns/[id]/priority` | OFFICIAL / ADMIN | Override a concern's priority (re-rate factors and/or set a level) |
 | GET | `/concerns/[id]/assignments` | Assigned office / ADMIN | Read a concern's assignment history |
 | POST | `/concerns/[id]/assignments` | Assigned office / ADMIN | Assign or reassign a concern to an office (and optional official) |
-| POST | `/concerns/[id]/status` | Assigned office / ADMIN | Advance the case status (in progress / resolved / closed). Multipart form only, with a **required proof photo** (JPEG/PNG/WebP, ≤5 MB) and an optional action date `occurredOn` (`YYYY-MM-DD`, defaults to today). JSON is refused with `400`. |
+| POST | `/concerns/[id]/status` | `case.status.progress` (assigned office) / `case.status.close` (CAPTAIN, ADMIN) | Advance the case status (in progress / resolved / closed). Multipart form only, with a **required proof photo** (JPEG/PNG/WebP, ≤5 MB) and an optional action date `occurredOn` (`YYYY-MM-DD`, defaults to today). JSON is refused with `400`. |
 | POST | `/concerns/[id]/resolutions` | Assigned office / ADMIN | Record a resolution (summary, action taken, type, resolution date, **required proof photo**) and mark the case resolved |
+| POST | `/concerns/[id]/resolutions/verify` | `case.resolution.verify` | Step 8: stamp the proof attached to a resolution (verified / partial / failed / waiting on the resident). Refused for the official who recorded it, whatever their role |
 | POST | `/concerns/[id]/notes` | Assigned office / ADMIN | Append a progress remark or an action-taken entry (JSON, optional action date `occurredOn`, no photo) |
 | GET | `/concerns/[id]/feedback` | RESIDENT (owner) | Read the resident's own feedback for a case |
 | POST | `/concerns/[id]/feedback` | RESIDENT (owner) | Rate a resolved/closed case (resolved check, 1-5 rating, optional comment) |
@@ -426,8 +427,16 @@ REST endpoints live under `src/app/api/v1/`. All routes return a consistent
 - **Protected routes** are enforced by `src/middleware.ts` and re-checked
   server-side by `requireUser()` / `requireRole()` in pages:
   - `/resident` → RESIDENT only
-  - `/official` → OFFICIAL (ADMIN may also view)
+  - `/official` → OFFICIAL (ADMIN may also view). The case sheet at
+    `/official/concerns/[id]` is the one page here shared with another portal:
+    the CAPTAIN opens it to verify the resolution's proof and close the case,
+    and what they may do there is decided by their permissions — not by the
+    route (`SHARED_PORTAL_ROUTES` in `src/lib/auth/roles.ts`, unit-tested in
+    `roles.test.ts`)
   - `/admin` → ADMIN only
+  - `/treasury` → TREASURER (ADMIN may also view)
+  - `/captain` → CAPTAIN (ADMIN may also view)
+  - `/crew` → CREW (ADMIN may also view)
   - `/profile` → any authenticated user
   - `/notifications` → any authenticated user (records are always scoped to the session user)
 - Residents can only read and update their own profile; they can never target
@@ -592,8 +601,12 @@ to reduce noise.
   permissions, case validations (real calendar dates, optional action dates,
   blank-value handling), the action-date rules (Asia/Manila days, future,
   submission and last-status bounds), journal ordering, auth schemas (password
-  policy, reset code bounds), and the query parsers for concerns and notifications.
-  Run with `npm run test`.
+  policy, reset code bounds), the query parsers for concerns and notifications,
+  and the route gates — which role may open which portal, and the one case sheet
+  the Captain shares with the office (`src/lib/auth/roles.test.ts` decides the
+  rule; `src/middleware.test.ts` drives the real middleware with a stubbed
+  session to prove the Captain gets through and nobody else gains a door). Run
+  with `npm run test`.
 - **Live HTTP smoke scripts (`tsx`):** `scripts/smoke/run.ts` exercises the
   full credential lifecycle against a running production server — health,
   security headers, login throttling (5×401→429), the admin reset cycle (code
@@ -686,7 +699,11 @@ UI.
 
 Officials work their office's caseload from `/official/concerns` (search and
 filters) and `/official/concerns/[id]` (full case file plus workflow actions).
-Administrators can view and act on any office's cases.
+Administrators can view and act on any office's cases, and so can the Barangay
+Captain — the last two steps of the flow (verify the proof, close the case) are
+worked on this same sheet, opened from `/captain/closure`. That share is one
+route, not the portal: the office's queue, dashboard, reports and printout stay
+out of reach for everybody else.
 
 - **Scoping:** officials only see and mutate cases assigned to their own
   office; administrators may act on any case (including unrouted ones). The
@@ -727,7 +744,8 @@ Administrators can view and act on any office's cases.
   the case never reached — because it was closed as unfounded — reads **not
   needed** instead of pretending to be done. The Captain works the last step
   from `/captain/closure`, the list of resolved cases with their verification
-  state.
+  state — opening a case there opens the shared case sheet, where the proof of
+  completion is read, the resolution verified and the case closed.
 - **Every case waits for its budget:** the `AWAITING_BUDGET` stage is not
   skippable. A case cannot move from `UNDER_ASSESSMENT` straight to
   `IN_PROGRESS`, and there is no override for it. To leave the stage the case
@@ -1088,7 +1106,8 @@ src/
       concerns/new/page.tsx    # submit concern
       concerns/[id]/page.tsx   # case details + status stepper + timeline + resolution
     official/
-      layout.tsx     # official sub-nav + role guard
+      layout.tsx     # office sub-nav + role guard; serves the Captain's own nav
+                     # while they read the shared case sheet under /official
       page.tsx       # official dashboard (counts + recently resolved + search/filter)
       concerns/page.tsx        # office case queue with search + filters
       concerns/[id]/page.tsx   # case file + workflow/notes + override + assignment + timeline
