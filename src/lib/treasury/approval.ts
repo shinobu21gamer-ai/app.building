@@ -162,12 +162,17 @@ export function earmarkApprovalBrief(
       : money(input.allocationAvailable);
   const balanceKnown = availableBefore !== null;
   const fits = availableBefore === null || covers(amount, availableBefore);
+  // A row that is already approved or released sits INSIDE the live reserved
+  // figure the balance was loaded from, so subtracting its amount again would
+  // report money as gone twice — the same double-count `setAsideBeforeThis`
+  // guards against on the case side. For those rows the live figure already
+  // includes this reservation and is stated unchanged.
+  const alreadyReserved =
+    input.status === "APPROVED" || input.status === "RELEASED";
   const availableAfter =
-    availableBefore === null
-      ? null
-      : fits
-        ? money(availableBefore - amount)
-        : availableBefore;
+    availableBefore === null || alreadyReserved || !fits
+      ? availableBefore
+      : money(availableBefore - amount);
 
   const hasCase = input.caseStatus !== null || input.caseEstimate !== null;
   const caseWaitingForBudget = input.caseStatus === "AWAITING_BUDGET";

@@ -1,5 +1,11 @@
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  MinusCircle,
+  XCircle,
+} from "lucide-react";
 import { formatPeso } from "@/lib/cases/manpower";
 import { statusLabel } from "@/lib/cases/workflow";
 import { formatDateTime } from "@/lib/format";
@@ -120,6 +126,44 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** The four ways a check can read. */
+type ChecklistState = "pass" | "warn" | "fail" | "unknown";
+
+/**
+ * One tick of the three-check summary: pass (green tick), warn (amber
+ * triangle) or fail (red cross). "unknown" reads neutral — a fact that was
+ * not loaded is not a failed check, and pretending it is one would teach the
+ * reader to ignore red.
+ */
+function ChecklistItem({
+  state,
+  label,
+}: {
+  state: ChecklistState;
+  label: string;
+}) {
+  const tone = {
+    pass: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    warn: "border-amber-200 bg-amber-50 text-amber-800",
+    fail: "border-red-200 bg-red-50 text-red-800",
+    unknown: "border-line bg-surface text-ink-muted",
+  }[state];
+  const icon = {
+    pass: <CheckCircle2 size={14} aria-hidden="true" />,
+    warn: <AlertTriangle size={14} aria-hidden="true" />,
+    fail: <XCircle size={14} aria-hidden="true" />,
+    unknown: <MinusCircle size={14} aria-hidden="true" />,
+  }[state];
+  return (
+    <li
+      className={`flex items-center gap-1.5 rounded-control border px-2.5 py-1.5 text-xs font-medium ${tone}`}
+    >
+      {icon}
+      <span>{label}</span>
+    </li>
+  );
+}
+
 /**
  * The approval brief: one earmark read against the resident concern it is for
  * and the budget it comes out of.
@@ -184,6 +228,38 @@ export function EarmarkReview({
               : formatPeso(brief.availableBefore)
           );
 
+  // The three-check summary, read off the same brief as the figures below it:
+  // right case, budget covers it, proposed by someone else. An earmark that has
+  // already been decided has no approval left to summarise.
+  const coversCase =
+    brief.verdict === "UNBLOCKS" || brief.verdict === "COVERS";
+  const checks: Array<{ state: ChecklistState; label: string }> = decided
+    ? []
+    : [
+        {
+          state: !brief.hasCase ? "fail" : coversCase ? "pass" : "warn",
+          label: !brief.hasCase
+            ? t.checklist.caseCheck.fail
+            : coversCase
+              ? t.checklist.caseCheck.pass
+              : t.checklist.caseCheck.warn,
+        },
+        {
+          state: !brief.balanceKnown ? "unknown" : brief.fits ? "pass" : "fail",
+          label: !brief.balanceKnown
+            ? t.checklist.fundsCheck.unknown
+            : brief.fits
+              ? t.checklist.fundsCheck.pass
+              : t.checklist.fundsCheck.fail,
+        },
+        {
+          state: brief.selfPrepared ? "warn" : "pass",
+          label: brief.selfPrepared
+            ? t.checklist.proposerCheck.warn
+            : t.checklist.proposerCheck.pass,
+        },
+      ];
+
   // Red is reserved for "the money is not there". Being told somebody else
   // decides is a routing fact, not an error, so it reads amber; a proposal that
   // does exactly what the case needs reads green.
@@ -221,6 +297,22 @@ export function EarmarkReview({
       <p className="text-caption font-semibold uppercase tracking-wide text-ink-subtle">
         {t.title}
       </p>
+
+      {/* ── 0. The three-question summary, before the figures ──
+          The brief below answers everything, but it is a lot to check at a
+          glance. This strip answers "am I good to approve?" in three ticks;
+          anything that is not a tick says which figure below explains it. */}
+      {checks.length > 0 && (
+        <ul className="grid gap-1.5 sm:grid-cols-3">
+          {checks.map((check) => (
+            <ChecklistItem
+              key={check.label}
+              state={check.state}
+              label={check.label}
+            />
+          ))}
+        </ul>
+      )}
 
       {/* ── 1. Which resident concern this money is for ── */}
       <div className="space-y-1.5">
