@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FormMessage, Label, Select, Textarea } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
+import { joinNames } from "@/lib/cases/verification-rules";
 import { copy, type Locale } from "@/lib/i18n";
 
 /**
@@ -97,23 +98,30 @@ export function ResolutionVerifyForm({
 }
 
 /**
- * What the recorder sees instead of the form: the rule, and whose desk the
- * step moved to. A button that can only be refused is worse than no button —
- * the reader is told who can do it and where they will find it.
+ * What the recorder sees instead of the form: the rule, and — by name — who
+ * can act on it. A button that can only be refused is worse than no button,
+ * and "ask a colleague" is not an instruction anyone can follow: the office's
+ * own officials are named (`verificationAskNames`), because they are the
+ * people who can open this case, and the Barangay Captain is named when that
+ * office has nobody else.
  */
 export function VerifyBlockedNotice({
   locale = "en",
   officeName = null,
+  askNames = [],
   canSeeAllCases = false,
 }: {
   locale?: Locale;
-  /** The office holding the case, so the colleague can be named. */
+  /** The office holding the case, for the fallback sentence. */
   officeName?: string | null;
+  /** The people who can verify it, by name. Empty when nobody is on file. */
+  askNames?: string[];
   /** The Captain (or an admin) can open any case, so the way there is shown. */
   canSeeAllCases?: boolean;
 }) {
   const t = copy[locale].revamp.workflow;
   const desk = officeName ?? t.verifyColleagueFallback;
+  const names = joinNames(askNames, { locale });
 
   return (
     <div className="space-y-3">
@@ -122,7 +130,12 @@ export function VerifyBlockedNotice({
           {t.verifyBlockedTitle}
         </p>
         <p className="text-sm leading-relaxed text-amber-800">
-          {t.verifyBlocked.replaceAll("{desk}", desk)}
+          {t.verifyBlockedIntro}
+        </p>
+        <p className="text-sm leading-relaxed text-amber-800">
+          {names === ""
+            ? t.verifyBlocked.replaceAll("{desk}", desk)
+            : t.verifyBlockedAsk.replaceAll("{names}", names)}
         </p>
       </div>
       <p className="text-sm leading-relaxed text-ink-muted">

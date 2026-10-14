@@ -24,7 +24,10 @@ import {
   type ProcessStepKey,
 } from "@/lib/cases/process-flow";
 import { realityCheckState } from "@/lib/cases/field-check-rules";
-import { verificationActorState } from "@/lib/cases/verification-rules";
+import {
+  verificationActorState,
+  verificationAskNames,
+} from "@/lib/cases/verification-rules";
 import { ConcernMap } from "@/components/concern/concern-map";
 import { CrewPanel } from "@/components/cases/crew-panel";
 import { FieldCheckPanel } from "@/components/cases/field-check-panel";
@@ -106,6 +109,35 @@ async function loadFieldCheckRoster(officeId: number | null) {
     take: 100,
   });
   return anyone.map((person) => ({ ...person, otherOffice: true }));
+}
+
+/**
+ * The people the recorder may ask to verify the resolution, by name.
+ *
+ * The office's own officials can open this case (the sheet is scoped to the
+ * case's office), so they come first. When that office has nobody else, the
+ * Barangay Captain is named — they verify any case. Only asked for when the
+ * blocked notice is going to be drawn.
+ */
+async function loadVerificationAskNames(
+  officeId: number | null,
+  colleagues: Array<{ id: number; firstName: string; lastName: string }>,
+  recordedById: number | null
+): Promise<string[]> {
+  if (officeId !== null && colleagues.some((person) => person.id !== recordedById)) {
+    return verificationAskNames({ colleagues, recordedById, captain: null });
+  }
+
+  const captains = await db.user.findMany({
+    where: { isActive: true, role: { key: "CAPTAIN" } },
+    select: { id: true, firstName: true, lastName: true },
+    orderBy: { firstName: "asc" },
+  });
+  return verificationAskNames({
+    colleagues,
+    recordedById,
+    captain: captains[0] ?? null,
+  });
 }
 
 export default async function OfficialConcernDetailPage({
@@ -367,6 +399,18 @@ export default async function OfficialConcernDetailPage({
     recordedById: resolution?.officialId ?? null,
     actorId: user.id,
   });
+  // Only the recorder needs this: everybody else sees the form.
+  const verifyAskNames =
+    verifyState === "SELF_RECORDED"
+      ? await loadVerificationAskNames(
+          concern.assignedOfficeId,
+          offices.find(
+            (office: { id: number; users: Array<{ id: number; firstName: string; lastName: string }> }) =>
+              office.id === concern.assignedOfficeId
+          )?.users ?? [],
+          resolution?.officialId ?? null
+        )
+      : [];
   const stepDesk: Record<ProcessStepKey, string> = {
     CHECK: flowCopy.deskCheck,
     VALIDATE: flowCopy.deskAdmin,
@@ -648,6 +692,7 @@ export default async function OfficialConcernDetailPage({
         <VerifyBlockedNotice
           locale={locale}
           officeName={concern.assignedOffice?.name ?? null}
+          askNames={verifyAskNames}
           canSeeAllCases={user.role.key === "CAPTAIN" || user.role.key === "ADMIN"}
         />
       )

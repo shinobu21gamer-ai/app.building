@@ -46,3 +46,89 @@ export function verificationActorState(input: {
   }
   return input.canVerify ? "CAN_VERIFY" : "NO_PERMISSION";
 }
+
+/** A person, as the case sheet loads them: enough to address them by name. */
+export type OfficePerson = {
+  id: number;
+  firstName: string;
+  lastName: string;
+};
+
+/** "Maria Santos" — the name as a sentence would say it. */
+export function fullName(person: OfficePerson): string {
+  return `${person.firstName} ${person.lastName}`.trim();
+}
+
+/**
+ * A sentence's list vocabulary. The join has to be translated like any other
+ * copy — "Tanungin si Maria Santos and Juan Cruz" is not Filipino.
+ */
+type JoinWords = {
+  and: string;
+  others: (count: number) => string;
+};
+
+const JOIN_WORDS: Record<JoinLocale, JoinWords> = {
+  en: {
+    and: "and",
+    others: (count) => `${count} other${count === 1 ? "" : "s"}`,
+  },
+  fil: {
+    and: "at",
+    others: (count) => `${count} pang iba`,
+  },
+};
+
+/** The languages this module can join a list in. Mirrors `Locale`. */
+export type JoinLocale = "en" | "fil";
+
+/**
+ * Joins names the way a sentence reads: "Ana", "Ana and Ben", "Ana, Ben and
+ * Cris", and — past `max` — "Ana, Ben, Cris and 2 others", because a sentence
+ * naming nine people is a list, not an instruction.
+ */
+export function joinNames(
+  names: readonly string[],
+  options: { locale?: JoinLocale; max?: number } = {}
+): string {
+  if (names.length === 0) return "";
+  if (names.length === 1) return names[0];
+
+  const words = JOIN_WORDS[options.locale ?? "en"];
+  const shown = names.slice(0, Math.max(2, options.max ?? 3));
+  const rest = names.length - shown.length;
+  if (rest > 0) {
+    return `${shown.join(", ")} ${words.and} ${words.others(rest)}`;
+  }
+  return `${shown.slice(0, -1).join(", ")} ${words.and} ${shown[shown.length - 1]}`;
+}
+
+/**
+ * The people the recorder may actually ask, by name.
+ *
+ * The blocked notice used to say "a colleague in the office", which is not an
+ * instruction anybody can follow — the reader still had to work out who that
+ * is. The office's own officials can open the case (the case sheet is scoped
+ * to the case's office), so they come first; when that office has nobody else,
+ * the Barangay Captain can verify any case and is named instead.
+ *
+ * The recorder is never in the list: naming the person the server refuses
+ * would send the reader straight back into the refusal.
+ */
+export function verificationAskNames(input: {
+  /** Active officials of the office holding the case. */
+  colleagues: readonly OfficePerson[];
+  /** The official on the recorded resolution; never offered. */
+  recordedById: number | null;
+  /** A named Barangay Captain, when the barangay has one on file. */
+  captain: OfficePerson | null;
+}): string[] {
+  const colleagues = input.colleagues
+    .filter((person) => person.id !== input.recordedById)
+    .map(fullName);
+  if (colleagues.length > 0) return colleagues;
+
+  const captain = input.captain;
+  if (captain === null || captain.id === input.recordedById) return [];
+  return [fullName(captain)];
+}

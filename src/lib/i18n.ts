@@ -2566,8 +2566,14 @@ const en = {
       // Shown INSTEAD of the form when the reader recorded the resolution: the
       // server refuses them, so the panel names the desk that can do it.
       verifyBlockedTitle: "Someone else has to verify this fix",
+      verifyBlockedIntro:
+        "You recorded this resolution, so you cannot verify it — the check has to be independent.",
+      // The names come from the office's own officials (or the Captain when it
+      // has nobody else), so the reader has somebody to ask instead of a rule.
+      verifyBlockedAsk:
+        "Ask {names} — the verification is recorded from this same case, in step 8.",
       verifyBlocked:
-        "You recorded this resolution, so you cannot verify it — the check has to be independent. A colleague in {desk} can do it from this same case, in step 8.",
+        "Someone in {desk} can do it from this same case, in step 8.",
       verifyColleagueFallback: "the office holding the case",
       verifyBlockedNext:
         "The case stays in Resolved until they record the decision. A failed check stops closure unless a reasoned override is recorded, and the Captain closes the case afterwards.",
@@ -5261,8 +5267,12 @@ const fil: typeof en = {
       verifyWhoHelp:
         "Nakalagay ang pangalan mo sa beripikasyong ito, at makikita ito ng residente sa journal ng kaso.",
       verifyBlockedTitle: "Ibang tao ang dapat magberipika ng ayos na ito",
+      verifyBlockedIntro:
+        "Ikaw ang nagtala ng resolution na ito, kaya hindi mo ito puwedeng beripikahin — kailangang independyente ang pagsusuri.",
+      verifyBlockedAsk:
+        "Tanungin si {names} — mula sa parehong kasong ito itinatala ang beripikasyon, sa hakbang 8.",
       verifyBlocked:
-        "Ikaw ang nagtala ng resolution na ito, kaya hindi mo ito puwedeng beripikahin — kailangang independyente ang pagsusuri. Puwede itong gawin ng kasamahan sa {desk} sa parehong kasong ito, sa hakbang 8.",
+        "May makakagawa nito sa {desk}, mula sa parehong kasong ito, sa hakbang 8.",
       verifyColleagueFallback: "tanggapan na may hawak ng kaso",
       verifyBlockedNext:
         "Mananatili ang kaso sa Resolved hangga't hindi nila natatala ang desisyon. Ang bigong pagsusuri ay humaharang sa pagsasara maliban kung may nakatalang override na may dahilan, at ang Kapitan ang magsasara ng kaso pagkatapos.",
