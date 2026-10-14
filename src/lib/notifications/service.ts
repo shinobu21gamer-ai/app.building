@@ -1,4 +1,6 @@
 import type { Prisma } from "@prisma/client";
+import { rolesWithCodePermission } from "@/lib/auth/rbac";
+import { EARMARK_APPROVE_PERMISSION } from "@/lib/treasury/approval";
 
 // Single source of truth for every notification the system can emit.
 // Notifications are always produced here from real domain events (submission,
@@ -19,6 +21,9 @@ export const NOTIFICATION_TYPES = {
   FIELD_CHECK_ASSIGNED: "FIELD_CHECK_ASSIGNED",
   FIELD_CHECK_SUBMITTED: "FIELD_CHECK_SUBMITTED",
   FIELD_CHECK_REVIEWED: "FIELD_CHECK_REVIEWED",
+  EARMARK_PROPOSED: "EARMARK_PROPOSED",
+  EARMARK_APPROVED: "EARMARK_APPROVED",
+  EARMARK_CANCELLED: "EARMARK_CANCELLED",
 } as const;
 
 export type NotificationType =
@@ -401,3 +406,174 @@ export async function notifyFieldCheckReviewed(
   });
 }
 
+
+// ---- Treasury events ----------------------------------------------
+//
+// A case cannot leave AWAITING_BUDGET until an earmark is approved, and an
+// earmark may not be approved by whoever proposed it. Without these three
+// notifications the hand-off is invisible: the proposer waits for an approval
+// nobody was told to make, and the case sits in Awaiting budget with no reason
+// on screen. Each message names the earmark, the amount and the case, and says
+// whose desk it is now on.
+
+/** Formats an earmark reference the way the screens show it. */
+function earmarkRef(code: string | null, id: number): string {
+  return code ?? `Earmark #${id}`;
+}
+
+function peso(amount: number): string {
+  return `₱${amount.toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+/** Notifies a set of users, skipping duplicates and any id that is null. */
+async function notifyUsers(
+  db: Db,
+  userIds: readonly (number | null)[],
+  data: {
+    concernId: number | null;
+    type: NotificationType;
+    title: string;
+    message: string;
+  }
+): Promise<number> {
+  const unique = [...new Set(userIds.filter((id): id is number => id !== null))];
+  for (const userId of unique) {
+    await createNotification(db, { userId, ...data });
+  }
+  return unique.length;
+}
+
+/**
+ * Tells everyone who may approve earmarks that one is waiting, minus whoever
+ * proposed it: segregation of duties means the proposer cannot act on it, so a
+ * notification to them is a bell they cannot answer.
+ *
+ * The approver roles are read from the permission matrix rather than named
+ * here, so the queue keeps reaching the right desks if the matrix changes.
+ */
+export async function notifyEarmarkProposed(
+  db: Db,
+  input: {
+    earmarkId: number;
+    earmarkCode: string | null;
+    amount: number;
+    purpose: string;
+    preparedById: number | null;
+    concernId: number | null;
+    caseNumber: string | null;
+  }
+): Promise<number> {
+  const approverRoles = rolesWithCodePermission(EARMARK_APPROVE_PERMISSION);
+  if (approverRoles.length === 0) return 0;
+
+  const approvers = await db.user.findMany({
+    where: {
+      isActive: true,
+      role: { key: { in: approverRoles } },
+      ...(input.preparedById === null ? {} : { id: { not: input.preparedById } }),
+    },
+    select: { id: true },
+  });
+
+  const ref = earmarkRef(input.earmarkCode, input.earmarkId);
+  return notifyUsers(
+    db,
+    approvers.map((approver) => approver.id),
+    {
+      concernId: input.concernId,
+      type: NOTIFICATION_TYPES.EARMARK_PROPOSED,
+      title: "Earmark waiting for your approval",
+      message: input.caseNumber
+        ? `${ref} — ${peso(input.amount)} for "${input.purpose}" — is waiting for approval. It is linked to case ${input.caseNumber}, which stays in Awaiting budget until the money is set aside.`
+        : `${ref} — ${peso(input.amount)} for "${input.purpose}" — is waiting for approval. It is not linked to a case.`,
+    }
+  );
+}
+
+/**
+ * Tells the proposer the money is set aside, and the office holding the case
+ * that it can now move: the official watching a case sit in AWAITING_BUDGET has
+ * no other way to learn the approval happened.
+ */
+export async function notifyEarmarkApproved(
+  db: Db,
+  input: {
+    earmarkId: number;
+    earmarkCode: string | null;
+    amount: number;
+    preparedById: number | null;
+    concernId: number | null;
+    caseNumber: string | null;
+    officeId: number | null;
+  }
+): Promise<number> {
+  const ref = earmarkRef(input.earmarkCode, input.earmarkId);
+  const recipients: (number | null)[] = [input.preparedById];
+
+  if (input.officeId !== null) {
+    const officials = await db.user.findMany({
+      where: {
+        isActive: true,
+        officeId: input.officeId,
+        role: { key: "OFFICIAL" },
+      },
+      select: { id: true },
+    });
+    recipients.push(...officials.map((official) => official.id));
+  }
+
+  return notifyUsers(db, recipients, {
+    concernId: input.concernId,
+    type: NOTIFICATION_TYPES.EARMARK_APPROVED,
+    title: "Earmark approved",
+    message: input.caseNumber
+      ? `${ref} — ${peso(input.amount)} — has been approved and the money is set aside for case ${input.caseNumber}. Check the case's funding panel: if the estimate is now covered, the case can move out of Awaiting budget.`
+      : `${ref} — ${peso(input.amount)} — has been approved and the money is set aside.`,
+  });
+}
+
+/**
+ * Tells the proposer and the office holding the case that the reservation was
+ * given back. A cancelled earmark quietly leaves a case short again, so the
+ * reason travels with the notification.
+ */
+export async function notifyEarmarkCancelled(
+  db: Db,
+  input: {
+    earmarkId: number;
+    earmarkCode: string | null;
+    amount: number;
+    reason: string;
+    preparedById: number | null;
+    concernId: number | null;
+    caseNumber: string | null;
+    officeId: number | null;
+  }
+): Promise<number> {
+  const ref = earmarkRef(input.earmarkCode, input.earmarkId);
+  const recipients: (number | null)[] = [input.preparedById];
+
+  if (input.officeId !== null) {
+    const officials = await db.user.findMany({
+      where: {
+        isActive: true,
+        officeId: input.officeId,
+        role: { key: "OFFICIAL" },
+      },
+      select: { id: true },
+    });
+    recipients.push(...officials.map((official) => official.id));
+  }
+
+  return notifyUsers(db, recipients, {
+    concernId: input.concernId,
+    type: NOTIFICATION_TYPES.EARMARK_CANCELLED,
+    title: "Earmark cancelled",
+    message: input.caseNumber
+      ? `${ref} — ${peso(input.amount)} — was cancelled, so that money is no longer set aside for case ${input.caseNumber}. Reason: ${input.reason}`
+      : `${ref} — ${peso(input.amount)} — was cancelled. Reason: ${input.reason}`,
+  });
+}

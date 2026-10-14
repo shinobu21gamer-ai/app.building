@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   adjustAllocation,
   approveEarmark,
+  cancelEarmark,
   closeAllocation,
+  proposeEarmark,
   writeLedgerEntry,
   type Actor,
 } from "@/lib/treasury/budget";
@@ -26,7 +28,14 @@ const VERIFIED_COA = {
   isActive: true,
 };
 
-function makeTx(seed: { appropriation?: number; entries?: Row[]; earmarks?: Row[]; vouchers?: Row[] } = {}) {
+function makeTx(seed: {
+  appropriation?: number;
+  entries?: Row[];
+  earmarks?: Row[];
+  vouchers?: Row[];
+  /** Users the earmark notifications can find, as `{ id, roleKey, officeId, isActive }`. */
+  users?: Row[];
+} = {}) {
   const state = {
     allocation: {
       id: 1,
@@ -43,6 +52,8 @@ function makeTx(seed: { appropriation?: number; entries?: Row[]; earmarks?: Row[
     earmarks: [...(seed.earmarks ?? [])] as Row[],
     vouchers: [...(seed.vouchers ?? [])] as Row[],
     approvals: [] as Row[],
+    users: [...(seed.users ?? [])] as Row[],
+    notifications: [] as Row[],
     nextId: 500,
     locks: 0,
   };
@@ -99,6 +110,12 @@ function makeTx(seed: { appropriation?: number; entries?: Row[]; earmarks?: Row[
         const earmark = state.earmarks.find((row) => row.id === where.id);
         return earmark ? { ...earmark, allocation: state.allocation } : null;
       },
+      count: async () => state.earmarks.length,
+      create: async ({ data }: { data: Row }) => {
+        const earmark: Row = { id: state.nextId++, ...data };
+        state.earmarks.push(earmark);
+        return earmark;
+      },
       update: async ({ where, data }: { where: { id: number }; data: Row }) => {
         const earmark = state.earmarks.find((row) => row.id === where.id)!;
         Object.assign(earmark, data);
@@ -146,7 +163,37 @@ function makeTx(seed: { appropriation?: number; entries?: Row[]; earmarks?: Row[
       update: async () => state.allocation.fiscalYear,
     },
     concern: { findUnique: async ({ where }: { where: { id: number } }) => ({ id: where.id }) },
-    user: { findUnique: async ({ where }: { where: { id: number } }) => ({ id: where.id }) },
+    user: {
+      findUnique: async ({ where }: { where: { id: number } }) => ({ id: where.id }),
+      // The earmark notifications look approvers up by role (and the case's
+      // office by role + officeId). Filtered just far enough for those lookups
+      // to be exercised; the money rules under test never read users.
+      findMany: async ({ where }: { where?: Row } = {}) => {
+        const role = where?.role as Row | undefined;
+        const key = role?.key;
+        const wanted: string[] =
+          typeof key === "string"
+            ? [key]
+            : Array.isArray((key as Row | undefined)?.in)
+              ? ((key as Row).in as string[])
+              : [];
+        const excludedId = (where?.id as Row | undefined)?.not;
+        return state.users.filter(
+          (user) =>
+            user.isActive !== false &&
+            (wanted.length === 0 || wanted.includes(String(user.roleKey))) &&
+            (where?.officeId === undefined || user.officeId === where.officeId) &&
+            (excludedId === undefined || user.id !== excludedId)
+        );
+      },
+    },
+    notification: {
+      create: async ({ data }: { data: Row }) => {
+        const notification: Row = { id: state.nextId++, ...data };
+        state.notifications.push(notification);
+        return notification;
+      },
+    },
   };
 
   return { tx: tx as unknown as Prisma.TransactionClient, state, balance };
@@ -277,6 +324,130 @@ describe("earmark approval reserves money", () => {
     });
 
     await expect(approveEarmark(tx, { actor: treasurer, earmarkId: 7 })).rejects.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The hand-off nobody used to be told about. A case cannot leave
+// AWAITING_BUDGET until an earmark is approved, and the approver may not be the
+// proposer — so without these notifications the proposal waits on a decision
+// nobody was asked to make.
+// ---------------------------------------------------------------------------
+
+const captain: Actor = { id: 20, roleKey: "CAPTAIN", officeId: null };
+const admin: Actor = { id: 1, roleKey: "ADMIN", officeId: null };
+
+const HALL_USERS: Row[] = [
+  { id: 10, roleKey: "TREASURER", officeId: null, isActive: true },
+  { id: 20, roleKey: "CAPTAIN", officeId: null, isActive: true },
+  { id: 1, roleKey: "ADMIN", officeId: null, isActive: true },
+  { id: 30, roleKey: "OFFICIAL", officeId: 3, isActive: true },
+  { id: 31, roleKey: "OFFICIAL", officeId: 4, isActive: true },
+  { id: 32, roleKey: "OFFICIAL", officeId: 3, isActive: false },
+];
+
+describe("earmark hand-off notifications", () => {
+  it("tells the approvers a proposal is waiting, and not the one who proposed it", async () => {
+    const { tx, state } = makeTx({ appropriation: 1000, users: HALL_USERS });
+
+    await proposeEarmark(tx, {
+      actor: treasurer,
+      allocationId: 1,
+      concernId: null,
+      purpose: "Repair materials",
+      amount: 400,
+    });
+
+    const told = state.notifications.map((row) => row.userId);
+    // The Captain and the Administrator both hold `treasury.earmark.approve`;
+    // the treasurer proposed it and may not approve their own, so telling them
+    // would be a bell they cannot answer.
+    expect(told).toContain(20);
+    expect(told).toContain(1);
+    expect(told).not.toContain(10);
+    expect(state.notifications[0].type).toBe("EARMARK_PROPOSED");
+    expect(String(state.notifications[0].message)).toContain("₱400.00");
+  });
+
+  it("names the case an administrator proposed, so the Captain knows what it is for", async () => {
+    const { tx, state } = makeTx({ appropriation: 1000, users: HALL_USERS });
+
+    await proposeEarmark(tx, {
+      actor: admin,
+      allocationId: 1,
+      concernId: 7,
+      purpose: "Drainage repair",
+      amount: 400,
+    });
+
+    const captainNote = state.notifications.find((row) => row.userId === 20);
+    expect(captainNote).toBeDefined();
+    // The treasurer is an approver here only if the matrix says so; the admin
+    // proposed it, so they must not be told to approve their own earmark.
+    expect(state.notifications.map((row) => row.userId)).not.toContain(1);
+    expect(captainNote?.concernId).toBe(7);
+  });
+
+  it("tells the proposer and the case's own office that the money is set aside", async () => {
+    const { tx, state } = makeTx({
+      appropriation: 1000,
+      users: HALL_USERS,
+      earmarks: [
+        {
+          id: 7,
+          code: "EM-2026-0001",
+          status: "PROPOSED",
+          amount: 400,
+          allocationId: 1,
+          concernId: 5,
+          purpose: "Repair materials",
+          preparedById: 10,
+          concern: { id: 5, caseNumber: "BR-2026-0005", assignedOfficeId: 3 },
+        },
+      ],
+    });
+
+    await approveEarmark(tx, { actor: captain, earmarkId: 7 });
+
+    const told = state.notifications.map((row) => row.userId);
+    expect(told).toContain(10); // the treasurer who proposed it
+    expect(told).toContain(30); // an official of the case's office
+    expect(told).not.toContain(31); // a different office is not told
+    expect(told).not.toContain(32); // an inactive account is not told
+    expect(state.notifications[0].type).toBe("EARMARK_APPROVED");
+    expect(String(state.notifications[0].message)).toContain("Awaiting budget");
+  });
+
+  it("tells the case's office why a cancellation left them short again", async () => {
+    const { tx, state } = makeTx({
+      appropriation: 1000,
+      users: HALL_USERS,
+      earmarks: [
+        {
+          id: 7,
+          code: "EM-2026-0001",
+          status: "APPROVED",
+          amount: 400,
+          allocationId: 1,
+          concernId: 5,
+          preparedById: 10,
+          concern: { id: 5, caseNumber: "BR-2026-0005", assignedOfficeId: 3 },
+        },
+      ],
+      entries: [reservedEntry(400)],
+    });
+
+    await cancelEarmark(tx, {
+      actor: treasurer,
+      earmarkId: 7,
+      reason: "The estimate was superseded by a new assessment.",
+    });
+
+    const told = state.notifications.map((row) => row.userId);
+    expect(told).toContain(10);
+    expect(told).toContain(30);
+    expect(state.notifications[0].type).toBe("EARMARK_CANCELLED");
+    expect(String(state.notifications[0].message)).toContain("superseded");
   });
 });
 

@@ -4,13 +4,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AllocationActions } from "@/components/treasury/allocation-actions";
 import { EarmarkActions } from "@/components/treasury/earmark-actions";
+import {
+  EarmarkReview,
+  earmarkReviewFacts,
+} from "@/components/treasury/earmark-review";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatPeso } from "@/lib/cases/manpower";
 import { formatDateTime } from "@/lib/format";
 import { db } from "@/lib/db";
-import { requirePermission } from "@/lib/auth/session";
+import { requirePermission, userCan } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import { briefForEarmarkRow } from "@/lib/treasury/approval";
 import {
   listAllocations,
   listDisbursements,
@@ -28,6 +33,13 @@ export const dynamic = "force-dynamic";
  * appropriations to open, earmarks to reserve and vouchers to approve for
  * release. The treasurer's certification always comes first, and the same
  * person can never fill both roles.
+ *
+ * An earmark arriving here was prepared by somebody else — usually the
+ * treasurer or an administrator — so the Captain is being asked to commit money
+ * to a resident's concern they did not scope. Each proposal therefore carries
+ * the approval brief: which case it is for, what that case's estimate is, what
+ * is already set aside, which budget it comes out of and what approving it
+ * changes. Without that the decision was a code, an amount and a purpose.
  */
 export default async function CaptainApprovalsPage() {
   const user = await requirePermission("treasury.disbursement.approve");
@@ -39,11 +51,38 @@ export default async function CaptainApprovalsPage() {
     officeId: user.officeId ?? null,
   };
 
-  const [allocations, earmarks, vouchers] = await Promise.all([
-    listAllocations(db, { actor, status: "DRAFT" }),
-    listEarmarks(db, { actor, status: "PROPOSED" }),
-    listDisbursements(db, { actor, status: "CERTIFIED" }),
-  ]);
+  const [allocations, earmarks, vouchers, canApproveEarmark] =
+    await Promise.all([
+      listAllocations(db, { actor, status: "DRAFT" }),
+      // includeApprovalContext: the brief needs the live balance of each source
+      // allocation and how much is already set aside per case.
+      listEarmarks(db, {
+        actor,
+        status: "PROPOSED",
+        includeApprovalContext: true,
+      }),
+      listDisbursements(db, { actor, status: "CERTIFIED" }),
+      userCan(user.role.key, "treasury.earmark.approve"),
+    ]);
+
+  // A case a resident is waiting on outranks the rest of the queue.
+  const earmarkBriefs = new Map(
+    earmarks.map((row) => [
+      row.id,
+      briefForEarmarkRow(row, {
+        id: actor.id,
+        canApprove: canApproveEarmark,
+      }),
+    ])
+  );
+  const queuedEarmarks = [...earmarks].sort((a, b) => {
+    const waiting =
+      Number(earmarkBriefs.get(b.id)?.caseWaitingForBudget ?? false) -
+      Number(earmarkBriefs.get(a.id)?.caseWaitingForBudget ?? false);
+    return waiting !== 0
+      ? waiting
+      : a.preparedAt.getTime() - b.preparedAt.getTime();
+  });
 
   const nothingWaiting =
     allocations.length === 0 && earmarks.length === 0 && vouchers.length === 0;
@@ -92,35 +131,68 @@ export default async function CaptainApprovalsPage() {
         </Card>
       )}
 
-      {earmarks.length > 0 && (
-        <Card title={t.awaitingApprovalEarmarks}>
+      {queuedEarmarks.length > 0 && (
+        <Card
+          title={t.awaitingApprovalEarmarks}
+          description={t.earmarkReview.lead}
+        >
           <ul className="divide-y divide-line">
-            {earmarks.map((earmark) => (
-              <li key={earmark.id} className="space-y-2 py-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs text-ink-subtle">
-                    {earmark.code ?? `#${earmark.id}`}
-                  </span>
-                  <Badge tone="sky">{earmark.status}</Badge>
-                  <span className="text-sm font-semibold text-ink">
-                    {formatPeso(earmark.amount)}
-                  </span>
-                </div>
-                <p className="text-sm text-ink-muted">{earmark.purpose}</p>
-                <p className="text-xs text-ink-subtle">
-                  {earmark.coaCode} · {earmark.fundSourceCode}
-                  {earmark.caseNumber ? ` · ${earmark.caseNumber}` : ""} ·{" "}
-                  {formatDateTime(earmark.preparedAt)}
-                </p>
-                <EarmarkActions
-                  earmarkId={earmark.id}
-                  status={earmark.status}
-                  canApprove
-                  canCancel={false}
-                  locale={locale}
-                />
-              </li>
-            ))}
+            {queuedEarmarks.map((earmark) => {
+              const brief = earmarkBriefs.get(earmark.id);
+              if (!brief) return null;
+              return (
+                <li key={earmark.id} className="space-y-3 py-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-xs text-ink-subtle">
+                      {earmark.code ?? `#${earmark.id}`}
+                    </span>
+                    <Badge tone="sky">{earmark.status}</Badge>
+                    <span className="text-sm font-semibold text-ink">
+                      {formatPeso(earmark.amount)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-ink-muted">{earmark.purpose}</p>
+
+                  <EarmarkReview
+                    earmark={earmarkReviewFacts(earmark)}
+                    brief={brief}
+                    locale={locale}
+                    compact
+                  />
+
+                  <EarmarkActions
+                    earmarkId={earmark.id}
+                    status={earmark.status}
+                    brief={brief}
+                    allocationLabel={earmark.allocationLabel}
+                    caseNumber={earmark.caseNumber}
+                    canCancel={false}
+                    locale={locale}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {earmark.concernId && (
+                      <Button
+                        href={`/official/concerns/${earmark.concernId}`}
+                        size="sm"
+                        variant="ghost"
+                      >
+                        {t.earmarkReview.openCase}
+                      </Button>
+                    )}
+                    <Button
+                      href={`/treasury/budgets/${earmark.allocationId}`}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      {t.navBudgets}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-ink-subtle">
+                    {formatDateTime(earmark.preparedAt)}
+                  </p>
+                </li>
+              );
+            })}
           </ul>
         </Card>
       )}

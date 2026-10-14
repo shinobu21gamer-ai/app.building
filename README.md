@@ -735,6 +735,30 @@ Administrators can view and act on any office's cases.
   nothing) and approved earmarks whose total covers it, which is what makes the
   treasury's decision visible before any work starts. The retired
   `BUDGET_STAGE_SKIP` override kind stays readable on old records only.
+- **The funding decision is shown in full, not guessed at:** because a case
+  cannot leave `AWAITING_BUDGET` without an approved earmark, the person
+  approving one is committing money to a resident's concern they did not scope —
+  usually one the treasurer or an administrator proposed. Every earmark
+  therefore carries an **approval brief** (`src/lib/treasury/approval.ts`, pure
+  and unit-tested; rendered by `src/components/treasury/earmark-review.tsx` on
+  `/treasury/earmarks`, `/treasury/budgets/[id]` and `/captain/approvals`) that
+  names the concern it is for and links to it, that concern's saved estimate,
+  what is already set aside, what approving this one adds, the exact shortfall
+  left over, the allocation it draws on and what remains available afterwards,
+  and who proposed it. It then states the outcome in one sentence: approving
+  covers the estimate so the case can leave `AWAITING_BUDGET`, or it still
+  leaves the case short by a stated amount. The two ways an approval fails —
+  the reader is the one who proposed it (segregation of duties), or the
+  allocation cannot cover the amount — are stated on the card instead of being
+  discovered as an error after the click, and a card the reader may not decide
+  offers no button that can only fail. `/treasury/earmarks` reads as a decision
+  queue: what this reader can decide comes first, then a case sitting in
+  `AWAITING_BUDGET`, then the longest-queued proposal, with filters for
+  needs-a-decision / set-aside / cancelled. A case's funding panel is the other
+  end of the same thread — it states the estimate, the amount set aside, the
+  shortfall and whose desk the proposal is waiting on, and for a reader who may
+  propose an earmark it links straight to the treasury form with that case
+  picked and the shortfall already filled in.
 - **Field checks — is the report real?** Step 1 of every case, and the first
   thing the admin does with a new report: the admin desk (or the assigned
   office) picks an official or crew member, who sees the location the resident
