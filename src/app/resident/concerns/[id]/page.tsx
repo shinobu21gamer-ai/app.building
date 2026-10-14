@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import { UploadedPhoto } from "@/components/ui/uploaded-photo";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth/session";
@@ -279,13 +279,10 @@ export default async function ConcernDetailPage({
             {concern.imageUrl && (
               <div className="mt-5 border-t border-line pt-5">
                 <p className="mb-2 text-ink-subtle">{t.photo}</p>
-                <Image
+                <UploadedPhoto
                   src={concern.imageUrl}
                   alt={`Supporting image for ${concern.caseNumber}`}
-                  width={800}
-                  height={600}
-                  unoptimized
-                  className="h-auto w-full max-w-md rounded-control border border-line"
+                  locale={locale}
                 />
               </div>
             )}
@@ -349,13 +346,10 @@ export default async function ConcernDetailPage({
                   <div>
                     <dt className="text-ink-subtle">Proof photo</dt>
                     <dd className="mt-2">
-                      <Image
+                      <UploadedPhoto
                         src={resolution.attachmentUrl}
                         alt={`Proof photo of the resolution for ${concern.caseNumber}`}
-                        width={800}
-                        height={600}
-                        unoptimized
-                        className="h-auto w-full max-w-md rounded-control border border-line"
+                        locale={locale}
                       />
                     </dd>
                   </div>

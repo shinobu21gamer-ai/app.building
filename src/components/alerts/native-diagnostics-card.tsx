@@ -1,11 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Copy, RefreshCw } from "lucide-react";
+import { BellRing, Copy, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api-client";
-import { getNativePlatform, readNativeToken } from "@/lib/capacitor-types";
+import { getNativePlatform } from "@/lib/capacitor-types";
+import { checkNativePushStatus, currentNativeToken, type NativeServerState } from "@/lib/native-push-status";
+import { setNativePushEnabled } from "@/lib/native-push-preference";
+import { FormMessage } from "@/components/ui/field";
 import {
   clearNativeCrashReport,
   isNativeShell,
@@ -20,10 +23,7 @@ import {
   type NativePushDiagnostics,
 } from "@/lib/native-diagnostics";
 
-type ServerState = {
-  registered: boolean;
-  serverConfigured?: boolean;
-};
+type ServerState = NativeServerState;
 
 function maskToken(token: string | null): string {
   if (!token) return "—";
@@ -53,6 +53,22 @@ export function NativeDiagnosticsCard() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ tone: "error" | "success"; message: string } | null>(null);
+
+  async function testPhone() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const token = currentNativeToken();
+      if (!token) { setTestResult({ tone: "error", message: "No token on this phone. Register it first." }); return; }
+      const result = await apiRequest<{ accepted: boolean; message: string }>("/api/v1/alerts/push/test", {
+        method: "POST", body: JSON.stringify({ token, platform: getNativePlatform() }),
+      });
+      setTestResult(result.success ? { tone: "success", message: result.data.message }
+        : { tone: "error", message: result.error.message });
+    } finally { setTesting(false); }
+  }
 
   const refresh = useCallback(async () => {
     setBusy(true);
@@ -64,9 +80,7 @@ export function NativeDiagnosticsCard() {
       setExit(readLastExitReport());
 
       if (isNativeShell()) {
-        const result = await apiRequest<ServerState>(
-          `/api/v1/alerts/push/token?platform=${getNativePlatform()}`
-        );
+        const result = await checkNativePushStatus();
         if (result.success) {
           setServer(result.data);
           setServerError(null);
@@ -84,6 +98,9 @@ export function NativeDiagnosticsCard() {
     const nativeShell = isNativeShell();
     setNative(nativeShell);
     if (nativeShell) void refresh();
+    const onRegistration = () => { if (nativeShell) void refresh(); };
+    window.addEventListener("native-token-registration", onRegistration);
+    return () => window.removeEventListener("native-token-registration", onRegistration);
   }, [refresh]);
 
   if (!native) return null;
@@ -103,16 +120,7 @@ export function NativeDiagnosticsCard() {
   // localStorage when it registers it, so an older APK can still show the token
   // this phone last registered with (that is also what "Registered on the
   // server: yes" refers to).
-  const rememberedToken = readNativeToken();
-  const tokenDisplay = diagnostics?.lastToken
-    ? maskToken(diagnostics.lastToken)
-    : rememberedToken
-      ? `${maskToken(rememberedToken)} (remembered by the app)`
-      : diagnostics
-        ? "—" // readable diagnostics with no token: definitively none
-        : bridgeState === "current"
-          ? "unknown"
-          : "none";
+  const tokenDisplay = maskToken(currentNativeToken());
 
   const report = [
     "BarangayResolve native push diagnostics",
@@ -125,9 +133,10 @@ export function NativeDiagnosticsCard() {
     `Firebase initialized: ${diagnostics ? diagnostics.firebaseInitialized : unreadable}`,
     `Last registration error: ${diagnostics?.lastError ?? unreadable}`,
     `Last error at: ${diagnostics?.lastErrorAt ?? "—"}`,
-    `Token: ${diagnostics?.lastToken ?? rememberedToken ?? (diagnostics ? "none" : unreadable)}`,
+    `Token (masked): ${tokenDisplay}`,
     `Server registered: ${server ? server.registered : serverError ? `error: ${serverError}` : "unknown"}`,
     `Server has FCM credentials: ${server?.serverConfigured ?? "unknown"}`,
+    `Server Firebase project: ${server?.projectId ?? "unknown"}`,
     crash ? `Last crash:\n${crash}` : "Last crash: none",
     exit
       ? `Last exit reported by Android: ${exit.label} (${exit.at})${exit.description ? `\n${exit.description}` : ""}`
@@ -206,6 +215,10 @@ export function NativeDiagnosticsCard() {
               {server ? (server.registered ? "yes" : "no") : serverError ?? "unknown"}
             </dd>
           </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Server Firebase project</dt>
+            <dd className="break-all text-slate-800">{server?.projectId ?? "not configured"}</dd>
+          </div>
           <div className="sm:col-span-2">
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Last push error
@@ -259,7 +272,16 @@ export function NativeDiagnosticsCard() {
           </div>
         ) : null}
 
+        {testResult && <FormMessage tone={testResult.tone}>{testResult.message}</FormMessage>}
+        <p className="text-xs text-ink-subtle">Android Settings → Apps → BarangayResolve → Notifications must be allowed. A force-stopped app cannot receive messages until reopened. Battery restrictions and a lost internet connection can delay delivery.</p>
         <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => {
+            setNativePushEnabled(true);
+            window.dispatchEvent(new Event("native-push-retry"));
+          }}>Register this phone again</Button>
+          {getNativePlatform() === "android" && <Button type="button" size="sm" onClick={() => void testPhone()} disabled={testing || !server?.registered || !server.serverConfigured}>
+            <BellRing size={14} aria-hidden="true" />{testing ? "Sending test…" : "Send test to this phone"}
+          </Button>}
           <Button type="button" variant="secondary" size="sm" onClick={copy}>
             <Copy size={14} aria-hidden="true" />
             {copied ? "Copied" : "Copy diagnostics"}

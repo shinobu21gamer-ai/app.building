@@ -41,12 +41,11 @@ export const slaPolicySaveSchema = z.object({
     ),
   name: requiredText("Name", 3, 120),
   stage: z.enum(CASE_STATUSES),
-  typeId: z.coerce
-    .number()
-    .int("Type must be a whole number.")
-    .positive("Type is not valid.")
-    .nullable()
-    .optional(),
+  typeId: z.preprocess(
+    (value) => typeof value === "string" && value.trim() === "" ? null : value,
+    z.coerce.number().int("Type must be a whole number.")
+      .positive("Type is not valid.").nullable().optional()
+  ),
   priorityLevel: z
     .preprocess(
       (value) =>

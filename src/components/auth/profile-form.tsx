@@ -5,7 +5,7 @@ import { updateProfileSchema } from "@/lib/validations/auth";
 import { apiRequest } from "@/lib/api-client";
 import { extractFieldErrors } from "@/lib/validation-errors";
 import { Button } from "@/components/ui/button";
-import { FieldError, FormMessage, Input, Label } from "@/components/ui/field";
+import { FieldError, FormMessage, Input, Label, RequiredLegend } from "@/components/ui/field";
 import { copy, type Locale } from "@/lib/i18n";
 
 type ProfileUser = {
@@ -28,9 +28,11 @@ export function ProfileForm({
   const [form, setForm] = useState({
     firstName: user.firstName,
     lastName: user.lastName,
-    phone: user.phone ?? "",
+    phone: "",
     address: user.address ?? "",
   });
+  const [savedPhone, setSavedPhone] = useState(user.phone);
+  const [phoneChanged, setPhoneChanged] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<{
     tone: "error" | "success";
@@ -40,6 +42,7 @@ export function ProfileForm({
 
   function setField(key: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
+    if (key === "phone") setPhoneChanged(true);
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -47,7 +50,11 @@ export function ProfileForm({
     setMessage(null);
     setFieldErrors({});
 
-    const parsed = updateProfileSchema.safeParse(form);
+    const parsed = updateProfileSchema.safeParse({
+      ...form,
+      // A saved phone is masked; never send that mask as a new number.
+      phone: phoneChanged ? form.phone : undefined,
+    });
     if (!parsed.success) {
       setFieldErrors(extractFieldErrors(parsed.error.issues));
       return;
@@ -72,11 +79,15 @@ export function ProfileForm({
       return;
     }
 
+    setSavedPhone(result.data.user.phone);
+    setPhoneChanged(false);
+    setForm((prev) => ({ ...prev, phone: "" }));
     setMessage({ tone: "success", text: t.saved });
   }
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      <RequiredLegend>{copy[locale].register.requiredLegend}</RequiredLegend>
       {message && (
         <FormMessage tone={message.tone}>{message.text}</FormMessage>
       )}
@@ -89,7 +100,7 @@ export function ProfileForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="firstName">{t.firstName}</Label>
+          <Label htmlFor="firstName" required>{t.firstName}</Label>
           <Input
             id="firstName"
             value={form.firstName}
@@ -103,7 +114,7 @@ export function ProfileForm({
           )}
         </div>
         <div>
-          <Label htmlFor="lastName">{t.lastName}</Label>
+          <Label htmlFor="lastName" required>{t.lastName}</Label>
           <Input
             id="lastName"
             value={form.lastName}
@@ -123,11 +134,23 @@ export function ProfileForm({
         <Input
           id="phone"
           type="tel"
+          autoComplete="tel"
+          placeholder={savedPhone ?? "0917 123 4567"}
           value={form.phone}
           onChange={(e) => setField("phone", e.target.value)}
           invalid={Boolean(fieldErrors.phone)}
           disabled={submitting}
         />
+        {savedPhone && (
+          <div className="mt-1 space-y-1 text-xs text-ink-subtle">
+            <p>{phoneChanged && form.phone.trim() === ""
+              ? t.phoneRemoved : t.phoneKeep.replace("{phone}", savedPhone)}</p>
+            <button type="button" disabled={submitting} onClick={() => setField("phone", "")}
+              className="tap-target rounded-control px-2 text-danger-700 underline focus-visible:outline-2 focus-visible:outline-brand-600">
+              {t.phoneRemove}
+            </button>
+          </div>
+        )}
         {fieldErrors.phone && <FieldError>{fieldErrors.phone}</FieldError>}
       </div>
 

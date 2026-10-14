@@ -14,8 +14,9 @@ export const runtime = "nodejs";
 type UploadContext = { params: Promise<{ filename: string }> };
 
 /**
- * Proof photos are attached to a case in two places: the resolution record and
- * the status-change journal entry. Both resolve to the owning concern, so one
+ * Proof photos are attached to a case through the resolution record and
+ * the status-change journal entry, plus field-check findings. All resolve to
+ * the owning concern, so one
  * authorization rule covers every kind of case image.
  */
 async function proofOwner(imageUrl: string) {
@@ -33,7 +34,18 @@ async function proofOwner(imageUrl: string) {
       concern: { select: { userId: true, assignedOfficeId: true } },
     },
   });
-  return journalEntry?.concern ?? null;
+  if (journalEntry) return journalEntry.concern;
+
+  const fieldCheck = await db.fieldCheck.findFirst({
+    where: { findingPhotoUrl: imageUrl },
+    select: {
+      assigneeId: true,
+      concern: { select: { userId: true, assignedOfficeId: true } },
+    },
+  });
+  return fieldCheck
+    ? { ...fieldCheck.concern, fieldCheckAssigneeId: fieldCheck.assigneeId }
+    : null;
 }
 
 /**
@@ -77,13 +89,17 @@ export const GET = withErrorBoundary<[Request, UploadContext]>(
     const isIdentityDocument = "identity" in owner && owner.identity === true;
     const isOwner = owner.userId === user.id;
     const isAdmin = user.role.key === "ADMIN";
+    // The Captain can open every case sheet, but must never see ID documents.
+    const isCaptain = !isIdentityDocument && user.role.key === "CAPTAIN";
+    const isFieldCheckAssignee = !isIdentityDocument &&
+      "fieldCheckAssigneeId" in owner && owner.fieldCheckAssigneeId === user.id;
     const isAssignedOfficial =
       !isIdentityDocument &&
       user.role.key === "OFFICIAL" &&
       owner.assignedOfficeId !== null &&
       owner.assignedOfficeId === user.officeId;
 
-    if (!isOwner && !isAdmin && !isAssignedOfficial) {
+    if (!isOwner && !isAdmin && !isAssignedOfficial && !isCaptain && !isFieldCheckAssignee) {
       throw createApiError.forbidden("You cannot access this image.");
     }
 

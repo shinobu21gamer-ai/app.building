@@ -8,6 +8,10 @@ import { Badge, PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
+import { Input, Label, Select } from "@/components/ui/field";
+import { CASE_STATUSES } from "@/lib/cases/workflow";
+import { statusLabelFor } from "@/lib/i18n";
+import { residentSearch, residentConcernWhere, residentSearchHref, RESIDENT_PAGE_SIZE } from "@/lib/concerns/resident-search";
 import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
@@ -22,13 +26,23 @@ function lastUpdated(
   return latestHistory.createdAt > updatedAt ? latestHistory.createdAt : updatedAt;
 }
 
-export default async function MyConcernsPage() {
+export default async function MyConcernsPage({ searchParams }: {
+  searchParams: Promise<{ q?: string | string[]; status?: string | string[]; page?: string | string[] }>;
+}) {
   const user = await requireRole(["RESIDENT"]);
   const locale = await getLocale();
   const t = copy[locale].resident;
 
+  const experience = copy[locale].reportingExperience;
+  const search = residentSearch(await searchParams);
+  const where = residentConcernWhere(user.id, search);
+  const total = await db.concern.count({ where });
+  const pages = Math.max(1, Math.ceil(total / RESIDENT_PAGE_SIZE));
+  search.page = Math.min(search.page, pages);
   const concerns = await db.concern.findMany({
-    where: { userId: user.id },
+    where,
+    take: RESIDENT_PAGE_SIZE,
+    skip: (search.page - 1) * RESIDENT_PAGE_SIZE,
     include: {
       category: true,
       assignedOffice: true,
@@ -38,7 +52,7 @@ export default async function MyConcernsPage() {
         select: { createdAt: true },
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   });
 
   return (
@@ -50,10 +64,26 @@ export default async function MyConcernsPage() {
         </Button>
       </div>
 
+      <form action="/resident/concerns" method="get" className="grid items-end gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-[1fr_14rem_auto]">
+        <div><Label htmlFor="concern-search">{experience.searchLabel}</Label>
+          <Input id="concern-search" name="q" type="search" defaultValue={search.q} maxLength={100} placeholder={experience.searchPlaceholder} />
+        </div>
+        <div><Label htmlFor="concern-status">{experience.statusLabel}</Label>
+          <Select id="concern-status" name="status" defaultValue={search.status}>
+            <option value="">{experience.allStatuses}</option>
+            {CASE_STATUSES.map((status) => <option key={status} value={status}>{statusLabelFor(locale, status)}</option>)}
+          </Select>
+        </div>
+        <Button type="submit" size="sm">{experience.filter}</Button>
+      </form>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-ink-muted">
+        <p>{experience.results.replace("{count}", String(total))}</p>
+        {(search.q || search.status) && <Link href="/resident/concerns" className="font-medium text-brand-700 underline">{experience.clear}</Link>}
+      </div>
       <Card>
         {concerns.length === 0 ? (
           <div className="py-10 text-center">
-            <p className="text-sm text-ink-muted">{t.empty}</p>
+            <p className="text-sm text-ink-muted">{search.q || search.status ? experience.noMatches : t.empty}</p>
             <Button href="/resident/concerns/new" className="mt-3" size="sm">
               {t.first}
             </Button>
@@ -180,6 +210,11 @@ export default async function MyConcernsPage() {
           </>
         )}
       </Card>
+      {pages > 1 && <nav aria-label={experience.page.replace("{page}", String(search.page)).replace("{pages}", String(pages))} className="flex items-center justify-between gap-3">
+        {search.page > 1 ? <Button href={residentSearchHref(search, search.page - 1)} variant="outline" size="sm">{experience.previous}</Button> : <span />}
+        <p className="text-xs text-ink-muted">{experience.page.replace("{page}", String(search.page)).replace("{pages}", String(pages))}</p>
+        {search.page < pages ? <Button href={residentSearchHref(search, search.page + 1)} variant="outline" size="sm">{experience.next}</Button> : <span />}
+      </nav>}
     </div>
   );
 }

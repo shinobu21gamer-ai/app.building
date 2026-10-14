@@ -3,54 +3,45 @@
 import { useEffect } from "react";
 import { apiRequest } from "@/lib/api-client";
 import { setNativeSessionActive, syncWebPushRegistration } from "@/lib/push-device";
+import { isNativeShell, waitForAlertBridge } from "@/lib/native-diagnostics";
 
-/**
- * Keeps the device's alert registration aligned with the session the browser
- * actually holds.
- *
- * Two jobs:
- *
- * 1. Mirror the session into the native Android layer. An alert that is already
- *    in flight, or one saved by `AlertRestartReceiver`, can otherwise start the
- *    alarm foreground service long after the user signed out.
- * 2. Re-bind an existing browser push subscription to the account that just
- *    signed in, so push resumes without the user revisiting /alerts.
- *
- * `signedIn` comes from the server render, so it is authoritative even when the
- * device is offline — which is exactly when a stale alarm would otherwise still
- * go off. The `/api/v1/auth/me` round trip is only used to re-check after an
- * in-page sign-in, and a network failure there leaves the current state alone
- * rather than falsely reporting "signed out".
- */
+/** Mirror the authoritative session after the Android bridge is actually ready.
+ * A stale layout result must not overwrite a newer in-page sign-in. */
 export function PushSessionSync({ signedIn }: { signedIn: boolean }) {
   useEffect(() => {
     let cancelled = false;
+    let revision = 0;
 
-    const apply = (isSignedIn: boolean) => {
+    const apply = async (isSignedIn: boolean) => {
+      const current = ++revision;
+      if (isNativeShell()) await waitForAlertBridge(5000);
+      if (cancelled || current !== revision) return;
       setNativeSessionActive(isSignedIn);
       if (isSignedIn) void syncWebPushRegistration();
     };
 
     async function refresh() {
+      const current = ++revision;
       const me = await apiRequest<{ user: unknown }>("/api/v1/auth/me");
-      if (cancelled) return;
-      // Offline / server unreachable: never change the native alarm state on the
-      // strength of a request that never reached the server.
-      if (!me.success && me.error.code === "NETWORK_ERROR") return;
-      apply(me.success);
+      if (cancelled || current !== revision) return;
+      // A server error or lost connection says nothing about session validity.
+      if (!me.success && me.error.code !== "UNAUTHORIZED") return;
+      await apply(me.success);
     }
 
-    apply(signedIn);
-
-    // Dispatched by the sign-in and registration forms, which are client-side
-    // navigations and therefore never re-render this layout.
+    void apply(signedIn);
     const onAuthReady = () => void refresh();
+    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
     window.addEventListener("native-auth-ready", onAuthReady);
+    window.addEventListener("online", onAuthReady);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
+      ++revision;
       window.removeEventListener("native-auth-ready", onAuthReady);
+      window.removeEventListener("online", onAuthReady);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [signedIn]);
-
   return null;
 }

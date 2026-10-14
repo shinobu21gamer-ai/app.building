@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { UploadedPhoto } from "@/components/ui/uploaded-photo";
 import { Badge } from "@/components/ui/badge";
 import { sortJournal, type JournalEntryDates } from "@/lib/cases/journal";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -123,13 +123,10 @@ export function CaseTimeline({
           )}
           {entry.attachmentUrl && (
             <figure className="mt-2">
-              <Image
+              <UploadedPhoto
                 src={entry.attachmentUrl}
                 alt={t.proofAlt}
-                width={800}
-                height={600}
-                unoptimized
-                className="h-auto w-full max-w-xs rounded-control border border-line"
+                locale={locale}
               />
               <figcaption className="mt-1 text-xs text-ink-subtle">
                 {t.proofPhotoCaption}

@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { apiRequest } from "@/lib/api-client";
+import { nativePushOptedOut } from "@/lib/native-push-preference";
+import { setNativeSessionActive } from "@/lib/push-device";
 import {
   ensureSeverityChannels,
   getNativePlatform,
-  readNativeToken,
   rememberNativeToken,
   toNativeAlertView,
   type NativeAlertPayload,
@@ -63,6 +64,7 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       if (cancelled) return;
       settled = true;
       clearTimer();
+      setDismissed(false);
       setStatus("failed");
       setError(message);
       window.dispatchEvent(
@@ -73,6 +75,7 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
     };
 
     const persistToken = async (token: string) => {
+      if (cancelled || nativePushOptedOut()) return;
       try {
         await ensureSeverityChannels();
         rememberNativeToken(token);
@@ -91,6 +94,8 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
           );
           throw new Error(message);
         }
+        if (cancelled || nativePushOptedOut()) return;
+        setNativeSessionActive(true);
         settled = true;
         clearTimer();
         window.dispatchEvent(
@@ -105,11 +110,9 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       }
     };
 
-    let lastRefreshedToken: string | null = null;
     const handleTokenRefreshed = (event: Event) => {
       const token = (event as CustomEvent<{ token?: string }>).detail?.token;
-      if (!token || token === lastRefreshedToken) return;
-      lastRefreshedToken = token;
+      if (!token) return;
       void persistToken(token);
     };
 
@@ -149,21 +152,33 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
     };
 
     /** Registers on whichever path this APK supports. */
-    const registerDevice = async () => {
-      if (cancelled || settled) return;
+    const registerDevice = async (force = false) => {
+      if (cancelled || nativePushOptedOut() || (settled && !force)) return;
+      const diagnostics = readPushDiagnostics();
+      if (diagnostics && !diagnostics.available && !nativePushOptedOut()) {
+        fail(diagnostics.reason ?? "Push alerts are unavailable in this build.");
+        return;
+      }
+      const me = await apiRequest("/api/v1/auth/me");
+      if (cancelled) return;
+      if (!me.success) {
+        if (me.error.code === "UNAUTHORIZED") setStatus("idle");
+        else fail(me.error.message);
+        return;
+      }
+      settled = false;
+      setDismissed(false);
+      setError(null);
       setStatus("registering");
       clearTimer();
 
-      // Preferred: the app's own registration, which cannot kill the process and
-      // reports failures through the events handled above.
-      if (requestNativePushToken()) {
-        // The timer is the "no answer at all" net for the native call.
-        timeoutId = window.setTimeout(
-          () => fail("Android did not return a push token. Check the phone's connection and try again."),
-          25000
-        );
-        return;
-      }
+      // Both native and legacy paths need a timeout; otherwise a plugin that
+      // never fires its registration event leaves the phone stuck forever.
+      timeoutId = window.setTimeout(
+        () => fail("Android did not return a push token. Check the phone's connection and try again."),
+        25000
+      );
+      if (requestNativePushToken()) return;
 
       // Older APKs only have the Capacitor plugin.
       try {
@@ -173,13 +188,10 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       }
     };
 
-    const handleAuthReady = () => {
-      const remembered = readNativeToken();
-      if (remembered) {
-        void persistToken(remembered);
-      } else {
-        void registerDevice();
-      }
+    const handleAuthReady = () => { void registerDevice(true); };
+    const handleDisabled = () => { clearTimer(); settled = true; setStatus("idle"); };
+    const handleVisible = () => {
+      if (document.visibilityState === "visible") handleAuthReady();
     };
 
     const setup = async () => {
@@ -192,7 +204,7 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       if (cancelled) return;
 
       const diagnostics = readPushDiagnostics();
-      if (diagnostics && !diagnostics.available) {
+      if (diagnostics && !diagnostics.available && !nativePushOptedOut()) {
         fail(diagnostics.reason ?? "Push alerts are unavailable in this build.");
         return;
       }
@@ -208,6 +220,7 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       }
       if (cancelled) return;
 
+      if (nativePushOptedOut()) { setStatus("idle"); return; }
       await requestPermissions();
 
       try {
@@ -216,23 +229,19 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
         console.warn("[push] channel creation failed:", e);
       }
 
-      try {
-        const remembered = readNativeToken();
-        if (remembered) {
-          await persistToken(remembered);
-          if (settled) return;
-        }
-      } catch (e) {
-        console.warn("[push] remembered-token sync failed:", e);
-      }
-
+      // Never stop at a localStorage token: Firebase can rotate it while the
+      // app is closed. Asking the native layer returns the current token.
       if (cancelled) return;
-      await registerDevice();
+      await registerDevice(true);
     };
 
     window.addEventListener("native-token-refreshed", handleTokenRefreshed as EventListener);
     window.addEventListener("native-push-error", handleNativePushError as EventListener);
     window.addEventListener("native-auth-ready", handleAuthReady);
+    window.addEventListener("native-push-retry", handleAuthReady);
+    window.addEventListener("native-push-disabled", handleDisabled);
+    window.addEventListener("online", handleAuthReady);
+    document.addEventListener("visibilitychange", handleVisible);
 
     setup().catch((e) => {
       console.error("[push] setup failed:", e);
@@ -245,6 +254,10 @@ export function NativePushListener({ enabled = true }: { enabled?: boolean }) {
       window.removeEventListener("native-token-refreshed", handleTokenRefreshed as EventListener);
       window.removeEventListener("native-push-error", handleNativePushError as EventListener);
       window.removeEventListener("native-auth-ready", handleAuthReady);
+      window.removeEventListener("native-push-retry", handleAuthReady);
+      window.removeEventListener("native-push-disabled", handleDisabled);
+      window.removeEventListener("online", handleAuthReady);
+      document.removeEventListener("visibilitychange", handleVisible);
       for (const handle of handles) handle.remove();
     };
   }, [enabled]);

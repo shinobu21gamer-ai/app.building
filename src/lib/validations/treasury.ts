@@ -15,7 +15,9 @@ import {
 function optionalText(max: number, message?: string) {
   return z.preprocess(
     (value) =>
-      typeof value === "string" && value.trim() === "" ? undefined : value,
+      value === null || (typeof value === "string" && value.trim() === "")
+        ? undefined
+        : value,
     z.string().trim().max(max, message).optional()
   );
 }
