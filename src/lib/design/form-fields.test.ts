@@ -43,6 +43,8 @@ type Pair = {
    * They must still be marked with a `*`.
    */
   clientRequired?: string[];
+  /** Required schema values generated from other selections, not typed directly. */
+  generatedFields?: string[];
 };
 
 const PAIRS: Pair[] = [
@@ -92,8 +94,8 @@ const PAIRS: Pair[] = [
   {
     file: "src/components/treasury/allocation-form.tsx",
     schema: allocationCreateSchema,
+    generatedFields: ["label"],
     idMap: {
-      "allocation-label": "label",
       "allocation-appropriation": "appropriation",
       "allocation-fiscal-year": "fiscalYearId",
       "allocation-fund-source": "fundSourceId",
@@ -218,6 +220,19 @@ describe("every required field is marked with *", () => {
 
       const required = new Set(requiredFieldNames(pair.schema));
       const optional = new Set(optionalFieldNames(pair.schema));
+
+      for (const fieldName of pair.generatedFields ?? []) {
+        expect(
+          required.has(fieldName),
+          `${pair.file}: generated field "${fieldName}" must be required by the schema`
+        ).toBe(true);
+        expect(
+          markers.some(
+            (marker) => (pair.idMap?.[marker.name] ?? marker.name) === fieldName
+          ),
+          `${pair.file}: generated field "${fieldName}" must not be a typed field`
+        ).toBe(false);
+      }
 
       for (const marker of markers) {
         const fieldName = pair.idMap?.[marker.name] ?? marker.name;

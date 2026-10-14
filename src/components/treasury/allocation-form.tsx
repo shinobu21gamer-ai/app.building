@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
+  FieldHint,
   FormMessage,
   Input,
   Label,
@@ -39,12 +40,14 @@ export function AllocationForm({
   fundSources,
   coaAccounts,
   offices,
+  canOpenFiscalYear = false,
   locale = "en",
 }: {
   fiscalYears: Array<{ id: number; year: number; isClosed: boolean }>;
   fundSources: ReferenceOption[];
   coaAccounts: ReferenceOption[];
   offices: Array<{ id: number; name: string }>;
+  canOpenFiscalYear?: boolean;
   locale?: Locale;
 }) {
   const t = copy[locale].revamp.treasuryDesk;
@@ -56,6 +59,26 @@ export function AllocationForm({
   const [done, setDone] = useState<string | null>(null);
 
   const openYears = fiscalYears.filter((year) => !year.isClosed);
+  const recommendedYear = [...openYears].sort((a, b) => b.year - a.year)[0];
+
+  if (openYears.length === 0) {
+    return (
+      <div className="space-y-2">
+        <p role="status" className="text-sm text-ink-muted">
+          {t.noOpenFiscalYear}
+        </p>
+        {canOpenFiscalYear ? (
+          <Button href="/admin/treasury" size="sm" variant="outline">
+            {t.createFiscalYear}
+          </Button>
+        ) : (
+          <p className="text-xs text-ink-subtle">
+            {t.askAdminToOpenFiscalYear}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   if (!open) {
     return (
@@ -70,19 +93,39 @@ export function AllocationForm({
     setError(null);
     setDone(null);
 
+    const fiscalYearId = Number(formData.get("fiscalYearId"));
+    const fundSourceId = Number(formData.get("fundSourceId"));
+    const coaAccountId = Number(formData.get("coaAccountId"));
     const officeId = String(formData.get("officeId") ?? "");
     const notes = String(formData.get("notes") ?? "");
+    const year = openYears.find((item) => item.id === fiscalYearId);
+    const fundSource = fundSources.find((item) => item.id === fundSourceId);
+    const coaAccount = coaAccounts.find((item) => item.id === coaAccountId);
+    const officeName =
+      officeId === ""
+        ? t.officeWideWard
+        : offices.find((item) => String(item.id) === officeId)?.name;
+    const label = [
+      year ? `FY ${year.year}` : `FY ${fiscalYearId}`,
+      fundSource?.code,
+      coaAccount?.code,
+      coaAccount?.name,
+      officeName,
+    ]
+      .filter(Boolean)
+      .join(" — ")
+      .slice(0, 160);
 
     const result = await apiRequest<{ allocationId: number }>(
       "/api/v1/treasury/allocations",
       {
         method: "POST",
         body: JSON.stringify({
-          fiscalYearId: Number(formData.get("fiscalYearId")),
-          fundSourceId: Number(formData.get("fundSourceId")),
-          coaAccountId: Number(formData.get("coaAccountId")),
+          fiscalYearId,
+          fundSourceId,
+          coaAccountId,
           officeId: officeId === "" ? null : Number(officeId),
-          label: String(formData.get("label") ?? ""),
+          label,
           appropriation: Number(formData.get("appropriation")),
           notes: notes === "" ? null : notes,
         }),
@@ -107,31 +150,6 @@ export function AllocationForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="allocation-label" required>
-            {t.allocationLabel}
-          </Label>
-          <Input
-            id="allocation-label"
-            name="label"
-            required
-            maxLength={200}
-            placeholder="MOOE 2026 — Repairs and maintenance"
-          />
-        </div>
-        <div>
-          <Label htmlFor="allocation-appropriation" required>
-            {t.appropriation}
-          </Label>
-          <Input
-            id="allocation-appropriation"
-            name="appropriation"
-            type="number"
-            min="0.01"
-            step="0.01"
-            required
-          />
-        </div>
-        <div>
           <Label htmlFor="allocation-fiscal-year" required>
             {t.fiscalYear}
           </Label>
@@ -139,12 +157,13 @@ export function AllocationForm({
             id="allocation-fiscal-year"
             name="fiscalYearId"
             required
-            defaultValue={openYears[0]?.id}
+            defaultValue={recommendedYear?.id ?? ""}
             className={selectStyles}
           >
             {openYears.map((year) => (
               <option key={year.id} value={year.id}>
                 {year.year}
+                {year.id === recommendedYear?.id && ` (${t.recommended})`}
               </option>
             ))}
           </select>
@@ -157,14 +176,17 @@ export function AllocationForm({
             id="allocation-fund-source"
             name="fundSourceId"
             required
+            defaultValue=""
             className={selectStyles}
           >
+            <option value="">{t.selectFundSource}</option>
             {fundSources.map((source) => (
               <option key={source.id} value={source.id}>
                 {source.code} — {source.name}
               </option>
             ))}
           </select>
+          <FieldHint>{t.verifiedFundSourceHelp}</FieldHint>
         </div>
         <div>
           <Label htmlFor="allocation-coa" required>
@@ -174,14 +196,17 @@ export function AllocationForm({
             id="allocation-coa"
             name="coaAccountId"
             required
+            defaultValue=""
             className={selectStyles}
           >
+            <option value="">{t.selectCoaAccount}</option>
             {coaAccounts.map((account) => (
               <option key={account.id} value={account.id}>
                 {account.code} — {account.name}
               </option>
             ))}
           </select>
+          <FieldHint>{t.verifiedCoaAccountHelp}</FieldHint>
         </div>
         <div>
           <Label htmlFor="allocation-office">{t.office}</Label>
@@ -198,6 +223,24 @@ export function AllocationForm({
               </option>
             ))}
           </select>
+        </div>
+        <div>
+          <Label htmlFor="allocation-appropriation" required>
+            {t.appropriationAmount}
+          </Label>
+          <Input
+            id="allocation-appropriation"
+            name="appropriation"
+            type="number"
+            min="0.01"
+            step="0.01"
+            required
+          />
+          <FieldHint>{t.appropriationHelp}</FieldHint>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-ink-muted">{t.allocationLabel}</p>
+          <FieldHint>{t.allocationLabelAuto}</FieldHint>
         </div>
       </div>
 

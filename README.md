@@ -307,7 +307,19 @@ All seeded passwords: `BarangayResolve123!`
 | `crew2@barangayresolve.dev` | Maintenance crew — plumbing (crew profile) |
 | `resident@barangayresolve.dev` | Resident |
 
-Accounts are created by `npm run db:seed` (see `prisma/seed.ts`). The seed only inserts missing accounts (`upsert` with an empty `update`), so re-running it does not reset passwords.
+Accounts are created by `npm run db:seed` (see `prisma/seed.ts`). By default, the seed only inserts missing accounts (`upsert` with an empty `update`), so existing seeded accounts keep their current passwords. If an existing demo account needs the documented password restored, run the seed once with `RESET_DEMO_PASSWORDS=true`:
+
+```sh
+RESET_DEMO_PASSWORDS=true npm run db:seed
+```
+
+In PowerShell:
+
+```powershell
+$env:RESET_DEMO_PASSWORDS = "true"; npm run db:seed; Remove-Item Env:RESET_DEMO_PASSWORDS
+```
+
+This resets only the seeded demo accounts to `BarangayResolve123!` and bumps their session versions so old sessions are revoked. It does not reactivate disabled accounts or change the passwords of registered/non-seeded users. The reset flag is rejected when `NODE_ENV=production`; use it only for development/testing.
 
 ## Database Schema
 
