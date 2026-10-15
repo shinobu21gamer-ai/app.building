@@ -9,6 +9,7 @@ import { AssessmentForm } from "@/components/cases/assessment-form";
 import { CrewPanel } from "@/components/cases/crew-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { caseWorkflowFlags } from "@/lib/cases/workflow";
+import { suggestedMaterials } from "@/lib/cases/materials-templates";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -69,6 +70,12 @@ export default async function AssessmentPage({ params }: PageProps) {
 
   const canOverrideShortfall = user.role.key !== "CREW";
 
+  // What this kind of concern usually buys, so a fresh assessment starts
+  // from the right list instead of an empty page.
+  const suggestions = suggestedMaterials({
+    categoryCode: concern.category?.code ?? null,
+    typeKey: concern.type?.key ?? null,
+  });
 
   return (
     <div className="space-y-6">
@@ -116,6 +123,7 @@ export default async function AssessmentPage({ params }: PageProps) {
           <AssessmentForm
             concernId={concern.id}
             locale={locale}
+            suggestions={suggestions}
             legacyCase={flags.legacy}
             defaults={
               concern.caseAssessment

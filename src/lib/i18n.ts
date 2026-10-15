@@ -2714,7 +2714,10 @@ const en = {
       materialsListTitle: "Materials list",
       materialsListDesc:
         "What will be bought, line by line. The materials total is the sum of these lines.",
-
+      materialsSuggested:
+        "These lines are pre-chosen for this kind of concern — adjust the quantities and prices to what this work really needs, or remove lines that do not apply.",
+      materialsSkipHint:
+        "No materials are needed for this work — that is fine. Add a line if the work must buy something.",
       materialName: "Material",
       materialQuantity: "Qty",
       materialUnit: "Unit",
@@ -5730,7 +5733,10 @@ const fil: typeof en = {
       materialsListTitle: "Listahan ng materyales",
       materialsListDesc:
         "Ang bibili, isa-isa. Ang kabuuang materyales ay ang buo ng mga linyang ito.",
-
+      materialsSuggested:
+        "Awtomatikong napili ang mga linyang ito para sa ganitong uri ng kaso — ayusin ang yamit at presyo ayon sa tunay na kailangan ng gawaan, o burahin ang mga linya na hindi kailangan.",
+      materialsSkipHint:
+        "Walang materyales ang kailangan ng gawaang ito. Magdagdag ng linya kung may bibilhang talaga.",
       materialName: "Materyales",
       materialQuantity: "Yamit",
       materialUnit: "Yunit",

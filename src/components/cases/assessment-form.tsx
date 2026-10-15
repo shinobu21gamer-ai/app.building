@@ -10,6 +10,7 @@ import {
   Textarea,
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
+import type { MaterialSuggestion } from "@/lib/cases/materials-templates";
 import { copy, type Locale } from "@/lib/i18n";
 import { todayManila } from "@/lib/cases/action-date";
 
@@ -65,12 +66,18 @@ export function AssessmentForm({
   concernId,
   locale = "en",
   defaults,
+  suggestions = [],
   legacyCase,
 }: {
   concernId: number;
   locale?: Locale;
   defaults: AssessmentDefaults | null;
-
+  /**
+   * Suggested materials for this kind of concern (from its category/type).
+   * Pre-fills the editor on a fresh assessment so the official adjusts
+   * figures instead of typing the list; saved lines always win.
+   */
+  suggestions?: MaterialSuggestion[];
   legacyCase?: boolean;
 }) {
   const t = copy[locale].revamp.workflow;
@@ -85,23 +92,35 @@ export function AssessmentForm({
   // total is their sum — the treasurer sets money aside against these lines,
   // not against a bare number.
   const nextMaterialId = useRef(1);
-
+  const emptyMaterialLine = (): MaterialLine => ({
+    id: nextMaterialId.current++,
+    name: "",
+    quantity: "",
+    unit: "",
+    unitPrice: "",
+    amount: "",
+    note: "",
+  });
+  // Saved lines win; on a fresh assessment the list for this kind of concern
+  // is already chosen (road → cement and gravel, streetlight → lamps and
+  // drivers), so the official adjusts figures instead of typing names. The
+  // note stops the moment the list stops being the suggestion.
+  const [suggested, setSuggested] = useState(
+    !(defaults?.materials && defaults.materials.length > 0)
+  );
   const [materials, setMaterials] = useState<MaterialLine[]>(() => {
     const saved = defaults?.materials ?? [];
     if (saved.length > 0) {
       return saved.map((line) => ({ ...line, id: nextMaterialId.current++ }));
     }
-    return [
-      {
-        id: nextMaterialId.current++,
-        name: "",
-        quantity: "",
-        unit: "",
-        unitPrice: "",
-        amount: "",
+    if (suggestions.length > 0) {
+      return suggestions.map((line) => ({
+        ...line,
         note: "",
-      },
-    ];
+        id: nextMaterialId.current++,
+      }));
+    }
+    return [emptyMaterialLine()];
   });
   const materialsTotal = materials.reduce((sum: number, line: MaterialLine) => {
     const value = Number(line.amount);
@@ -114,8 +133,10 @@ export function AssessmentForm({
   };
   const removeMaterial = (id: number) => {
     setMaterials((rows) => rows.filter((row) => row.id !== id));
+    setSuggested(false);
   };
   const addMaterial = () => {
+    setSuggested(false);
     setMaterials((rows) => [
       ...rows,
       {
@@ -483,6 +504,16 @@ export function AssessmentForm({
             <p className="mb-2 text-xs text-ink-subtle">
               {t.materialsListDesc}
             </p>
+            {suggested && materials.length > 0 && (
+              <p className="mb-2 rounded-control border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+                {t.materialsSuggested}
+              </p>
+            )}
+            {materials.length === 0 ? (
+              <p className="rounded-control border border-dashed border-line-strong bg-surface px-3 py-4 text-center text-sm text-ink-subtle">
+                {t.materialsSkipHint}
+              </p>
+            ) : (
             <div className="space-y-2">
               {materials.map((line) => (
                 <div
@@ -556,6 +587,7 @@ export function AssessmentForm({
                 </div>
               ))}
             </div>
+            )}
             <button
               type="button"
               onClick={addMaterial}
