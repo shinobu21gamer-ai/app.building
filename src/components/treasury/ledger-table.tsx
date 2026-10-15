@@ -5,18 +5,20 @@ import { copy, type Locale } from "@/lib/i18n";
 import { AGING_BUCKETS } from "@/lib/treasury/ledger";
 import type { TreasuryDashboard } from "@/lib/treasury/query";
 
-const ENTRY_TONES: Record<string, "sky" | "amber" | "green" | "violet" | "gray"> =
-  {
-    APPROPRIATION: "sky",
-    ALLOCATION_ADJUSTMENT: "violet",
-    EARMARK_RESERVE: "amber",
-    EARMARK_RELEASE: "green",
-    EARMARK_CANCEL: "green",
-    DISBURSEMENT_RESERVE: "amber",
-    DISBURSEMENT_RELEASE: "violet",
-    DISBURSEMENT_CANCEL: "green",
-    LIQUIDATION: "gray",
-  };
+const ENTRY_TONES: Record<
+  string,
+  "sky" | "amber" | "green" | "violet" | "gray" | "red"
+> = {
+  APPROPRIATION: "sky",
+  ALLOCATION_ADJUSTMENT: "violet",
+  EARMARK_RESERVE: "amber",
+  EARMARK_RELEASE: "green",
+  EARMARK_CANCEL: "green",
+  DISBURSEMENT_RESERVE: "amber",
+  DISBURSEMENT_RELEASE: "red",
+  DISBURSEMENT_CANCEL: "green",
+  LIQUIDATION: "gray",
+};
 
 type LedgerRowView = {
   id: number;
@@ -53,10 +55,11 @@ export function LedgerTable({
 
   return (
     <div className="-mx-5 overflow-x-auto px-5">
-      <table className="w-full min-w-[46rem] border-collapse text-sm">
+      <table className="w-full min-w-[52rem] border-collapse text-sm">
         <thead>
           <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-subtle">
             <th className="py-2 pr-3 font-medium">{t.ledgerEntry}</th>
+            <th className="py-2 pr-3 font-medium">{t.ledgerWhen}</th>
             {showAllocation && (
               <th className="py-2 pr-3 font-medium">{t.coaAccount}</th>
             )}
@@ -75,43 +78,58 @@ export function LedgerTable({
           </tr>
         </thead>
         <tbody>
-          {entries.map((entry) => (
-            <tr key={entry.id} className="border-b border-line">
-              <td className="py-2 pr-3">
-                <Badge tone={ENTRY_TONES[entry.entryType] ?? "neutral"}>
-                  {entry.entryLabel}
-                </Badge>
-                <p className="mt-1 text-xs text-ink-faint">
-                  {formatDateTime(entry.createdAt)}
-                </p>
-              </td>
-              {showAllocation && (
-                <td className="py-2 pr-3 font-mono text-xs text-ink-muted">
-                  {entry.coaCode ?? "—"}
+          {entries.map((entry) => {
+            const paidOut = entry.entryType === "DISBURSEMENT_RELEASE";
+            return (
+              <tr
+                key={entry.id}
+                className={
+                  paidOut
+                    ? "border-b border-line bg-red-50/70"
+                    : "border-b border-line"
+                }
+              >
+                <td className="py-2 pr-3">
+                  <Badge tone={ENTRY_TONES[entry.entryType] ?? "neutral"}>
+                    {entry.entryLabel}
+                  </Badge>
+                  {paidOut ? (
+                    <p className="mt-1 text-xs font-semibold text-red-800">
+                      {t.ledgerPaidOut}
+                    </p>
+                  ) : null}
                 </td>
-              )}
-              <td className="py-2 pr-3 text-ink-muted">{entry.memo ?? "—"}</td>
-              <td className="py-2 pr-3 text-right tabular-nums">
-                {formatPeso(entry.amount)}
-              </td>
-              <td className="py-2 pr-3 text-right tabular-nums text-ink-muted">
-                {entry.reservedAfter === undefined
-                  ? "—"
-                  : formatPeso(entry.reservedAfter)}
-              </td>
-              <td className="py-2 pr-3 text-right tabular-nums text-ink-muted">
-                {entry.disbursedAfter === undefined
-                  ? "—"
-                  : formatPeso(entry.disbursedAfter)}
-              </td>
-              <td className="py-2 pr-3 text-right font-semibold tabular-nums text-ink">
-                {formatPeso(entry.availableAfter)}
-              </td>
-              <td className="py-2 pr-3 text-ink-muted">
-                {entry.actorName ?? "—"}
-              </td>
-            </tr>
-          ))}
+                <td className="py-2 pr-3 whitespace-nowrap text-ink">
+                  {formatDateTime(entry.createdAt)}
+                </td>
+                {showAllocation && (
+                  <td className="py-2 pr-3 font-mono text-xs text-ink-muted">
+                    {entry.coaCode ?? "—"}
+                  </td>
+                )}
+                <td className="py-2 pr-3 text-ink-muted">{entry.memo ?? "—"}</td>
+                <td className="py-2 pr-3 text-right tabular-nums">
+                  {formatPeso(entry.amount)}
+                </td>
+                <td className="py-2 pr-3 text-right tabular-nums text-ink-muted">
+                  {entry.reservedAfter === undefined
+                    ? "—"
+                    : formatPeso(entry.reservedAfter)}
+                </td>
+                <td className="py-2 pr-3 text-right tabular-nums text-ink-muted">
+                  {entry.disbursedAfter === undefined
+                    ? "—"
+                    : formatPeso(entry.disbursedAfter)}
+                </td>
+                <td className="py-2 pr-3 text-right font-semibold tabular-nums text-ink">
+                  {formatPeso(entry.availableAfter)}
+                </td>
+                <td className="py-2 pr-3 font-medium text-ink">
+                  {entry.actorName ?? "—"}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

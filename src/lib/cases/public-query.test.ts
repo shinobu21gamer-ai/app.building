@@ -39,6 +39,33 @@ describe("publicWhere", () => {
       publicWhere({ typeKey: "AYUDA", status: "CLOSED", area: "Purok 3" })
     ).toEqual({ published: true, typeKey: "AYUDA", status: "CLOSED", areaLabel: "Purok 3" });
   });
+
+  it("buckets ongoing and fixed work for visitors", () => {
+    expect(publicWhere({ view: "ongoing" })).toEqual({
+      published: true,
+      status: {
+        in: [
+          "SUBMITTED",
+          "ASSIGNED",
+          "UNDER_ASSESSMENT",
+          "AWAITING_BUDGET",
+          "IN_PROGRESS",
+        ],
+      },
+    });
+    expect(publicWhere({ view: "fixed" })).toEqual({
+      published: true,
+      status: { in: ["RESOLVED", "CLOSED"] },
+    });
+    expect(publicWhere({ view: "mystery" })).toEqual({ published: true });
+  });
+
+  it("lets an exact status override the visitor bucket", () => {
+    expect(publicWhere({ view: "ongoing", status: "RESOLVED" })).toEqual({
+      published: true,
+      status: "RESOLVED",
+    });
+  });
 });
 
 describe("pagination maths", () => {
@@ -68,6 +95,7 @@ describe("summarizePublicCases", () => {
   it("reports empty collections honestly", () => {
     expect(summarizePublicCases([])).toEqual({
       published: 0,
+      ongoing: 0,
       resolved: 0,
       resolvedShare: 0,
       averageResponseHours: null,
@@ -82,6 +110,7 @@ describe("summarizePublicCases", () => {
       row("SUBMITTED", null),
     ]);
     expect(stats.published).toBe(4);
+    expect(stats.ongoing).toBe(2);
     expect(stats.resolved).toBe(2);
     expect(stats.resolvedShare).toBeCloseTo(0.5, 6);
     expect(stats.averageResponseHours).toBe(60);

@@ -684,11 +684,17 @@ export async function treasuryDashboard(
 
 export async function ledgerRegister(
   tx: Tx,
-  input: { actor: Actor; allocationId?: number | null; take?: number }
+  input: {
+    actor: Actor;
+    allocationId?: number | null;
+    take?: number;
+    paidOut?: boolean;
+  }
 ) {
   const rows = await tx.budgetLedgerEntry.findMany({
     where: {
       ...(input.allocationId ? { allocationId: input.allocationId } : {}),
+      ...(input.paidOut ? { entryType: "DISBURSEMENT_RELEASE" } : {}),
       allocation: officeScope(input.actor),
     },
     orderBy: { id: "desc" },

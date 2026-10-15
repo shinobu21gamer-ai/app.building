@@ -29,6 +29,8 @@ export function Sheet({
   className?: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -51,7 +53,7 @@ export function Sheet({
 
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -85,7 +87,7 @@ export function Sheet({
       // instead of letting it silently fall back to <body>.
       previouslyFocused?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

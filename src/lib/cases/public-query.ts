@@ -21,10 +21,27 @@ export const PUBLIC_STATUSES = [
   "CLOSED",
 ] as const;
 
+/** Work the hall has not finished yet — the visitor “Ongoing” bucket. */
+export const PUBLIC_ONGOING_STATUSES = [
+  "SUBMITTED",
+  "ASSIGNED",
+  "UNDER_ASSESSMENT",
+  "AWAITING_BUDGET",
+  "IN_PROGRESS",
+] as const;
+
+/** Finished work — the visitor “Fixed” bucket. */
+export const PUBLIC_FIXED_STATUSES = ["RESOLVED", "CLOSED"] as const;
+
+export const PUBLIC_VIEWS = ["ongoing", "fixed"] as const;
+
+export type PublicView = (typeof PUBLIC_VIEWS)[number];
+
 export type PublicCaseFilters = {
   typeKey?: string | null;
   status?: string | null;
   area?: string | null;
+  view?: string | null;
   page?: number;
 };
 
@@ -72,10 +89,15 @@ export function publicWhere(
   const typeKey = filters.typeKey?.trim();
   const status = filters.status?.trim();
   const area = filters.area?.trim();
+  const view = filters.view?.trim();
 
   if (typeKey) where.typeKey = typeKey;
   if (status && (PUBLIC_STATUSES as readonly string[]).includes(status)) {
     where.status = status;
+  } else if (view === "ongoing") {
+    where.status = { in: [...PUBLIC_ONGOING_STATUSES] };
+  } else if (view === "fixed") {
+    where.status = { in: [...PUBLIC_FIXED_STATUSES] };
   }
   if (area) where.areaLabel = area;
 
@@ -96,6 +118,7 @@ export function clampPage(page: number | undefined, pageCount: number): number {
 
 export type PublicStats = {
   published: number;
+  ongoing: number;
   resolved: number;
   resolvedShare: number;
   averageResponseHours: number | null;
@@ -108,6 +131,9 @@ export function summarizePublicCases(rows: StatRow[]): PublicStats {
   const resolved = rows.filter(
     (row) => row.status === "RESOLVED" || row.status === "CLOSED"
   );
+  const ongoing = rows.filter((row) =>
+    (PUBLIC_ONGOING_STATUSES as readonly string[]).includes(row.status)
+  );
   const measured = resolved.filter(
     (row) => typeof row.responseHours === "number" && row.responseHours >= 0
   );
@@ -118,6 +144,7 @@ export function summarizePublicCases(rows: StatRow[]): PublicStats {
 
   return {
     published: rows.length,
+    ongoing: ongoing.length,
     resolved: resolved.length,
     resolvedShare: rows.length === 0 ? 0 : resolved.length / rows.length,
     averageResponseHours:
