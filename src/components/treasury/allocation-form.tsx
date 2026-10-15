@@ -28,6 +28,10 @@ import {
   type AllocationPrefill,
   type RegisterLine,
 } from "@/lib/treasury/allocation-guide";
+import {
+  amountFitDelta,
+  classifyAmountFit,
+} from "@/lib/treasury/funding-guide";
 
 export type ReferenceOption = {
   id: number;
@@ -198,6 +202,32 @@ export function AllocationForm({
       : amountCheck === "NOT_POSITIVE" || amountCheck === "NOT_A_NUMBER"
         ? g.amountNotPositive
         : null;
+
+  const caseNeed = startingPrefill.amount;
+  const caseNumber = startingPrefill.caseNumber;
+  const typedAppropriation = Number(amount);
+  const caseFit =
+    caseNeed !== null
+      ? classifyAmountFit(typedAppropriation, caseNeed)
+      : null;
+  const caseGap =
+    caseNeed !== null ? amountFitDelta(typedAppropriation, caseNeed) : 0;
+  const caseFitHint =
+    caseNeed === null || caseNumber === null
+      ? null
+      : caseFit === "exact"
+        ? g.amountFitExactOrdinance.replaceAll("{need}", formatPeso(caseNeed))
+        : caseFit === "partial"
+          ? g.amountFitPartialOrdinance
+              .replaceAll("{short}", formatPeso(caseGap))
+              .replaceAll("{need}", formatPeso(caseNeed))
+          : caseFit === "over"
+            ? g.amountFitOverOrdinance
+                .replaceAll("{extra}", formatPeso(caseGap))
+                .replaceAll("{need}", formatPeso(caseNeed))
+            : g.amountVsCaseNeed
+                .replaceAll("{case}", caseNumber)
+                .replaceAll("{need}", formatPeso(caseNeed));
 
   const canSubmit =
     chosenYear !== null &&
@@ -466,7 +496,10 @@ export function AllocationForm({
             {amountError ? (
               <FieldError id="allocation-appropriation-error">{amountError}</FieldError>
             ) : (
-              <FieldHint id="allocation-appropriation-hint">{t.appropriationHelp}</FieldHint>
+              <FieldHint id="allocation-appropriation-hint">
+                {t.appropriationHelp}
+                {caseFitHint ? ` ${caseFitHint}` : ""}
+              </FieldHint>
             )}
           </div>
           <div>

@@ -233,9 +233,14 @@ export function EarmarkForm({
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
           />
-          {selectedOption !== null && selectedOption.estimate !== null && (
+          {selectedOption !== null &&
+            selectedOption.estimate !== null &&
+            selectedShortfall !== null && (
             <p className="mt-1 text-xs text-ink-subtle">
-              {t.earmarkAmountCaseHint}
+              {t.earmarkAmountCaseHint.replaceAll(
+                "{amount}",
+                formatPeso(selectedShortfall)
+              )}
             </p>
           )}
         </div>

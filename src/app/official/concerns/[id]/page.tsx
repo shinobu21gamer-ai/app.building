@@ -239,7 +239,8 @@ export default async function OfficialConcernDetailPage({
     concern.assignments.find((assignment) => assignment.isCurrent) ?? null;
   const canReassign =
     user.role.key === "ADMIN" ||
-    concern.assignedOfficeId === user.officeId;
+    (user.role.key === "OFFICIAL" &&
+      concern.assignedOfficeId === user.officeId);
   const isFinalized = concern.status === "RESOLVED" || concern.status === "CLOSED";
 
   const actor = {

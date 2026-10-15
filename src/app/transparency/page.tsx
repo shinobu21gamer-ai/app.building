@@ -32,6 +32,7 @@ type SearchParams = Promise<{
   type?: string;
   status?: string;
   area?: string;
+  view?: string;
   page?: string;
 }>;
 
@@ -55,6 +56,7 @@ export default async function TransparencyPage({
     typeKey: params.type,
     status: params.status,
     area: params.area,
+    view: params.view,
     page: Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1,
   });
 
@@ -62,10 +64,17 @@ export default async function TransparencyPage({
     type: params.type,
     status: params.status,
     area: params.area,
+    view: params.view,
   };
 
   const hrefFor = (
-    overrides: Partial<{ type?: string; status?: string; area?: string; page?: number }>
+    overrides: Partial<{
+      type?: string;
+      status?: string;
+      area?: string;
+      view?: string;
+      page?: number;
+    }>
   ) => {
     const query = new URLSearchParams();
     const merged = { ...filters, ...overrides } as Record<string, string | number | undefined>;
@@ -99,13 +108,20 @@ export default async function TransparencyPage({
         }
       />
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <StatCard label={t.statsPublished} value={data.stats.published} tone="brand" />
-        <StatCard
-          label={t.statsResolved}
-          value={data.stats.resolved}
-          hint={`${Math.round(data.stats.resolvedShare * 100)}%`}
-        />
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Link href={hrefFor({ view: undefined, status: undefined, page: undefined })} className="block">
+          <StatCard label={t.statsPublished} value={data.stats.published} tone="brand" />
+        </Link>
+        <Link href={hrefFor({ view: "ongoing", status: undefined, page: undefined })} className="block">
+          <StatCard label={t.statsOngoing} value={data.stats.ongoing} />
+        </Link>
+        <Link href={hrefFor({ view: "fixed", status: undefined, page: undefined })} className="block">
+          <StatCard
+            label={t.statsFixed}
+            value={data.stats.resolved}
+            hint={`${Math.round(data.stats.resolvedShare * 100)}%`}
+          />
+        </Link>
         <StatCard
           label={t.statsAvg}
           value={
@@ -118,6 +134,32 @@ export default async function TransparencyPage({
       </div>
 
       <div className="space-y-4">
+        <div className="space-y-2">
+          <p className="text-caption font-semibold uppercase tracking-wide text-ink-subtle">
+            {t.filterView}
+          </p>
+          <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
+            <Link
+              href={hrefFor({ view: undefined, status: undefined, page: undefined })}
+              className={chipClass(!filters.view && !filters.status)}
+            >
+              {t.viewAll}
+            </Link>
+            <Link
+              href={hrefFor({ view: "ongoing", status: undefined, page: undefined })}
+              className={chipClass(filters.view === "ongoing" && !filters.status)}
+            >
+              {t.viewOngoing}
+            </Link>
+            <Link
+              href={hrefFor({ view: "fixed", status: undefined, page: undefined })}
+              className={chipClass(filters.view === "fixed" && !filters.status)}
+            >
+              {t.viewFixed}
+            </Link>
+          </div>
+        </div>
+
         <div className="space-y-2">
           <p className="text-caption font-semibold uppercase tracking-wide text-ink-subtle">
             {t.filterType}
@@ -165,7 +207,7 @@ export default async function TransparencyPage({
             ).map((status) => (
               <Link
                 key={status}
-                href={hrefFor({ status, page: undefined })}
+                href={hrefFor({ status, view: undefined, page: undefined })}
                 className={chipClass(filters.status === status)}
               >
                 {statusLabelFor(locale, status)}

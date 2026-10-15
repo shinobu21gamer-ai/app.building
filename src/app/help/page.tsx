@@ -10,6 +10,7 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FaqList } from "@/components/site/faq-list";
+import { getAuthUser, roleHome } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 
@@ -28,13 +29,15 @@ const STEP_ICONS = {
 export default async function HelpPage() {
   const locale = await getLocale();
   const t = copy[locale];
+  const user = await getAuthUser();
+  const signedIn = Boolean(user);
+  const isResident = user?.role.key === "RESIDENT";
+  const deskHref = user ? roleHome(user.role.key) : "/login";
 
   return (
     <Container className="py-12 sm:py-16">
       <p className="text-sm font-semibold text-brand-700">{t.help.kicker}</p>
-      <h1 className="mt-2 text-display text-ink">
-        {t.help.title}
-      </h1>
+      <h1 className="mt-2 text-display text-ink">{t.help.title}</h1>
       <p className="mt-3 max-w-3xl text-base leading-relaxed text-ink-muted">
         {t.help.lead}
       </p>
@@ -70,9 +73,7 @@ export default async function HelpPage() {
       </section>
 
       <section className="mt-12">
-        <h2 className="text-subtitle text-ink">
-          {t.help.residents}
-        </h2>
+        <h2 className="text-subtitle text-ink">{t.help.residents}</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           {t.help.steps.map((step) => {
             const Icon = STEP_ICONS[step.key as keyof typeof STEP_ICONS];
@@ -95,18 +96,51 @@ export default async function HelpPage() {
             );
           })}
         </div>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Button href="/register">{t.help.createAccount}</Button>
-          <Button href="/login" variant="outline">
-            {t.help.signIn}
-          </Button>
-          <Button href="/track" variant="ghost">
-            {t.help.track}
-          </Button>
-          <Button href="/charter" variant="ghost">
-            {t.footer.charter}
-          </Button>
-        </div>
+        {signedIn ? (
+          <>
+            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-ink-muted">
+              {t.help.signedInHint}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Button href={deskHref}>{t.help.openDesk}</Button>
+              {isResident ? (
+                <>
+                  <Button href="/resident/concerns/new" variant="outline">
+                    {t.help.submitConcern}
+                  </Button>
+                  <Button href="/resident/verification" variant="outline">
+                    {t.help.verifyIdentity}
+                  </Button>
+                </>
+              ) : null}
+              <Button href="/track" variant="ghost">
+                {t.help.track}
+              </Button>
+              <Button href="/transparency" variant="ghost">
+                {t.help.publicReports}
+              </Button>
+              <Button href="/charter" variant="ghost">
+                {t.footer.charter}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button href="/register">{t.help.createAccount}</Button>
+            <Button href="/login" variant="outline">
+              {t.help.signIn}
+            </Button>
+            <Button href="/track" variant="ghost">
+              {t.help.track}
+            </Button>
+            <Button href="/transparency" variant="ghost">
+              {t.help.publicReports}
+            </Button>
+            <Button href="/charter" variant="ghost">
+              {t.footer.charter}
+            </Button>
+          </div>
+        )}
       </section>
 
       <section className="mt-12">

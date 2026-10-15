@@ -13,6 +13,10 @@ import { apiRequest } from "@/lib/api-client";
 import { formatPeso } from "@/lib/cases/manpower";
 import { copy, type Locale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
+import {
+  amountFitDelta,
+  classifyAmountFit,
+} from "@/lib/treasury/funding-guide";
 
 export type BudgetReviewRecommended = {
   allocationId: number;
@@ -72,6 +76,16 @@ export function BudgetReviewCard({
 
   const requested = Number(amount);
   const validAmount = Number.isFinite(requested) && requested > 0;
+  const fit = classifyAmountFit(requested, uncommitted);
+  const gap = amountFitDelta(requested, uncommitted);
+  const fitMessage =
+    fit === "exact"
+      ? t.amountFitExact
+      : fit === "partial"
+        ? t.amountFitPartial.replaceAll("{short}", formatPeso(gap))
+        : fit === "over"
+          ? t.amountFitOver.replaceAll("{extra}", formatPeso(gap))
+          : t.amountFitEmpty.replaceAll("{amount}", formatPeso(uncommitted));
 
   async function setAside() {
     if (!recommended || !validAmount) return;
@@ -150,6 +164,15 @@ export function BudgetReviewCard({
             .replaceAll("{amount}", formatPeso(proposed.amount))}
         </FormMessage>
       ) : (
+        <div className="space-y-3">
+        <div className="rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          <p className="font-semibold">
+            {t.needCallout.replaceAll("{amount}", formatPeso(uncommitted))}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-amber-900">
+            {t.needExactHint.replaceAll("{amount}", formatPeso(uncommitted))}
+          </p>
+        </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-44 flex-1">
             <Label htmlFor={`fund-amount-${concernId}`}>
@@ -163,7 +186,20 @@ export function BudgetReviewCard({
               value={amount}
               onChange={(event) => setAmount(event.target.value)}
               className="h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
+              aria-describedby={`fund-amount-fit-${concernId}`}
             />
+            <p
+              id={`fund-amount-fit-${concernId}`}
+              className={
+                fit === "exact"
+                  ? "mt-1 text-xs text-emerald-800"
+                  : fit === "partial" || fit === "empty"
+                    ? "mt-1 text-xs text-amber-800"
+                    : "mt-1 text-xs text-ink-muted"
+              }
+            >
+              {fitMessage}
+            </p>
           </div>
           <Button
             onClick={setAside}
@@ -185,6 +221,7 @@ export function BudgetReviewCard({
           >
             {t.doNotFundButton}
           </Button>
+        </div>
         </div>
       )}
 

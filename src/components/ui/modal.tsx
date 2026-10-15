@@ -47,6 +47,8 @@ export function Modal({
   className?: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const titleId = useId();
   const descriptionId = useId();
 
@@ -72,7 +74,7 @@ export function Modal({
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -102,7 +104,10 @@ export function Modal({
       window.removeEventListener("keydown", onKey);
       previouslyFocused?.focus();
     };
-  }, [open, onClose]);
+    // Only when the dialog opens or closes. `onClose` is read from a ref so a
+    // parent re-render (each keystroke in the form) cannot remount this trap
+    // and steal focus after one letter.
+  }, [open]);
 
   if (!open) return null;
 

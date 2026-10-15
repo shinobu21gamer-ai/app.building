@@ -196,6 +196,7 @@ export default async function MyConcernsPage({ searchParams }: {
                     <td className="py-3 pr-4 text-sm">
                       <CaseOwner
                         official={concern.assignedOfficial}
+                        office={concern.assignedOffice}
                         empty={t.officialEmpty}
                         compact
                       />

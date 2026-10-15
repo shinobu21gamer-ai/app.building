@@ -449,6 +449,44 @@ export function EarmarkReview({
           <p className="text-xs text-ink-subtle">{verdict}</p>
         )}
       </div>
+
+      {earmark.status === "APPROVED" && (
+        <div className="space-y-2 rounded-control border border-brand-100 bg-brand-50 px-3 py-2.5">
+          {brief.balanceKnown && brief.availableAfter <= 0.005 && (
+            <p className="text-xs leading-relaxed text-brand-900">
+              {t.reservedHint}
+            </p>
+          )}
+          <p className="text-caption font-semibold uppercase tracking-wide text-brand-800">
+            {t.nextTitle}
+          </p>
+          <p className="text-sm leading-relaxed text-brand-900">
+            {t.nextOfficial}
+          </p>
+          <p className="text-sm leading-relaxed text-brand-900">{t.nextPay}</p>
+          <div className="flex flex-wrap gap-2">
+            {earmark.concernId !== null && (
+              <Button
+                href={`/treasury/disbursements?concernId=${earmark.concernId}&earmarkId=${earmark.id}&pay=CREW`}
+                size="sm"
+              >
+                {t.payCrew}
+              </Button>
+            )}
+            <Button
+              href={
+                earmark.concernId !== null
+                  ? `/treasury/disbursements?concernId=${earmark.concernId}&earmarkId=${earmark.id}`
+                  : `/treasury/disbursements?earmarkId=${earmark.id}`
+              }
+              size="sm"
+              variant="outline"
+            >
+              {t.paySupplier}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

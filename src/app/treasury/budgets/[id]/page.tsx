@@ -273,6 +273,8 @@ export default async function TreasuryAllocationPage({ params }: PageProps) {
                   purpose: earmark.purpose,
                   amount: earmark.amount,
                   committed: earmark.committed,
+                  concernId: earmark.concernId,
+                  allocationId: earmark.allocationId,
                 }))}
               presetAllocationId={allocation.id}
               locale={locale}

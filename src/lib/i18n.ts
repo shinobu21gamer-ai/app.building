@@ -159,6 +159,12 @@ const en = {
     createAccount: "Create an account",
     signIn: "Sign in",
     track: "Track a case",
+    openDesk: "Open my desk",
+    submitConcern: "Submit a concern",
+    verifyIdentity: "Verify identity",
+    publicReports: "Public reports",
+    signedInHint:
+      "You are already signed in. Create account and Sign in are only for visitors — using them would send you back to your desk.",
     staffTitle: "For hall staff",
     treasurerTitle: "For the treasurer",
     treasurerDesc: "Issued by an administrator.",
@@ -454,7 +460,16 @@ const en = {
     awaiting: "Awaiting office assignment",
     official: "Assigned official",
     officialEmpty:
-      "No named official yet — the whole office queue holds this case.",
+      "No named official yet — the whole office queue holds this case. Use the office contact below until someone is named.",
+    contactTitle: "Who to email if something happens",
+    contactLead:
+      "Keep your case number in the message. Write to the named official when there is one; otherwise write to the office that holds this case.",
+    contactOffice: "Office contact",
+    contactHead: "Head: {name}",
+    receiptTitle: "Concern submitted",
+    receiptLead:
+      "Keep this case number. Family can also check status with it and the email on your account.",
+    receiptTrack: "Track anytime at",
     photo: "Supporting image",
     howToTitle: "How to use your account",
     howToLead:
@@ -2027,10 +2042,15 @@ const en = {
       agingBucket: "{bucket} days",
       agingCount: "{count} voucher(s) · ₱{amount}",
       ledgerTitle: "Ledger",
-      ledgerLead: "Append-only: corrections are new entries, never edits. Every row carries the running reserved, disbursed and available figures.",
+      ledgerLead:
+        "Every peso movement for the whole barangay. Each row shows the amount, the date and time, and who recorded it. Rows marked Paid out are when money left the fund. Corrections are new entries, never edits.",
       ledgerEntry: "Entry",
+      ledgerWhen: "Date and time",
       ledgerMemo: "Memo",
-      ledgerActor: "Recorded by",
+      ledgerActor: "Who recorded it",
+      ledgerPaidOut: "Paid out",
+      ledgerFilterAll: "All entries",
+      ledgerFilterPaidOut: "Money paid out",
       ledgerAmount: "Amount",
       ledgerReservedAfter: "Reserved after",
       ledgerDisbursedAfter: "Disbursed after",
@@ -2131,7 +2151,15 @@ const en = {
         duplicateOpen: "Open it and adjust it",
         prefilledTitle: "Filled in from case {case}",
         prefilledBody:
-          "That case still needs {amount}, so the amount and the office are ready. Check the fund source and the COA account before you prepare it.",
+          "That case still needs {amount}. That figure is what you will set aside later as an earmark — not this box. This form opens a budget line: type the exact amount from the appropriation ordinance. It does not have to equal {amount}; it is often larger so other cases can draw from it too.",
+        amountVsCaseNeed:
+          "Case {case} still needs {need}. Copy the ordinance amount exactly. It does not have to match {need} unless the ordinance itself is that figure.",
+        amountFitExactOrdinance:
+          "This equals the case need ({need}). Keep it only if the ordinance is also {need} — a budget line is usually larger.",
+        amountFitPartialOrdinance:
+          "This is {short} short of the case need ({need}). The case cannot be fully funded from this line alone unless you add more later.",
+        amountFitOverOrdinance:
+          "This is {extra} more than the case need ({need}). That is fine — leftover stays on the line for other work.",
         createdTitle: "Allocation prepared — waiting on the Captain",
         createdBody:
           "It stays a draft until the Captain approves it. Only then can earmarks, vouchers and cases draw on it.",
@@ -2172,7 +2200,7 @@ const en = {
       earmarkCrewPaidNote:
         "The crew gets paid from this money: once the earmark is approved and released, the office cuts a disbursement for the crew's labour.",
       earmarkAmountCaseHint:
-        "Prefilled with the case's shortfall — adjust it if you are reserving more or less.",
+        "The case still needs {amount}. You may set aside less (a partial) or more; work cannot start until the full {amount} is set aside.",
       proposeEarmark: "Propose earmark",
       earmarkProposed: "Earmark proposed.",
       approveEarmark: "Approve earmark",
@@ -2284,12 +2312,21 @@ const en = {
           RELEASED: "Released — {amount} has been paid out{caseSuffix}.",
           CANCELLED: "Cancelled — this earmark sets nothing aside.",
         },
+        reservedHint:
+          "₱0 left on the budget line is expected: this money is reserved on the earmark, not sitting as free balance. Pay from this earmark — do not look for leftover available.",
+        nextTitle: "What is left after this earmark",
+        nextOfficial:
+          "Admin does not assign crew or buy materials — that is not Admin's job. The official already planned crew and cost during assessment. After this money is set aside they move the case to In progress so those crew can work. You do not hand them cash.",
+        nextPay:
+          "Paying crew and suppliers is this voucher. It is not assigning the job again. Treasurer certifies → Captain approves → treasurer releases with a receipt. That is when the money leaves.",
+        payCrew: "Pay crew from this earmark",
+        paySupplier: "Pay a supplier from this earmark",
         nothingReserved: "Nothing is reserved until an earmark is approved.",
       },
       // ---- the guided funding flow: propose the earmark from the case ----
-      // The treasurer cannot open the case screens (those are scoped to the
-      // case's office), so the money side of "what does this case need?" is
-      // answered here instead of guessed from the earmark form's dropdowns.
+      // The treasurer can open the case sheet to compare figures, but cannot
+      // assess or assign crew. The money side of "what does this case need?"
+      // is still answered here so they are not guessing from dropdowns.
       fundCase: {
         title: "Fund a case",
         lead: "Work on a resident's concern cannot start until its budget is set aside. Three steps: what the case needs, which budget pays, and the hand-over to the Captain.",
@@ -2350,6 +2387,15 @@ const en = {
           "The money comes from {line} — {available} still available on that line.",
         moneyFromBarangay: "the barangay-wide budget",
         amountToSetAside: "Amount to set aside",
+        needCallout: "This case still needs {amount}.",
+        needExactHint:
+          "You do not have to set aside that exact amount in one go. A smaller amount is a partial reservation — the case stays in Awaiting budget until the full need is covered. Matching {amount} (or more) is what lets the work start.",
+        amountFitEmpty: "Type how much to set aside. The remaining need is {amount}.",
+        amountFitExact: "This covers the remaining need exactly.",
+        amountFitPartial:
+          "Partial: {short} will still be needed after this. Work cannot start until the rest is set aside.",
+        amountFitOver:
+          "This is {extra} more than the remaining need. Extra stays reserved on this case.",
         setAsideButton: "Set aside {amount}",
         doNotFundButton: "Do not fund",
         doNotFundTitle: "Do not fund this case",
@@ -2449,8 +2495,19 @@ const en = {
         "The receipt attached when the voucher was released. Visible to the treasurer, the Captain and the administrator.",
       crewMember: "Crew member",
       crewMemberHint:
-        "Pick the member so the payment is linked to their account — the name fills in itself.",
+        "Pick each member so the payment is linked to their account. One voucher is prepared per person — add every crew you are paying now.",
       crewMemberNone: "No crew accounts yet",
+      crewPayLead:
+        "Assigning crew to the job is the official's assessment step. This form only pays them. Link the case. Pay from the earmark, not the ₱0 left on the COA line.",
+      crewPayLines: "Crew to pay",
+      crewPayAdd: "Add another crew member",
+      crewPayRemove: "Remove",
+      crewPayNeedOne: "Add at least one crew member with an amount.",
+      crewPayNeedCase: "Link the case this crew payment is for.",
+      crewPayPrepared: "{count} draft voucher(s) prepared.",
+      linkedCaseRequired: "Linked case",
+      linkedCaseHint:
+        "Required for crew pay, and whenever the earmark belongs to a case — so the payment is on that case, not a loose voucher.",
       liquidate: "Liquidate",
       voucherLiquidated: "Liquidation recorded.",
       liquidationDue: "Liquidate by",
@@ -2700,10 +2757,16 @@ const en = {
     },
     transparency: {
       title: "Transparency",
-      lead: "Every published case, as the barangay records it — with the people taken out. Names, phone numbers, street addresses and exact pins never appear here.",
+      lead: "Every published case, as the barangay records it — with the people taken out. Browse all published reports, work that is still ongoing, and work that is already fixed. Names, phone numbers, street addresses and exact pins never appear here.",
       navTransparency: "Transparency",
       statsPublished: "Published cases",
+      statsOngoing: "Ongoing",
+      statsFixed: "Fixed",
       statsResolved: "Resolved",
+      filterView: "Report",
+      viewAll: "All published",
+      viewOngoing: "Ongoing",
+      viewFixed: "Fixed",
       statsAvg: "Average response",
       statsAvgValue: "{hours} h",
       statsAvgNone: "No resolved case yet",
@@ -3483,6 +3546,12 @@ const fil: typeof en = {
     createAccount: "Gumawa ng account",
     signIn: "Mag-sign in",
     track: "Subaybayan ang kaso",
+    openDesk: "Buksan ang desk ko",
+    submitConcern: "Maghain ng concern",
+    verifyIdentity: "I-verify ang identidad",
+    publicReports: "Mga pampublikong ulat",
+    signedInHint:
+      "Naka-sign in ka na. Ang Gumawa ng account at Mag-sign in ay para lang sa bisita — kung gagamitin mo ang mga iyon, ibabalik ka sa desk mo.",
     staffTitle: "Para sa staff ng hall",
     treasurerTitle: "Para sa treasurer",
     treasurerDesc: "Ibinibigay ng administrador.",
@@ -3778,7 +3847,16 @@ const fil: typeof en = {
     awaiting: "Hinihintay ang assignment sa tanggapan",
     official: "Nakatalagang opisyal",
     officialEmpty:
-      "Wala pang naka-pangalang opisyal — ang buong pila ng tanggapan ang may hawak.",
+      "Wala pang naka-pangalang opisyal — ang buong pila ng tanggapan ang may hawak. Gamitin muna ang contact ng tanggapan sa ibaba.",
+    contactTitle: "Sino ang ie-email kung may mangyari",
+    contactLead:
+      "Ilagay ang case number sa mensahe. Sulatan ang naka-pangalang opisyal kung meron; kung wala, sulatan ang tanggapan na may hawak ng kaso.",
+    contactOffice: "Contact ng tanggapan",
+    contactHead: "Punong opisyal: {name}",
+    receiptTitle: "Naihain ang concern",
+    receiptLead:
+      "Itago ang case number na ito. Puwede ring tignan ng pamilya gamit ito at ang email sa account mo.",
+    receiptTrack: "Sundan anytime sa",
     photo: "Kasamang litrato",
     howToTitle: "Paano gamitin ang account mo",
     howToLead:
@@ -5356,10 +5434,15 @@ const fil: typeof en = {
       agingBucket: "{bucket} araw",
       agingCount: "{count} voucher · ₱{amount}",
       ledgerTitle: "Ledger",
-      ledgerLead: "Append-only: ang pagwawasto ay bagong entry, hindi pag-edit. Nasa bawat row ang reserved, disbursed at available pagkatapos.",
+      ledgerLead:
+        "Bawat galaw ng piso para sa buong barangay. Nasa bawat row ang halaga, petsa at oras, at kung sino ang nag-record. Ang markang Paid out ay kung kailan lumabas ang pera sa pondo. Ang pagwawasto ay bagong entry, hindi pag-edit.",
       ledgerEntry: "Entry",
+      ledgerWhen: "Petsa at oras",
       ledgerMemo: "Memo",
-      ledgerActor: "Nagrecord",
+      ledgerActor: "Sino ang nag-record",
+      ledgerPaidOut: "Binayaran palabas",
+      ledgerFilterAll: "Lahat ng entry",
+      ledgerFilterPaidOut: "Perang lumabas",
       ledgerAmount: "Halaga",
       ledgerReservedAfter: "Reserved pagkatapos",
       ledgerDisbursedAfter: "Disbursed pagkatapos",
@@ -5455,7 +5538,15 @@ const fil: typeof en = {
         duplicateOpen: "Buksan at i-adjust iyon",
         prefilledTitle: "Punan mula sa kasong {case}",
         prefilledBody:
-          "Kailangan pa ng kasong iyon ang {amount}, kaya nakahanda na ang halaga at tanggapan. Tingnan ang fund source at COA account bago ihanda.",
+          "Kailangan pa ng kasong iyon ang {amount}. Iyon ang itatabi mamaya bilang earmark — hindi ang kahon na ito. Ang form na ito ay budget line: ilagay ang eksaktong halaga sa appropriation ordinance. Hindi kailangang tumugma sa {amount}; kadalasan mas malaki ito para may mahugot pa ang ibang kaso.",
+        amountVsCaseNeed:
+          "Kailangan pa ng kasong {case} ang {need}. Kopyahin ang eksaktong halaga sa ordinance. Hindi kailangang tumugma sa {need} maliban kung iyon din ang nakasaad sa ordinance.",
+        amountFitExactOrdinance:
+          "Tugma ito sa kailangan ng kaso ({need}). Panatilihin lang kung iyon din ang ordinance — kadalasan mas malaki ang budget line.",
+        amountFitPartialOrdinance:
+          "Kulang ito ng {short} sa kailangan ng kaso ({need}). Hindi nito mag-isa mapopondohan nang buo ang kaso maliban kung dagdagan pa.",
+        amountFitOverOrdinance:
+          "Higit ito ng {extra} sa kailangan ng kaso ({need}). Ayos iyon — ang natitira ay sa linya pa rin para sa ibang gawain.",
         createdTitle: "Naihanda ang allocation — hinihintay ang Kapitan",
         createdBody:
           "Draft pa ito hangga't hindi inaprubahan ng Kapitan. Doon pa lang makakakuha rito ang mga earmark, voucher at kaso.",
@@ -5496,7 +5587,7 @@ const fil: typeof en = {
       earmarkCrewPaidNote:
         "Dito bibilangin ang crew: kapag aprubahan at i-release ang earmark, ang opisina ang magkakagat ng disbursement para sa sahod ng crew.",
       earmarkAmountCaseHint:
-        "Prefilled ang kulang na halaga ng kaso — baguhin kung mag-iiba ang ihahagap mo.",
+        "Kailangan pa ng kaso ang {amount}. Puwedeng mas kaunti (partial) o mas marami; hindi magsisimula ang trabaho hangga't hindi naitabi ang buong {amount}.",
       proposeEarmark: "Ihain ang earmark",
       earmarkProposed: "Naihain ang earmark.",
       approveEarmark: "Aprubahan ang earmark",
@@ -5602,6 +5693,15 @@ const fil: typeof en = {
           RELEASED: "Nailabas — {amount} ang naibayad{caseSuffix}.",
           CANCELLED: "Nakansela — walang inilalaan ang earmark na ito.",
         },
+        reservedHint:
+          "Normal ang ₱0 na natitira sa budget line: naka-reserba ang pera sa earmark, hindi naka-free balance. Magbayad mula sa earmark na ito — huwag maghanap ng natitirang available.",
+        nextTitle: "Ano ang natitira pagkatapos ng earmark na ito",
+        nextOfficial:
+          "Hindi trabaho ng Admin ang magtalaga ng crew o bumili ng materyales. Naiplano na ng opisyal ang crew at gastos sa assessment. Kapag naitabi ang pera, inililipat nila ang kaso sa In progress para makapagtrabaho ang crew na iyon. Hindi mo sila binibigyan ng cash.",
+        nextPay:
+          "Ang pagbayad sa crew at supplier ay ang voucher na ito. Hindi ito muling pagtalaga sa trabaho. Magce-certify ang treasurer → aaprubahan ng Kapitan → ire-release ng treasurer na may resibo. Doon lumalabas ang pera.",
+        payCrew: "Bayaran ang crew mula rito",
+        paySupplier: "Bayaran ang supplier mula rito",
         nothingReserved: "Walang naireserba hangga't walang naaaprubahang earmark.",
       },
       fundCase: {
@@ -5665,6 +5765,16 @@ const fil: typeof en = {
           "Galing sa {line} — {available} ang natitira sa badyet na iyon.",
         moneyFromBarangay: "badyet ng buong barangay",
         amountToSetAside: "Halagang ilalagay",
+        needCallout: "Kailangan pa ng kasong ito ang {amount}.",
+        needExactHint:
+          "Hindi kailangang iyon mismo ang ilagay sa iisang hakbang. Puwedeng mas maliit — mananatili ang kaso sa Awaiting budget hanggang mabuo ang kailangan. Kapag naitabi ang {amount} (o higit), doon lang magsisimula ang trabaho.",
+        amountFitEmpty:
+          "Ilagay kung magkano ang itatabi. Ang natitirang kailangan ay {amount}.",
+        amountFitExact: "Tama ito sa natitirang kailangan.",
+        amountFitPartial:
+          "Partial: kulang pa ng {short} pagkatapos nito. Hindi magsisimula ang trabaho hangga't hindi naitabi ang natitira.",
+        amountFitOver:
+          "Higit ito ng {extra} sa natitirang kailangan. Ang sobra ay naiiwan sa kasong ito.",
         setAsideButton: "Ilagay ang {amount}",
         doNotFundButton: "Huwag i-fund",
         doNotFundTitle: "Huwag i-fund ang kaso",
@@ -5759,8 +5869,19 @@ const fil: typeof en = {
         "Ang resibo na naka-attach nang i-release ang voucher. Nakikita ng treasurer, ng Captain, at ng administrator.",
       crewMember: "Crew member",
       crewMemberHint:
-        "Piliin ang miyembro upang ma-link ang bayad sa account nila — awtomatikong lalabas ang pangalan.",
+        "Piliin ang bawat miyembro para ma-link ang bayad sa account nila. Isang voucher bawat tao — idagdag lahat ng crew na babayaran ngayon.",
       crewMemberNone: "Wala pang crew account",
+      crewPayLead:
+        "Ang pagtalaga ng crew sa trabaho ay sa assessment ng opisyal. Ang form na ito ay pagbabayad lang. I-link ang kaso. Magbayad mula sa earmark, hindi sa ₱0 na natitira sa COA line.",
+      crewPayLines: "Crew na babayaran",
+      crewPayAdd: "Dagdagan ng isa pang crew",
+      crewPayRemove: "Alisin",
+      crewPayNeedOne: "Magdagdag ng kahit isang crew na may halaga.",
+      crewPayNeedCase: "I-link ang kasong babayaran ang crew.",
+      crewPayPrepared: "{count} draft na voucher ang naihanda.",
+      linkedCaseRequired: "Naka-link na kaso",
+      linkedCaseHint:
+        "Kailangan sa bayad sa crew, at kapag sa isang kaso ang earmark — para nasa kaso ang bayad, hindi malayang voucher.",
       liquidate: "Likidahin",
       voucherLiquidated: "Natala ang liquidation.",
       liquidationDue: "Likidahin bago ang",
@@ -6010,10 +6131,16 @@ const fil: typeof en = {
     },
     transparency: {
       title: "Transparency",
-      lead: "Lahat ng nai-publish na kaso, ayon sa talaan ng barangay — pero walang tao sa loob. Hindi lumalabas dito ang pangalan, numero ng telepono, eksaktong address, at eksaktong pin.",
+      lead: "Lahat ng nai-publish na kaso, ayon sa talaan ng barangay — pero walang tao sa loob. Tingnan ang lahat ng nai-publish, ang trabahong ongoing pa, at ang naayos na. Hindi lumalabas dito ang pangalan, numero ng telepono, eksaktong address, at eksaktong pin.",
       navTransparency: "Transparency",
       statsPublished: "Nai-publish na kaso",
+      statsOngoing: "Ongoing",
+      statsFixed: "Naayos",
       statsResolved: "Naresolba",
+      filterView: "Ulat",
+      viewAll: "Lahat ng nai-publish",
+      viewOngoing: "Ongoing",
+      viewFixed: "Naayos",
       statsAvg: "Karaniwang tugon",
       statsAvgValue: "{hours} oras",
       statsAvgNone: "Wala pang naresolbang kaso",

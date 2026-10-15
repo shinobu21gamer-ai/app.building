@@ -380,3 +380,30 @@ export function fundingQueueSummary(
   return { ...fundingMoneyTotals(inQueue), unestimated };
 }
 
+/**
+ * How a typed peso amount sits against what a case still needs.
+ *
+ * Treasurers were filling a box that started on the remaining need without
+ * being told whether that figure had to be matched exactly. The case only
+ * leaves Awaiting budget when the *total* set aside covers the estimate —
+ * one proposal may be smaller (a partial) or larger (extra reserved on the
+ * case). This classifier is what the amount box reads from.
+ */
+export type AmountFit = "empty" | "partial" | "exact" | "over";
+
+export function classifyAmountFit(typed: number, needed: number): AmountFit {
+  if (!Number.isFinite(typed) || typed <= 0) return "empty";
+  if (!Number.isFinite(needed) || needed <= 0) return "over";
+  const have = money(typed);
+  const need = money(needed);
+  if (covers(need, have) && covers(have, need)) return "exact";
+  if (have + MONEY_EPSILON < need) return "partial";
+  return "over";
+}
+
+/** Absolute difference between a typed amount and the remaining need. */
+export function amountFitDelta(typed: number, needed: number): number {
+  if (!Number.isFinite(typed) || !Number.isFinite(needed)) return 0;
+  return money(Math.abs(typed - needed));
+}
+

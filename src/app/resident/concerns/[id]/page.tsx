@@ -36,7 +36,7 @@ import { getLocale } from "@/lib/locale";
 import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import { ConcernMap } from "@/components/concern/concern-map";
 import { PageHeader } from "@/components/ui/page-header";
-import { CaseOwner } from "@/components/cases/case-owner";
+import { CaseContactCard, CaseOwner } from "@/components/cases/case-owner";
 
 export const metadata: Metadata = {
   title: "Case Details",
@@ -170,7 +170,13 @@ export default async function ConcernDetailPage({
       </div>
 
       {created === "1" && (
-        <CaseReceipt caseNumber={concern.caseNumber} concernId={concern.id} />
+        <CaseReceipt
+          caseNumber={concern.caseNumber}
+          concernId={concern.id}
+          official={concern.assignedOfficial}
+          office={concern.assignedOffice}
+          locale={locale}
+        />
       )}
 
       <PageHeader
@@ -196,6 +202,19 @@ export default async function ConcernDetailPage({
           </>
         }
       />
+
+      {created !== "1" && (
+        <CaseContactCard
+          official={concern.assignedOfficial}
+          office={concern.assignedOffice}
+          title={t.contactTitle}
+          lead={t.contactLead}
+          officialLabel={t.official}
+          officeLabel={t.contactOffice}
+          headLabel={t.contactHead}
+          empty={t.officialEmpty}
+        />
+      )}
 
       <Card title={t.progress} description={t.progressDesc}>
         <CaseStatusStepper currentStatus={concern.status} reached={reachedAt} />
@@ -283,6 +302,7 @@ export default async function ConcernDetailPage({
                 <dd className="mt-0.5">
                   <CaseOwner
                     official={concern.assignedOfficial}
+                    office={concern.assignedOffice}
                     empty={t.officialEmpty}
                   />
                 </dd>
