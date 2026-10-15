@@ -535,6 +535,74 @@ export async function listAuditEntries(
   return { rows, total };
 }
 
+/**
+ * Actions that remove a record. The register at /admin/deleted reads this list,
+ * so a new hard delete is added here and it shows up there too.
+ */
+export const DELETION_ACTIONS = [
+  "OFFICE_DELETED",
+  "CATEGORY_DELETED",
+  "ROUTING_RULE_DELETED",
+  "SETTING_DELETED",
+  "USER_DELETED",
+] as const;
+
+/**
+ * The register of deleted records.
+ *
+ * A deletion in this app is permanent in the database — but never silent: every
+ * one of them writes an audit row, and this reads them back so an administrator
+ * can see what was removed, when, by whom and from where. "Where did the deleted
+ * data go?" is answered with a list rather than a shrug.
+ */
+export async function listDeletionEntries(filters: {
+  q?: string | null;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<{ rows: AuditEntryRow[]; total: number }> {
+  const where: Prisma.AuditWhereInput = {
+    action: { in: [...DELETION_ACTIONS] },
+  };
+  if (filters.q) {
+    where.OR = [
+      { description: { contains: filters.q, mode: "insensitive" } },
+      { resourceType: { contains: filters.q, mode: "insensitive" } },
+      { resourceId: { contains: filters.q, mode: "insensitive" } },
+      { action: { contains: filters.q, mode: "insensitive" } },
+    ];
+  }
+
+  const limit = Math.min(Math.max(filters.limit ?? 50, 1), 200);
+  const offset = Math.max(filters.offset ?? 0, 0);
+
+  const [rows, total] = await Promise.all([
+    db.audit.findMany({
+      where,
+      orderBy: [{ seq: "desc" }, { id: "desc" }],
+      skip: offset,
+      take: limit,
+      select: {
+        id: true,
+        seq: true,
+        action: true,
+        resourceType: true,
+        resourceId: true,
+        description: true,
+        userId: true,
+        actorRole: true,
+        ip: true,
+        hash: true,
+        prevHash: true,
+        createdAt: true,
+        user: { select: { id: true, firstName: true, lastName: true } },
+      },
+    }),
+    db.audit.count({ where }),
+  ]);
+
+  return { rows, total };
+}
+
 /** Distinct actions / resource types, for the filter controls. */
 export async function auditFacets(): Promise<{
   actions: string[];

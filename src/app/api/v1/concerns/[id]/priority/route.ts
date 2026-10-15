@@ -16,6 +16,7 @@ import {
   type FactorKey,
 } from "@/lib/priority/engine";
 import { loadPriorityConfig } from "@/lib/priority/config";
+import { affectedScoreFromCount } from "@/lib/priority/affected";
 import { canManageConcern } from "@/lib/cases/workflow";
 import { notifyPriorityChanged } from "@/lib/notifications/service";
 
@@ -71,6 +72,25 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
     const minScoreFor = (key: FactorKey, fallback: number) =>
       factorByKey.get(key)?.minScore ?? fallback;
 
+    // A recorded headcount decides the affected-population band; without one the
+    // submitted band score stands, and failing both the previous value is kept.
+    // Officials no longer have to squeeze "1,200 residents" into a five-point
+    // scale: the count is stored beside the band it produced.
+    // The headcount band assumes the standard 1–5 scale; if the factor's
+    // configured range is narrower, the band is clamped onto it (the same rule
+    // the submit path applies) so an override cannot 400 on admin config.
+    const populationConfig = factorByKey.get("AFFECTED_POPULATION");
+    const bandFromCount =
+      typeof input.affectedPeople === "number"
+        ? Math.min(
+            Math.max(
+              affectedScoreFromCount(input.affectedPeople),
+              populationConfig?.minScore ?? 1
+            ),
+            populationConfig?.maxScore ?? 5
+          )
+        : null;
+
     const scores = {
       urgencyScore:
         input.urgencyScore ??
@@ -79,6 +99,7 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
       impactScore:
         input.impactScore ?? latest?.impactScore ?? minScoreFor("IMPACT", 1),
       affectedPopulationScore:
+        bandFromCount ??
         input.affectedPopulationScore ??
         latest?.affectedPopulationScore ??
         minScoreFor("AFFECTED_POPULATION", 1),
@@ -115,6 +136,9 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
     const snapshot = {
       ...evaluation,
       level: finalLevel,
+      // Carried on the evaluation itself so the case sheet can print the real
+      // figure instead of the band alone.
+      affectedPeople: input.affectedPeople ?? null,
       override: {
         isOverride: true,
         recommendedLevel: evaluation.level,

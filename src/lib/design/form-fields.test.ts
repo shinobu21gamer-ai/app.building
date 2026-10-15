@@ -165,6 +165,7 @@ const PAIRS: Pair[] = [
     idMap: {
       "voucher-payee": "payee",
       "voucher-payee-type": "payeeType",
+      "voucher-crew-member": "payeeUserId",
       "voucher-amount": "amount",
       "voucher-mode": "modeOfPayment",
       "voucher-allocation": "allocationId",

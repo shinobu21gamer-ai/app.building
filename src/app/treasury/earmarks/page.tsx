@@ -124,7 +124,13 @@ export default async function TreasuryEarmarksPage({
           status: true,
           // The amount to reserve is the case's own cost estimate; showing it
           // here is what makes the treasury's decision an informed one.
-          caseAssessment: { select: { totalCost: true } },
+          caseAssessment: {
+            select: { totalCost: true, laborCost: true, workersNeeded: true },
+          },
+          // Where the money goes and who will spend it — the form shows this
+          // as the "where this money goes" brief.
+          assignedOffice: { select: { name: true, headOfficer: true } },
+          assignedOfficial: { select: { firstName: true, lastName: true } },
         },
       }),
       userCan(user.role.key, "treasury.earmark.prepare"),
@@ -152,6 +158,16 @@ export default async function TreasuryEarmarksPage({
         item.caseAssessment === null
           ? null
           : Number(item.caseAssessment.totalCost ?? 0),
+      laborCost:
+        item.caseAssessment === null || item.caseAssessment.laborCost === null
+          ? null
+          : Number(item.caseAssessment.laborCost),
+      workersNeeded: item.caseAssessment?.workersNeeded ?? null,
+      officeName: item.assignedOffice?.name ?? null,
+      officeHead: item.assignedOffice?.headOfficer ?? null,
+      officialName: item.assignedOfficial
+        ? `${item.assignedOfficial.firstName} ${item.assignedOfficial.lastName}`.trim()
+        : null,
       setAside: setAside.get(item.id) ?? 0,
       waitingForBudget: item.status === "AWAITING_BUDGET",
     }));
@@ -253,6 +269,7 @@ export default async function TreasuryEarmarksPage({
               label: allocation.label,
               coaCode: allocation.coaCode,
               fundSourceCode: allocation.fundSourceCode,
+              officeName: allocation.officeName,
               available: allocation.available,
             }))}
             caseOptions={caseOptions}

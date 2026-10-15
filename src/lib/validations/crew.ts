@@ -11,7 +11,12 @@ export {
   type CrewProfileInput,
 } from "@/lib/validations/admin";
 
-import { CREW_AVAILABILITY } from "@/lib/validations/admin";
+import {
+  CREW_AVAILABILITY,
+  CREW_EMPLOYMENT_TYPES,
+  CREW_TRADES,
+} from "@/lib/validations/admin";
+import { optionalReadableText } from "@/lib/validations/text";
 
 /** Optional ISO-8601 instant; a blank form field counts as "not provided". */
 function optionalDateTime(label: string) {
@@ -72,17 +77,36 @@ export const crewReleaseSchema = z.object({
 
 export type CrewReleaseBody = z.infer<typeof crewReleaseSchema>;
 
-/** POST /api/v1/admin/crew — create or update a roster entry. */
+/**
+ * POST /api/v1/admin/crew — create or update a roster entry.
+ *
+ * Trade and employment type are closed lists, not free text: a roster row that
+ * says "ASTROLOGY" can never be matched against the trades the assignment
+ * picker filters on. A blank value still means "not set" (the desk sends "" when
+ * the select is left alone), so it is preprocessed away instead of rejected.
+ */
+const blankToUndefined = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
+
 export const crewRosterUpsertSchema = z.object({
   userId: z.coerce.number().int().positive(),
-  trade: z.string().trim().max(40).optional(),
-  employmentType: z.string().trim().max(40).optional(),
+  trade: z.preprocess(
+    blankToUndefined,
+    z.enum(CREW_TRADES, "That is not one of the configured trades.").optional()
+  ),
+  employmentType: z.preprocess(
+    blankToUndefined,
+    z.enum(CREW_EMPLOYMENT_TYPES, "That is not one of the employment types.").optional()
+  ),
   hourlyRate: z.coerce.number().min(0).max(100000).nullable().optional(),
   dailyRate: z.coerce.number().min(0).max(100000).nullable().optional(),
   availability: z.enum(CREW_AVAILABILITY).optional(),
   maxConcurrentCases: z.coerce.number().int().min(1).max(10).optional(),
   officeId: z.coerce.number().int().positive().nullable().optional(),
-  notes: z.string().trim().max(500).optional(),
+  notes: z.preprocess(
+    blankToUndefined,
+    optionalReadableText("Notes", 500)
+  ),
   isActive: z.boolean().optional(),
 });
 

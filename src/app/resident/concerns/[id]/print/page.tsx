@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth/session";
 import { Button } from "@/components/ui/button";
 import { PriorityBadge, StatusBadge } from "@/components/ui/badge";
+import { priorityEvaluationFrom } from "@/lib/priority/engine";
+import { describeAffectedPeople } from "@/lib/priority/affected";
 import { PrintButton } from "@/components/ui/print-button";
 import { CopyCaseNumber } from "@/components/cases/copy-case-number";
 import { describeJournalEntry } from "@/components/concern/case-timeline";
@@ -45,15 +47,30 @@ export default async function CasePrintPage({
           attachmentUrl: true,
         },
       },
+      assessments: {
+        orderBy: { createdAt: "desc" },
+        select: { calculationJson: true },
+        take: 5,
+      },
     },
   });
 
   if (!concern) notFound();
 
   const coordinates = { lat: concern.locationLat, lng: concern.locationLng };
+  const affectedLine = describeAffectedPeople(
+    concern.assessments
+      .map((assessment: { calculationJson: string | null }) =>
+        priorityEvaluationFrom(assessment.calculationJson)?.affectedPeople
+      )
+      .find(
+        (value: number | null | undefined) =>
+          value !== null && value !== undefined
+      ) ?? null
+  );
 
   return (
-    <div className="mx-auto max-w-xl space-y-6">
+    <div className="print-sheet mx-auto max-w-xl space-y-6">
       <div className="no-print flex flex-wrap items-center justify-between gap-2">
         <Button href={`/resident/concerns/${concern.id}`} variant="ghost" size="sm">
           ← Back to case
@@ -107,6 +124,14 @@ export default async function CasePrintPage({
               </dd>
             </div>
           </div>
+          {affectedLine && (
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                People affected
+              </dt>
+              <dd className="mt-0.5 text-ink">{affectedLine}</dd>
+            </div>
+          )}
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Category

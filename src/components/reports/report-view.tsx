@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { PrintButton } from "@/components/ui/print-button";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { copy, type Locale } from "@/lib/i18n";
+import { todayManila } from "@/lib/cases/action-date";
 import type { ReportTabKey } from "@/lib/reports/catalog";
 import type { ReportDocument } from "@/lib/reports/document";
 import { generatedAtLabel, reportRangeLabel } from "@/lib/reports/labels";
@@ -78,6 +79,7 @@ export function ReportPeriodPicker({
             type="date"
             name="from"
             defaultValue={from}
+            max={todayManila()}
             className="mt-1 rounded-control border border-line-strong bg-surface px-3 py-2 text-sm text-ink"
           />
         </div>
@@ -91,6 +93,7 @@ export function ReportPeriodPicker({
             type="date"
             name="to"
             defaultValue={to}
+            max={todayManila()}
             className="mt-1 rounded-control border border-line-strong bg-surface px-3 py-2 text-sm text-ink"
           />
         </div>

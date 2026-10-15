@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { createApiError, withErrorBoundary } from "@/lib/api";
 import { requireApiUser } from "@/lib/auth/session";
 import { logPiiAccess } from "@/lib/privacy/service";
+import { WIDE_ROLES } from "@/lib/treasury/disbursement";
 import {
   imageMimeForFilename,
   isSafeImageFilename,
@@ -62,6 +63,19 @@ async function identityDocumentOwner(imageUrl: string) {
   return row ? { userId: row.userId, assignedOfficeId: null, identity: true } : null;
 }
 
+/**
+ * Receipt photos are attached to a disbursement voucher, not to a concern.
+ * Vouchers are a treasury matter — the same wide roles that may open the
+ * voucher page are the only ones who may open its receipt.
+ */
+async function voucherProof(imageUrl: string) {
+  const row = await db.disbursement.findFirst({
+    where: { proofUrl: imageUrl },
+    select: { id: true },
+  });
+  return row ?? null;
+}
+
 export const GET = withErrorBoundary<[Request, UploadContext]>(
   async (_req, ctx) => {
     const user = await requireApiUser();
@@ -82,8 +96,18 @@ export const GET = withErrorBoundary<[Request, UploadContext]>(
       concern ??
       (await proofOwner(imageUrl)) ??
       (await identityDocumentOwner(imageUrl));
-    if (!owner) {
+    const receipt = owner ? null : await voucherProof(imageUrl);
+    if (!owner && !receipt) {
       throw createApiError.notFound("Image not found.");
+    }
+
+    // A voucher receipt never falls under the case rules — it is gated by the
+    // treasury roles alone, and the authorization ends here.
+    if (receipt) {
+      if (!WIDE_ROLES.includes(user.role.key)) {
+        throw createApiError.forbidden("You cannot access this image.");
+      }
+      return sendImage(filename);
     }
 
     const isIdentityDocument = "identity" in owner && owner.identity === true;
@@ -116,20 +140,24 @@ export const GET = withErrorBoundary<[Request, UploadContext]>(
       });
     }
 
-    const mime = imageMimeForFilename(filename);
-    const buffer = await readConcernImage(filename);
-    if (!mime || !buffer) {
-      throw createApiError.notFound("Image not found.");
-    }
-
-    return new NextResponse(new Uint8Array(buffer), {
-      headers: {
-        "Content-Type": mime,
-        "Content-Length": String(buffer.byteLength),
-        "Cache-Control": "no-store",
-        "X-Content-Type-Options": "nosniff",
-        "Content-Disposition": `inline; filename="${filename}"`,
-      },
-    });
+    return sendImage(filename);
   }
 );
+
+async function sendImage(filename: string) {
+  const mime = imageMimeForFilename(filename);
+  const buffer = await readConcernImage(filename);
+  if (!mime || !buffer) {
+    throw createApiError.notFound("Image not found.");
+  }
+
+  return new NextResponse(new Uint8Array(buffer), {
+    headers: {
+      "Content-Type": mime,
+      "Content-Length": String(buffer.byteLength),
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Disposition": `inline; filename="${filename}"`,
+    },
+  });
+}

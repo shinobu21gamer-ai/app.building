@@ -164,9 +164,11 @@ export const VERIFICATION_STATUSES = [
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
 
 /**
- * The verification outcomes that let a resolved case close. A FAILED check or a
- * resident confirmation still outstanding does not: those cases need a
- * status-force override with a reason to close.
+ * The verification outcomes that show the verification step was worked
+ * (a fixed or partial check happened). Closing is stricter: see
+ * `CLOSE_VERIFICATION_STATUS` — only a fully fixed, verified resolution
+ * lets a case close. A FAILED check or a resident confirmation still
+ * outstanding does not: those cases stay open.
  */
 export const PASSING_VERIFICATION_STATUSES: readonly VerificationStatus[] = [
   "FIXED_VERIFIED",
@@ -175,6 +177,19 @@ export const PASSING_VERIFICATION_STATUSES: readonly VerificationStatus[] = [
 
 export function isPassingVerification(status: string | null | undefined): boolean {
   return (PASSING_VERIFICATION_STATUSES as readonly string[]).includes(status ?? "");
+}
+
+/**
+ * The only verification stamp that lets a case close. A partially verified fix
+ * is still an open problem: the check happened, but the case stays open until
+ * the work is confirmed done on site. There is no override around this gate —
+ * "closed" on a case sheet must mean the work is verified fixed.
+ */
+export const CLOSE_VERIFICATION_STATUS: VerificationStatus = "FIXED_VERIFIED";
+
+/** Whether a verification stamp lets its case be closed. */
+export function isCloseableVerification(status: string | null | undefined): boolean {
+  return status === CLOSE_VERIFICATION_STATUS;
 }
 
 export const PRIORITY_LEVELS = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;

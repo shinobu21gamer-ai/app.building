@@ -43,6 +43,7 @@ import { ResolutionForm } from "@/components/cases/resolution-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { loadPriorityConfig } from "@/lib/priority/config";
 import { caseFundingView } from "@/lib/treasury/query";
+import { formatPeso } from "@/lib/cases/manpower";
 import { formatDate, formatDateTime } from "@/lib/format";
 import {
   earliestActionDay,
@@ -55,9 +56,10 @@ import {
   STATUS_ORDER,
   canManageConcern,
   caseWorkflowFlags,
+  isCloseableVerification,
   type CaseStatus,
 } from "@/lib/cases/workflow";
-import { copy } from "@/lib/i18n";
+import { copy, type Locale } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
@@ -199,7 +201,9 @@ export default async function OfficialConcernDetailPage({
         },
       },
       type: { select: { id: true, name: true, key: true } },
-      caseAssessment: true,
+      caseAssessment: {
+        include: { materials: { orderBy: { sortOrder: "asc" } } },
+      },
     },
   });
   if (!concern) notFound();
@@ -276,6 +280,7 @@ export default async function OfficialConcernDetailPage({
     canProgress,
     canClose,
     canPrepareEarmark,
+    canPrepareVoucher,
   ] = await Promise.all([
     userCan(user.role.key, "case.validate"),
     userCan(user.role.key, "case.assess"),
@@ -289,7 +294,11 @@ export default async function OfficialConcernDetailPage({
     // Lets the funding panel offer the shortcut that opens the treasury's
     // earmark form on this case with the shortfall already filled in.
     userCan(user.role.key, "treasury.earmark.prepare"),
+    // Lets the work panel offer the "pay the crew" door straight to a
+    // pre-aimed voucher.
+    userCan(user.role.key, "treasury.disbursement.prepare"),
   ]);
+
 
   // A live check is possible while the report is still in the inbox and while
   // it waits for assessment: step 1 of the flow.
@@ -531,35 +540,93 @@ export default async function OfficialConcernDetailPage({
     panels.ASSESS = (
       <div className="space-y-4">
         {concern.caseAssessment ? (
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between gap-3">
-              <dt className="text-ink-subtle">
-                {copy[locale].revamp.workflow.workersNeeded}
-              </dt>
-              <dd className="font-medium text-ink">
-                {concern.caseAssessment.workersNeeded ?? "—"}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-ink-subtle">{copy[locale].revamp.workflow.estimate}</dt>
-              <dd className="font-medium tabular-nums text-ink">
-                ₱{Number(concern.caseAssessment.totalCost ?? 0).toFixed(2)}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-ink-subtle">{copy[locale].revamp.workflow.duration}</dt>
-              <dd className="font-medium text-ink">
-                {concern.caseAssessment.estimatedDurationMinutes ?? 0} min
-              </dd>
-            </div>
-          </dl>
+          <div className="space-y-3">
+            <dl className="space-y-2 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-ink-subtle">
+                  {copy[locale].revamp.workflow.workersNeeded}
+                </dt>
+                <dd className="font-medium text-ink">
+                  {concern.caseAssessment.workersNeeded ?? "—"}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-ink-subtle">{copy[locale].revamp.workflow.estimate}</dt>
+                <dd className="font-medium tabular-nums text-ink">
+                  ₱{Number(concern.caseAssessment.totalCost ?? 0).toFixed(2)}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-ink-subtle">{copy[locale].revamp.workflow.duration}</dt>
+                <dd className="font-medium text-ink">
+                  {concern.caseAssessment.estimatedDurationMinutes ?? 0} min
+                </dd>
+              </div>
+            </dl>
+            <dl className="space-y-2 text-sm">
+              {(
+                [
+                  [copy[locale].revamp.workflow.labor, concern.caseAssessment.laborCost],
+                  [copy[locale].revamp.workflow.materials, concern.caseAssessment.materialsCost],
+                  [copy[locale].revamp.workflow.equipmentCost, concern.caseAssessment.equipmentCost],
+                  [copy[locale].revamp.workflow.other, concern.caseAssessment.otherCost],
+                ] as Array<[string, unknown]>
+              ).map(([label, value]) => (
+                <div
+                  key={String(label)}
+                  className="flex justify-between gap-3"
+                >
+                  <dt className="text-ink-subtle">{label}</dt>
+                  <dd className="font-medium tabular-nums text-ink">
+                    ₱{Number(value ?? 0).toFixed(2)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            {concern.caseAssessment.materials.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                  {copy[locale].revamp.workflow.materialsListTitle}
+                </p>
+                <ul className="divide-y divide-line text-sm">
+                  {concern.caseAssessment.materials.map(
+                    (
+                      line: {
+                        name: string;
+                        quantity: unknown;
+                        unit: string | null;
+                        amount: unknown;
+                      },
+                      index: number
+                    ) => (
+                    <li
+                      key={index}
+                      className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-1.5"
+                    >
+                      <span className="text-ink">
+                        {line.name}
+                        {line.quantity !== null && line.unit && (
+                          <span className="text-ink-subtle">
+                            {" "}
+                            · {String(line.quantity)} {line.unit}
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-medium tabular-nums text-ink">
+                        ₱{Number(line.amount).toFixed(2)}
+                      </span>
+                    </li>
+                  ))
+                  }
+                </ul>
+              </div>
+            )}
+          </div>
         ) : (
           <p className="text-sm text-ink-muted">
             {copy[locale].revamp.workflow.assessmentRequired}
           </p>
-        )}
-
-        <Button
+        )}        <Button
           href={`/official/concerns/${concern.id}/assessment`}
           size="sm"
           variant="outline"
@@ -642,22 +709,185 @@ export default async function OfficialConcernDetailPage({
     crewStepDone &&
     fundStepDone;
 
+  // What work actually needs on the ground before the case may move to
+  // IN_PROGRESS: the crew booked, and the materials money released. The
+  // receipt on each released supplier voucher is the proof the materials
+  // were really bought, so the official reads it here instead of guessing.
+  const materialsFacts = funding
+    ? (() => {
+        const planned = concern.caseAssessment?.materialsCost
+          ? Number(concern.caseAssessment.materialsCost)
+          : 0;
+        // The stubbed client types these rows as any; annotate so the
+        // filter keeps the compiler honest on a real generation too.
+        type SupplierVoucher = {
+          payeeType: string;
+          status: string;
+          amount: number;
+        };
+        const supplierVouchers = funding.disbursements.filter(
+          (voucher: SupplierVoucher) =>
+            voucher.payeeType === "SUPPLIER" &&
+            ["RELEASED", "LIQUIDATED"].includes(voucher.status)
+        );
+        const released = supplierVouchers.reduce(
+          (sum: number, voucher: SupplierVoucher) => sum + voucher.amount,
+          0
+        );
+        return { planned, released, count: supplierVouchers.length };
+      })()
+    : null;
+  const crewNeeded = concern.caseAssessment?.workersNeeded ?? null;
+  const crewFull =
+    crewNeeded === null ? crewSummary > 0 : crewSummary >= crewNeeded;
+
+  // The crew's own money: labour planned in the estimate vs. what the
+  // treasurer has already released to crew members through vouchers.
+  const crewPayFacts = funding
+    ? (() => {
+        const planned = concern.caseAssessment?.laborCost
+          ? Number(concern.caseAssessment.laborCost)
+          : 0;
+        // Only CREW payee rows are the crew's money; supplier and
+        // beneficiary vouchers are other people's receipts. RELEASED means
+        // the money actually left the treasury.
+        type CrewVoucher = { payeeType: string; status: string; amount: number };
+        const crewVouchers = funding.disbursements.filter(
+          (voucher: CrewVoucher) =>
+            voucher.payeeType === "CREW" && voucher.status === "RELEASED"
+        );
+        const paid = crewVouchers.reduce(
+          (sum: number, voucher: CrewVoucher) => sum + voucher.amount,
+          0
+        );
+        return { planned, paid, count: crewVouchers.length };
+      })()
+    : null;
+
   if (canStartNow) {
     panels.START = (
-      <CaseWorkflowForm
-        concernId={concern.id}
-        currentStatus={concern.status}
-        allowedTransitions={["IN_PROGRESS"]}
-        locale={locale}
-        today={today}
-        earliestDay={statusEarliestDay}
-      />
+      <div className="space-y-4">
+        <div className="rounded-control border border-line bg-surface-sunken px-3 py-2.5">
+          <p className="text-sm font-semibold text-ink">
+            {desk.readyTitle}
+          </p>
+          <p className="mt-1 text-xs text-ink-subtle">
+            {desk.readyTitleDesc}
+          </p>
+          <dl className="mt-2 space-y-1 text-sm">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+              <dt className="text-ink-muted">{desk.readyCrew}</dt>
+              <dd className="text-ink">
+                {crewNeeded !== null
+                  ? desk.readyCrewBooked
+                      .replace("{active}", String(crewSummary))
+                      .replace("{needed}", String(crewNeeded))
+                  : desk.readyCrewOnly.replace(
+                      "{active}",
+                      String(crewSummary)
+                    )}
+                {crewFull && (
+                  <span className="text-emerald-700">
+                    {" "}
+                    · {desk.readyCrewFull}
+                  </span>
+                )}
+              </dd>
+            </div>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+              <dt className="text-ink-muted">{desk.readyMaterials}</dt>
+              <dd className="text-ink">
+                {materialsFacts && materialsFacts.planned > 0 ? (
+                  <>
+                    {desk.readyMaterialsPlanned.replace(
+                      "{planned}",
+                      formatPeso(materialsFacts.planned)
+                    )}
+                    {" · "}
+                    {materialsFacts.released > 0 ? (
+                      <span className="text-emerald-700">
+                        {desk.readyMaterialsReleased.replace(
+                          "{released}",
+                          formatPeso(materialsFacts.released)
+                        )}
+                        {materialsFacts.count > 0 &&
+                          ` · ${desk.readyMaterialsReceipts}`}
+                      </span>
+                    ) : (
+                      <span className="text-amber-700">
+                        {desk.readyMaterialsNotYet}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  desk.readyMaterialsNone
+                )}
+              </dd>
+            </div>
+          </dl>
+        </div>
+        <CaseWorkflowForm
+          concernId={concern.id}
+          currentStatus={concern.status}
+          allowedTransitions={["IN_PROGRESS"]}
+          locale={locale}
+          today={today}
+          earliestDay={statusEarliestDay}
+        />
+      </div>
     );
   }
 
   if ((canProgress || canResolve) && canManage) {
     panels.WORK = (
       <div className="space-y-5">
+        {crewPayFacts && (
+          <div className="rounded-control border border-line bg-surface-sunken px-3 py-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-ink">
+                {desk.crewPayTitle}
+              </p>
+              {canPrepareVoucher && !isFinalized && (
+                <Button
+                  href={`/treasury/disbursements?concernId=${concern.id}&pay=CREW`}
+                  size="sm"
+                  variant="outline"
+                >
+                  {desk.payCrew}
+                </Button>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-ink-muted">
+              {crewPayFacts.planned > 0 && (
+                <>
+                  {desk.crewPayPlanned.replace(
+                    "{planned}",
+                    formatPeso(crewPayFacts.planned)
+                  )}
+                  {" · "}
+                </>
+              )}
+              {crewPayFacts.paid > 0 ? (
+                <span className="text-emerald-700">
+                  {desk.crewPayPaid.replace(
+                    "{paid}",
+                    formatPeso(crewPayFacts.paid)
+                  )}
+                  {" · "}
+                  {desk.crewPayVouchers.replace(
+                    "{count}",
+                    String(crewPayFacts.count)
+                  )}
+                </span>
+              ) : (
+                <span className="text-amber-700">{desk.crewPayUnpaid}</span>
+              )}
+            </p>
+            <p className="mt-1 text-xs text-ink-subtle">
+              {desk.crewPayWho}
+            </p>
+          </div>
+        )}
         <div>
           <p className="mb-2 text-sm font-medium text-ink-muted">
             {desk.progressNotes}
@@ -703,7 +933,15 @@ export default async function OfficialConcernDetailPage({
   }
 
   if (canClose && canManage && concern.status === "RESOLVED") {
-    panels.CLOSE = (
+    // The close form is only offered once the fix is verified as fixed: the
+    // server enforces the same rule, and a form that could only fail is just
+    // noise on the sheet.
+    const closeReady =
+      resolution !== null &&
+      resolution.verifiedAt !== null &&
+      resolution.verifiedAt !== undefined &&
+      isCloseableVerification(resolution.verificationStatus);
+    panels.CLOSE = closeReady ? (
       <CaseWorkflowForm
         concernId={concern.id}
         currentStatus={concern.status}
@@ -711,6 +949,11 @@ export default async function OfficialConcernDetailPage({
         locale={locale}
         today={today}
         earliestDay={statusEarliestDay}
+      />
+    ) : (
+      <CloseBlockedNotice
+        locale={locale}
+        verificationStatus={resolution?.verificationStatus ?? null}
       />
     );
   }
@@ -1068,6 +1311,10 @@ export default async function OfficialConcernDetailPage({
                 }))}
                 levels={levels}
                 defaultScores={defaultScores}
+                defaultAffectedPeople={
+                  parseEvaluation(latest?.calculationJson ?? null)?.affectedPeople ??
+                  null
+                }
                 currentLevel={concern.priorityLevel}
                 locale={locale}
               />
@@ -1108,6 +1355,46 @@ export default async function OfficialConcernDetailPage({
           </Card>
         </div>
       </section>
+    </div>
+  );
+}
+
+/**
+ * Shown in the CLOSE step while a resolved case is not yet closable: its
+ * resolution has not been verified as fully fixed, so the close form would
+ * only fail on submit. The message names the current verification outcome.
+ */
+function CloseBlockedNotice({
+  locale = "en",
+  verificationStatus,
+}: {
+  locale?: Locale;
+  verificationStatus: string | null;
+}) {
+  const t = copy[locale].revamp.workflow;
+  const statusLabel =
+    verificationStatus === "FIXED_VERIFIED"
+      ? t.verifyFixed
+      : verificationStatus === "PARTIALLY_VERIFIED"
+        ? t.verifyPartial
+        : verificationStatus === "FAILED"
+          ? t.verifyFailed
+          : verificationStatus === "PENDING_RESIDENT_CONFIRMATION"
+            ? t.verifyResident
+            : t.verifyNotYet;
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1 rounded-control border border-amber-200 bg-amber-50 px-3 py-2.5">
+        <p className="text-sm font-semibold text-amber-900">
+          {t.closeBlockedTitle}
+        </p>
+        <p className="text-sm leading-relaxed text-amber-800">
+          {t.closeBlockedText.replace("{status}", statusLabel)}
+        </p>
+      </div>
+      <p className="text-sm leading-relaxed text-ink-muted">
+        {t.closeBlockedNext}
+      </p>
     </div>
   );
 }

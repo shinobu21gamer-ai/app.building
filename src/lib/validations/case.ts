@@ -128,6 +128,23 @@ const optionalMoney = (label: string) =>
       .optional()
   );
 
+/** A money figure that may be empty (quantity and unit price are optional). */
+const optionalFigure = (label: string) =>
+  z.preprocess(
+    (value) =>
+      value === null ||
+      value === undefined ||
+      (typeof value === "string" && value.trim() === "")
+        ? null
+        : value,
+    z.coerce
+      .number()
+      .min(0, `${label} cannot be negative.`)
+      .max(10_000_000, `${label} is too large.`)
+      .nullable()
+  );
+
+
 const optionalText = (max: number, message: string) =>
   z
     .string()
@@ -136,6 +153,28 @@ const optionalText = (max: number, message: string) =>
     .optional()
     .transform((value) => (value === "" ? undefined : value));
 
+// One line of the materials list in a cost estimate: what will be bought,
+// how much of it, at what price, and what the line costs.
+export const materialLineSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Each material needs a name.")
+    .max(160, "Material names are too long."),
+  quantity: optionalFigure("A material quantity"),
+  unit: z
+    .string()
+    .trim()
+    .max(24, "Material units are too long.")
+    .optional()
+    .transform((value) => (value === undefined || value === "" ? null : value)),
+  unitPrice: optionalFigure("A material unit price"),
+  amount: z.coerce
+    .number()
+    .min(0, "Material amounts cannot be negative.")
+    .max(10_000_000, "A material amount is too large."),
+  note: optionalText(200, "Material notes are too long."),
+});
 const optionalInstant = (label: string) =>
   z.preprocess(
     (value) =>
@@ -189,6 +228,12 @@ export const assessmentSchema = z
     materialsCost: optionalMoney("Materials cost"),
     equipmentCost: optionalMoney("Equipment cost"),
     otherCost: optionalMoney("Other cost"),
+    // The materials list. When present (even empty), the materials total is
+    // recomputed from these lines instead of taking `materialsCost`.
+    materials: z
+      .array(materialLineSchema)
+      .max(100, "Too many material lines.")
+      .optional(),
   })
   .refine(
     (value) =>

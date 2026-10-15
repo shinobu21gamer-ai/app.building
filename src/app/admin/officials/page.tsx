@@ -68,6 +68,10 @@ export default async function AdminOfficialsPage({
           roles={[{ id: 0, key: "OFFICIAL", name: "Official" }]}
           offices={offices}
           fixedRole="OFFICIAL"
+          // This page lists and manages officials; the account itself is born
+          // on the Users page, so the button links there (pre-filtered to
+          // officials) instead of opening a second create form.
+          createViaUsersHref="/admin/users?role=OFFICIAL"
           currentUserId={actor.id}
           locale={locale}
         />

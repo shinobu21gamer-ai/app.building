@@ -615,16 +615,52 @@ body {
   }
 }
 
+/* Printing.
+   ------------------------------------------------------------------
+   Two things used to make a printed case sheet come out blank or empty:
+
+   1. `<body>` is a flex column with `min-height: 100vh` on screen. In print,
+      Chrome lays that flex container out as one viewport-sized box, pushes the
+      content to the next page and prints the first page empty. Print is a
+      document flow, so the body is put back to `display: block` and loses its
+      viewport height.
+   2. The sheet sat inside the portal chrome (header, sidebar, tab bar, sticky
+      elements). Those are hidden here, and the sheet itself is flattened by
+      `.print-sheet`, so what comes out of the printer is the sheet and nothing
+      else. */
 @media print {
+  html,
+  body {
+    display: block !important;
+    min-height: 0 !important;
+    height: auto !important;
+    background: #fff;
+    color: #0f172a;
+  }
+
+  main {
+    display: block !important;
+    flex: none !important;
+    padding: 0 !important;
+  }
+
   header,
   footer,
+  nav,
+  aside,
   .no-print {
     display: none !important;
   }
 
-  body {
-    background: #fff;
-    color: #0f172a;
+  /* The bottom bar's padding would otherwise push a page of blank space. */
+  .has-tabbar {
+    padding-bottom: 0 !important;
+  }
+
+  /* Badges, tones and borders keep their colour on paper. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   a {
@@ -632,9 +668,26 @@ body {
     text-decoration: none;
   }
 
-  main {
+  /* The page a "Print case sheet" button leads to: full width, no card chrome. */
+  .print-sheet {
+    margin: 0 !important;
+    max-width: none !important;
     padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
   }
+
+  .print-sheet table,
+  .print-sheet dl,
+  .print-sheet li {
+    break-inside: avoid;
+  }
+}
+
+@page {
+  margin: 14mm;
 }
 
 /* Phone layout for data tables. Mark a table with `data-stack` and give each

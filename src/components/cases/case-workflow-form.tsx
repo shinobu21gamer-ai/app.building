@@ -9,6 +9,7 @@ import {
   Label,
   Textarea,
 } from "@/components/ui/field";
+import { PhotoPicker } from "@/components/ui/photo-picker";
 import { apiRequest } from "@/lib/api-client";
 import { formatCalendarDay } from "@/lib/format";
 import { copy, type Locale } from "@/lib/i18n";
@@ -16,8 +17,6 @@ import { copy, type Locale } from "@/lib/i18n";
 const selectStyles =
   "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
-const fileStyles =
-  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30 file:mr-4 file:rounded-control file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100";
 
 /**
  * Moves a case to IN_PROGRESS or CLOSED. Every status change needs a proof
@@ -176,16 +175,14 @@ export function CaseWorkflowForm({
       </div>
 
       <div>
-        <Label htmlFor="workflow-proof">{t.proofPhoto}</Label>
-        <input
+        <PhotoPicker
           id="workflow-proof"
           name="attachment"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
+          label={t.proofPhoto}
           required
-          className={fileStyles}
+          hint={t.proofPhotoHint}
+          locale={locale}
         />
-        <p className="mt-1 text-xs text-ink-subtle">{t.proofPhotoHint}</p>
       </div>
 
       <div>

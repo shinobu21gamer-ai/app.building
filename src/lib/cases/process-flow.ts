@@ -11,7 +11,7 @@
 
 import {
   STATUS_ORDER,
-  isPassingVerification,
+  isCloseableVerification,
   type CaseStatus,
 } from "@/lib/cases/workflow";
 import {
@@ -167,7 +167,9 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
   const closed = input.status === "CLOSED";
   const crewOk = crewSatisfied(input.workersNeeded, input.activeCrew);
   const funded = fundingSatisfied(input.estimatedCost, input.fundedAmount);
-  const verified = isPassingVerification(input.verificationStatus);
+  // The VERIFY step only completes once the fix is confirmed fixed: a
+  // partial verification still blocks closing, so it reads "pending" here.
+  const verified = isCloseableVerification(input.verificationStatus);
   const resolved = input.hasResolution;
   /**
    * Closed with no resolution on record: the only path that does this is a

@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
-import { isPassingVerification } from "@/lib/cases/workflow";
+import { isCloseableVerification } from "@/lib/cases/workflow";
 import { formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -23,10 +23,10 @@ export const dynamic = "force-dynamic";
  *
  * Closing a resolved case is the approving official's call (`case.status.close`
  * holders: the Captain and administrators), and it may only happen once the
- * proof of completion has been verified. Both actions live on the case sheet
- * itself — this page is the Captain's worklist of resolved cases, showing at a
- * glance which ones are already verified and which still need the proof read,
- * so the last step of the flow has a place to be worked from.
+ * proof of completion has been verified as fully fixed. Both actions live on
+ * the case sheet itself — this page is the Captain's worklist of resolved
+ * cases, showing at a glance which ones are ready to close and which still
+ * need the proof read, so the last step of the flow has a place to work from.
  */
 export default async function CaptainClosurePage() {
   await requirePermission("case.status.close");
@@ -62,10 +62,12 @@ export default async function CaptainClosurePage() {
           <ul className="divide-y divide-line">
             {cases.map((item) => {
               const resolution = item.resolutions[0] ?? null;
+              // "Verified" here means closable now: fully fixed and checked.
+              // Anything else (partial, failed, still unverified) stays amber.
               const verified =
                 resolution?.verifiedAt !== null &&
                 resolution?.verifiedAt !== undefined &&
-                isPassingVerification(resolution.verificationStatus);
+                isCloseableVerification(resolution.verificationStatus);
               return (
                 <li
                   key={item.id}

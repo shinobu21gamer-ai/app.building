@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { booleanFlag } from "@/lib/validations/boolean";
 import { phoneInputSchema } from "@/lib/validations/privacy";
+import {
+  officeContactSchema as contactSchema,
+  personNameSchema,
+  readableTextSchema,
+} from "@/lib/validations/text";
 import { ROLE_KEYS, type RoleKey } from "@/lib/auth/roles";
 
 // ---------------------------------------------------------------
@@ -22,11 +27,10 @@ const passwordSchema = z
   .regex(/[A-Z]/, "Password must contain an uppercase letter.")
   .regex(/[0-9]/, "Password must contain a number.");
 
-const nameSchema = z
-  .string()
-  .trim()
-  .min(2, "Must be at least 2 characters.")
-  .max(80, "Must be at most 80 characters.");
+// Staff names go through the person-name rule: letters, spaces and the
+// punctuation real names carry. "+++" and "Juan 2" are refused here rather
+// than saved as an account name.
+const nameSchema = personNameSchema("Name");
 
 function optionalText(max: number) {
   return z
@@ -173,27 +177,33 @@ export type AdminUserUpdateInput = z.infer<typeof adminUserUpdateSchema>;
 // Offices
 // ---------------------------------------------------------------
 
-const requiredOfficeContact = z
-  .string()
-  .trim()
-  .min(3, "Enter a phone number, email, or other contact detail.")
-  .max(120, "Contact details are too long.");
+// A contact is a phone number or an email address — not free text. The form
+// used to accept "…" or a half-typed number, which produced office cards whose
+// contact could not be dialled or written to.
+const requiredOfficeContact = contactSchema(120);
+
+// A head officer is a person, but the field is optional; blank means "not
+// named yet" and is stored as null.
+const optionalHeadOfficer = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? null : value),
+  personNameSchema("Head officer", 120).nullable().optional()
+);
 
 export const officeCreateSchema = z.object({
-  name: z.string().trim().min(2, "Name is too short.").max(120, "Name is too long."),
+  name: readableTextSchema("Office name", 120),
   code: codeSchema,
   description: optionalText(500),
-  headOfficer: optionalText(120),
+  headOfficer: optionalHeadOfficer,
   contact: requiredOfficeContact,
   isActive: booleanFlag.optional(),
 });
 
 export const officeUpdateSchema = z
   .object({
-    name: z.string().trim().min(2, "Name is too short.").max(120, "Name is too long.").optional(),
+    name: readableTextSchema("Office name", 120).optional(),
     code: codeSchema.optional(),
     description: optionalText(500),
-    headOfficer: optionalText(120),
+    headOfficer: optionalHeadOfficer,
     contact: requiredOfficeContact.optional(),
     isActive: booleanFlag.optional(),
   })
@@ -206,7 +216,7 @@ export const officeUpdateSchema = z
 // ---------------------------------------------------------------
 
 export const categoryCreateSchema = z.object({
-  name: z.string().trim().min(2, "Name is too short.").max(120, "Name is too long."),
+  name: readableTextSchema("Category name", 120),
   code: codeSchema,
   description: optionalText(500),
   isActive: booleanFlag.optional(),
@@ -214,7 +224,7 @@ export const categoryCreateSchema = z.object({
 
 export const categoryUpdateSchema = z
   .object({
-    name: z.string().trim().min(2, "Name is too short.").max(120, "Name is too long.").optional(),
+    name: readableTextSchema("Category name", 120).optional(),
     code: codeSchema.optional(),
     description: optionalText(500),
     isActive: booleanFlag.optional(),

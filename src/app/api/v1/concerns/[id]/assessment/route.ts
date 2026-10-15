@@ -47,7 +47,11 @@ export const GET = withErrorBoundary<[Request, RouteContext]>(
         title: true,
         assignedOfficeId: true,
         type: { select: { id: true, key: true, name: true, requiresCrew: true } },
-        caseAssessment: true,
+        caseAssessment: {
+          include: {
+            materials: { orderBy: { sortOrder: "asc" } },
+          },
+        },
       },
     });
     if (!concern) throw createApiError.notFound("Concern not found.");
@@ -150,6 +154,16 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
           materialsCost: body.materialsCost ?? null,
           equipmentCost: body.equipmentCost ?? null,
           otherCost: body.otherCost ?? null,
+          materials: body.materials
+            ? body.materials.map((line) => ({
+                name: line.name,
+                quantity: line.quantity,
+                unit: line.unit,
+                unitPrice: line.unitPrice,
+                amount: line.amount,
+                note: line.note ?? null,
+              }))
+            : null,
         },
       })
     );

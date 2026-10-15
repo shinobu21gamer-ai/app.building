@@ -45,6 +45,18 @@ export type AssessmentInput = {
   materialsCost?: number | null;
   equipmentCost?: number | null;
   otherCost?: number | null;
+  // The materials list. When present (even empty), the materials total is
+  // recomputed from these lines and the stored lines are replaced.
+  materials?: MaterialLineInput[] | null;
+};
+
+export type MaterialLineInput = {
+  name: string;
+  quantity: number | null;
+  unit: string | null;
+  unitPrice: number | null;
+  amount: number;
+  note: string | null;
 };
 
 export type AssessmentView = {
@@ -74,6 +86,17 @@ export type AssessmentView = {
   laborCostBasisJson: string | null;
   submittedAt: string | null;
   updatedAt: string;
+  materials: AssessmentMaterialView[];
+};
+
+/** One stored materials line, as the API serves it. */
+export type AssessmentMaterialView = {
+  name: string;
+  quantity: string | null;
+  unit: string | null;
+  unitPrice: string | null;
+  amount: string;
+  note: string | null;
 };
 
 function money(value: number | null | undefined): number {
@@ -178,6 +201,17 @@ export async function saveAssessment(
   const existing = concern.caseAssessment;
   const legacyCase = existing === null;
 
+  // When a materials list is sent (even an empty one), the materials total
+  // is the sum of its lines; otherwise the typed figure stands.
+  const materialsTotal = values.materials
+    ? Math.round(
+        values.materials.reduce(
+          (sum: number, line: MaterialLineInput) => sum + money(line.amount),
+          0
+        ) * 100
+      ) / 100
+    : null;
+
   const data = {
     status: values.approvalRequired && !values.approved ? "DRAFT" : "SUBMITTED",
     eligibilityChecked: values.eligibilityChecked,
@@ -202,7 +236,7 @@ export async function saveAssessment(
     scheduledStartAt: values.scheduledStartAt ?? null,
     scheduledEndAt: values.scheduledEndAt ?? null,
     equipmentNotes: values.equipmentNotes.trim(),
-    materialsCost: money(values.materialsCost),
+    materialsCost: materialsTotal ?? money(values.materialsCost),
     equipmentCost: money(values.equipmentCost),
     otherCost: money(values.otherCost),
     submittedAt: existing?.id ? undefined : now,
@@ -214,6 +248,29 @@ export async function saveAssessment(
     : await tx.caseAssessment.create({
         data: { concernId: concern.id, createdById: input.actor.id, ...data },
       });
+
+  // Replace the materials list with what was sent (an empty list clears it).
+  if (values.materials) {
+    await tx.assessmentMaterial.deleteMany({
+      where: { assessmentId: assessment.id },
+    });
+    if (values.materials.length > 0) {
+      await tx.assessmentMaterial.createMany({
+        data: values.materials.map(
+          (line: MaterialLineInput, index: number) => ({
+            assessmentId: assessment.id,
+            name: line.name,
+            quantity: line.quantity,
+            unit: line.unit,
+            unitPrice: line.unitPrice,
+            amount: money(line.amount),
+            note: line.note,
+            sortOrder: index,
+          })
+        ),
+      });
+    }
+  }
 
   // Labour is priced from the crew actually on the case: no crew, no labour.
   const priced = await refreshCaseLabour(tx, concern.id, {
@@ -329,6 +386,14 @@ export function assessmentView(row: {
   laborCostBasisJson: string | null;
   submittedAt: Date | null;
   updatedAt: Date;
+  materials?: {
+    name: string;
+    quantity: unknown;
+    unit: string | null;
+    unitPrice: unknown;
+    amount: unknown;
+    note: string | null;
+  }[];
 }): AssessmentView {
   const decimal = (value: unknown): string | null =>
     value === null || value === undefined ? null : String(value);
@@ -360,5 +425,13 @@ export function assessmentView(row: {
     laborCostBasisJson: row.laborCostBasisJson,
     submittedAt: row.submittedAt?.toISOString() ?? null,
     updatedAt: row.updatedAt.toISOString(),
+    materials: (row.materials ?? []).map((line) => ({
+      name: line.name,
+      quantity: decimal(line.quantity),
+      unit: line.unit,
+      unitPrice: decimal(line.unitPrice),
+      amount: String(line.amount),
+      note: line.note,
+    })),
   };
 }

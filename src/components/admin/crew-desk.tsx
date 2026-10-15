@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   HardHat,
@@ -9,12 +9,20 @@ import {
   Power,
   PowerOff,
   Save,
-  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FormMessage, Input, Label, Select, Textarea } from "@/components/ui/field";
+import { Modal } from "@/components/ui/modal";
+import {
+  FieldError,
+  FormMessage,
+  Input,
+  Label,
+  Select,
+  Textarea,
+} from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
+import { useSweetAlert } from "@/components/ui/sweet-alert";
 import { apiRequest } from "@/lib/api-client";
 import { extractApiError } from "@/lib/utils";
 import {
@@ -23,6 +31,7 @@ import {
   CREW_TRADES,
   CREW_TRADE_LABELS,
 } from "@/lib/validations/admin";
+import { describeFieldProblem } from "@/lib/validations/text";
 import { copy, type Locale } from "@/lib/i18n";
 // Type-only import: the crew domain module reaches the database, so the shape
 // is taken as a type and never bundled into this client component.
@@ -76,12 +85,17 @@ function formFor(row: CrewDeskRow): FormState {
 /**
  * The crew roster desk.
  *
- * The roster list and the create/edit form both talk to the same endpoint the
- * crew picker uses (`/api/v1/admin/crew`): the GET with `?scope=desk` lists
- * every crew account — profiled or not, active or disabled — and the POST
- * creates or updates one profile. Enabling and disabling an account is the
- * account's own endpoint, because that switch lives on the user, not on the
- * roster row.
+ * The roster list and the create/edit form both talk to the same endpoints the
+ * crew picker uses: `GET /api/v1/admin/crew?scope=desk` lists every crew
+ * account — profiled or not, active or disabled — and `POST /api/v1/admin/crew`
+ * creates or updates one profile.
+ *
+ * This desk manages the roster of accounts that already exist: giving an
+ * unprofiled user their trade and rates, editing and disabling profiles.
+ * Creating the account itself — for crew and for officials — happens on the
+ * Users page, the one place where accounts are born, so there is a single
+ * answer to "where do I add somebody?" The "+ Add a crew profile" button is
+ * only on while some account still needs a profile.
  */
 export function CrewDesk({
   crew,
@@ -96,11 +110,14 @@ export function CrewDesk({
   const common = copy[locale].revamp.common;
   const router = useRouter();
   const { showToast } = useToast();
+  const { confirm } = useSweetAlert();
 
   const [rows, setRows] = useState<CrewDeskRow[]>(crew);
   const [filter, setFilter] = useState<Filter>("all");
-  const [editing, setEditing] = useState<boolean>(false);
+  const [open, setOpen] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -119,39 +136,90 @@ export function CrewDesk({
     if (result.success) setRows(result.data.crew);
   }, []);
 
+  const unprofiled = useMemo(() => rows.filter((row) => !row.hasProfile), [rows]);
+
   function startCreate() {
     setError(null);
     setSuccess(null);
-    const unprofiled = rows.find((row) => !row.hasProfile);
-    setForm({ ...EMPTY_FORM, userId: unprofiled ? String(unprofiled.userId) : "" });
-    setEditing(true);
+    setFieldErrors({});
+    setEditingUserId(null);
+    // The person picker preselects the first account still waiting on a
+    // profile; the list at the top makes it obvious which one that is.
+    setForm({
+      ...EMPTY_FORM,
+      userId: unprofiled[0] ? String(unprofiled[0].userId) : "",
+    });
+    setOpen(true);
   }
 
   function startEdit(row: CrewDeskRow) {
     setError(null);
     setSuccess(null);
+    setFieldErrors({});
+    setEditingUserId(row.userId);
     setForm(formFor(row));
-    setEditing(true);
+    setOpen(true);
   }
 
-  function stopEditing() {
-    setEditing(false);
+  function closeForm() {
+    if (busy) return;
+    setOpen(false);
+    setEditingUserId(null);
     setForm(EMPTY_FORM);
+    setFieldErrors({});
+    setError(null);
+  }
+
+  const editingRow = rows.find((row) => row.userId === editingUserId) ?? null;
+
+  /** Client-side mirror of the API rules, so the form answers before a round trip. */
+  function validate(): boolean {
+    const problems: Record<string, string> = {};
+
+    if (!editingUserId && !form.userId) {
+      problems.userId = t.personPlaceholder;
+    }
+
+    const notes = describeFieldProblem(form.notes, "text", t.notes);
+    if (notes) problems.notes = notes;
+
+    const rates: Array<[string, string]> = [
+      ["hourlyRate", form.hourlyRate],
+      ["dailyRate", form.dailyRate],
+    ];
+    for (const [key, value] of rates) {
+      if (value === "") continue;
+      const amount = Number(value);
+      if (!Number.isFinite(amount) || amount < 0) {
+        problems[key] = t.rateInvalid;
+      }
+    }
+
+    const max = Number(form.maxConcurrentCases);
+    if (!Number.isInteger(max) || max < 1 || max > 10) {
+      problems.maxConcurrentCases = t.maxCasesError;
+    }
+
+    setFieldErrors(problems);
+    return Object.keys(problems).length === 0;
   }
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setSuccess(null);
+    if (!validate()) return;
+    setBusy(true);
 
     const userId = Number(form.userId);
     if (!Number.isInteger(userId) || userId <= 0) {
-      setError(t.personPlaceholder);
+      setBusy(false);
+      setFieldErrors({ userId: t.personPlaceholder });
       return;
     }
-    const hadProfile = rows.find((row) => row.userId === userId)?.hasProfile ?? false;
+    const hadProfile =
+      rows.find((row) => row.userId === userId)?.hasProfile ?? false;
 
-    setBusy(true);
     const result = await apiRequest("/api/v1/admin/crew", {
       method: "POST",
       body: JSON.stringify({
@@ -179,12 +247,23 @@ export function CrewDesk({
     const message = hadProfile ? t.updated : t.created;
     setSuccess(message);
     showToast("success", message);
-    stopEditing();
+    closeForm();
     await reload();
     router.refresh();
   }
 
   async function toggleAccount(row: CrewDeskRow) {
+    const accepted = await confirm({
+      tone: row.isActive ? "warning" : "question",
+      title: (row.isActive ? t.confirmDisableTitle : t.confirmEnableTitle).replace(
+        "{name}",
+        row.name
+      ),
+      text: row.isActive ? t.confirmDisableText : t.confirmEnableText,
+      confirmLabel: row.isActive ? t.disableAccount : t.enableAccount,
+    });
+    if (!accepted) return;
+
     setError(null);
     setSuccess(null);
     setBusyUser(row.userId);
@@ -211,7 +290,6 @@ export function CrewDesk({
     router.refresh();
   }
 
-  const unprofiled = rows.filter((row) => !row.hasProfile);
   const visible = rows.filter((row) => {
     if (filter === "available") {
       return row.hasProfile && row.profileIsActive === true && row.availability === "AVAILABLE";
@@ -241,10 +319,12 @@ export function CrewDesk({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {success && <FormMessage tone="success">{success}</FormMessage>}
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
+      {/* Filter on the left, the one way in on the right — the desk's actions
+          live above the list, never as a form that is already open. */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <Label htmlFor="crew-filter">{t.filter}</Label>
@@ -259,202 +339,23 @@ export function CrewDesk({
             <option value="unprofiled">{t.filterUnprofiled}</option>
           </Select>
         </div>
-        {!editing && (
-          <Button type="button" onClick={startCreate} disabled={unprofiled.length === 0}>
-            <Plus size={16} />
+        {unprofiled.length > 0 ? (
+          <Button type="button" onClick={startCreate}>
+            <Plus size={16} aria-hidden="true" />
             {t.addProfile}
+          </Button>
+        ) : (
+          <Button href="/admin/users" variant="secondary" size="sm">
+            <Plus size={16} aria-hidden="true" />
+            {t.addAccountViaUsers}
           </Button>
         )}
       </div>
 
-      {unprofiled.length === 0 && !editing && (
-        <p className="text-xs text-ink-subtle">{t.noUnprofiled}</p>
-      )}
-
-      {editing && (
-        <form
-          onSubmit={save}
-          className="space-y-4 rounded-card border border-line bg-surface-muted p-4"
-        >
-          <h3 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
-            <HardHat size={16} className="text-ink-subtle" />
-            {rows.find((row) => String(row.userId) === form.userId)?.hasProfile
-              ? t.editProfile
-              : t.addProfile}
-          </h3>
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <Label htmlFor="crew-person">{t.person}</Label>
-              <Select
-                id="crew-person"
-                value={form.userId}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, userId: event.target.value }))
-                }
-                required
-              >
-                <option value="">{t.personPlaceholder}</option>
-                {rows.map((row) => (
-                  <option key={row.userId} value={row.userId}>
-                    {row.name}
-                    {row.hasProfile ? "" : ` · ${t.noProfile}`}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="crew-office">{t.office}</Label>
-              <Select
-                id="crew-office"
-                value={form.officeId}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, officeId: event.target.value }))
-                }
-              >
-                <option value="">{t.officeNone}</option>
-                {offices.map((office) => (
-                  <option key={office.id} value={office.id}>
-                    {office.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="crew-trade">{t.trade}</Label>
-              <Select
-                id="crew-trade"
-                value={form.trade}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, trade: event.target.value }))
-                }
-              >
-                <option value="">{t.tradeNone}</option>
-                {CREW_TRADES.map((trade) => (
-                  <option key={trade} value={trade}>
-                    {CREW_TRADE_LABELS[trade]}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="crew-employment">{t.employmentType}</Label>
-              <Select
-                id="crew-employment"
-                value={form.employmentType}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, employmentType: event.target.value }))
-                }
-              >
-                {CREW_EMPLOYMENT_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {employmentLabel[type] ?? type}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="crew-availability">{t.availability}</Label>
-              <Select
-                id="crew-availability"
-                value={form.availability}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, availability: event.target.value }))
-                }
-              >
-                {CREW_AVAILABILITY.map((value) => (
-                  <option key={value} value={value}>
-                    {availabilityLabel[value] ?? value}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="crew-max">{t.maxCases}</Label>
-              <Input
-                id="crew-max"
-                type="number"
-                min={1}
-                max={10}
-                value={form.maxConcurrentCases}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, maxConcurrentCases: event.target.value }))
-                }
-              />
-              <p className="mt-1 text-xs text-ink-subtle">{t.maxCasesHint}</p>
-            </div>
-
-            <div>
-              <Label htmlFor="crew-hourly">{t.hourlyRate}</Label>
-              <Input
-                id="crew-hourly"
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.hourlyRate}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, hourlyRate: event.target.value }))
-                }
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="crew-daily">{t.dailyRate}</Label>
-              <Input
-                id="crew-daily"
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.dailyRate}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, dailyRate: event.target.value }))
-                }
-              />
-              <p className="mt-1 text-xs text-ink-subtle">{t.ratesHint}</p>
-            </div>
-
-            <div className="sm:col-span-2 lg:col-span-1">
-              <Label htmlFor="crew-notes">{t.notes}</Label>
-              <Textarea
-                id="crew-notes"
-                rows={2}
-                maxLength={500}
-                value={form.notes}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, notes: event.target.value }))
-                }
-              />
-            </div>
-          </div>
-
-          <label className="flex items-center gap-2 text-sm text-ink-muted">
-            <input
-              type="checkbox"
-              checked={form.isActive}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, isActive: event.target.checked }))
-              }
-              className="h-4 w-4 rounded border-line-strong"
-            />
-            {t.onRoster}
-          </label>
-
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={busy}>
-              <Save size={16} />
-              {busy ? t.saving : t.save}
-            </Button>
-            <Button type="button" variant="outline" onClick={stopEditing}>
-              <X size={16} />
-              {common.cancel}
-            </Button>
-          </div>
-        </form>
+      {unprofiled.length > 0 && (
+        <p className="text-xs text-ink-subtle">
+          {t.unprofiledHint.replace("{count}", String(unprofiled.length))}
+        </p>
       )}
 
       <div>
@@ -572,7 +473,7 @@ export function CrewDesk({
                           onClick={() => startEdit(row)}
                           className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:text-brand-800"
                         >
-                          <Pencil size={14} />
+                          <Pencil size={14} aria-hidden="true" />
                           {row.hasProfile ? common.edit : t.addProfile}
                         </button>
                         <button
@@ -583,11 +484,11 @@ export function CrewDesk({
                         >
                           {row.isActive ? (
                             <>
-                              <PowerOff size={14} /> {t.disableAccount}
+                              <PowerOff size={14} aria-hidden="true" /> {t.disableAccount}
                             </>
                           ) : (
                             <>
-                              <Power size={14} /> {t.enableAccount}
+                              <Power size={14} aria-hidden="true" /> {t.enableAccount}
                             </>
                           )}
                         </button>
@@ -600,6 +501,224 @@ export function CrewDesk({
           </div>
         )}
       </div>
+
+      <Modal
+        open={open}
+        onClose={closeForm}
+        title={editingUserId ? t.editProfile : t.addProfile}
+        description={t.sectionHint}
+        size="lg"
+        closeLabel={common.close}
+      >
+        <form onSubmit={save} className="space-y-4">
+          <h3 className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
+            <HardHat size={16} className="text-ink-subtle" aria-hidden="true" />
+            {t.sectionTitle}
+          </h3>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <Label htmlFor="crew-person" required>
+                {t.person}
+              </Label>
+              <Select
+                id="crew-person"
+                value={form.userId}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, userId: event.target.value }))
+                }
+                disabled={Boolean(editingUserId)}
+                invalid={Boolean(fieldErrors.userId)}
+              >
+                <option value="">{t.personPlaceholder}</option>
+                {rows.map((row) => (
+                  <option key={row.userId} value={row.userId}>
+                    {row.name}
+                    {row.hasProfile ? "" : ` · ${t.noProfile}`}
+                  </option>
+                ))}
+              </Select>
+              {fieldErrors.userId && <FieldError>{fieldErrors.userId}</FieldError>}
+              {editingRow ? (
+                <p className="mt-1 text-xs text-ink-subtle">
+                  {t.editingHint.replace("{name}", editingRow.name)}
+                </p>
+              ) : null}
+            </div>
+
+            <div>
+              <Label htmlFor="crew-office">{t.office}</Label>
+              <Select
+                id="crew-office"
+                value={form.officeId}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, officeId: event.target.value }))
+                }
+              >
+                <option value="">{t.officeNone}</option>
+                {offices.map((office) => (
+                  <option key={office.id} value={office.id}>
+                    {office.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="crew-trade">{t.trade}</Label>
+              <Select
+                id="crew-trade"
+                value={form.trade}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, trade: event.target.value }))
+                }
+              >
+                <option value="">{t.tradeNone}</option>
+                {CREW_TRADES.map((trade) => (
+                  <option key={trade} value={trade}>
+                    {CREW_TRADE_LABELS[trade]}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="crew-employment">{t.employmentType}</Label>
+              <Select
+                id="crew-employment"
+                value={form.employmentType}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, employmentType: event.target.value }))
+                }
+              >
+                {CREW_EMPLOYMENT_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {employmentLabel[type] ?? type}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="crew-availability">{t.availability}</Label>
+              <Select
+                id="crew-availability"
+                value={form.availability}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, availability: event.target.value }))
+                }
+              >
+                {CREW_AVAILABILITY.map((value) => (
+                  <option key={value} value={value}>
+                    {availabilityLabel[value] ?? value}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="crew-max">{t.maxCases}</Label>
+              <Input
+                id="crew-max"
+                type="number"
+                min={1}
+                max={10}
+                step={1}
+                inputMode="numeric"
+                value={form.maxConcurrentCases}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, maxConcurrentCases: event.target.value }))
+                }
+                invalid={Boolean(fieldErrors.maxConcurrentCases)}
+              />
+              {fieldErrors.maxConcurrentCases ? (
+                <FieldError>{fieldErrors.maxConcurrentCases}</FieldError>
+              ) : (
+                <p className="mt-1 text-xs text-ink-subtle">{t.maxCasesHint}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="crew-hourly">{t.hourlyRate}</Label>
+              <Input
+                id="crew-hourly"
+                type="number"
+                min={0}
+                step="0.01"
+                inputMode="decimal"
+                value={form.hourlyRate}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, hourlyRate: event.target.value }))
+                }
+                invalid={Boolean(fieldErrors.hourlyRate)}
+              />
+              {fieldErrors.hourlyRate && (
+                <FieldError>{fieldErrors.hourlyRate}</FieldError>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="crew-daily">{t.dailyRate}</Label>
+              <Input
+                id="crew-daily"
+                type="number"
+                min={0}
+                step="0.01"
+                inputMode="decimal"
+                value={form.dailyRate}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, dailyRate: event.target.value }))
+                }
+                invalid={Boolean(fieldErrors.dailyRate)}
+              />
+              {fieldErrors.dailyRate ? (
+                <FieldError>{fieldErrors.dailyRate}</FieldError>
+              ) : (
+                <p className="mt-1 text-xs text-ink-subtle">{t.ratesHint}</p>
+              )}
+            </div>
+
+            <div className="sm:col-span-2 lg:col-span-1">
+              <Label htmlFor="crew-notes">{t.notes}</Label>
+              <Textarea
+                id="crew-notes"
+                rows={2}
+                maxLength={500}
+                value={form.notes}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, notes: event.target.value }))
+                }
+                invalid={Boolean(fieldErrors.notes)}
+              />
+              {fieldErrors.notes && <FieldError>{fieldErrors.notes}</FieldError>}
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-ink-muted">
+            <input
+              type="checkbox"
+              checked={form.isActive}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, isActive: event.target.checked }))
+              }
+              className="h-4 w-4 rounded border-line-strong"
+            />
+            {t.onRoster}
+          </label>
+
+          {error && <FormMessage tone="error">{error}</FormMessage>}
+
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" loading={busy} disabled={busy}>
+              <Save size={16} aria-hidden="true" />
+              {busy ? t.saving : t.save}
+            </Button>
+            <Button type="button" variant="outline" onClick={closeForm} disabled={busy}>
+              {common.cancel}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

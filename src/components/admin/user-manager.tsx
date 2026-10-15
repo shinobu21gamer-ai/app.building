@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormMessage, Input, Label, RequiredLegend, Select, Textarea } from "@/components/ui/field";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
+import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api-client";
 import { extractApiError } from "@/lib/utils";
@@ -88,6 +89,7 @@ export function UserManager({
   offices,
   fixedRole,
   currentUserId,
+  createViaUsersHref,
   locale = "en",
 }: {
   users: AdminUserItem[];
@@ -95,6 +97,12 @@ export function UserManager({
   offices: OfficeOption[];
   fixedRole?: "OFFICIAL";
   currentUserId: number;
+  /**
+   * When set (role-scoped desks like the Officials page), account creation is
+   * delegated to the Users page instead of opening a second create form: the
+   * button becomes a link there, so there is one place where accounts are born.
+   */
+  createViaUsersHref?: string;
   locale?: Locale;
 }) {
   const t = copy[locale].admin.mgr;
@@ -102,6 +110,9 @@ export function UserManager({
   const router = useRouter();
   const { showToast } = useToast();
   const [editingId, setEditingId] = useState<number | null>(null);
+  // The form lives in a dialog now: the accounts list is the page, and the
+  // "Add account" button opens this. Editing an account opens it too.
+  const [formOpen, setFormOpen] = useState(false);
   const [additionalOffices, setAdditionalOffices] = useState<OfficeOption[]>([]);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -158,6 +169,13 @@ export function UserManager({
   };
 
   // Validation helpers
+  function startCreate() {
+    resetForm();
+    setError(null);
+    setSuccess(null);
+    setFormOpen(true);
+  }
+
   function isFirstNameInvalid() {
     return touched.firstName && firstName.trim().length === 0;
   }
@@ -217,7 +235,17 @@ export function UserManager({
     setTouched(initialTouched);
   }
 
+  function closeForm() {
+    if (busy) return;
+    resetForm();
+    setFormOpen(false);
+    setError(null);
+  }
+
   function startEdit(user: AdminUserItem) {
+    setFormOpen(true);
+    setError(null);
+    setSuccess(null);
     setEditingId(user.id);
     setAdditionalOffices(
       user.office && !offices.some((office) => office.id === user.office!.id)
@@ -333,6 +361,7 @@ export function UserManager({
     setSuccess(successMsg);
     showToast("success", successMsg);
     resetForm();
+    setFormOpen(false);
     router.refresh();
   }
 
@@ -410,26 +439,21 @@ export function UserManager({
       {success && <FormMessage tone="success">{success}</FormMessage>}
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
+      <Modal
+        open={formOpen}
+        onClose={closeForm}
+        title={
+          editingId
+            ? t.editAccount
+            : fixedRole === "OFFICIAL"
+              ? t.addOfficial
+              : t.addAccount
+        }
+        size="lg"
+        closeLabel={copy[locale].revamp.common.close}
+      >
       <form onSubmit={handleSubmit} className="space-y-4">
         <RequiredLegend>{copy[locale].register.requiredLegend}</RequiredLegend>
-        <h2 className="inline-flex items-center gap-2 text-base font-semibold text-ink">
-          {editingId ? (
-            <>
-              <Pencil size={16} className="text-ink-subtle" />
-              {t.editAccount}
-            </>
-          ) : fixedRole === "OFFICIAL" ? (
-            <>
-              <Shield size={16} className="text-ink-subtle" />
-              {t.addOfficial}
-            </>
-          ) : (
-            <>
-              <Plus size={16} className="text-ink-subtle" />
-              {t.addAccount}
-            </>
-          )}
-        </h2>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
@@ -809,22 +833,34 @@ export function UserManager({
               </>
             )}
           </Button>
-          {editingId && (
-            <Button type="button" variant="outline" onClick={resetForm}>
-              <X size={16} />
-              {t.cancelEdit}
+          <Button type="button" variant="outline" onClick={closeForm} disabled={busy}>
+            <X size={16} />
+            {editingId ? t.cancelEdit : t.cancelAction}
+          </Button>
+        </div>
+      </form>
+      </Modal>
+
+      <div>
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <h2 className="text-base font-semibold text-ink">
+            {(fixedRole === "OFFICIAL" ? t.officialsList : t.accountsList).replace(
+              "{count}",
+              String(users.length)
+            )}
+          </h2>
+          {createViaUsersHref ? (
+            <Button href={createViaUsersHref} variant="secondary" size="sm">
+              <Plus size={16} aria-hidden="true" />
+              {fixedRole === "OFFICIAL" ? t.addOfficialViaUsers : t.addAccountViaUsers}
+            </Button>
+          ) : (
+            <Button type="button" onClick={startCreate}>
+              <Plus size={16} aria-hidden="true" />
+              {fixedRole === "OFFICIAL" ? t.addOfficial : t.addAccount}
             </Button>
           )}
         </div>
-      </form>
-
-      <div>
-        <h2 className="mb-3 text-base font-semibold text-ink">
-          {(fixedRole === "OFFICIAL" ? t.officialsList : t.accountsList).replace(
-            "{count}",
-            String(users.length)
-          )}
-        </h2>
         {users.length === 0 ? (
           <p className="py-6 text-center text-sm text-ink-muted">
             {t.noAccounts}

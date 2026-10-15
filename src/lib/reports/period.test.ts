@@ -127,6 +127,32 @@ describe("resolveReportPeriod", () => {
     expect(period.from?.toISOString()).toBe("2026-09-30T16:00:00.000Z");
     expect(period.to?.toISOString()).toBe("2026-10-12T15:59:59.999Z");
   });
+
+  it("clamps a custom end date beyond today back onto today's Manila day", () => {
+    const period = resolveReportPeriod({
+      period: "custom",
+      from: "2026-10-01",
+      to: "2026-12-31",
+      now: NOW,
+    });
+    expect(period.key).toBe("custom");
+    expect(period.from?.toISOString()).toBe("2026-09-30T16:00:00.000Z");
+    expect(period.to?.toISOString()).toBe("2026-10-12T15:59:59.999Z");
+  });
+
+  it("clamps a future start date down to today so the window is not empty in the future", () => {
+    const period = resolveReportPeriod({
+      period: "custom",
+      from: "2027-01-01",
+      to: "2027-02-01",
+      now: NOW,
+    });
+    // Both bounds collapse onto today: 2026-10-12 00:00–23:59 Manila
+    // (= 2026-10-11T16:00Z – 2026-10-12T15:59:59.999Z).
+    expect(period.from?.toISOString()).toBe("2026-10-11T16:00:00.000Z");
+    expect(period.to?.toISOString()).toBe("2026-10-12T15:59:59.999Z");
+    expect(period.days).toBe(1);
+  });
 });
 
 describe("periodRange", () => {

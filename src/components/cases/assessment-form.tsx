@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
 import { copy, type Locale } from "@/lib/i18n";
+import { todayManila } from "@/lib/cases/action-date";
 
 const inputStyles =
   "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
@@ -37,7 +38,20 @@ export type AssessmentDefaults = {
   materialsCost: string | null;
   equipmentCost: string | null;
   otherCost: string | null;
+  materials: MaterialLineDefault[] | null;
 };
+
+export type MaterialLineDefault = {
+  name: string;
+  quantity: string;
+  unit: string;
+  unitPrice: string;
+  amount: string;
+  note: string;
+};
+
+/** One editable materials row in the form state (figures as typed strings). */
+type MaterialLine = MaterialLineDefault & { id: number };
 
 type Checkbox = { name: string; label: string; hint?: string; defaultChecked: boolean };
 
@@ -56,6 +70,7 @@ export function AssessmentForm({
   concernId: number;
   locale?: Locale;
   defaults: AssessmentDefaults | null;
+
   legacyCase?: boolean;
 }) {
   const t = copy[locale].revamp.workflow;
@@ -66,6 +81,54 @@ export function AssessmentForm({
   const [inspectionRequired, setInspectionRequired] = useState(
     defaults?.inspectionRequired ?? false
   );
+  // The materials list: what will be bought, line by line. The materials
+  // total is their sum — the treasurer sets money aside against these lines,
+  // not against a bare number.
+  const nextMaterialId = useRef(1);
+
+  const [materials, setMaterials] = useState<MaterialLine[]>(() => {
+    const saved = defaults?.materials ?? [];
+    if (saved.length > 0) {
+      return saved.map((line) => ({ ...line, id: nextMaterialId.current++ }));
+    }
+    return [
+      {
+        id: nextMaterialId.current++,
+        name: "",
+        quantity: "",
+        unit: "",
+        unitPrice: "",
+        amount: "",
+        note: "",
+      },
+    ];
+  });
+  const materialsTotal = materials.reduce((sum: number, line: MaterialLine) => {
+    const value = Number(line.amount);
+    return sum + (Number.isFinite(value) && value > 0 ? value : 0);
+  }, 0);
+  const updateMaterial = (id: number, field: keyof MaterialLineDefault, value: string) => {
+    setMaterials((rows) =>
+      rows.map((row) => (row.id === id ? { ...row, [field]: value } : row))
+    );
+  };
+  const removeMaterial = (id: number) => {
+    setMaterials((rows) => rows.filter((row) => row.id !== id));
+  };
+  const addMaterial = () => {
+    setMaterials((rows) => [
+      ...rows,
+      {
+        id: nextMaterialId.current++,
+        name: "",
+        quantity: "",
+        unit: "",
+        unitPrice: "",
+        amount: "",
+        note: "",
+      },
+    ]);
+  };
   const [approvalRequired, setApprovalRequired] = useState(
     defaults?.approvalRequired ?? false
   );
@@ -107,6 +170,9 @@ export function AssessmentForm({
     .sort()[0];
   const planMin =
     storedFloor && storedFloor < nowLocal ? storedFloor : nowLocal;
+  // A plan may not stretch past the end of today in Manila: the picker keeps
+  // the browser honest and the API re-checks the same boundary.
+  const planMax = `${todayManila()}T23:59`;
 
   const checkboxes: Checkbox[] = [
     {
@@ -171,9 +237,27 @@ export function AssessmentForm({
       scheduledStartAt: String(data.get("scheduledStartAt") ?? ""),
       scheduledEndAt: String(data.get("scheduledEndAt") ?? ""),
       laborCost: String(data.get("laborCost") ?? ""),
-      materialsCost: String(data.get("materialsCost") ?? ""),
+      materialsCost: "",
       equipmentCost: String(data.get("equipmentCost") ?? ""),
       otherCost: String(data.get("otherCost") ?? ""),
+      // Materials lines (empty rows are dropped); the server sums them into
+      // the materials total.
+      materials: materials
+        .filter(
+          (line) =>
+            line.name.trim() !== "" ||
+            line.amount.trim() !== "" ||
+            line.note.trim() !== ""
+        )
+        .map((line) => ({
+          name: line.name.trim(),
+          quantity: line.quantity.trim() === "" ? null : Number(line.quantity),
+          unit: line.unit.trim(),
+          unitPrice:
+            line.unitPrice.trim() === "" ? null : Number(line.unitPrice),
+          amount: Number(line.amount) || 0,
+          note: line.note.trim(),
+        })),
     };
 
     if (!Number.isInteger(payload.workersNeeded) || payload.workersNeeded < 1) {
@@ -187,6 +271,12 @@ export function AssessmentForm({
     if (payload.equipmentNotes.trim().length < 3) {
       setFormError(t.assessmentRequired);
       return;
+    }
+    for (const line of payload.materials) {
+      if (line.name.length < 2 || !(Number(line.amount) >= 0)) {
+        setFormError(t.materialsInvalid);
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -345,6 +435,7 @@ export function AssessmentForm({
               name="scheduledStartAt"
               type="datetime-local"
               min={planMin}
+              max={planMax}
               defaultValue={toLocalInput(defaults?.scheduledStartAt ?? null)}
             />
           </div>
@@ -355,6 +446,7 @@ export function AssessmentForm({
               name="scheduledEndAt"
               type="datetime-local"
               min={planMin}
+              max={planMax}
               defaultValue={toLocalInput(defaults?.scheduledEndAt ?? null)}
             />
             <p className="mt-1 text-xs text-ink-subtle">{t.scheduledHint}</p>
@@ -383,6 +475,103 @@ export function AssessmentForm({
         </legend>
         <p className="text-xs text-ink-subtle">{t.costDesc}</p>
 
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-medium text-ink-muted">
+              {t.materialsListTitle}
+            </p>
+            <p className="mb-2 text-xs text-ink-subtle">
+              {t.materialsListDesc}
+            </p>
+            <div className="space-y-2">
+              {materials.map((line) => (
+                <div
+                  key={line.id}
+                  className="grid grid-cols-2 items-start gap-2 sm:grid-cols-[1fr_4.5rem_4.5rem_6rem_6rem_2rem]"
+                >
+                  <input
+                    aria-label={t.materialName}
+                    value={line.name}
+                    maxLength={160}
+                    placeholder={t.materialName}
+                    onChange={(event) =>
+                      updateMaterial(line.id, "name", event.target.value)
+                    }
+                    className={inputStyles}
+                  />
+                  <input
+                    aria-label={t.materialQuantity}
+                    value={line.quantity}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder={t.materialQuantity}
+                    onChange={(event) =>
+                      updateMaterial(line.id, "quantity", event.target.value)
+                    }
+                    className={inputStyles}
+                  />
+                  <input
+                    aria-label={t.materialUnit}
+                    value={line.unit}
+                    maxLength={24}
+                    placeholder={t.materialUnit}
+                    onChange={(event) =>
+                      updateMaterial(line.id, "unit", event.target.value)
+                    }
+                    className={inputStyles}
+                  />
+                  <input
+                    aria-label={t.materialUnitPrice}
+                    value={line.unitPrice}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder={t.materialUnitPrice}
+                    onChange={(event) =>
+                      updateMaterial(line.id, "unitPrice", event.target.value)
+                    }
+                    className={inputStyles}
+                  />
+                  <input
+                    aria-label={t.materialAmount}
+                    value={line.amount}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder={t.materialAmount}
+                    onChange={(event) =>
+                      updateMaterial(line.id, "amount", event.target.value)
+                    }
+                    className={inputStyles}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeMaterial(line.id)}
+                    className="h-10 rounded-control border border-line-strong bg-surface px-1 text-xs text-ink-subtle hover:text-red-700"
+                    aria-label={t.materialRemove}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={addMaterial}
+              className="mt-2 text-sm font-medium text-brand-700 hover:text-brand-800"
+            >
+              + {t.addMaterial}
+            </button>
+            <p className="mt-2 text-right text-sm">
+              <span className="text-ink-subtle">{t.materialsTotal}:</span>{" "}
+              <span className="font-semibold tabular-nums text-ink">
+                ₱{materialsTotal.toFixed(2)}
+              </span>
+            </p>
+          </div>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="laborCost">{t.labor}</Label>
@@ -396,17 +585,6 @@ export function AssessmentForm({
               defaultValue={defaults?.laborCost ?? ""}
             />
             <p className="mt-1 text-xs text-ink-subtle">{t.laborHint}</p>
-          </div>
-          <div>
-            <Label htmlFor="materialsCost">{t.materials}</Label>
-            <Input
-              id="materialsCost"
-              name="materialsCost"
-              type="number"
-              min={0}
-              step="0.01"
-              defaultValue={defaults?.materialsCost ?? ""}
-            />
           </div>
           <div>
             <Label htmlFor="equipmentCost">{t.equipmentCost}</Label>

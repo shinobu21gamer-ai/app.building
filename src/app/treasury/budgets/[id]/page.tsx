@@ -179,6 +179,7 @@ export default async function TreasuryAllocationPage({ params }: PageProps) {
                   label: allocation.label,
                   coaCode: allocation.coaAccount.code,
                   fundSourceCode: allocation.fundSource.code,
+                  officeName: allocation.office?.name ?? null,
                   available: balance.available,
                 },
               ]}

@@ -6,10 +6,15 @@ import { Button } from "@/components/ui/button";
 import {
   FieldError,
   FormMessage,
+  Input,
   Label,
   Textarea,
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
+import {
+  MAX_AFFECTED_PEOPLE,
+  describeAffectedPeople,
+} from "@/lib/priority/affected";
 import { copy, type Locale } from "@/lib/i18n";
 
 export type OverrideFactor = {
@@ -41,6 +46,7 @@ export function PriorityOverrideForm({
   factors,
   levels,
   defaultScores,
+  defaultAffectedPeople = null,
   currentLevel,
   locale = "en",
 }: {
@@ -48,6 +54,8 @@ export function PriorityOverrideForm({
   factors: OverrideFactor[];
   levels: string[];
   defaultScores: Record<ScoreKey, number>;
+  /** The headcount the last assessment recorded, if any. */
+  defaultAffectedPeople?: number | null;
   currentLevel: string | null;
   locale?: Locale;
 }) {
@@ -57,6 +65,19 @@ export function PriorityOverrideForm({
   const [formError, setFormError] = useState<string | null>(null);
   const [reasonError, setReasonError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // The affected-population factor is answered as a headcount, not as a 1–5
+  // pick: "how many people does this affect?" is a number the official knows,
+  // and the band it scores in is computed from it.
+  const [affectedPeople, setAffectedPeople] = useState(
+    defaultAffectedPeople ? String(defaultAffectedPeople) : ""
+  );
+  const [affectedError, setAffectedError] = useState<string | null>(null);
+  const populationFactor = factors.find((f) => f.key === "AFFECTED_POPULATION");
+  const affectedHint = (() => {
+    const count = Number(affectedPeople);
+    if (!affectedPeople.trim() || !Number.isFinite(count) || count < 1) return null;
+    return describeAffectedPeople(count);
+  })();
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -71,14 +92,31 @@ export function PriorityOverrideForm({
       return;
     }
 
+    // The headcount is optional: leaving it blank keeps the score the system
+    // computed. A value that is typed, though, has to be a real headcount — a
+    // blank answer is a decision, "0" or "+8" is a typo.
+    const rawAffected = affectedPeople.trim();
+    if (populationFactor && rawAffected) {
+      const count = Number(rawAffected);
+      if (
+        !Number.isInteger(count) ||
+        count < 1 ||
+        count > MAX_AFFECTED_PEOPLE
+      ) {
+        setAffectedError(t.affectedPeopleError);
+        return;
+      }
+      setAffectedError(null);
+    }
+
     const levelOverride = String(data.get("levelOverride") ?? "").trim();
     const body: Record<string, unknown> = {
       reason,
       urgencyScore: Number(data.get("urgencyScore")),
       impactScore: Number(data.get("impactScore")),
-      affectedPopulationScore: Number(data.get("affectedPopulationScore")),
       safetyScore: Number(data.get("safetyScore")),
     };
+    if (populationFactor && rawAffected) body.affectedPeople = Number(rawAffected);
     if (levelOverride) body.levelOverride = levelOverride;
 
     setSubmitting(true);
@@ -120,6 +158,36 @@ export function PriorityOverrideForm({
       <div className="grid gap-4 sm:grid-cols-2">
         {factors.map((factor) => {
           const field = FACTOR_FIELD[factor.key];
+          if (field === "affectedPopulationScore") {
+            return (
+              <div key={factor.key}>
+                <Label htmlFor="affectedPeople">{t.affectedPeopleLabel}</Label>
+                <Input
+                  id="affectedPeople"
+                  name="affectedPeople"
+                  type="number"
+                  min={1}
+                  max={MAX_AFFECTED_PEOPLE}
+                  step={1}
+                  inputMode="numeric"
+                  value={affectedPeople}
+                  onChange={(event) => {
+                    setAffectedPeople(event.target.value);
+                    setAffectedError(null);
+                  }}
+                  invalid={Boolean(affectedError)}
+                  aria-describedby="override-affected-hint"
+                />
+                {affectedError ? (
+                  <FieldError id="override-affected-hint">{affectedError}</FieldError>
+                ) : (
+                  <p id="override-affected-hint" className="mt-1 text-xs text-ink-subtle">
+                    {affectedHint ?? t.affectedPeopleHint}
+                  </p>
+                )}
+              </div>
+            );
+          }
           const options: number[] = [];
           for (let v = factor.minScore; v <= factor.maxScore; v += 1) {
             options.push(v);

@@ -265,6 +265,7 @@ model User {
   disbursementsReleased       Disbursement[]       @relation("DisbursementReleaser")
   disbursementsPaidTo         Disbursement[]       @relation("DisbursementPayeeUser")
   disbursementApprovals       DisbursementApproval[]
+  budgetDecisions             BudgetDecision[]     @relation("BudgetDecisionDecider")
   ledgerEntries               BudgetLedgerEntry[]  @relation("LedgerActor")
   cronRunsTriggered           CronRun[]            @relation("CronActor")
   auditVerificationsRun       AuditVerificationRun[] @relation("AuditVerificationActor")
@@ -563,6 +564,7 @@ model Concern {
   publicRecord      PublicCaseRecord?
   earmarks          BudgetEarmark[]
   disbursements     Disbursement[]
+  budgetDecision    BudgetDecision?
 
   @@index([status])
   @@index([categoryId])
@@ -756,8 +758,32 @@ model CaseAssessment {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  // What will be bought, line by line: the treasurer sets money aside against
+  // this, not against a bare total.
+  materials      AssessmentMaterial[]
+
   @@index([status])
   @@index([scheduledStartAt, scheduledEndAt])
+}
+
+// One row per material in a cost estimate, so the people who set money aside
+// can read WHAT will be bought (and at what price), not just a total. The
+// assessment's materialsCost is the sum of these lines.
+model AssessmentMaterial {
+  id           Int            @id @default(autoincrement())
+  assessmentId Int
+  assessment   CaseAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  name         String
+  quantity     Decimal?       @db.Decimal(14, 2)
+  unit         String? // "bags", "pcs", "m" ...
+  unitPrice    Decimal?       @db.Decimal(14, 2)
+  amount       Decimal        @db.Decimal(14, 2)
+  note         String?
+  sortOrder    Int            @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([assessmentId])
 }
 
 // Named crew member on a case. Unique per (case, person); releasing sets
@@ -1193,6 +1219,23 @@ model Disbursement {
 
 // One signature per approver per level: the treasurer certifies that funds are
 // available, the Captain / Authorized Approving Official approves the release.
+// The treasurer's current budget decision on a case that no earmark funds.
+// Only "do not fund" lives here: funding a case is recorded by the earmark
+// itself, and proposing one supersedes (deletes) this row. One row per case.
+model BudgetDecision {
+  id          Int      @id @default(autoincrement())
+  concernId   Int      @unique
+  concern     Concern  @relation(fields: [concernId], references: [id], onDelete: Cascade)
+  // NOT_FUNDED. Funding is recorded by the earmark, not by this row.
+  decision    String   @default("NOT_FUNDED")
+  reason      String
+  decidedById Int?
+  decidedBy   User?    @relation("BudgetDecisionDecider", fields: [decidedById], references: [id])
+  decidedAt   DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model DisbursementApproval {
   id             Int          @id @default(autoincrement())
   disbursementId Int

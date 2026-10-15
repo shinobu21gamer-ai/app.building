@@ -9,6 +9,7 @@ import {
   Label,
   Textarea,
 } from "@/components/ui/field";
+import { PhotoPicker } from "@/components/ui/photo-picker";
 import { apiRequest } from "@/lib/api-client";
 import { RESOLUTION_TYPES } from "@/lib/cases/workflow";
 import { formatCalendarDay } from "@/lib/format";
@@ -170,15 +171,14 @@ export function ResolutionForm({
       </div>
 
       <div>
-        <Label htmlFor="resolution-attachment" required>{t.proofPhoto}</Label>
-        <Input
+        <PhotoPicker
           id="resolution-attachment"
           name="attachment"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
+          label={t.proofPhoto}
           required
+          hint={t.proofPhotoHint}
+          locale={locale}
         />
-        <p className="mt-1 text-xs text-ink-subtle">{t.proofPhotoHint}</p>
       </div>
 
       <div>

@@ -131,8 +131,16 @@ export function resolveReportPeriod(input: ReportPeriodInput = {}): ReportPeriod
         // A custom period with neither bound is just the default window.
         return { key: "90d", from: days(90), to, days: 90 };
       }
-      const lower = from;
-      const upper = rawTo ? endOfManilaDay(rawTo) : to;
+      // The picker forbids dates beyond today, and a hand-typed query string
+      // must not be able to push a report window into the future either:
+      // anything past today's Manila day is clamped back onto it.
+      const todayStart = startOfManilaDay(now);
+      const lower = from
+        ? new Date(Math.min(from.getTime(), todayStart.getTime()))
+        : null;
+      const upper = rawTo
+        ? new Date(Math.min(endOfManilaDay(rawTo).getTime(), to.getTime()))
+        : to;
       const span =
         lower === null
           ? null
