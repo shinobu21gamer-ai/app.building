@@ -8,6 +8,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { getBarangayAreas } from "@/lib/cases/settings";
+import { needsVerifiedIdentity } from "@/lib/identity/policy";
+import { isIdentityGateEnabled } from "@/lib/identity/verification";
 
 export const metadata: Metadata = {
   title: "Submit a concern anonymously",
@@ -19,11 +21,15 @@ export default async function AnonymousSubmitPage() {
   const locale = await getLocale();
   const t = copy[locale].submit;
 
-  const [categories, factors, areas, types] = await Promise.all([
+  const [categories, factors, areas, types, gateEnabled] = await Promise.all([
     db.concernCategory.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: {
+        id: true,
+        name: true,
+        type: { select: { key: true } },
+      },
     }),
     db.priorityFactorConfig.findMany({
       where: { isActive: true },
@@ -40,9 +46,22 @@ export default async function AnonymousSubmitPage() {
     db.concernType.findMany({
       where: { isActive: true },
       orderBy: { displayOrder: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, key: true },
     }),
+    isIdentityGateEnabled(),
   ]);
+  const identityGate = gateEnabled
+    ? {
+        verified: false,
+        status: "UNVERIFIED",
+        benefitTypeIds: types
+          .filter((type) => needsVerifiedIdentity(type.key))
+          .map((type) => type.id),
+        benefitCategoryIds: categories
+          .filter((category) => needsVerifiedIdentity(category.type?.key))
+          .map((category) => category.id),
+      }
+    : undefined;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -69,6 +88,7 @@ export default async function AnonymousSubmitPage() {
             types={types}
             locale={locale}
             anonymous
+            identityGate={identityGate}
           />
         )}
       </Card>

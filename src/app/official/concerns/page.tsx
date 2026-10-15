@@ -182,7 +182,7 @@ export default async function OfficialConcernsPage({
                   >
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-medium text-ink">{concern.title}</p>
-                      <StatusBadge status={concern.status} />
+                      <StatusBadge status={concern.status} locale={locale} />
                     </div>
                     <p className="mt-1 font-mono text-xs text-ink-subtle">
                       {concern.caseNumber}
@@ -281,7 +281,7 @@ export default async function OfficialConcernsPage({
                       )}
                     </td>
                     <td className="py-3 pr-4">
-                      <StatusBadge status={concern.status} />
+                      <StatusBadge status={concern.status} locale={locale} />
                       <p className="mt-1 text-xs text-brand-800">
                         {flowHints.get(concern.id)}
                       </p>

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/field";
 import { PhotoPicker } from "@/components/ui/photo-picker";
 import { apiRequest } from "@/lib/api-client";
+import { formCalendarDayProblem } from "@/lib/cases/action-date";
 import { RESOLUTION_TYPES } from "@/lib/cases/workflow";
 import { formatCalendarDay } from "@/lib/format";
 import { copy, type Locale } from "@/lib/i18n";
@@ -59,6 +60,21 @@ export function ResolutionForm({
     }
     if (remarks.length < 5) {
       setFormError(t.remarksRequired);
+      return;
+    }
+    const dateProblem = formCalendarDayProblem(resolvedOn, earliestDay, today);
+    if (dateProblem === "invalid") {
+      setFormError(t.actionDateInvalid);
+      return;
+    }
+    if (dateProblem === "future") {
+      setFormError(t.actionDateFuture);
+      return;
+    }
+    if (dateProblem === "too-old") {
+      setFormError(
+        t.actionDateTooOld.replace("{date}", formatCalendarDay(earliestDay))
+      );
       return;
     }
     const file = data.get("attachment");

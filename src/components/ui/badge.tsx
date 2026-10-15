@@ -1,3 +1,5 @@
+import { statusLabel } from "@/lib/cases/workflow";
+import { statusLabelFor, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 type Tone =
@@ -70,11 +72,17 @@ const PRIORITY_TONE: Record<string, Tone> = {
 export function StatusBadge({
   status,
   label,
+  locale,
 }: {
   status: string;
   label?: string;
+  /** When set, the badge uses the reader's language instead of the raw key. */
+  locale?: Locale;
 }) {
-  return <Badge tone={STATUS_TONE[status] ?? "neutral"}>{label ?? status}</Badge>;
+  const text =
+    label ??
+    (locale ? statusLabelFor(locale, status) : statusLabel(status));
+  return <Badge tone={STATUS_TONE[status] ?? "neutral"}>{text}</Badge>;
 }
 
 export function PriorityBadge({

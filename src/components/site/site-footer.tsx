@@ -13,6 +13,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
         { href: "/login", label: t.footer.signIn },
         { href: "/track", label: t.footer.track },
         { href: "/help", label: t.footer.help },
+        { href: "/charter", label: t.footer.charter },
       ],
     },
     {
@@ -20,6 +21,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
       links: [
         { href: "/", label: t.footer.home },
         { href: "/privacy", label: t.footer.privacy },
+        { href: "/charter", label: t.footer.charter },
         { href: "/transparency", label: t.footer.transparency },
         { href: "/help#emergencies", label: t.footer.emergencies },
       ],

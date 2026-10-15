@@ -130,6 +130,9 @@ function GuestLinks({
         <CircleQuestionMark size={15} aria-hidden="true" />
         {labels.help}
       </Button>
+      <Button href="/charter" variant="ghost" size="sm">
+        {labels.charter}
+      </Button>
       <Button href="/transparency" variant="ghost" size="sm">
         {labels.transparency}
       </Button>
@@ -171,7 +174,7 @@ function SignedInLinks({
         {labels.transparency}
       </Button>
       <ActiveNavLink href="/profile">{user.firstName}</ActiveNavLink>
-      <Button href="/help" variant="ghost" size="sm" className="md:hidden">
+      <Button href="/help" variant="ghost" size="sm">
         <CircleQuestionMark size={15} aria-hidden="true" />
         {labels.help}
       </Button>

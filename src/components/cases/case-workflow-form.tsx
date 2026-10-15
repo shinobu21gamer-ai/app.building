@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/field";
 import { PhotoPicker } from "@/components/ui/photo-picker";
 import { apiRequest } from "@/lib/api-client";
+import { formCalendarDayProblem } from "@/lib/cases/action-date";
 import { formatCalendarDay } from "@/lib/format";
 import { copy, type Locale } from "@/lib/i18n";
 
@@ -79,6 +80,22 @@ export function CaseWorkflowForm({
     const remarks = String(formData.get("remarks") ?? "").trim();
     if (remarks.length < 5) {
       setRemarksError(t.remarksError);
+      return;
+    }
+    const occurredOn = String(formData.get("occurredOn") ?? "").trim();
+    const dateProblem = formCalendarDayProblem(occurredOn, earliestDay, today);
+    if (dateProblem === "invalid") {
+      setFormError(t.actionDateInvalid);
+      return;
+    }
+    if (dateProblem === "future") {
+      setFormError(t.actionDateFuture);
+      return;
+    }
+    if (dateProblem === "too-old") {
+      setFormError(
+        t.actionDateTooOld.replace("{date}", formatCalendarDay(earliestDay))
+      );
       return;
     }
 

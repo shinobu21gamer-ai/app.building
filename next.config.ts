@@ -7,7 +7,7 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(self), payment=()",
+    value: "camera=(self), microphone=(), geolocation=(self), payment=()",
   },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
@@ -29,7 +29,7 @@ const contentSecurityPolicy = [
   "object-src 'none'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "connect-src 'self'",
+  "connect-src 'self' https://tile.openstreetmap.org",
 ].join("; ");
 
 const nextConfig: NextConfig = {

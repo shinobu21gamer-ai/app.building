@@ -11,6 +11,8 @@ import { MaintenanceActions } from "@/components/admin/maintenance-actions";
 import { StepGuide } from "@/components/cases/step-guide";
 import { AlertComposer } from "@/components/admin/alert-composer";
 import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@/components/ui/button";
+import { DeskGuide } from "@/components/portals/desk-guide";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 
@@ -21,6 +23,8 @@ export const metadata: Metadata = {
 const STATUS_COLORS: Record<string, string> = {
   SUBMITTED: "#0284c7",
   ASSIGNED: "#7c3aed",
+  UNDER_ASSESSMENT: "#c026d3",
+  AWAITING_BUDGET: "#ca8a04",
   IN_PROGRESS: "#d97706",
   RESOLVED: "#059669",
   CLOSED: "#64748b",
@@ -61,6 +65,18 @@ export default async function AdminPage() {
         title={t.welcome.replace("{name}", user.firstName)}
         description={t.overview}
       />
+
+      <div className="flex flex-wrap gap-2">
+        <Button href="/admin/validation" size="sm">
+          {t.startValidation}
+        </Button>
+        <Button href="/admin/users" size="sm" variant="outline">
+          {t.startUsers}
+        </Button>
+        <Button href="/admin/crew" size="sm" variant="outline">
+          {t.startCrew}
+        </Button>
+      </div>
 
       <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label={t.totalCases} value={totals.total} />
@@ -184,6 +200,19 @@ export default async function AdminPage() {
           </dl>
         )}
       </Card>
+
+      <DeskGuide
+        title={t.howToTitle}
+        lead={t.howToLead}
+        steps={t.howToSteps}
+        mistakesTitle={copy[locale].revamp.howTo.ifWrong}
+        mistakes={t.howToIfWrong}
+        helpLabel={copy[locale].revamp.howTo.help}
+        hideLabel={copy[locale].revamp.howTo.hide}
+        showLabel={copy[locale].revamp.howTo.show}
+        storageKey="br-guide-admin"
+        defaultOpen={totals.unresolved === 0}
+      />
     </div>
   );
 }

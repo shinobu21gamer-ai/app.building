@@ -47,6 +47,9 @@ export default async function LoginPage({
               {t.createAccount}
             </Link>
           </p>
+          <p className="mt-3 text-center text-xs leading-relaxed text-ink-subtle">
+            {t.staffHint}
+          </p>
         </Card>
       </div>
     </Container>

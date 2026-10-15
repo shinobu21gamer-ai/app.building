@@ -3,6 +3,7 @@ import {
   actionDateForDay,
   actionDateProblem,
   earliestActionDay,
+  formCalendarDayProblem,
   isValidCalendarDay,
   journalDay,
   lastStatusChangeDay,
@@ -194,5 +195,34 @@ describe("earliestActionDay", () => {
         { statusChange: false }
       )
     ).toBe(SUBMITTED_ON);
+  });
+});
+
+describe("formCalendarDayProblem", () => {
+  it("treats an empty field as today (server default)", () => {
+    expect(formCalendarDayProblem("", "2026-09-25", "2026-10-09")).toBeNull();
+  });
+
+  it("rejects a typed-in future day even if the picker max is ignored", () => {
+    expect(formCalendarDayProblem("2026-10-10", "2026-09-25", "2026-10-09")).toBe(
+      "future"
+    );
+  });
+
+  it("rejects a day before the earliest allowed day", () => {
+    expect(formCalendarDayProblem("2026-09-20", "2026-09-25", "2026-10-09")).toBe(
+      "too-old"
+    );
+  });
+
+  it("rejects a calendar-impossible day", () => {
+    expect(formCalendarDayProblem("2026-02-30", "2026-09-25", "2026-10-09")).toBe(
+      "invalid"
+    );
+  });
+
+  it("accepts today and the earliest allowed day", () => {
+    expect(formCalendarDayProblem("2026-10-09", "2026-09-25", "2026-10-09")).toBeNull();
+    expect(formCalendarDayProblem("2026-09-25", "2026-09-25", "2026-10-09")).toBeNull();
   });
 });

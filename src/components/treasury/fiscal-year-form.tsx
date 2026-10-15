@@ -11,7 +11,7 @@ import {
   RequiredLegend,
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
-import { todayManila } from "@/lib/cases/action-date";
+import { isValidCalendarDay, todayManila } from "@/lib/cases/action-date";
 import { copy, type Locale } from "@/lib/i18n";
 
 /** Opens a fiscal year. Everything in the treasury hangs off this frame. */
@@ -39,6 +39,19 @@ export function FiscalYearForm({ locale = "en" }: { locale?: Locale }) {
     setError(null);
 
     const name = String(formData.get("name") ?? "");
+    const startsOn = String(formData.get("startsOn") ?? "").trim();
+    const endsOn = String(formData.get("endsOn") ?? "").trim();
+    if (
+      !isValidCalendarDay(startsOn) ||
+      !isValidCalendarDay(endsOn) ||
+      startsOn < today ||
+      endsOn < today ||
+      endsOn <= startsOn
+    ) {
+      setBusy(false);
+      setError(t.fiscalYearDatesHint);
+      return;
+    }
 
     const result = await apiRequest<{ fiscalYearId: number }>(
       "/api/v1/admin/treasury/fiscal-years",
@@ -47,8 +60,8 @@ export function FiscalYearForm({ locale = "en" }: { locale?: Locale }) {
         body: JSON.stringify({
           year: Number(formData.get("year")),
           name: name.trim() || undefined,
-          startsOn: String(formData.get("startsOn") ?? ""),
-          endsOn: String(formData.get("endsOn") ?? ""),
+          startsOn,
+          endsOn,
         }),
       }
     );

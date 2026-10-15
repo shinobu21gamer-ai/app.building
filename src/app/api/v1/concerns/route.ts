@@ -39,6 +39,7 @@ import {
   checkConcernSubmissionAllowed,
   recordConcernSubmission,
 } from "@/lib/rate-limit";
+import { assertIdentityGate } from "@/lib/identity/verification";
 
 export const runtime = "nodejs";
 
@@ -337,6 +338,7 @@ export const POST = withErrorBoundary(async (req: Request) => {
 
   const category = await db.concernCategory.findUnique({
     where: { id: input.categoryId },
+    include: { type: { select: { key: true, isActive: true } } },
   });
   if (!category || !category.isActive) {
     throw createApiError.badRequest("Select an active concern category.");
@@ -344,15 +346,22 @@ export const POST = withErrorBoundary(async (req: Request) => {
 
   // A suggested service type drives routing; an admin still confirms it during
   // validation, so a wrong suggestion costs a correction, not a misroute.
+  let typeKey: string | null =
+    category.type?.isActive === false ? null : (category.type?.key ?? null);
   if (input.typeId !== undefined) {
     const type = await db.concernType.findUnique({
       where: { id: input.typeId },
-      select: { id: true, isActive: true },
+      select: { id: true, isActive: true, key: true },
     });
     if (!type || !type.isActive) {
       throw createApiError.badRequest("Select an active concern type.");
     }
+    typeKey = type.key;
   }
+  // Assistance and budget concerns release money. The gate is documented on
+  // the verification page and in the admin setting; enforce it here so a
+  // resident cannot skip it by posting the form directly.
+  await assertIdentityGate(user.id, typeKey);
 
   const { factors, thresholds } = await loadPriorityConfig();
   // The bands assume the standard 1–5 scale. If an administrator configured a

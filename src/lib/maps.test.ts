@@ -5,6 +5,7 @@ import {
   hasCoordinates,
   normalizeLongitude,
   openStreetMapUrl,
+  OSM_TILE_URL,
   tileMosaic,
   tilePoint,
   tileUrl,
@@ -69,6 +70,15 @@ describe("tileUrl", () => {
     expect(tileUrl(53_000, 27_000, 16)).toBe(
       "https://tile.openstreetmap.org/16/53000/27000.png"
     );
+  });
+
+  it("uses the policy-compliant OSM host, not the legacy {s} subdomains", () => {
+    // {s}.tile.openstreetmap.org is how maps go blank on demo day: OSM now
+    // serves https://tile.openstreetmap.org/{z}/{x}/{y}.png and may block the rest.
+    expect(OSM_TILE_URL).toBe(
+      "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+    );
+    expect(OSM_TILE_URL).not.toContain("{s}");
   });
 });
 
