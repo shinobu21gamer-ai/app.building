@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { VoucherActions } from "@/components/treasury/voucher-actions";
+import { UploadedPhoto } from "@/components/ui/uploaded-photo";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatPeso } from "@/lib/cases/manpower";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -139,6 +140,16 @@ export default async function TreasuryDisbursementPage({ params }: PageProps) {
           ))}
         </dl>
       </Card>
+
+      {voucher.proofUrl && (
+        <Card title={t.voucherProofTitle} description={t.voucherProofDesc}>
+          <UploadedPhoto
+            src={voucher.proofUrl}
+            alt={t.voucherProofTitle}
+            locale={locale}
+          />
+        </Card>
+      )}
 
       <Card title={t.approvalsTitle} description={t.approvalSelfBlocked}>
         {voucher.approvals.length === 0 ? (

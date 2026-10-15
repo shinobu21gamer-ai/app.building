@@ -35,6 +35,12 @@ const en = {
     unavailable: "This photo could not be loaded. Try again or sign in again. If it is still missing, contact the hall.",
     scrollHint: "Scroll to inspect the full-size photo.",
   },
+  photoPicker: {
+    takePhoto: "Take photo",
+    uploadFile: "Upload file",
+    remove: "Remove",
+    pickerHint: "Take a picture with the camera, or choose a file from your device.",
+  },
   loading: {
     label: "Loading…",
   },
@@ -359,6 +365,15 @@ const en = {
     imageAlt: "Selected proof",
     selected: "Selected",
     selectRating: "Select a rating",
+    affectedPeopleLabel: "How many people are affected?",
+    affectedPeopleHint:
+      "Your best estimate — a household, a purok, or the whole barangay. The score is a band: 1–4 people, 5–19, 20–99, 100–499, and 500 or more all score 5, so a problem affecting thousands is recorded with its real figure.",
+    affectedPeopleBand:
+      "That is band {score} of 5 — {band}. Leave it as is if that matches what you see.",
+    affectedPeopleRequired:
+      "Enter how many people the concern affects (a whole number, at least 1).",
+    affectedPeopleError:
+      "Use a whole number of people, for example 5 or 300.",
     send: "Submit concern",
     sending: "Submitting...",
     cancel: "Cancel",
@@ -381,11 +396,11 @@ const en = {
         "Affects the whole community",
       ],
       AFFECTED_POPULATION: [
-        "A few people",
-        "One household",
-        "Several households",
-        "A purok or street",
-        "Many residents",
+        "1–4 people (one household)",
+        "5–19 people (a few households)",
+        "20–99 people (one purok or street)",
+        "100–499 people (several puroks)",
+        "500 or more people (whole barangay)",
       ],
       SAFETY: [
         "No safety risk",
@@ -501,8 +516,28 @@ const en = {
       navCrew: "Crew",
       title: "Crew roster",
       lead:
-        "Trade, rates, availability and caseload for every maintenance crew account. Profiles can be created here or while the account is created.",
+        "Trade, rates, availability and caseload for every maintenance crew account. Profiles are managed here; new crew and official accounts are created on the Users page.",
       addProfile: "Add a crew profile",
+      addAccountViaUsers: "Add a crew or official account in Users",
+      addCrewLead:
+        "Create a crew account here, or profile an account that does not have one yet.",
+      modeNew: "New crew account",
+      modeExisting: "Account without a profile",
+      newAccountSection: "New crew account",
+      createAccount: "Create account & profile",
+      accountCreatedTitle: "Crew account created",
+      accountCreated: "{name} is on the roster.",
+      passwordHint:
+        "At least 8 characters, with an upper case letter, a lower case letter and a number.",
+      editingHint: "Editing the profile of {name}.",
+      unprofiledHint: "{count} crew account(s) still have no profile.",
+      rateInvalid: "Enter a valid amount (0 or more).",
+      maxCasesError: "Max open cases must be a whole number from 1 to 10.",
+      confirmDisableTitle: "Disable {name}?",
+      confirmDisableText:
+        "They keep their case history, but cannot be assigned new work while the account is disabled.",
+      confirmEnableTitle: "Enable {name}?",
+      confirmEnableText: "They become assignable again and appear in the crew picker.",
       editProfile: "Edit crew profile",
       sectionTitle: "Crew profile",
       sectionHint:
@@ -762,6 +797,8 @@ const en = {
     mgr: {
       editAccount: "Edit account",
       addOfficial: "Add official",
+      addOfficialViaUsers: "Add an official in the Users page",
+      addAccountViaUsers: "Add an account in the Users page",
       addAccount: "Add account",
       firstName: "First name",
       lastName: "Last name",
@@ -777,6 +814,8 @@ const en = {
       lastRequired: "Last name is required.",
       emailRequired: "Email is required.",
       emailInvalid: "Please enter a valid email address.",
+      phoneInvalid:
+        "Enter a Philippine mobile number, for example 0917 123 4567. Landlines and email addresses are not accepted here.",
       passwordMin: "Password must be at least 8 characters.",
       passwordPlaceholder: "At least 8 characters",
       passwordUnchanged: "Unchanged",
@@ -846,6 +885,18 @@ const en = {
       contactRequired: "Contact details are required for every office.",
       officeUpdated: "Office updated.",
       officeCreated: "Office created.",
+      nameRequired: "Office name is required.",
+      nameTooShort: "Office name must be at least 2 characters.",
+      codeRequired: "Office code is required.",
+      codeInvalid: "Code may only contain letters, numbers, and underscores (2–30 characters).",
+      codeHint: "Letters, numbers and underscores only — it appears on reports.",
+      contactHint:
+        "A phone number (e.g. 0917 123 4567) or an email address (e.g. office@barangay.gov.ph) — free text is not accepted.",
+      confirmDisableOffice: "Disable {name}?",
+      disableOfficeText:
+        "Routing stops sending new concerns here. Existing cases keep their office, and you can enable it again at any time.",
+      confirmEnableOffice: "Enable {name}?",
+      enableOfficeText: "New concerns can be routed to this office again.",
       officesList: "Offices",
       contactShown: "Contact details are shown on every office card.",
       noOffices: "No offices match these filters.",
@@ -864,6 +915,8 @@ const en = {
       deletedOffice: "Deleted unused office {code}.",
       editCategory: "Edit category",
       addCategory: "Add category",
+      categoryLead:
+        "Categories group concerns for residents and for the reports; a disabled category stops being offered without touching past cases.",
       name: "Name",
       code: "Code",
       description: "Description",
@@ -1093,6 +1146,27 @@ const en = {
     manageDesc:
       "Move the case through its lifecycle, add progress remarks, and record actions taken. Every entry is journaled.",
     progressNotes: "Progress notes",
+    readyTitle: "Before the work starts",
+    readyTitleDesc:
+      "The crew has to be booked and the materials money released before work begins — the receipt on each voucher is the proof the materials were actually bought.",
+    readyCrew: "Crew",
+    readyCrewBooked: "{active} of {needed} booked",
+    readyCrewOnly: "{active} booked",
+    readyCrewFull: "fully booked",
+    readyMaterials: "Materials",
+    readyMaterialsPlanned: "{planned} planned",
+    readyMaterialsReleased: "{released} released",
+    readyMaterialsNotYet: "not released yet",
+    readyMaterialsReceipts: "receipts are on the voucher pages",
+    readyMaterialsNone: "none in the estimate (labour only)",
+    crewPayTitle: "Crew pay",
+    crewPayPlanned: "{planned} labour in the estimate",
+    crewPayPaid: "{paid} released to the crew",
+    crewPayVouchers: "{count} voucher(s)",
+    crewPayUnpaid: "nothing released to the crew yet",
+    crewPayWho:
+      "The treasurer pays the crew through vouchers — money is never released automatically.",
+    payCrew: "Pay crew",
     otherOffice:
       "This concern belongs to another office. Only that office's officials (or an administrator) can update its status.",
     assignmentTitle: "Office assignment",
@@ -1141,6 +1215,10 @@ const en = {
       "Current level: {level}. Selecting a level overrides the computed result and is recorded for audit.",
     notAssessedLevel: "not assessed",
     overrideReason: "Reason for override",
+    affectedPeopleLabel: "How many people are affected?",
+    affectedPeopleHint:
+      "Enter the number of people the concern affects. The score is a band: 1–4 people, 5–19, 20–99, 100–499, and 500 or more all score 5 (the top band), so a case affecting thousands of people is recorded with its real figure. Leave it blank to keep the score the system already computed.",
+    affectedPeopleError: "Enter how many people are affected (a whole number, at least 1).",
     overrideReasonPlaceholder:
       "Explain why the automated recommendation is being changed.",
     saveOverride: "Save override",
@@ -1189,7 +1267,7 @@ const en = {
     moveToBudget: "Move to awaiting budget",
     workflowOverrideLabel: "Override reason (only when bypassing a rule)",
     workflowOverridePlaceholder:
-      "Required when the crew is short or a status is forced",
+      "Required when starting work with a short crew",
     entryAssessment: "Assessment recorded",
     entryManpower: "Manpower plan",
     entryCrew: "Crew assignment",
@@ -1544,6 +1622,31 @@ const en = {
       colStatus: "Status",
       colEscalated: "Escalations written",
     },
+    deletedDesk: {
+      title: "Deleted records",
+      lead:
+        "What was removed, when, by whom and from where. Nothing in this app disappears quietly: every deletion writes a row into the audit chain, and this page reads those rows back.",
+      policyTitle: "How deleting works here",
+      policyBody:
+        "Records with linked history — an office with cases, a category with reports, an account with audits — cannot be deleted at all; the API refuses and asks you to disable them instead, so case history stays intact. Only a record that nothing points at can be removed, and removing it is permanent.",
+      recordedTitle: "Where the record of a deletion lives",
+      recordedBody:
+        "Each deletion writes one entry into the tamper-evident audit chain with the actor, the time and the record it removed. This page is the filtered view of that chain; the full trail is on the audit desk.",
+      restoreTitle: "Restoring something deleted",
+      restoreBody:
+        "There is no undo button — the row is gone from the database. Recreate it (the entry below says exactly what it was: code, name, email), and its history, which was never deleted, re-attaches to the new record. For anything deleted by the retention policy (photos of closed cases, expired exports), see the privacy desk, which logs each retention run.",
+      search: "Search",
+      searchPlaceholder: "Search a name, code or record id",
+      colWhen: "Deleted",
+      colAction: "Action",
+      colRecord: "Record",
+      colWho: "By",
+      empty: "Nothing has been deleted.",
+      resultCount: "{count} deletion(s) on record",
+      viewAudit: "Open the audit trail",
+      viewRetention: "Open the privacy desk",
+      unknownActor: "Unknown / system",
+    },
     auditDesk: {
       title: "Audit trail",
       lead: "Every action that matters is written once, in order, and chained to the entry before it. If a row is edited or removed, the chain stops verifying — that is the whole point.",
@@ -1822,6 +1925,22 @@ const en = {
       caseSetAside: "set aside",
       caseWaitingForBudget: "waiting for budget",
       caseNoEstimate: "no estimate yet",
+      earmarkWhereGoes: "Where this money goes",
+      earmarkBriefHandledBy: "Handled by",
+      earmarkBriefNoOffice: "No office assigned yet",
+      earmarkBriefHead: "head: {name}",
+      earmarkBriefEstimate: "Case estimate",
+      earmarkBriefNoEstimate:
+        "No cost estimate is recorded for this case yet — the assessor has to size the work before the money can be sized.",
+      earmarkBriefLabor:
+        "Includes crew labour {amount} for {count} worker(s)",
+      earmarkBriefSetAside: "Already set aside",
+      earmarkBriefShortfall: "Still needed",
+      earmarkBriefCovered: "Fully covered — no more is needed",
+      earmarkCrewPaidNote:
+        "The crew gets paid from this money: once the earmark is approved and released, the office cuts a disbursement for the crew's labour.",
+      earmarkAmountCaseHint:
+        "Prefilled with the case's shortfall — adjust it if you are reserving more or less.",
       proposeEarmark: "Propose earmark",
       earmarkProposed: "Earmark proposed.",
       approveEarmark: "Approve earmark",
@@ -1951,9 +2070,9 @@ const en = {
               "The assessment states what the work costs, labour and materials included. Until then there is no figure to set money aside against.",
           },
           {
-            title: "You propose the earmark",
+            title: "You review the report and set the money",
             detail:
-              "Pick the case, check the one recommended budget, and propose. The page already fills in the amount and the purpose.",
+              "Each card carries the case's own report — what it is, what it costs, the materials to be bought — and the one recommended budget line. Set the amount aside with a click, or record a do-not-fund decision with a reason.",
           },
           {
             title: "The Captain approves it",
@@ -1987,6 +2106,36 @@ const en = {
         setAsideLabel: "Already set aside",
         pendingLabel: "Waiting on the Captain",
         stillNeededLabel: "Still to set aside",
+        noEstimate: "No estimate yet",
+        reportTitle: "The case report",
+        reportLabor: "Labour",
+        reportMaterials: "Materials",
+        reportEquipment: "Equipment",
+        reportOther: "Other",
+        reportTotal: "Estimated total",
+        perUnit: "each",
+        moneyFrom:
+          "The money comes from {line} — {available} still available on that line.",
+        moneyFromBarangay: "the barangay-wide budget",
+        amountToSetAside: "Amount to set aside",
+        setAsideButton: "Set aside {amount}",
+        doNotFundButton: "Do not fund",
+        doNotFundTitle: "Do not fund this case",
+        doNotFundDesc:
+          "Record your decision on {case}. The case office will see it on the case, with your reason.",
+        doNotFundReasonLabel: "Reason",
+        doNotFundReasonPlaceholder:
+          "e.g. no verified estimate; the works are outside this year's priority...",
+        doNotFundReasonHint:
+          "At least 10 characters. The officials read it on the case.",
+        doNotFundReasonRequired:
+          "Give a real reason (at least 10 characters).",
+        doNotFundConfirm: "Record decision",
+        decisionNotFund: "The treasurer decided not to fund this case",
+        decisionBy: "Decided by {name}",
+        proposedOk:
+          "{amount} is now waiting on the Captain's approval. Once approved, the case is set aside.",
+
         officeLabel: "Office",
         noOffice: "No office yet",
         waitingSince: "Waiting since {date}",
@@ -2027,6 +2176,9 @@ const en = {
       },
       // ---- the funding panel's exit sign, for a case stuck in AWAITING_BUDGET ----
       fundingStillNeeded: "Still needed",
+      fundingNotFund:
+        "The treasurer decided not to fund this case: ",
+      fundingNotFundBy: "Decided by {name} ·",
       fundingWhatNext: "What happens next",
       fundingNeedsMore:
         "The treasury still has to set aside {shortfall} before this case can leave Awaiting budget.",
@@ -2057,6 +2209,16 @@ const en = {
       voucherRejected: "Voucher returned.",
       releaseVoucher: "Release",
       voucherReleased: "Released. The resident and the case journal have been updated.",
+      voucherReceiptPhoto: "Receipt photo",
+      voucherReceiptHint:
+        "Attach the purchase or payment receipt — the release is when the money leaves, and the receipt is the proof it was spent as intended.",
+      voucherProofTitle: "Proof of payment",
+      voucherProofDesc:
+        "The receipt attached when the voucher was released. Visible to the treasurer, the Captain and the administrator.",
+      crewMember: "Crew member",
+      crewMemberHint:
+        "Pick the member so the payment is linked to their account — the name fills in itself.",
+      crewMemberNone: "No crew accounts yet",
       liquidate: "Liquidate",
       voucherLiquidated: "Liquidation recorded.",
       liquidationDue: "Liquidate by",
@@ -2549,6 +2711,23 @@ const en = {
       laborHint:
         "Computed from the crew rates on file. Enter a figure only when no rate exists.",
       materials: "Materials",
+      materialsListTitle: "Materials list",
+      materialsListDesc:
+        "What will be bought, line by line. The materials total is the sum of these lines.",
+      materialsSuggested:
+        "These lines are pre-chosen for this kind of concern — adjust the quantities and prices to what this work really needs, or remove lines that do not apply.",
+      materialsSkipHint:
+        "No materials are needed for this work — that is fine. Add a line if the work must buy something.",
+      materialName: "Material",
+      materialQuantity: "Qty",
+      materialUnit: "Unit",
+      materialUnitPrice: "Unit price",
+      materialAmount: "Amount",
+      materialRemove: "Remove material",
+      addMaterial: "Add material",
+      materialsTotal: "Materials total",
+      materialsInvalid: "Each material needs a name and an amount of at least 0.",
+      materialsNone: "No materials listed",
       equipmentCost: "Equipment",
       other: "Other",
       estimate: "Estimated total",
@@ -2648,7 +2827,21 @@ const en = {
       validationQueueEmpty: "Nothing waiting for validation.",
       validationAwaitingType: "No type set yet",
       validationOpenCase: "Open case",
-      verifyTitle: "Verification before closure",
+      validationTabQueue: "Waiting for validation",
+      validationTabDone: "Validated",
+      validationTabAll: "All open reports",
+      validationCounts: "{queue} waiting · {done} validated and with an office",
+      validationDoneEmpty: "No validated reports are open right now.",
+      validationChecklistTitle: "Report checklist",
+      validationCheckType: "Service type set",
+      validationCheckCategory: "Category set",
+      validationCheckPriority: "Priority confirmed",
+      validationCheckRoute: "Routed to an office",
+      validationProgress: "{done} of {total} checks done",
+      validationComplete: "Report complete — validation is finished",
+      validationNext: "Next: {step}",
+      validationPrint: "Print case sheet",
+      validationAged: "Submitted {days} day(s) ago",      verifyTitle: "Verification before closure",
       verifyDesc:
         "Check the proof attached to the resolution. The official who recorded it cannot verify it.",
       verifyStatus: "Decision",
@@ -2660,6 +2853,12 @@ const en = {
       verifySubmit: "Record verification",
       verifySaving: "Recording…",
       verifySaved: "Verification recorded.",
+      verifyNotYet: "Not verified yet",
+      closeBlockedTitle: "This case cannot be closed yet",
+      closeBlockedText:
+        "A case can only be closed once its resolution is verified as fully fixed. The resolution on this case is: {status}.",
+      closeBlockedNext:
+        "Check the work on site, then verify the resolution as fixed — the close form will appear here.",
       // The decision list needs one line explaining the odd one out: three of
       // the four decisions close the step, "waiting for the resident" parks it.
       verifyDecisionHelp:
@@ -2711,6 +2910,15 @@ const en = {
       jobTitle: "My assignments",
       jobDesc: "The cases you are booked on. Update the office as work moves.",
       jobEmpty: "No open assignments right now.",
+    myPayments: "Your payments",
+    myPaymentsDesc:
+      "Crew pay goes out through vouchers prepared and released by the treasurer — nothing is automatic. What has been released for you so far:",
+    myPaymentsEmpty:
+      "Nothing has been released for you yet. When the treasurer releases a crew voucher with your name, it appears here.",
+    myPaymentsTotal: "Total released",
+    myPaymentsCase: "Case",
+    myPaymentsReleased: "Released",
+    myPaymentsNoCase: "General (not tied to a case)",
       jobSchedule: "Schedule",
       jobEquipment: "Equipment",
       jobWorkers: "Crew on this case",
@@ -2760,6 +2968,7 @@ const en = {
       treasuryNav: "Treasury",
       slaNav: "SLA desk",
       auditNav: "Audit trail",
+      deletedNav: "Deleted records",
       verificationTitle: "Identity verification queue",
       verificationLead:
         "Review the documents residents submitted. Only the last four characters of the ID number are ever shown.",
@@ -2860,6 +3069,12 @@ const fil: typeof en = {
     retry: "Subukan muli",
     unavailable: "Hindi ma-load ang larawan. Subukan muli o mag-sign in ulit. Kung wala pa rin, makipag-ugnayan sa hall.",
     scrollHint: "Mag-scroll para makita ang buong larawan.",
+  },
+  photoPicker: {
+    takePhoto: "Kumuha ng litrato",
+    uploadFile: "I-upload ang file",
+    remove: "Alisin",
+    pickerHint: "Kumuha ng litrato sa camera, o pumili ng file mula sa iyong device.",
   },
   loading: {
     label: "Naglo-load…",
@@ -3185,6 +3400,15 @@ const fil: typeof en = {
     imageAlt: "Napiling litrato bilang ebidensya",
     selected: "Napili",
     selectRating: "Pumili ng rating",
+    affectedPeopleLabel: "Ilan ang naaapektuhang tao?",
+    affectedPeopleHint:
+      "Tantiyahin: isang pamilya, isang purok, o buong barangay. Band ang score: 1–4 tao, 5–19, 20–99, 100–499, at 500 pataas ay score 5, kaya may rekord pa rin ang libu-libong tao na naaapektuhan.",
+    affectedPeopleBand:
+      "Ito ang band {score} ng 5 — {band}. Iwan kung ito ang tugma sa nakikita mo.",
+    affectedPeopleRequired:
+      "Ilagay kung ilan ang naaapektuhang tao (buong numero, 1 pataas).",
+    affectedPeopleError:
+      "Gumamit ng buong numero, halimbawa 5 o 300.",
     send: "Ihain ang concern",
     sending: "Ihinahain...",
     cancel: "Kanselahin",
@@ -3207,11 +3431,11 @@ const fil: typeof en = {
         "Apektado ang buong komunidad",
       ],
       AFFECTED_POPULATION: [
-        "Iilang tao",
-        "Isang sambahayan",
-        "Ilang sambahayan",
-        "Isang purok o kalye",
-        "Maraming residente",
+        "1–4 tao (isang sambahayan)",
+        "5–19 tao (ilang sambahayan)",
+        "20–99 tao (isang purok o kalye)",
+        "100–499 tao (ilang purok)",
+        "500 pataas (buong barangay)",
       ],
       SAFETY: [
         "Walang panganib",
@@ -3327,8 +3551,28 @@ const fil: typeof en = {
       navCrew: "Crew",
       title: "Roster ng crew",
       lead:
-        "Trade, bayad, availability at dami ng kaso ng bawat maintenance crew account. Puwedeng gawin ang profile dito o habang ginagawa ang account.",
+        "Ang trade, bayad, availability, at dami ng kaso ng bawat maintenance crew account. Dito ginagawa ang mga profile; ang bagong crew o opisyal na account ay gumagawa sa Users page.",
       addProfile: "Magdagdag ng crew profile",
+      addAccountViaUsers: "Magdagdag ng crew o opisyal na account sa Users",
+      addCrewLead:
+        "Gumawa ng crew account dito, o lagyan ng profile ang account na wala pa nito.",
+      modeNew: "Bagong crew account",
+      modeExisting: "Account na walang profile",
+      newAccountSection: "Bagong crew account",
+      createAccount: "Gumawa ng account at profile",
+      accountCreatedTitle: "Nagawa ang crew account",
+      accountCreated: "Nasa roster na si {name}.",
+      passwordHint:
+        "Hindi bababa sa 8 karakter, may malaki at maliit na titik at isang numero.",
+      editingHint: "Ina-edit ang profile ni {name}.",
+      unprofiledHint: "{count} crew account ang wala pang profile.",
+      rateInvalid: "Maglagay ng tamang halaga (0 pataas).",
+      maxCasesError: "Ang max open cases ay buong numero mula 1 hanggang 10.",
+      confirmDisableTitle: "I-disable si {name}?",
+      confirmDisableText:
+        "Nananatili ang kasaysayan ng kaso, pero hindi na siya maaaring bigyan ng bagong trabaho habang disabled.",
+      confirmEnableTitle: "I-enable si {name}?",
+      confirmEnableText: "Maaari na siyang italaga ulit at lalabas sa crew picker.",
       editProfile: "I-edit ang crew profile",
       sectionTitle: "Crew profile",
       sectionHint:
@@ -3588,6 +3832,8 @@ const fil: typeof en = {
     mgr: {
       editAccount: "I-edit ang account",
       addOfficial: "Magdagdag ng opisyal",
+      addOfficialViaUsers: "Magdagdag ng opisyal sa Users page",
+      addAccountViaUsers: "Magdagdag ng account sa Users page",
       addAccount: "Magdagdag ng account",
       firstName: "Pangalan",
       lastName: "Apelyido",
@@ -3603,6 +3849,8 @@ const fil: typeof en = {
       lastRequired: "Kailangan ang apelyido.",
       emailRequired: "Kailangan ang email.",
       emailInvalid: "Maglagay ng wastong email address.",
+      phoneInvalid:
+        "Ilagay ang Philippine mobile number, halimbawa 0917 123 4567. Hindi tinatanggap ang landline o email address dito.",
       passwordMin: "Hindi bababa sa 8 karakter ang password.",
       passwordPlaceholder: "Hindi bababa sa 8 karakter",
       passwordUnchanged: "Hindi palitan",
@@ -3672,6 +3920,19 @@ const fil: typeof en = {
       contactRequired: "Kailangan ang contact details sa bawat opisina.",
       officeUpdated: "Na-update ang opisina.",
       officeCreated: "Nagawa ang opisina.",
+      nameRequired: "Kailangan ang pangalan ng opisina.",
+      nameTooShort: "Hindi bababa sa 2 karakter ang pangalan ng opisina.",
+      codeRequired: "Kailangan ang code ng opisina.",
+      codeInvalid:
+        "Ang code ay maaari lamang maglaman ng titik, numero at underscore (2–30 karakter).",
+      codeHint: "Titik, numero at underscore lamang — lumalabas ito sa mga report.",
+      contactHint:
+        "Numero ng telepono (hal. 0917 123 4567) o email (hal. office@barangay.gov.ph) — hindi tinatanggap ang basta teksto.",
+      confirmDisableOffice: "I-disable ang {name}?",
+      disableOfficeText:
+        "Titigil ang pagpapadala ng bagong concern dito. Naiiwan sa opisina ang mga kasalukuyang kaso, at puwede mong i-enable ulit.",
+      confirmEnableOffice: "I-enable ang {name}?",
+      enableOfficeText: "Maaari nang padalhan muli ng bagong concern ang opisinang ito.",
       officesList: "Mga opisina",
       contactShown: "Ipinapakita ang contact sa bawat office card.",
       noOffices: "Walang opisina na tumutugma sa filter.",
@@ -3690,6 +3951,8 @@ const fil: typeof en = {
       deletedOffice: "Na-delete ang unused office {code}.",
       editCategory: "I-edit ang kategorya",
       addCategory: "Magdagdag ng kategorya",
+      categoryLead:
+        "Ang kategorya ang nagpapangkat ng concern para sa residente at sa mga report; kapag disabled, hindi na ito inaalok pero hindi naaapektuhan ang lumang kaso.",
       name: "Pangalan",
       code: "Code",
       description: "Deskripsyon",
@@ -3920,6 +4183,27 @@ const fil: typeof en = {
     manageDesc:
       "Ilipat ang kaso sa susunod na hakbang, magdagdag ng tala, at itala ang aksyon. Naitatala ang bawat entry.",
     progressNotes: "Mga progress note",
+    readyTitle: "Bago magsimula ang trabaho",
+    readyTitleDesc:
+      "Kailangang nakabuking ang crew at nailabas ang pera ng materyales bago magsimula — ang resibo sa bawat voucher ang patunay na talagang nabili ang materyales.",
+    readyCrew: "Crew",
+    readyCrewBooked: "{active} out of {needed} ang nakabuking",
+    readyCrewOnly: "{active} ang nakabuking",
+    readyCrewFull: "buo na ang booking",
+    readyMaterials: "Materyales",
+    readyMaterialsPlanned: "{planned} ang takda",
+    readyMaterialsReleased: "{released} ang nailabas",
+    readyMaterialsNotYet: "hindi pa nailalabas",
+    readyMaterialsReceipts: "nasa pahina ng voucher ang resibo",
+    readyMaterialsNone: "walang materyales sa estimate (trabaho lang)",
+    crewPayTitle: "Sahod ng crew",
+    crewPayPlanned: "{planned} sahod sa estimate",
+    crewPayPaid: "{paid} ang nailabas sa crew",
+    crewPayVouchers: "{count} voucher",
+    crewPayUnpaid: "wala pang nailabas sa crew",
+    crewPayWho:
+      "Ang treasurer ang nagbabayad sa crew sa pamamagitan ng voucher — hindi awtomatikong nailalabas ang pera.",
+    payCrew: "Bayaran ang crew",
     otherOffice:
       "Sa ibang opisina ang concern na ito. Ang opisyal ng opisina na iyon (o administrador) lang ang puwedeng mag-update ng status.",
     assignmentTitle: "Assignment ng opisina",
@@ -3968,6 +4252,10 @@ const fil: typeof en = {
       "Kasalukuyang level: {level}. Ang pagpili ng level ay nag-o-override sa computed result at naitatala para sa audit.",
     notAssessedLevel: "hindi pa na-assess",
     overrideReason: "Dahilan ng override",
+    affectedPeopleLabel: "Ilan ang naaapektuhang tao?",
+    affectedPeopleHint:
+      "Ilagay ang bilang ng taong naaapektuhan. Band ang score: 1–4 tao, 5–19, 20–99, 100–499, at 500 pataas ay score 5 (pinakamataas), kaya may rekord pa rin ang libu-libong tao na naaapektuhan. Iwan na blangko para panatilihin ang score na kinompyut ng sistema.",
+    affectedPeopleError: "Ilagay kung ilan ang naaapektuhang tao (buong numero, 1 pataas).",
     overrideReasonPlaceholder:
       "Ipaliwanag kung bakit binabago ang automated na rekomendasyon.",
     saveOverride: "I-save ang override",
@@ -4016,7 +4304,7 @@ const fil: typeof en = {
     moveToBudget: "Ilipat sa awaiting budget",
     workflowOverrideLabel: "Dahilan ng override (kung may nilalabag na patakaran)",
     workflowOverridePlaceholder:
-      "Kailangan kung kulang ang crew, nilalaktawan ang budget stage, o pinipilit ang status",
+      "Kailangan lang kapag kulang ang crew habang nagsisimula ang trabaho",
     entryAssessment: "Natala ang pagtatasa",
     entryManpower: "Plano sa manggagawa",
     entryCrew: "Pagtatalaga ng crew",
@@ -4371,6 +4659,31 @@ const fil: typeof en = {
       colStatus: "Katayuan",
       colEscalated: "Naitalang escalation",
     },
+    deletedDesk: {
+      title: "Mga na-delete na rekord",
+      lead:
+        "Ano ang tinanggal, kailan, kanino at saan galing. Walang nawawalang tahimik sa app na ito: bawat pag-delete ay may row sa audit chain, at ito ang pahina na nagbabasa ng mga row na iyon.",
+      policyTitle: "Paano gumagana ang pag-delete dito",
+      policyBody:
+        "Ang mga rekord na may naka-link na kasaysayan — opisina na may mga kaso, kategorya na may report, account na may audit — ay hindi maaaring i-delete; tinatanggihan ito ng API at i-disable na lang, para manatili ang kasaysayan ng kaso. Ang rekord na wala nang nakaturo ay puwede nang alisin, at permanente na iyon.",
+      recordedTitle: "Saan naka-record ang pag-delete",
+      recordedBody:
+        "Bawat pag-delete ay isang entry sa tamper-evident na audit chain, may actor, oras at rekord na tinanggal. Ang pahinang ito ang filtradong view ng chain na iyon; nasa audit desk ang buong talaan.",
+      restoreTitle: "Pag-restore ng na-delete",
+      restoreBody:
+        "Walang undo button — wala na ang row sa database. Gawin muli ito (sinasabi ng entry sa ibaba kung ano talaga ito: code, pangalan, email), at muling kakabit ang kasaysayan nito na hindi naman natanggal. Para sa tinanggal ng retention policy (litrato ng saradong kaso, lumang export), tingnan ang privacy desk na nagtatala ng bawat retention run.",
+      search: "Maghanap",
+      searchPlaceholder: "Maghanap ng pangalan, code o id ng rekord",
+      colWhen: "Na-delete",
+      colAction: "Aksyon",
+      colRecord: "Rekord",
+      colWho: "Ni",
+      empty: "Wala pang na-delete.",
+      resultCount: "{count} pag-delete ang naka-record",
+      viewAudit: "Buksan ang audit trail",
+      viewRetention: "Buksan ang privacy desk",
+      unknownActor: "Hindi kilala / system",
+    },
     auditDesk: {
       title: "Talaan ng audit",
       lead: "Bawat mahalagang aksyon ay isang beses na naitala, sa tamang pagkakasunod-sunod, at kadenang nakaugnay sa nauna. Kapag may binago o tinanggal, hihinto ang pagpapatunay ng kadena — iyon ang buong punto.",
@@ -4645,6 +4958,22 @@ const fil: typeof en = {
       caseSetAside: "nakalaan",
       caseWaitingForBudget: "naghihintay ng budget",
       caseNoEstimate: "wala pang estimate",
+      earmarkWhereGoes: "Papunta saan ang pondo na ito",
+      earmarkBriefHandledBy: "Pag-aalagaan ni",
+      earmarkBriefNoOffice: "Wala pang nakatakdang opisina",
+      earmarkBriefHead: "pangulo: {name}",
+      earmarkBriefEstimate: "Tantiya ng kaso",
+      earmarkBriefNoEstimate:
+        "Wala pa ring nakatadang tantiya ng gastusin sa kasong ito — kailangan munang takdahan ng assessor ang trabaho bago mailalimutan ang pondo.",
+      earmarkBriefLabor:
+        "Kasama ang sahod ng crew na {amount} para sa {count} manggagawa",
+      earmarkBriefSetAside: "Naka-set aside na",
+      earmarkBriefShortfall: "Kailangan pa",
+      earmarkBriefCovered: "Buong suporta na — wala nang kulang",
+      earmarkCrewPaidNote:
+        "Dito bibilangin ang crew: kapag aprubahan at i-release ang earmark, ang opisina ang magkakagat ng disbursement para sa sahod ng crew.",
+      earmarkAmountCaseHint:
+        "Prefilled ang kulang na halaga ng kaso — baguhin kung mag-iiba ang ihahagap mo.",
       proposeEarmark: "Ihain ang earmark",
       earmarkProposed: "Naihain ang earmark.",
       approveEarmark: "Aprubahan ang earmark",
@@ -4764,9 +5093,9 @@ const fil: typeof en = {
               "Sinasabi ng assessment kung magkano ang gastos ng trabaho, kasama ang paggawa at materyales. Hangga't wala ito, walang halagang maaaring ilaan.",
           },
           {
-            title: "Magmumungkahi ka ng earmark",
+            title: "Sisiyatan mo ang ulat at ilalagay ang pondo",
             detail:
-              "Piliin ang kaso, tingnan ang inirerekomendang badyet, at magmungkahi. Napupunan na ng pahina ang halaga at ang layunin.",
+              "Ang bawat kard ay dalaan ng sariling ulat ng kaso — kung ano ito, magkano, at anong materyales ang bibiliin — at ang iisang inirerekomendang linya ng badyet. Ilaan ang halaga sa iisang click, o i-record ang desisyon na huwag i-fund na may dahilan.",
           },
           {
             title: "Aaprubahan ito ng Kapitan",
@@ -4801,6 +5130,37 @@ const fil: typeof en = {
         setAsideLabel: "Nakalaan na",
         pendingLabel: "Naghihintay sa Kapitan",
         stillNeededLabel: "Ilaan pa",
+        noEstimate: "Wala pang estimate",
+        reportTitle: "Ulat ng kaso",
+        reportLabor: "Labor",
+        reportMaterials: "Materyales",
+        reportEquipment: "Kagamitan",
+        reportOther: "Iba pa",
+        reportTotal: "Kabuuang tantya",
+        perUnit: "bawat isa",
+        moneyFrom:
+          "Galing sa {line} — {available} ang natitira sa badyet na iyon.",
+        moneyFromBarangay: "badyet ng buong barangay",
+        amountToSetAside: "Halagang ilalagay",
+        setAsideButton: "Ilagay ang {amount}",
+        doNotFundButton: "Huwag i-fund",
+        doNotFundTitle: "Huwag i-fund ang kaso",
+        doNotFundDesc:
+          "Isulat ang desisyon mo sa {case}. Makikita ito ng opisina ng kaso, kasama ang iyong dahilan.",
+        doNotFundReasonLabel: "Dahilan",
+        doNotFundReasonPlaceholder:
+          "hal. walang naberipikang estimate; labas sa priority ng taong ito ang gawaan...",
+        doNotFundReasonHint:
+          "Hindi bababa sa 10 character. Babasahin ito ng mga opisyal sa kaso.",
+        doNotFundReasonRequired:
+          "Magbigay ng tunay na dahilan (hindi bababa sa 10 character).",
+        doNotFundConfirm: "Ilagay ang desisyon",
+        decisionNotFund:
+          "Hinalintulutan ng treasurer na huwag i-fund ang kaso na ito",
+        decisionBy: "Desisyon ni {name}",
+        proposedOk:
+          "{amount} ang hinihintay na ngayon ng pagsusuri ng Captain. Kapag aprubado, natatakda na ang kaso.",
+
         officeLabel: "Opisina",
         noOffice: "Wala pang opisina",
         waitingSince: "Naghihintay mula {date}",
@@ -4836,6 +5196,8 @@ const fil: typeof en = {
       },
       // ---- ang karatula ng funding panel para sa kasong nakatigil sa AWAITING_BUDGET ----
       fundingStillNeeded: "Kailangan pa",
+      fundingNotFund: "Hinalintulutan ng treasurer na huwag i-fund ang kaso na ito: ",
+      fundingNotFundBy: "Desisyon ni {name} ·",
       fundingWhatNext: "Ang susunod na mangyayari",
       fundingNeedsMore:
         "Kailangan pang magtabi ang treasury ng {shortfall} bago maaaring lumabas sa Awaiting budget ang kasong ito.",
@@ -4866,6 +5228,16 @@ const fil: typeof en = {
       voucherRejected: "Ibinalik ang voucher.",
       releaseVoucher: "Ilabas",
       voucherReleased: "Inilabas na. Na-update ang residente at ang journal ng kaso.",
+      voucherReceiptPhoto: "Larawan ng resibo",
+      voucherReceiptHint:
+        "Ilagay ang resibo ng pagbili o bayarin — dito naglalabas ang pera, at ang resibo ang patunay na gamit ito ay ayon sa layunin.",
+      voucherProofTitle: "Patunay ng pagbabayad",
+      voucherProofDesc:
+        "Ang resibo na naka-attach nang i-release ang voucher. Nakikita ng treasurer, ng Captain, at ng administrator.",
+      crewMember: "Crew member",
+      crewMemberHint:
+        "Piliin ang miyembro upang ma-link ang bayad sa account nila — awtomatikong lalabas ang pangalan.",
+      crewMemberNone: "Wala pang crew account",
       liquidate: "Likidahin",
       voucherLiquidated: "Natala ang liquidation.",
       liquidationDue: "Likidahin bago ang",
@@ -5358,6 +5730,23 @@ const fil: typeof en = {
       laborHint:
         "Kinukuwenta mula sa rates ng crew. Maglagay lang ng sariling figure kung walang rate.",
       materials: "Materyales",
+      materialsListTitle: "Listahan ng materyales",
+      materialsListDesc:
+        "Ang bibili, isa-isa. Ang kabuuang materyales ay ang buo ng mga linyang ito.",
+      materialsSuggested:
+        "Awtomatikong napili ang mga linyang ito para sa ganitong uri ng kaso — ayusin ang yamit at presyo ayon sa tunay na kailangan ng gawaan, o burahin ang mga linya na hindi kailangan.",
+      materialsSkipHint:
+        "Walang materyales ang kailangan ng gawaang ito. Magdagdag ng linya kung may bibilhang talaga.",
+      materialName: "Materyales",
+      materialQuantity: "Yamit",
+      materialUnit: "Yunit",
+      materialUnitPrice: "Presyo bawat yunit",
+      materialAmount: "Halaga",
+      materialRemove: "Buraan ang materyales",
+      addMaterial: "Magdagdag ng materyales",
+      materialsTotal: "Kabuuang materyales",
+      materialsInvalid: "Kailangan pangalan at halaga (hindi bababa sa 0) ang bawat materyales.",
+      materialsNone: "Walang nakalagay na materyales",
       equipmentCost: "Kagamitan",
       other: "Iba pa",
       estimate: "Kabuuang tantya",
@@ -5457,7 +5846,21 @@ const fil: typeof en = {
       validationQueueEmpty: "Walang nakabinbing beripikasyon.",
       validationAwaitingType: "Wala pang uri",
       validationOpenCase: "Buksan ang kaso",
-      verifyTitle: "Beripikasyon bago isara",
+      validationTabQueue: "Naghihintay ng beripikasyon",
+      validationTabDone: "Naberipika na",
+      validationTabAll: "Lahat ng bukas na report",
+      validationCounts: "{queue} naghihintay · {done} naberipika at nasa opisina na",
+      validationDoneEmpty: "Walang bukas na naberipikang report ngayon.",
+      validationChecklistTitle: "Checklist ng report",
+      validationCheckType: "May uri ng serbisyo",
+      validationCheckCategory: "May kategorya",
+      validationCheckPriority: "Kumpirmado ang priority",
+      validationCheckRoute: "Naipadala sa opisina",
+      validationProgress: "{done} sa {total} check ang tapos",
+      validationComplete: "Kumpleto ang report — tapos na ang beripikasyon",
+      validationNext: "Sunod: {step}",
+      validationPrint: "I-print ang case sheet",
+      validationAged: "Isinumite {days} araw na ang nakalipas",      verifyTitle: "Beripikasyon bago isara",
       verifyDesc:
         "Suriin ang proof na nakakabit sa resolution. Hindi ito puwedeng beripikahin ng mismong nagtala nito.",
       verifyStatus: "Desisyon",
@@ -5469,6 +5872,12 @@ const fil: typeof en = {
       verifySubmit: "Itala ang beripikasyon",
       verifySaving: "Itinatala…",
       verifySaved: "Natala ang beripikasyon.",
+      verifyNotYet: "Wala pang beripikado",
+      closeBlockedTitle: "Hindi pa puwedeng isara ang kaso na ito",
+      closeBlockedText:
+        "Puwedeng isara ang kaso kapag beripikadong naayos na ang resolution. Sa kasong ito: {status}.",
+      closeBlockedNext:
+        "Suriin muna ang trabaho sa lugar, tapos beripikahing naayos ang resolution — doon makikita ang form para isara.",
       verifyDecisionHelp:
         "Ang beripikadong naayos, bahagyang beripikado at bigo ay tumutukoy sa hakbang. Ang hinihintay ang residente ay nagpapahinto muna nito hanggang kumpirmahin ng residente ang trabaho — wala pang natatakang beripikado.",
       verifyWhoHelp:
@@ -5515,6 +5924,15 @@ const fil: typeof en = {
       jobTitle: "Aking mga assignment",
       jobDesc: "Ang mga kasong nakatalaga sa iyo. I-update ang opisina habang umuusad ang trabaho.",
       jobEmpty: "Walang bukas na assignment ngayon.",
+    myPayments: "Mga bayad mo",
+    myPaymentsDesc:
+      "Ang sahod ng crew ay lumalabas sa pamamagitan ng voucher na inihanda at inilabas ng treasurer — walang awtomatikong paglabas. Ito ang nailabas na para sa iyo:",
+    myPaymentsEmpty:
+      "Wala pang nailalabas para sa iyo. Kapag inilabas ng treasurer ang crew voucher na may pangalang iyong, lalabas ito dito.",
+    myPaymentsTotal: "Kabuuang nailabas",
+    myPaymentsCase: "Kaso",
+    myPaymentsReleased: "Inilabas",
+    myPaymentsNoCase: "Pangkalahatan (hindi naaayon sa kaso)",
       jobSchedule: "Iskedyul",
       jobEquipment: "Kagamitan",
       jobWorkers: "Crew sa kasong ito",
@@ -5564,6 +5982,7 @@ const fil: typeof en = {
       treasuryNav: "Treasury",
       slaNav: "SLA desk",
       auditNav: "Talaan ng audit",
+      deletedNav: "Mga na-delete na rekord",
       verificationTitle: "Pila ng beripikasyon ng ID",
       verificationLead:
         "Suriin ang mga dokumentong isinumite ng residente. Apat na huling karakter lang ng ID number ang ipinapakita.",

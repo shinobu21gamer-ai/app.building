@@ -37,6 +37,7 @@ function concern(seed: {
     id: seed.id,
     caseNumber: seed.caseNumber,
     title: `Case ${seed.id}`,
+    description: `What case ${seed.id} is about, in the resident's words.`,
     status: seed.status,
     submittedAt: seed.submittedAt,
     awaitingBudgetAt: seed.awaitingBudgetAt ?? null,
@@ -44,7 +45,15 @@ function concern(seed: {
     caseAssessment:
       seed.totalCost === undefined
         ? null
-        : { totalCost: seed.totalCost },
+        : {
+            laborCost: seed.totalCost,
+            materialsCost: 0,
+            equipmentCost: 0,
+            otherCost: 0,
+            totalCost: seed.totalCost,
+            materials: [],
+          },
+    budgetDecision: null,
   };
 }
 

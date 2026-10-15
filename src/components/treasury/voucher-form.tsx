@@ -42,14 +42,22 @@ export type VoucherEarmarkOption = {
  * already set aside; otherwise the voucher has to fit in the allocation's live
  * available balance — the API refuses anything else.
  */
+export type VoucherCrewMember = {
+  id: number;
+  name: string;
+  trade: string | null;
+};
+
 export function VoucherForm({
   allocations,
   earmarks = [],
   caseOptions = [],
+  crewMembers = [],
   presetAllocationId = null,
   presetEarmarkId = null,
   presetConcernId = null,
   presetPayee = "",
+  presetPayeeType = "SUPPLIER",
   presetParticulars = "",
   presetAmount = null,
   locale = "en",
@@ -57,7 +65,10 @@ export function VoucherForm({
   allocations: VoucherAllocationOption[];
   earmarks?: VoucherEarmarkOption[];
   caseOptions?: Array<{ id: number; caseNumber: string; title: string }>;
+  /** Crew accounts, so a CREW payment can be linked to a member. */
+  crewMembers?: VoucherCrewMember[];
   presetAllocationId?: number | null;
+  presetPayeeType?: (typeof PAYEE_TYPES)[number];
   presetEarmarkId?: number | null;
   presetConcernId?: number | null;
   presetPayee?: string;
@@ -74,6 +85,13 @@ export function VoucherForm({
   const [allocationId, setAllocationId] = useState<number | null>(
     presetAllocationId ?? allocations[0]?.id ?? null
   );
+  // Payee fields are state (not plain form fields) because picking a crew
+  // member has to fill the name and link the payment to the member's account.
+  const [payee, setPayee] = useState(presetPayee);
+  const [payeeType, setPayeeType] = useState<(typeof PAYEE_TYPES)[number]>(
+    presetPayeeType
+  );
+  const [payeeUserId, setPayeeUserId] = useState<number | null>(null);
 
   const openEarmarks = earmarks.filter(
     (earmark) => earmark.amount > earmark.committed
@@ -107,8 +125,11 @@ export function VoucherForm({
           allocationId: Number(formData.get("allocationId")),
           earmarkId: earmarkId === "" ? null : Number(earmarkId),
           concernId: concernId === "" ? null : Number(concernId),
-          payee: String(formData.get("payee") ?? ""),
-          payeeType: String(formData.get("payeeType") ?? "SUPPLIER"),
+          payee,
+          payeeType,
+          ...(payeeUserId !== null && payeeType === "CREW"
+            ? { payeeUserId }
+            : {}),
           amount: Number(formData.get("amount")),
           particulars: String(formData.get("particulars") ?? ""),
           modeOfPayment: modeOfPayment === "" ? undefined : modeOfPayment,
@@ -122,6 +143,9 @@ export function VoucherForm({
       return;
     }
     setOpen(false);
+    setPayee("");
+    setPayeeType("SUPPLIER");
+    setPayeeUserId(null);
     router.refresh();
   }
 
@@ -140,7 +164,12 @@ export function VoucherForm({
             name="payee"
             required
             maxLength={160}
-            defaultValue={presetPayee}
+            value={payee}
+            onChange={(event) => {
+              setPayee(event.target.value);
+              // A hand-typed name no longer matches a crew member.
+              setPayeeUserId(null);
+            }}
             placeholder="Sunrise Hardware"
           />
         </div>
@@ -152,7 +181,12 @@ export function VoucherForm({
             id="voucher-payee-type"
             name="payeeType"
             required
-            defaultValue="SUPPLIER"
+            value={payeeType}
+            onChange={(event) => {
+              const next = event.target.value as (typeof PAYEE_TYPES)[number];
+              setPayeeType(next);
+              if (next !== "CREW") setPayeeUserId(null);
+            }}
             className={selectStyles}
           >
             {PAYEE_TYPES.map((type) => (
@@ -162,6 +196,36 @@ export function VoucherForm({
             ))}
           </select>
         </div>
+        {payeeType === "CREW" && crewMembers.length > 0 && (
+          <div className="sm:col-span-2">
+            <Label htmlFor="voucher-crew-member">{t.crewMember}</Label>
+            <select
+              id="voucher-crew-member"
+              value={payeeUserId ?? ""}
+              onChange={(event) => {
+                const value = event.target.value;
+                const member =
+                  value === ""
+                    ? null
+                    : (crewMembers.find((m) => m.id === Number(value)) ?? null);
+                setPayeeUserId(member ? member.id : null);
+                if (member) setPayee(member.name);
+              }}
+              className={selectStyles}
+            >
+              <option value="">—</option>
+              {crewMembers.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.name}
+                  {member.trade ? ` · ${member.trade}` : ""}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-ink-subtle">
+              {t.crewMemberHint}
+            </p>
+          </div>
+        )}
         <div>
           <Label htmlFor="voucher-amount" required>
             {t.amountLabel}

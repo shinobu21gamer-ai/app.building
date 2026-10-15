@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { PrintButton } from "@/components/ui/print-button";
 import { describeJournalEntry } from "@/components/concern/case-timeline";
+import { priorityEvaluationFrom } from "@/lib/priority/engine";
+import { describeAffectedPeople } from "@/lib/priority/affected";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { hasCoordinates } from "@/lib/maps";
 import { sortJournal } from "@/lib/cases/journal";
@@ -63,6 +65,11 @@ export default async function OfficialCasePrintPage({
         orderBy: { createdAt: "desc" },
         select: { summary: true, actionsTaken: true, resolutionType: true },
       },
+      assessments: {
+        orderBy: { createdAt: "desc" },
+        select: { calculationJson: true },
+        take: 5,
+      },
     },
   });
 
@@ -70,9 +77,21 @@ export default async function OfficialCasePrintPage({
 
   const coordinates = { lat: concern.locationLat, lng: concern.locationLng };
   const resolution = concern.resolutions[0] ?? null;
+  // The figure recorded on the newest assessment that carries one: an
+  // override made without a fresh headcount keeps the earlier figure.
+  const affectedLine = describeAffectedPeople(
+    concern.assessments
+      .map((assessment: { calculationJson: string | null }) =>
+        priorityEvaluationFrom(assessment.calculationJson)?.affectedPeople
+      )
+      .find(
+        (value: number | null | undefined) =>
+          value !== null && value !== undefined
+      ) ?? null
+  );
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="print-sheet mx-auto max-w-2xl space-y-6">
       <div className="no-print flex flex-wrap items-center justify-between gap-2">
         <Button href={`/official/concerns/${concern.id}`} variant="ghost" size="sm">
           ← Back to case
@@ -113,6 +132,14 @@ export default async function OfficialCasePrintPage({
               )}
             </dd>
           </div>
+          {affectedLine && (
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                People affected
+              </dt>
+              <dd className="mt-0.5 text-ink">{affectedLine}</dd>
+            </div>
+          )}
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
               Category

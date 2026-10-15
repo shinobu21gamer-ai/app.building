@@ -6,7 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormMessage, Input, Label, RequiredLegend, Textarea } from "@/components/ui/field";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
+import { Modal } from "@/components/ui/modal";
+import { FieldError } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
+import { describeFieldProblem } from "@/lib/validations/text";
 import { extractApiError } from "@/lib/utils";
 import { copy, type Locale } from "@/lib/i18n";
 
@@ -37,6 +40,9 @@ export function CategoryManager({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // The form lives behind a button; the table is the page.
+  const [formOpen, setFormOpen] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   function resetForm() {
     setEditingId(null);
@@ -46,7 +52,25 @@ export function CategoryManager({
     setIsActive(true);
   }
 
+  function startCreate() {
+    resetForm();
+    setFieldErrors({});
+    setError(null);
+    setSuccess(null);
+    setFormOpen(true);
+  }
+
+  function closeForm() {
+    if (busy) return;
+    resetForm();
+    setFieldErrors({});
+    setError(null);
+    setFormOpen(false);
+  }
+
   function startEdit(category: AdminCategoryItem) {
+    setFormOpen(true);
+    setFieldErrors({});
     setEditingId(category.id);
     setName(category.name);
     setCode(category.code);
@@ -61,7 +85,17 @@ export function CategoryManager({
     setError(null);
     setSuccess(null);
 
-    const payload = { name, code, description, isActive };
+    const problems: Record<string, string> = {};
+    const nameProblem = describeFieldProblem(name, "text", t.name);
+    if (!name.trim()) problems.name = t.nameRequired;
+    else if (nameProblem) problems.name = nameProblem;
+    const trimmedCode = code.trim();
+    if (!trimmedCode) problems.code = t.codeRequired;
+    else if (!/^[A-Za-z0-9_]{2,30}$/.test(trimmedCode)) problems.code = t.codeInvalid;
+    setFieldErrors(problems);
+    if (Object.keys(problems).length > 0) return;
+
+    const payload = { name: name.trim(), code: trimmedCode, description, isActive };
 
     setBusy(true);
     const result = editingId
@@ -81,6 +115,7 @@ export function CategoryManager({
     }
     setSuccess(editingId ? t.categoryUpdated : t.categoryCreated);
     resetForm();
+    setFormOpen(false);
     router.refresh();
   }
 
@@ -126,11 +161,16 @@ export function CategoryManager({
       {success && <FormMessage tone="success">{success}</FormMessage>}
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
+      <Modal
+        open={formOpen}
+        onClose={closeForm}
+        title={editingId ? t.editCategory : t.addCategory}
+        description={t.categoryLead}
+        size="md"
+        closeLabel={copy[locale].revamp.common.close}
+      >
       <form onSubmit={handleSubmit} className="space-y-4">
         <RequiredLegend>{copy[locale].register.requiredLegend}</RequiredLegend>
-        <h2 className="text-base font-semibold text-ink">
-          {editingId ? t.editCategory : t.addCategory}
-        </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label htmlFor="category-name" required>{t.name}</Label>
@@ -138,8 +178,10 @@ export function CategoryManager({
               id="category-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
+              invalid={Boolean(fieldErrors.name)}
               required
             />
+            {fieldErrors.name && <FieldError>{fieldErrors.name}</FieldError>}
           </div>
           <div>
             <Label htmlFor="category-code" required>{t.code}</Label>
@@ -148,8 +190,14 @@ export function CategoryManager({
               value={code}
               onChange={(event) => setCode(event.target.value)}
               placeholder="e.g. ROAD"
+              invalid={Boolean(fieldErrors.code)}
               required
             />
+            {fieldErrors.code ? (
+              <FieldError>{fieldErrors.code}</FieldError>
+            ) : (
+              <p className="mt-1 text-xs text-ink-subtle">{t.codeHint}</p>
+            )}
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="category-description">{t.description}</Label>
@@ -174,21 +222,25 @@ export function CategoryManager({
         </label>
 
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={busy}>
+          <Button type="submit" disabled={busy} loading={busy}>
             {busy ? t.saving : editingId ? t.saveChanges : t.createCategory}
           </Button>
-          {editingId && (
-            <Button type="button" variant="outline" onClick={resetForm}>
-              {t.cancelEdit}
-            </Button>
-          )}
+          <Button type="button" variant="outline" onClick={closeForm} disabled={busy}>
+            {editingId ? t.cancelEdit : t.cancelAction}
+          </Button>
         </div>
       </form>
+      </Modal>
 
       <div>
-        <h2 className="mb-3 text-base font-semibold text-ink">
-          {t.categoriesList.replace("{count}", String(categories.length))}
-        </h2>
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <h2 className="text-base font-semibold text-ink">
+            {t.categoriesList.replace("{count}", String(categories.length))}
+          </h2>
+          <Button type="button" onClick={startCreate}>
+            {t.addCategory}
+          </Button>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left text-sm">
             <caption className="sr-only">Concern categories</caption>

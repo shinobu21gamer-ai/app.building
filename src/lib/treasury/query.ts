@@ -732,8 +732,38 @@ export async function ledgerRegister(
  * on, plus where the case is (`state`) and what it costs (`shortfall` is the
  * need, `uncommitted` is what a new proposal must cover).
  */
+/** One saved materials line, as the funding cards show it. */
+export type FundingMaterialRow = {
+  name: string;
+  quantity: number | null;
+  unit: string | null;
+  unitPrice: number | null;
+  amount: number;
+};
+
+/** The treasurer's current "do not fund" decision, if any. */
+export type FundingBudgetDecision = {
+  reason: string;
+  decidedByName: string | null;
+  decidedAt: Date;
+};
+
 export type FundingCaseRow = FundingCaseFacts & {
   officeName: string | null;
+  /** What the case is about: the resident's own words. */
+  description: string;
+  /** The estimate broken down; null until the assessment saves one. */
+  breakdown: {
+    labor: number;
+    materials: number;
+    equipment: number;
+    other: number;
+    total: number;
+  } | null;
+  /** The materials list behind the materials figure. */
+  materials: FundingMaterialRow[];
+  /** The treasurer's "do not fund" decision, if one is current. */
+  budgetDecision: FundingBudgetDecision | null;
   waitingForBudget: boolean;
   awaitingBudgetAt: Date | null;
   submittedAt: Date;
@@ -765,11 +795,37 @@ export async function listCasesAwaitingFunding(
       id: true,
       caseNumber: true,
       title: true,
+      description: true,
       status: true,
       submittedAt: true,
       awaitingBudgetAt: true,
       assignedOffice: { select: { id: true, name: true } },
-      caseAssessment: { select: { totalCost: true } },
+      caseAssessment: {
+        select: {
+          laborCost: true,
+          materialsCost: true,
+          equipmentCost: true,
+          otherCost: true,
+          totalCost: true,
+          materials: {
+            orderBy: { sortOrder: "asc" },
+            select: {
+              name: true,
+              quantity: true,
+              unit: true,
+              unitPrice: true,
+              amount: true,
+            },
+          },
+        },
+      },
+      budgetDecision: {
+        select: {
+          reason: true,
+          decidedAt: true,
+          decidedBy: { select: { firstName: true, lastName: true } },
+        },
+      },
     },
   });
   if (concerns.length === 0) return [];
@@ -803,9 +859,48 @@ export async function listCasesAwaitingFunding(
       setAside: setAsideMap.get(concern.id) ?? 0,
       proposed: proposedMap.get(concern.id) ?? 0,
     };
+    const assessment = concern.caseAssessment;
     return {
       ...facts,
       officeName: concern.assignedOffice?.name ?? null,
+      description: concern.description,
+      breakdown:
+        assessment === null
+          ? null
+          : {
+              labor: toMoney(assessment.laborCost ?? 0),
+              materials: toMoney(assessment.materialsCost ?? 0),
+              equipment: toMoney(assessment.equipmentCost ?? 0),
+              other: toMoney(assessment.otherCost ?? 0),
+              total: toMoney(assessment.totalCost ?? 0),
+            },
+      materials: (assessment?.materials ?? []).map(
+        (line: {
+          name: string;
+          quantity: unknown;
+          unit: string | null;
+          unitPrice: unknown;
+          amount: unknown;
+        }) => ({
+          name: line.name,
+          quantity: line.quantity === null ? null : Number(line.quantity),
+          unit: line.unit,
+          unitPrice:
+            line.unitPrice === null ? null : Number(line.unitPrice),
+          amount: Number(line.amount),
+        })
+      ),
+      budgetDecision:
+        concern.budgetDecision === null
+          ? null
+          : {
+              reason: concern.budgetDecision.reason,
+              decidedByName:
+                concern.budgetDecision.decidedBy === null
+                  ? null
+                  : `${concern.budgetDecision.decidedBy.firstName} ${concern.budgetDecision.decidedBy.lastName}`.trim(),
+              decidedAt: concern.budgetDecision.decidedAt,
+            },
       waitingForBudget: concern.status === "AWAITING_BUDGET",
       awaitingBudgetAt: concern.awaitingBudgetAt,
       submittedAt: concern.submittedAt,
@@ -929,8 +1024,16 @@ export async function fundedAmountsByConcern(
  * screens and the funding gate both read this.
  */
 export async function caseFundingView(tx: Tx, concernId: number) {
-  const [earmarks, voucherRows, gate] = await Promise.all([
+  const [earmarks, decision, voucherRows, gate] = await Promise.all([
     earmarksForConcern(tx, concernId),
+    tx.budgetDecision.findUnique({
+      where: { concernId },
+      select: {
+        reason: true,
+        decidedAt: true,
+        decidedBy: { select: { firstName: true, lastName: true } },
+      },
+    }),
     tx.disbursement.findMany({
       where: { concernId },
       orderBy: { id: "desc" },
@@ -1000,5 +1103,22 @@ export async function caseFundingView(tx: Tx, concernId: number) {
       .reduce((sum, voucher) => sum + voucher.amount, 0)
   );
 
-  return { earmarks, disbursements, gate, paid, committed };
+  return {
+    earmarks,
+    disbursements,
+    gate,
+    paid,
+    committed,
+    budgetDecision:
+      decision === null
+        ? null
+        : {
+            reason: decision.reason,
+            decidedAt: decision.decidedAt.toISOString(),
+            decidedByName:
+              decision.decidedBy === null
+                ? null
+                : `${decision.decidedBy.firstName} ${decision.decidedBy.lastName}`.trim(),
+          },
+  };
 }

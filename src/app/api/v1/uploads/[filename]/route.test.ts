@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   concern: vi.fn(), resolution: vi.fn(), history: vi.fn(), fieldCheck: vi.fn(), identity: vi.fn(),
+  disbursement: vi.fn(),
   user: vi.fn(), read: vi.fn(), log: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({ db: {
   concern: { findFirst: mocks.concern }, resolutionRecord: { findFirst: mocks.resolution },
   caseStatusHistory: { findFirst: mocks.history }, fieldCheck: { findFirst: mocks.fieldCheck },
   identityVerification: { findFirst: mocks.identity },
+  disbursement: { findFirst: mocks.disbursement },
 } }));
 vi.mock("@/lib/auth/session", () => ({ requireApiUser: mocks.user }));
 vi.mock("@/lib/privacy/service", () => ({ logPiiAccess: mocks.log }));
@@ -37,7 +39,7 @@ function actor(id: number, key: string, officeId: number | null = null) {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  for (const mock of [mocks.concern, mocks.resolution, mocks.history, mocks.fieldCheck, mocks.identity]) {
+  for (const mock of [mocks.concern, mocks.resolution, mocks.history, mocks.fieldCheck, mocks.identity, mocks.disbursement]) {
     mock.mockResolvedValue(null);
   }
   mocks.read.mockResolvedValue(Buffer.from([137, 80, 78, 71]));
@@ -90,6 +92,19 @@ describe("private uploaded photo access", () => {
   it("does not serve unreferenced uploads", async () => {
     await expect(get()).rejects.toThrow("404");
     expect(mocks.read).not.toHaveBeenCalled();
+    expect(mocks.disbursement).toHaveBeenCalledWith(expect.objectContaining({
+      where: { proofUrl: `/api/v1/uploads/${filename}` },
+    }));
+  });
+  it("serves a voucher receipt to the treasurer and the Captain only", async () => {
+    mocks.disbursement.mockResolvedValue({ id: 7 });
+    actor(5, "TREASURER"); expect((await get()).status).toBe(200);
+    actor(3, "CAPTAIN"); expect((await get()).status).toBe(200);
+    actor(2, "ADMIN"); expect((await get()).status).toBe(200);
+    // An office official may see case photos, but a receipt is a treasury
+    // matter even when the voucher pays for that office's case.
+    actor(2, "OFFICIAL", 4);
+    await expect(get()).rejects.toThrow("403");
   });
   it("returns not found for lost image bytes", async () => {
     mocks.concern.mockResolvedValue(owner); mocks.read.mockResolvedValue(null);

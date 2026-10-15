@@ -469,6 +469,11 @@ export async function proposeEarmark(
     });
     if (!concern) throw createApiError.badRequest("Pick an existing case.");
     caseNumber = concern.caseNumber;
+    // Proposing money supersedes a "do not fund" decision: the case is back
+    // in the funding conversation, so the old refusal stops being current.
+    await tx.budgetDecision.deleteMany({
+      where: { concernId: input.concernId },
+    });
   }
 
   const code = await nextEarmarkCode(tx, allocation.fiscalYear.year);

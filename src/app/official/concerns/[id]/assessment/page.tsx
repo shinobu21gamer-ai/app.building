@@ -9,6 +9,7 @@ import { AssessmentForm } from "@/components/cases/assessment-form";
 import { CrewPanel } from "@/components/cases/crew-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { caseWorkflowFlags } from "@/lib/cases/workflow";
+import { suggestedMaterials } from "@/lib/cases/materials-templates";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -26,6 +27,16 @@ type PageProps = { params: Promise<{ id: string }> };
  * labour-inclusive estimate, and the crew who will do the work. Officials see
  * only their own office's cases.
  */
+// One stored materials line as the page's include returns it.
+type MaterialRow = {
+  name: string;
+  quantity: unknown;
+  unit: string | null;
+  unitPrice: unknown;
+  amount: unknown;
+  note: string | null;
+};
+
 export default async function AssessmentPage({ params }: PageProps) {
   const user = await requirePermission("case.assess");
   const locale = await getLocale();
@@ -43,7 +54,9 @@ export default async function AssessmentPage({ params }: PageProps) {
       category: true,
       type: true,
       assignedOffice: { select: { id: true, name: true } },
-      caseAssessment: true,
+      caseAssessment: {
+        include: { materials: { orderBy: { sortOrder: "asc" } } },
+      },
       crewAssignments: { where: { isActive: true }, select: { id: true } },
     },
   });
@@ -56,6 +69,13 @@ export default async function AssessmentPage({ params }: PageProps) {
   });
 
   const canOverrideShortfall = user.role.key !== "CREW";
+
+  // What this kind of concern usually buys, so a fresh assessment starts
+  // from the right list instead of an empty page.
+  const suggestions = suggestedMaterials({
+    categoryCode: concern.category?.code ?? null,
+    typeKey: concern.type?.key ?? null,
+  });
 
   return (
     <div className="space-y-6">
@@ -103,6 +123,7 @@ export default async function AssessmentPage({ params }: PageProps) {
           <AssessmentForm
             concernId={concern.id}
             locale={locale}
+            suggestions={suggestions}
             legacyCase={flags.legacy}
             defaults={
               concern.caseAssessment
@@ -133,6 +154,16 @@ export default async function AssessmentPage({ params }: PageProps) {
                     equipmentCost:
                       concern.caseAssessment.equipmentCost?.toString() ?? null,
                     otherCost: concern.caseAssessment.otherCost?.toString() ?? null,
+                    materials: (concern.caseAssessment.materials ?? []).map(
+                      (line: MaterialRow) => ({
+                        name: line.name,
+                        quantity: line.quantity ? String(line.quantity) : "",
+                        unit: line.unit ?? "",
+                        unitPrice: line.unitPrice ? String(line.unitPrice) : "",
+                        amount: String(line.amount),
+                        note: line.note ?? "",
+                      })
+                    ),
                   }
                 : null
             }
@@ -182,6 +213,36 @@ export default async function AssessmentPage({ params }: PageProps) {
                   </div>
                 )}
               </dl>
+              {concern.caseAssessment.materials.length > 0 && (
+                <div className="mt-4 border-t border-line pt-3">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                    {t.materialsListTitle}
+                  </p>
+                  <ul className="divide-y divide-line text-sm">
+                    {concern.caseAssessment.materials.map(
+                      (line: MaterialRow, index: number) => (
+                      <li
+                        key={index}
+                        className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-1.5"
+                      >
+                        <span className="text-ink">
+                          {line.name}
+                          {line.quantity !== null && line.unit && (
+                            <span className="text-ink-subtle">
+                              {" "}
+                              · {String(line.quantity)} {line.unit}
+                            </span>
+                          )}
+                        </span>
+                        <span className="font-medium tabular-nums text-ink">
+                          ₱{Number(line.amount).toFixed(2)}
+                        </span>
+                      </li>
+                    ))
+                    }
+                  </ul>
+                </div>
+              )}
             </Card>
           )}
         </div>

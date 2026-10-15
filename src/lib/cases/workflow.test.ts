@@ -8,6 +8,7 @@ import {
   caseWorkflowFlags,
   budgetStageBlock,
   CREATABLE_OVERRIDE_KINDS,
+  isCloseableVerification,
   isPassingVerification,
   OVERRIDE_KINDS,
   overrideLabel,
@@ -296,12 +297,22 @@ describe("statusLabel", () => {
     expect(statusLabel("PRIORITY_ASSESSED")).toBe("Priority Assessed");
   });
 
-  it("closes only on a passing verification, never on FAILED or pending", () => {
+  it("treats a fixed or partial check as the verification step being worked", () => {
     expect(isPassingVerification("FIXED_VERIFIED")).toBe(true);
     expect(isPassingVerification("PARTIALLY_VERIFIED")).toBe(true);
     expect(isPassingVerification("FAILED")).toBe(false);
     expect(isPassingVerification("PENDING_RESIDENT_CONFIRMATION")).toBe(false);
     expect(isPassingVerification("PENDING")).toBe(false);
     expect(isPassingVerification(null)).toBe(false);
+  });
+
+  it("closes only on a fully fixed verification, never on a partial one", () => {
+    expect(isCloseableVerification("FIXED_VERIFIED")).toBe(true);
+    // A partially verified fix is still an open problem: the case stays open.
+    expect(isCloseableVerification("PARTIALLY_VERIFIED")).toBe(false);
+    expect(isCloseableVerification("FAILED")).toBe(false);
+    expect(isCloseableVerification("PENDING_RESIDENT_CONFIRMATION")).toBe(false);
+    expect(isCloseableVerification("PENDING")).toBe(false);
+    expect(isCloseableVerification(null)).toBe(false);
   });
 });

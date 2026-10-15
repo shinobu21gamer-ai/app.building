@@ -12,6 +12,7 @@ import { NativePushListener } from "@/components/alerts/native-push-listener";
 import { NativeCrashNotice } from "@/components/alerts/native-crash-notice";
 import { PushSessionSync } from "@/components/alerts/push-session-sync";
 import { ToastProvider } from "@/components/ui/toast";
+import { SweetAlertProvider } from "@/components/ui/sweet-alert";
 import { NavigationProgress } from "@/components/loading/navigation-progress";
 import { RouteEnter } from "@/components/loading/route-enter";
 import { AutoRefresh } from "@/components/loading/auto-refresh";
@@ -68,6 +69,9 @@ export default async function RootLayout({
     <html lang={locale === "fil" ? "fil" : "en"}>
       <body className="antialiased flex min-h-screen flex-col">
         <ToastProvider>
+          {/* The alert provider wraps the whole app: any desk can raise a
+              confirmation or a "saved" popup without inventing its own modal. */}
+          <SweetAlertProvider>
           <AlertListener enabled={Boolean(user)} />
           <NativePushListener />
           <PushSessionSync signedIn={Boolean(user)} />
@@ -105,6 +109,7 @@ export default async function RootLayout({
           </main>
 
           <SiteFooter locale={locale} />
+          </SweetAlertProvider>
         </ToastProvider>
       </body>
     </html>

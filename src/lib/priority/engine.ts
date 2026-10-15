@@ -63,6 +63,13 @@ export type PriorityEvaluation = {
   } | null;
   weights: Record<string, number>;
   explanation: string[];
+  /**
+   * The headcount an official recorded next to the AFFECTED_POPULATION score.
+   * The score is a band (5 = "500 or more"), so the real figure travels with
+   * the snapshot: it is what the case sheet prints, and it is what a later
+   * reader needs to tell "800 people" apart from "60,000 people".
+   */
+  affectedPeople?: number | null;
 };
 
 /**

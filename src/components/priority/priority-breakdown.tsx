@@ -5,6 +5,7 @@ import {
   priorityEvaluationFrom,
   type PriorityEvaluation,
 } from "@/lib/priority/engine";
+import { describeAffectedPeople } from "@/lib/priority/affected";
 
 /**
  * The stored calculation of a priority row, ready for the panel. An official
@@ -38,6 +39,12 @@ export function PriorityBreakdown({
 }) {
   const t = copy[locale].desk;
   const date = formatDateTime(createdAt);
+  // A headcount is stored whenever one was recorded — on the resident's own
+  // submission or an official override — so the case sheet shows the real
+  // figure next to the band score it produced.
+  const affectedLine = evaluation?.affectedPeople
+    ? describeAffectedPeople(evaluation.affectedPeople)
+    : null;
   const footer = isOverride
     ? assessorName
       ? t.overriddenBy.replace("{name}", assessorName).replace("{date}", date)
@@ -112,6 +119,15 @@ export function PriorityBreakdown({
             </tr>
           </tbody>
         </table>
+      )}
+
+      {/* The score is a band, so the figure the official actually recorded is
+          printed beside it: "800 people" and "60,000 people" both score 5, and
+          the desk needs to see which one this case is. */}
+      {affectedLine && (
+        <p className="rounded-control border border-line bg-surface-muted px-3 py-2 text-sm text-ink-muted">
+          {affectedLine}
+        </p>
       )}
 
       {evaluation && evaluation.explanation.length > 0 && (

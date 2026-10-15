@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   FormMessage,
-  Input,
   Label,
   RequiredLegend,
   Textarea,
 } from "@/components/ui/field";
+import { PhotoPicker } from "@/components/ui/photo-picker";
 import { apiRequest } from "@/lib/api-client";
 import { copy, type Locale } from "@/lib/i18n";
 import { MODES_OF_PAYMENT } from "@/lib/validations/treasury";
@@ -47,6 +47,9 @@ export function VoucherActions({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  // The receipt photo for a RELEASE. Kept in state so the form can preview
+  // the pick and so a re-open starts clean.
+  const [receipt, setReceipt] = useState<File | null>(null);
 
   const labels: Record<string, string> = {
     SUBMIT: t.submitVoucher,
@@ -73,28 +76,53 @@ export function VoucherActions({
     const remarks = String(formData.get("remarks") ?? "");
     const reason = String(formData.get("reason") ?? "");
     const modeOfPayment = String(formData.get("modeOfPayment") ?? "");
-    const proofUrl = String(formData.get("proofUrl") ?? "");
     const liquidationNotes = String(formData.get("liquidationNotes") ?? "");
     const liquidationStatus = String(formData.get("liquidationStatus") ?? "");
 
-    const payload: Record<string, unknown> = { action };
-    if (remarks !== "") payload.remarks = remarks;
-    if (reason !== "") payload.reason = reason;
-    if (modeOfPayment !== "") payload.modeOfPayment = modeOfPayment;
-    if (proofUrl !== "") payload.proofUrl = proofUrl;
-    if (liquidationNotes !== "") payload.liquidationNotes = liquidationNotes;
-    if (liquidationStatus !== "") payload.liquidationStatus = liquidationStatus;
+    // A release with a receipt travels as multipart — the same way every
+    // other case image does — so the server validates and stores the bytes.
+    const sendingReceipt = action === "RELEASE" && receipt !== null;
 
-    const result = await apiRequest<{ status: string; available: number | null }>(
-      `/api/v1/treasury/disbursements/${disbursementId}`,
-      { method: "PATCH", body: JSON.stringify(payload) }
-    );
+    const result = sendingReceipt
+      ? await apiRequest<{ status: string; available: number | null }>(
+          `/api/v1/treasury/disbursements/${disbursementId}`,
+          {
+            method: "PATCH",
+            body: (() => {
+              const form = new FormData();
+              form.set("action", action);
+              if (remarks !== "") form.set("remarks", remarks);
+              if (modeOfPayment !== "") form.set("modeOfPayment", modeOfPayment);
+              if (receipt) form.set("proof", receipt);
+              return form;
+            })(),
+          }
+        )
+      : await apiRequest<{ status: string; available: number | null }>(
+          `/api/v1/treasury/disbursements/${disbursementId}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              action,
+              ...(remarks !== "" ? { remarks } : {}),
+              ...(reason !== "" ? { reason } : {}),
+              ...(modeOfPayment !== "" ? { modeOfPayment } : {}),
+              ...(liquidationNotes !== ""
+                ? { liquidationNotes }
+                : {}),
+              ...(liquidationStatus !== ""
+                ? { liquidationStatus }
+                : {}),
+            }),
+          }
+        );
 
     setBusy(false);
     if (!result.success) {
       setError(result.error.message);
       return;
     }
+    setReceipt(null);
     setOpen(null);
     setDone(
       action === "RELEASE"
@@ -208,15 +236,13 @@ export function VoucherActions({
                   ))}
                 </select>
               </div>
-              <div>
-                <Label htmlFor="voucher-proof">{t.verificationUrl}</Label>
-                <Input
-                  id="voucher-proof"
-                  name="proofUrl"
-                  maxLength={500}
-                  placeholder="/uploads/receipt-123.jpg"
-                />
-              </div>
+              <PhotoPicker
+                id="voucher-receipt"
+                label={t.voucherReceiptPhoto}
+                hint={t.voucherReceiptHint}
+                onChange={(file) => setReceipt(file)}
+                locale={locale}
+              />
             </>
           )}
 
@@ -240,7 +266,10 @@ export function VoucherActions({
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => setOpen(null)}
+              onClick={() => {
+                setOpen(null);
+                setReceipt(null);
+              }}
               disabled={busy}
             >
               {common.cancel}

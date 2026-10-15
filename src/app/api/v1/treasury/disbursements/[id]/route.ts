@@ -12,6 +12,7 @@ import {
 } from "@/lib/auth/session";
 import { recordAudit, requestMeta } from "@/lib/audit";
 import { disbursementActionSchema } from "@/lib/validations/treasury";
+import type { DisbursementAction } from "@/lib/treasury/ledger";
 import { allocationBalance } from "@/lib/treasury/budget";
 import {
   actOnDisbursement,
@@ -19,6 +20,12 @@ import {
   permissionForAction,
   voucherActionAvailability,
 } from "@/lib/treasury/disbursement";
+import {
+  deleteConcernImage,
+  imageUrlForFile,
+  readCappedFormData,
+  saveConcernImage,
+} from "@/lib/uploads";
 
 export const runtime = "nodejs";
 
@@ -126,7 +133,51 @@ export const PATCH = withErrorBoundary<[Request, RouteContext]>(
     assertSameOrigin(req);
     const { id } = await ctx.params;
     const disbursementId = voucherIdFrom(id);
-    const body = await parseBody(req, disbursementActionSchema);
+
+    // JSON for the usual actions; multipart when a receipt photo travels with
+    // the RELEASE — the file goes through the same validated upload pipeline
+    // as every other case image.
+    const contentType = req.headers.get("content-type") ?? "";
+    const isMultipart = contentType.startsWith("multipart/form-data");
+
+    type ActionBody = {
+      action: DisbursementAction;
+      remarks?: string | null;
+      reason?: string | null;
+      modeOfPayment?: string | null;
+      proofUrl?: string | null;
+      liquidationNotes?: string | null;
+      liquidationStatus?: string | null;
+    };
+    let body: ActionBody;
+    let receiptFile: File | null = null;
+    if (isMultipart) {
+      const form = await readCappedFormData(req);
+      const file = form.get("proof");
+      receiptFile = file instanceof File && file.size > 0 ? file : null;
+      const text = (key: string) => {
+        const value = form.get(key);
+        const textValue = typeof value === "string" ? value.trim() : "";
+        return textValue === "" ? null : textValue;
+      };
+      const raw = {
+        action: text("action") ?? "",
+        remarks: text("remarks"),
+        reason: text("reason"),
+        modeOfPayment: text("modeOfPayment") ?? undefined,
+        liquidationNotes: text("liquidationNotes"),
+        liquidationStatus: text("liquidationStatus") ?? undefined,
+      };
+      const parsed = disbursementActionSchema.safeParse(raw);
+      if (!parsed.success) {
+        throw createApiError.badRequest(
+          parsed.error.issues[0]?.message ?? "Invalid action."
+        );
+      }
+      body = parsed.data;
+    } else {
+      body = await parseBody(req, disbursementActionSchema);
+    }
 
     const current = await db.disbursement.findUnique({
       where: { id: disbursementId },
@@ -139,19 +190,35 @@ export const PATCH = withErrorBoundary<[Request, RouteContext]>(
     );
     const actor = actorFrom(user);
 
-    const outcome = await db.$transaction((tx) =>
-      actOnDisbursement(tx, {
-        actor,
-        disbursementId,
-        action: body.action,
-        remarks: body.remarks ?? null,
-        reason: body.reason ?? null,
-        modeOfPayment: body.modeOfPayment ?? null,
-        proofUrl: body.proofUrl ?? null,
-        liquidationNotes: body.liquidationNotes ?? null,
-        liquidationStatus: body.liquidationStatus ?? null,
-      })
-    );
+    let proofUrl: string | null = body.proofUrl ?? null;
+    let uploadedName: string | null = null;
+    // Only RELEASE can attach a receipt: that is when the money leaves and
+    // the receipt is issued. A file on any other action is ignored rather
+    // than saved, so it cannot become an orphaned upload.
+    if (receiptFile && body.action === "RELEASE") {
+      uploadedName = await saveConcernImage(receiptFile, user.id);
+      proofUrl = imageUrlForFile(uploadedName);
+    }
+
+    let outcome: Awaited<ReturnType<typeof actOnDisbursement>>;
+    try {
+      outcome = await db.$transaction((tx) =>
+        actOnDisbursement(tx, {
+          actor,
+          disbursementId,
+          action: body.action,
+          remarks: body.remarks ?? null,
+          reason: body.reason ?? null,
+          modeOfPayment: body.modeOfPayment ?? null,
+          proofUrl,
+          liquidationNotes: body.liquidationNotes ?? null,
+          liquidationStatus: body.liquidationStatus ?? null,
+        })
+      );
+    } catch (error) {
+      if (uploadedName) await deleteConcernImage(uploadedName);
+      throw error;
+    }
 
     const meta = requestMeta(req);
     await recordAudit({

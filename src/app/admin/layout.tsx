@@ -28,6 +28,7 @@ export default async function AdminLayout({
     { href: "/admin/treasury", label: revamp.treasuryNav },
     { href: "/admin/sla", label: revamp.slaNav },
     { href: "/admin/audit", label: revamp.auditNav },
+    { href: "/admin/deleted", label: revamp.deletedNav },
     { href: "/admin/settings", label: t.navSettings },
     { href: "/notifications", label: t.navNotifications },
   ];

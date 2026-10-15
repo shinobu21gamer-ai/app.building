@@ -24,7 +24,7 @@ import {
   OVERRIDE_REASON_MIN,
   PROOF_REQUIRED_MESSAGE,
   budgetStageBlock,
-  isPassingVerification,
+  isCloseableVerification,
   type OverrideKind,
   type ResolutionType,
   type VerificationStatus,
@@ -258,7 +258,7 @@ function requestedStatusDay(input: StatusChangeInput): {
  * Gates enforced here (not only in the route):
  *   * IN_PROGRESS - the planned crew must be assigned, or an override given
  *   * every case - AWAITING_BUDGET cannot be skipped; estimate and funds required (budgetStageBlock)
- *   * CLOSED - the resolution must be verified, or an override given
+ *   * CLOSED - the resolution must be verified as fully fixed (no override)
  */
 export async function changeConcernStatus(
   tx: Tx,
@@ -367,23 +367,28 @@ export async function changeConcernStatus(
     if (labourBlock) throw createApiError.badRequest(labourBlock);
   }
 
-  // ---- gate: a case may only close on a verified resolution -----------
-  if (input.status === "CLOSED" && concern.resolutionId !== null) {
+  // ---- gate: a case may only close once its resolution is verified as
+  // fixed. A partial fix is still an open problem, and there is deliberately
+  // no override around this gate: "closed" on the case sheet must mean the
+  // work was checked on site and confirmed done.
+  if (input.status === "CLOSED") {
+    if (concern.resolutionId === null) {
+      throw createApiError.badRequest(
+        "A case can only be closed after a resolution has been recorded."
+      );
+    }
     const resolution = await tx.resolutionRecord.findUnique({
       where: { concernId: concern.id },
       select: { verifiedAt: true, verificationStatus: true },
     });
-    const verified =
+    const closeable =
       resolution?.verifiedAt !== null &&
       resolution?.verifiedAt !== undefined &&
-      isPassingVerification(resolution.verificationStatus);
-    if (!verified) {
-      if (!overrideReason || overrideReason.length < OVERRIDE_REASON_MIN) {
-        throw createApiError.badRequest(
-          "Verify the resolution before closing the case, or record a status-force override with a reason."
-        );
-      }
-      overrideKind = "STATUS_FORCE";
+      isCloseableVerification(resolution.verificationStatus);
+    if (!closeable) {
+      throw createApiError.badRequest(
+        "A case can only be closed once its resolution is verified as fully fixed. Check the work on site and verify it as fixed; while the fix is only partial, the case stays open."
+      );
     }
   }
 

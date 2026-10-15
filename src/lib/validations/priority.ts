@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { FACTOR_KEYS } from "@/lib/priority/engine";
+import { MAX_AFFECTED_PEOPLE } from "@/lib/priority/affected";
 import { PRIORITY_LEVELS } from "@/lib/cases/workflow";
 import { booleanFlag } from "@/lib/validations/boolean";
 
@@ -75,7 +76,19 @@ export const priorityConfigSchema = z.object({
 export const priorityOverrideSchema = z.object({
   urgencyScore: z.coerce.number().int().optional(),
   impactScore: z.coerce.number().int().optional(),
+  /**
+   * Either the band score itself, or the headcount it is computed from. A
+   * headcount wins: the server bands it (see `@/lib/priority/affected`) so the
+   * stored score always agrees with the number on the record.
+   */
   affectedPopulationScore: z.coerce.number().int().optional(),
+  affectedPeople: z.coerce
+    .number()
+    .int("Enter a whole number of people.")
+    .min(1, "At least one person is affected.")
+    .max(MAX_AFFECTED_PEOPLE, "That number of people looks like a typo.")
+    .optional()
+    .nullable(),
   safetyScore: z.coerce.number().int().optional(),
   levelOverride: z.enum(PRIORITY_LEVELS).optional().nullable(),
   reason: z

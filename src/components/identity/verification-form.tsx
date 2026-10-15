@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FieldError, FormMessage, Input, Label } from "@/components/ui/field";
+import { PhotoPicker } from "@/components/ui/photo-picker";
 import { apiRequest } from "@/lib/api-client";
 import { extractFieldErrors } from "@/lib/validation-errors";
 import { copy, type Locale } from "@/lib/i18n";
@@ -207,22 +208,15 @@ export function VerificationForm({
           </div>
 
           <div>
-            <Label htmlFor="identity-image" required>
-              {t.verification.idPhoto}
-            </Label>
-            <input
+            <PhotoPicker
               id="identity-image"
               name="idImage"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              aria-required="true"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-ink-muted file:mr-3 file:rounded-control file:border file:border-line-strong file:bg-surface file:px-3 file:py-2 file:text-sm"
-              aria-describedby={fieldErrors.idImage ? "identity-image-error" : "identity-image-hint"}
+              label={t.verification.idPhoto}
+              required
+              hint={t.verification.idPhotoHint}
+              onChange={(file) => setFile(file)}
+              locale={locale}
             />
-            <p id="identity-image-hint" className="mt-1 text-xs text-ink-subtle">
-              {t.verification.idPhotoHint}
-            </p>
             {fieldErrors.idImage && (
               <FieldError id="identity-image-error">{fieldErrors.idImage}</FieldError>
             )}

@@ -30,7 +30,46 @@ export default async function CrewHomePage() {
   const t = copy[locale].revamp.workflow;
 
   const flowCopy = copy[locale].flow;
-  const jobs = await listCrewJobs(db, user.id);
+  // Mirrors the query below, with the amount widened to a plain number
+  // (Prisma returns Decimals) and the nullable columns kept nullable.
+  type CrewPaymentRow = {
+    id: number;
+    amount: number;
+    voucherNumber: string | null;
+    releasedAt: Date | null;
+    concern: { caseNumber: string } | null;
+  };
+  const [jobs, paymentRows] = await Promise.all([
+    listCrewJobs(db, user.id),
+    // The money that has actually left the treasury for this member.
+    db.disbursement.findMany({
+      where: {
+        payeeUserId: user.id,
+        payeeType: "CREW",
+        // RELEASED = the money actually left the treasury.
+        status: "RELEASED",
+      },
+      select: {
+        id: true,
+        amount: true,
+        voucherNumber: true,
+        releasedAt: true,
+        concern: { select: { caseNumber: true } },
+      },
+      orderBy: { id: "desc" },
+      take: 20,
+    }),
+  ]);
+  // Map (not cast) so the Decimal amount is widened to a plain number and the
+  // result is genuinely CrewPaymentRow[], not an unchecked assertion.
+  const payments: CrewPaymentRow[] = paymentRows.map((row) => ({
+    id: row.id,
+    amount: Number(row.amount),
+    voucherNumber: row.voucherNumber,
+    releasedAt: row.releasedAt,
+    concern: row.concern,
+  }));
+  const paidTotal = payments.reduce((sum, row) => sum + row.amount, 0);
   const fieldChecks = await db.fieldCheck.findMany({
     where: { assigneeId: user.id, status: "PENDING" },
     include: {
@@ -52,6 +91,44 @@ export default async function CrewHomePage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t.jobTitle} description={t.jobDesc} />
+
+      <Card title={t.myPayments} description={t.myPaymentsDesc}>
+        {payments.length === 0 ? (
+          <p className="text-sm text-ink-subtle">{t.myPaymentsEmpty}</p>
+        ) : (
+          <>
+            <dl className="divide-y divide-line">
+              {payments.map((row) => (
+                <div
+                  key={row.id}
+                  className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2 text-sm"
+                >
+                  <dt className="text-ink-muted">
+                    {row.concern?.caseNumber ?? t.myPaymentsNoCase}
+                    {row.voucherNumber ? ` · ${row.voucherNumber}` : ""}
+                  </dt>
+                  <dd className="font-medium tabular-nums text-ink">
+                    ₱{Number(row.amount).toFixed(2)}
+                  </dd>
+                  {row.releasedAt && (
+                    <dd className="w-full text-xs text-ink-subtle sm:w-auto">
+                      {t.myPaymentsReleased}: {formatDateTime(row.releasedAt)}
+                    </dd>
+                  )}
+                </div>
+              ))}
+              <div className="flex items-baseline justify-between gap-4 py-2 text-sm">
+                <dt className="font-semibold text-ink">
+                  {t.myPaymentsTotal}
+                </dt>
+                <dd className="font-semibold tabular-nums text-emerald-700">
+                  ₱{paidTotal.toFixed(2)}
+                </dd>
+              </div>
+            </dl>
+          </>
+        )}
+      </Card>
 
       {fieldChecks.length > 0 && (
         <Card title={t.fieldCheck.forYou} description={t.fieldCheck.forYouDesc}>

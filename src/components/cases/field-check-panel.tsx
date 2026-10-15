@@ -6,7 +6,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FormMessage, Input, Label, Select, Textarea } from "@/components/ui/field";
+import {
+  FormMessage,
+  Label,
+  Select,
+  Textarea
+} from "@/components/ui/field";
+import { PhotoPicker } from "@/components/ui/photo-picker";
 import { apiRequest } from "@/lib/api-client";
 import { canRequestFieldCheck } from "@/lib/cases/field-check-rules";
 import { copy, type Locale } from "@/lib/i18n";
@@ -174,15 +180,13 @@ export function FieldCheckSubmitForm({
           onChange={(e) => setNotes(e.target.value)}
         />
       </div>
-      <div className="space-y-1">
-        <Label htmlFor={`photo-${checkId}`}>{t.photo}</Label>
-        <Input
-          id={`photo-${checkId}`}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-        />
-      </div>
+      <PhotoPicker
+        id={`photo-${checkId}`}
+        name="photo"
+        label={t.photo}
+        onChange={(file) => setPhoto(file)}
+        locale={locale}
+      />
       {error && <FormMessage tone="error">{error}</FormMessage>}
       <Button type="submit" loading={busy} disabled={busy}>
         {t.submit}

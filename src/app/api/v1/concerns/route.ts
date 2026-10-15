@@ -26,6 +26,7 @@ import {
   type PriorityEvaluation,
 } from "@/lib/priority/engine";
 import { loadPriorityConfig } from "@/lib/priority/config";
+import { affectedScoreFromCount } from "@/lib/priority/affected";
 import { holdForValidation } from "@/lib/routing/service";
 import { notifyConcernSubmitted } from "@/lib/notifications/service";
 import { assertConsent } from "@/lib/privacy/consent";
@@ -312,6 +313,7 @@ export const POST = withErrorBoundary(async (req: Request) => {
     "impactScore",
     "affectedPopulationScore",
     "safetyScore",
+    "affectedPeople",
   ] as const) {
     const value = form.get(field);
     if (value !== null) raw[field] = value;
@@ -319,7 +321,19 @@ export const POST = withErrorBoundary(async (req: Request) => {
 
   const parsed = createConcernSchema.safeParse(raw);
   if (!parsed.success) throw parsed.error;
-  const input = parsed.data;
+  // "How many people are affected?" is answered with a headcount, and the score
+  // the engine sums is the band that count falls in (see
+  // `@/lib/priority/affected`). Everything downstream — the engine, the stored
+  // assessment row, the case sheet — reads this one number, so a case affecting
+  // 800 people scores in the top band without losing the figure.
+  let input = parsed.data.affectedPeople
+    ? {
+        ...parsed.data,
+        affectedPopulationScore: affectedScoreFromCount(
+          parsed.data.affectedPeople
+        ),
+      }
+    : parsed.data;
 
   const category = await db.concernCategory.findUnique({
     where: { id: input.categoryId },
@@ -341,9 +355,31 @@ export const POST = withErrorBoundary(async (req: Request) => {
   }
 
   const { factors, thresholds } = await loadPriorityConfig();
+  // The bands assume the standard 1–5 scale. If an administrator configured a
+  // narrower range for this factor, the derived score is clamped onto it
+  // ("500 or more people" then simply scores the top of that scale) instead of
+  // failing the resident's whole submission.
+  const populationFactor = factors.find((f) => f.key === "AFFECTED_POPULATION");
+  if (
+    input.affectedPeople !== undefined &&
+    populationFactor &&
+    populationFactor.isActive !== false
+  ) {
+    const score = affectedScoreFromCount(input.affectedPeople);
+    const clamped = Math.min(
+      Math.max(score, populationFactor.minScore),
+      populationFactor.maxScore
+    );
+    if (clamped !== input.affectedPopulationScore) {
+      input = { ...input, affectedPopulationScore: clamped };
+    }
+  }
   let evaluation: PriorityEvaluation;
   try {
     evaluation = evaluatePriority(input, factors, thresholds);
+    if (input.affectedPeople) {
+      evaluation = { ...evaluation, affectedPeople: input.affectedPeople };
+    }
   } catch (error) {
     if (error instanceof PriorityRuleError) {
       throw createApiError.badRequest(error.message);

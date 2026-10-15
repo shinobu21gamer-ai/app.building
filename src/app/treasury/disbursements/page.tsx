@@ -33,14 +33,16 @@ const TONES: Record<string, "sky" | "amber" | "green" | "gray" | "red"> = {
   CANCELLED: "red",
 };
 
-type PageProps = { searchParams: Promise<{ status?: string }> };
+type PageProps = {
+  searchParams: Promise<{ status?: string; concernId?: string; pay?: string }>;
+};
 
 /** The voucher register: every step from draft to liquidation, newest first. */
 export default async function TreasuryDisbursementsPage({
   searchParams,
 }: PageProps) {
   const user = await requirePermission("treasury.balance.view");
-  const { status } = await searchParams;
+  const { status, concernId: presetConcernParam, pay } = await searchParams;
   const locale = await getLocale();
   const t = copy[locale].revamp.treasuryDesk;
   const actor = {
@@ -48,6 +50,37 @@ export default async function TreasuryDisbursementsPage({
     roleKey: user.role.key,
     officeId: user.officeId ?? null,
   };
+
+  // Arriving from a case's "Pay crew" door, the form opens aimed at that case
+  // with the crew payee type (and, when the plan says how much each worker
+  // costs, the per-worker figure) already in place.
+  const presetConcernId = Number(presetConcernParam);
+  const presetConcern =
+    Number.isInteger(presetConcernId) && presetConcernId > 0
+      ? await db.concern.findUnique({
+          where: { id: presetConcernId },
+          select: {
+            id: true,
+            caseNumber: true,
+            title: true,
+            caseAssessment: {
+              select: { laborCost: true, workersNeeded: true },
+            },
+          },
+        })
+      : null;
+  const payCrew = pay === "CREW" && presetConcern !== null;
+  const perWorkerAmount =
+    payCrew &&
+    presetConcern?.caseAssessment !== null &&
+    presetConcern.caseAssessment.laborCost !== null &&
+    (presetConcern.caseAssessment.workersNeeded ?? 0) > 0
+      ? Math.round(
+          (Number(presetConcern.caseAssessment.laborCost) /
+            (presetConcern.caseAssessment.workersNeeded as number)) *
+            100
+        ) / 100
+      : null;
 
   const [vouchers, allocations, approvedEarmarks, openCases, canPrepare] =
     await Promise.all([
@@ -65,6 +98,26 @@ export default async function TreasuryDisbursementsPage({
       }),
       userCan(user.role.key, "treasury.disbursement.prepare"),
     ]);
+
+  type CrewMemberRow = {
+    id: number;
+    firstName: string;
+    lastName: string;
+    crewProfile: { trade: string | null } | null;
+  };
+  const crewMembers: CrewMemberRow[] = canPrepare
+    ? await db.user.findMany({
+        where: { isActive: true, crewProfile: { isNot: null } },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          crewProfile: { select: { trade: true } },
+        },
+        orderBy: { firstName: "asc" },
+        take: 200,
+      })
+    : [];
 
   const filters = [
     "ALL",
@@ -89,6 +142,14 @@ export default async function TreasuryDisbursementsPage({
               coaCode: allocation.coaCode,
               available: allocation.available,
             }))}
+            crewMembers={crewMembers.map((member) => ({
+              id: member.id,
+              name: `${member.firstName} ${member.lastName}`.trim(),
+              trade: member.crewProfile?.trade ?? null,
+            }))}
+            presetConcernId={presetConcern?.id ?? null}
+            presetPayeeType={payCrew ? "CREW" : "SUPPLIER"}
+            presetAmount={perWorkerAmount}
             earmarks={approvedEarmarks.map((earmark) => ({
               id: earmark.id,
               code: earmark.code,

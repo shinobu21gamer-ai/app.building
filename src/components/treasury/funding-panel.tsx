@@ -77,6 +77,20 @@ export function FundingPanel({
         {funding.gate.message}
       </p>
 
+      {funding.budgetDecision !== null && proposed.length === 0 && (
+        <p className="rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          <span className="font-semibold">{t.fundingNotFund}</span>
+          {funding.budgetDecision.reason}
+          <span className="block text-xs">
+            {t.fundingNotFundBy.replaceAll(
+              "{name}",
+              funding.budgetDecision.decidedByName ?? "—"
+            )}{" "}
+            {formatDateTime(funding.budgetDecision.decidedAt)}
+          </span>
+        </p>
+      )}
+
       <div className="flex flex-wrap gap-3 text-sm">
         <span className="text-ink-muted">
           {t.fundingPaid}:{" "}

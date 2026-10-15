@@ -6,6 +6,7 @@ import { MapPin, Send } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormMessage, Label, Select, Textarea } from "@/components/ui/field";
+import { UploadedPhoto } from "@/components/ui/uploaded-photo";
 import { useToast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api-client";
 import { extractApiError } from "@/lib/utils";
@@ -264,14 +265,16 @@ export function FieldCheckDesk({
               </p>
             )}
             {item.findingPhotoUrl && (
-              <a
-                href={item.findingPhotoUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-brand underline"
-              >
-                {t.photo}
-              </a>
+              <div className="pt-1">
+                <p className="mb-1 text-xs font-medium text-ink-subtle">
+                  {t.photo}
+                </p>
+                <UploadedPhoto
+                  src={item.findingPhotoUrl}
+                  alt={t.photo}
+                  locale={locale}
+                />
+              </div>
             )}
           </div>
         )}

@@ -16,9 +16,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FieldError, FormMessage, Input, Label, RequiredLegend, Textarea } from "@/components/ui/field";
+import { PhotoPicker } from "@/components/ui/photo-picker";
 import { useToast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api-client";
 import { createConcernSchema } from "@/lib/validations/concern";
+import {
+  MAX_AFFECTED_PEOPLE,
+  affectedScoreFromCount,
+} from "@/lib/priority/affected";
 import { cn } from "@/lib/utils";
 import { copy, type Locale } from "@/lib/i18n";
 import { DraftControls } from "@/components/concern/draft-controls";
@@ -47,6 +52,7 @@ type FieldKey =
   | "urgencyScore"
   | "impactScore"
   | "affectedPopulationScore"
+  | "affectedPeople"
   | "safetyScore";
 
 type FieldErrors = Partial<Record<FieldKey, string>>;
@@ -110,13 +116,31 @@ export function SubmitConcernForm({
   const router = useRouter();
   const { showToast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({});
+  // "How many people are affected?" is answered with a number, not a 1–5 pick:
+  // the band score the engine sums is derived from the headcount, so a problem
+  // affecting 800 families is recorded with its real figure.
+  const [affectedPeople, setAffectedPeople] = useState("");
+  // The headcount field stands in for the affected-population factor, so it is
+  // only asked for while that factor is switched on.
+  const headcountFactor = factors.some(
+    (factor) => factor.key === "AFFECTED_POPULATION"
+  );
+  // The band the typed headcount would score, shown under the field so the
+  // resident sees what their number means before submitting.
+  const typedCount = affectedPeople.trim();
+  const typedValue = /^\d+$/.test(typedCount) ? Number(typedCount) : Number.NaN;
+  const bandedScore =
+    Number.isFinite(typedValue) &&
+    typedValue >= 1 &&
+    typedValue <= MAX_AFFECTED_PEOPLE
+      ? affectedScoreFromCount(typedValue)
+      : null;
 
   useEffect(() => {
     if (!selectedFile) {
@@ -132,8 +156,8 @@ export function SubmitConcernForm({
     setTouched((prev) => ({ ...prev, [field]: true }));
   }
 
-  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
+  function handleFilePick(file: File | null) {
+    setTouched((prev) => ({ ...prev, image: true }));
 
     if (!file) {
       setSelectedFile(null);
@@ -154,7 +178,6 @@ export function SubmitConcernForm({
     if (error) {
       setFieldErrors((prev) => ({ ...prev, image: error }));
       setSelectedFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
@@ -178,11 +201,23 @@ export function SubmitConcernForm({
       affectedPopulationScore: String(
         data.get("affectedPopulationScore") ?? ""
       ),
+      affectedPeople: String(data.get("affectedPeople") ?? ""),
       safetyScore: String(data.get("safetyScore") ?? ""),
     };
 
     const nextErrors: FieldErrors = {};
-    const parsed = createConcernSchema.safeParse(values);
+    const count = values.affectedPeople.trim();
+    const bandedScore = count === "" ? null : affectedScoreFromCount(Number(count));
+    const parsed = createConcernSchema.safeParse({
+      ...values,
+      // The band score follows the headcount when one was given; the resident
+      // never has to reconcile the two controls.
+      affectedPopulationScore:
+        bandedScore === null
+          ? values.affectedPopulationScore
+          : String(bandedScore),
+      affectedPeople: count === "" ? undefined : count,
+    });
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
         const key = issue.path[0];
@@ -197,6 +232,19 @@ export function SubmitConcernForm({
     }
     if (!values.locationArea) {
       nextErrors.locationArea = t.areaRequired;
+    }
+    // The headcount is only on the form while the AFFECTED_POPULATION factor is
+    // active, and then it is the answer to that factor — a blank one would leave
+    // the priority score with nothing to sum.
+    if (headcountFactor && count === "") {
+      nextErrors.affectedPeople = t.affectedPeopleRequired;
+    } else if (
+      count !== "" &&
+      (!/^\d+$/.test(count) ||
+        Number(count) < 1 ||
+        Number(count) > MAX_AFFECTED_PEOPLE)
+    ) {
+      nextErrors.affectedPeople = t.affectedPeopleError;
     }
     const combinedLocation = values.locationArea
       ? `${values.locationArea} - ${values.locationAddress.trim()}`
@@ -241,7 +289,11 @@ export function SubmitConcernForm({
     if (typeId) payload.set("typeId", typeId);
     payload.set("urgencyScore", values.urgencyScore);
     payload.set("impactScore", values.impactScore);
-    payload.set("affectedPopulationScore", values.affectedPopulationScore);
+    payload.set(
+      "affectedPopulationScore",
+      bandedScore === null ? values.affectedPopulationScore : String(bandedScore)
+    );
+    if (count !== "") payload.set("affectedPeople", count);
     payload.set("safetyScore", values.safetyScore);
     if (selectedFile) payload.set("image", selectedFile);
 
@@ -482,6 +534,60 @@ export function SubmitConcernForm({
         <div className="space-y-4">
           {factors.map((factor) => {
             const fieldKey = FACTOR_FIELD[factor.key];
+            if (factor.key === "AFFECTED_POPULATION") {
+              return (
+                <div key={factor.key}>
+                  <Label htmlFor="affectedPeople">
+                    {t.affectedPeopleLabel}
+                  </Label>
+                  {factor.description && (
+                    <p className="mb-1 text-xs text-ink-subtle">
+                      {factor.description}
+                    </p>
+                  )}
+                  <Input
+                    id="affectedPeople"
+                    name="affectedPeople"
+                    type="number"
+                    min={1}
+                    max={MAX_AFFECTED_PEOPLE}
+                    step={1}
+                    inputMode="numeric"
+                    value={affectedPeople}
+                    onChange={(event) => setAffectedPeople(event.target.value)}
+                    onBlur={() => handleBlur("affectedPeople")}
+                    invalid={Boolean(
+                      fieldErrors.affectedPeople && touched.affectedPeople
+                    )}
+                    aria-describedby={
+                      fieldErrors.affectedPeople && touched.affectedPeople
+                        ? "affectedPeople-error"
+                        : "affectedPeople-hint"
+                    }
+                  />
+                  {fieldErrors.affectedPeople && touched.affectedPeople ? (
+                    <FieldError id="affectedPeople-error">
+                      {fieldErrors.affectedPeople}
+                    </FieldError>
+                  ) : (
+                    <p
+                      id="affectedPeople-hint"
+                      className="mt-1 text-xs text-ink-subtle"
+                    >
+                      {bandedScore === null
+                        ? t.affectedPeopleHint
+                        : t.affectedPeopleBand
+                            .replace("{score}", String(bandedScore))
+                            .replace(
+                              "{band}",
+                              t.factors.AFFECTED_POPULATION[bandedScore - 1] ??
+                                String(bandedScore)
+                            )}
+                    </p>
+                  )}
+                </div>
+              );
+            }
             const options: number[] = [];
             for (let v = factor.minScore; v <= factor.maxScore; v += 1) {
               options.push(v);
@@ -537,26 +643,19 @@ export function SubmitConcernForm({
             {t.image}
           </span>
         </Label>
-        <input
-          ref={fileInputRef}
+        <PhotoPicker
           id="image"
           name="image"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
+          label={
+            <span className="inline-flex items-center gap-1.5">
+              <ImageIcon size={14} className="text-ink-subtle" />
+              {t.image}
+            </span>
+          }
           required
-          onChange={handleFileChange}
-          onBlur={() => handleBlur("image")}
-          aria-describedby={fieldErrors.image && touched.image ? "image-error" : undefined}
-          className={cn(
-            "block w-full cursor-pointer rounded-control border bg-surface text-sm text-ink-muted file:mr-3 file:rounded-l-lg file:border-0 file:bg-surface-sunken file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink-muted hover:file:bg-line",
-            fieldErrors.image && !selectedFile
-              ? "border-red-500"
-              : "border-line-strong"
-          )}
+          hint={t.imageHelp}
+          onChange={handleFilePick}
         />
-        <p className="mt-1 text-xs text-ink-subtle">
-          {t.imageHelp}
-        </p>
         {selectedFile && (
           <div className="mt-2 flex items-start gap-3">
             {previewUrl ? (

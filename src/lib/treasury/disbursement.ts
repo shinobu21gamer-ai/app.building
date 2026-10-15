@@ -29,7 +29,7 @@ import {
 
 type Tx = Prisma.TransactionClient;
 
-const WIDE_ROLES = ["TREASURER", "CAPTAIN", "ADMIN"];
+export const WIDE_ROLES = ["TREASURER", "CAPTAIN", "ADMIN"];
 
 /** Which permission each action needs. Rejecting needs the permission of the
  * level that is still pending, so a rejection cannot be pushed through by the

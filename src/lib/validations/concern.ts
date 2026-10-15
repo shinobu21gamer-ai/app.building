@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { MAX_AFFECTED_PEOPLE } from "@/lib/priority/affected";
+
 // How the pin was captured. GPS_PINNED uses the device's own location, which is
 // the only source whose accuracy we can trust enough to show on the map.
 export const LOCATION_SOURCES = [
@@ -71,6 +73,16 @@ export const createConcernSchema = z.object({
   impactScore: z.coerce.number(),
   affectedPopulationScore: z.coerce.number(),
   safetyScore: z.coerce.number(),
+  // The headcount behind the affected-population score, when the resident gives
+  // one ("mga 300 pamilya"). Optional because the factor can be switched off in
+  // the priority configuration; when it is present the server bands it (see
+  // `@/lib/priority/affected`) and the band score is what the engine sums.
+  affectedPeople: z.coerce
+    .number()
+    .int("Enter a whole number of people.")
+    .min(1, "At least one person is affected.")
+    .max(MAX_AFFECTED_PEOPLE, "That number of people looks like a typo.")
+    .optional(),
 })
   .refine(
     (value) =>
