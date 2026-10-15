@@ -3,6 +3,8 @@ import { cn } from "@/lib/utils";
 export type GuideStep = {
   title: string;
   detail?: string;
+  /** Who owns the step — so admin work is not read as the official's job. */
+  who?: string;
   /** Marks the step the reader is on right now. */
   highlight?: boolean;
   /** A one-word state shown next to the title ("Done", "Now"). */
@@ -69,6 +71,11 @@ export function StepGuide({
                   </span>
                 ) : null}
               </p>
+              {step.who ? (
+                <p className="mt-0.5 text-xs font-semibold text-brand-800">
+                  {step.who}
+                </p>
+              ) : null}
               {step.detail && (
                 <p className="mt-0.5 text-xs leading-relaxed text-ink-subtle">
                   {step.detail}

@@ -119,7 +119,12 @@ export default async function AdminPage() {
               flowCopy.steps.VERIFY,
               flowCopy.steps.CLOSE,
             ] as const
-          ).map((step) => ({ title: step.title, detail: step.lead }))}
+            ).map((step, index) => ({
+              title: step.title,
+              detail: step.lead,
+              who: step.who,
+              highlight: index === 0,
+            }))}
         />
       </Card>
 
