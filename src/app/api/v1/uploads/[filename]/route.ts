@@ -110,6 +110,12 @@ export const GET = withErrorBoundary<[Request, UploadContext]>(
       return sendImage(filename);
     }
 
+    // owner can only be null when receipt was set — which returned above — so
+    // this is a runtime no-op that also keeps the type narrowing honest.
+    if (!owner) {
+      throw createApiError.notFound("Image not found.");
+    }
+
     const isIdentityDocument = "identity" in owner && owner.identity === true;
     const isOwner = owner.userId === user.id;
     const isAdmin = user.role.key === "ADMIN";
