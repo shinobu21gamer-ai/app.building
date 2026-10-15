@@ -452,7 +452,9 @@ export function EarmarkReview({
 
       {earmark.status === "APPROVED" && (
         <div className="space-y-2 rounded-control border border-brand-100 bg-brand-50 px-3 py-2.5">
-          {brief.balanceKnown && brief.availableAfter <= 0.005 && (
+          {brief.balanceKnown &&
+            brief.availableAfter !== null &&
+            brief.availableAfter <= 0.005 && (
             <p className="text-xs leading-relaxed text-brand-900">
               {t.reservedHint}
             </p>
