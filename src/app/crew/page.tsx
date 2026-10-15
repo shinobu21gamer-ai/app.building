@@ -30,11 +30,13 @@ export default async function CrewHomePage() {
   const t = copy[locale].revamp.workflow;
 
   const flowCopy = copy[locale].flow;
+  // Mirrors the query below, with the amount widened to a plain number
+  // (Prisma returns Decimals) and the nullable columns kept nullable.
   type CrewPaymentRow = {
     id: number;
     amount: number;
-    voucherNumber: string;
-    releasedAt: Date;
+    voucherNumber: string | null;
+    releasedAt: Date | null;
     concern: { caseNumber: string } | null;
   };
   const [jobs, paymentRows] = await Promise.all([
@@ -58,11 +60,16 @@ export default async function CrewHomePage() {
       take: 20,
     }),
   ]);
-  const payments = paymentRows as CrewPaymentRow[];
-  const paidTotal = payments.reduce(
-    (sum, row) => sum + Number(row.amount),
-    0
-  );
+  // Map (not cast) so the Decimal amount is widened to a plain number and the
+  // result is genuinely CrewPaymentRow[], not an unchecked assertion.
+  const payments: CrewPaymentRow[] = paymentRows.map((row) => ({
+    id: row.id,
+    amount: Number(row.amount),
+    voucherNumber: row.voucherNumber,
+    releasedAt: row.releasedAt,
+    concern: row.concern,
+  }));
+  const paidTotal = payments.reduce((sum, row) => sum + row.amount, 0);
   const fieldChecks = await db.fieldCheck.findMany({
     where: { assigneeId: user.id, status: "PENDING" },
     include: {
