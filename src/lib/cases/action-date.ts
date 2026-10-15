@@ -136,3 +136,21 @@ export function earliestActionDay(
   }
   return bounds.submittedDay;
 }
+
+/**
+ * Client-side check for a date picker the user can type into (browsers honour
+ * min/max for the popup, not for a value pasted or typed). Empty means "today"
+ * on the server, so it is allowed here.
+ */
+export function formCalendarDayProblem(
+  day: string,
+  earliest: string,
+  today: string
+): "invalid" | "future" | "too-old" | null {
+  const value = day.trim();
+  if (value === "") return null;
+  if (!isValidCalendarDay(value)) return "invalid";
+  if (value > today) return "future";
+  if (value < earliest) return "too-old";
+  return null;
+}

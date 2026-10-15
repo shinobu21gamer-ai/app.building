@@ -8,7 +8,7 @@ import { PasswordForm } from "@/components/auth/password-form";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { NativeServerUrlCard } from "@/components/settings/native-server-url-card";
 import { PageHeader } from "@/components/ui/page-header";
-import { requireUser } from "@/lib/auth/session";
+import { requireUser, roleHome } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 
@@ -29,17 +29,7 @@ export default async function ProfilePage() {
         actions={
           <>
             <Badge tone="blue">{user.role.name}</Badge>
-            <Button
-              href={
-                user.role.key === "ADMIN"
-                  ? "/admin"
-                  : user.role.key === "OFFICIAL"
-                    ? "/official"
-                    : "/resident"
-              }
-              variant="outline"
-              size="sm"
-            >
+            <Button href={roleHome(user.role.key)} variant="outline" size="sm">
               {t.back}
             </Button>
             <LogoutButton size="sm" />

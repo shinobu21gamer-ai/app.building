@@ -11,12 +11,15 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { ConcernFilters } from "@/components/cases/concern-filters";
 import { FieldCheckSubmitForm } from "@/components/cases/field-check-panel";
 import { parseConcernFilters } from "@/lib/cases/query";
+import { concernProcessFlow } from "@/lib/cases/process-flow";
 import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import { getOfficialDashboard } from "@/lib/dashboards/official";
+import { fundedAmountsByConcern } from "@/lib/treasury/query";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { firstParam } from "@/lib/utils";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import { DeskGuide } from "@/components/portals/desk-guide";
 
 export const metadata: Metadata = {
   title: "Official Dashboard",
@@ -78,6 +81,30 @@ export default async function OfficialPage({
     },
   });
   const fieldCheckCopy = copy[locale].revamp.workflow.fieldCheck;
+  const howTo = copy[locale].revamp.howTo;
+  const flowCopy = copy[locale].flow;
+  const funded = await fundedAmountsByConcern(
+    db,
+    cases.concerns.map((concern) => concern.id)
+  );
+  const flowHints = new Map(
+    cases.concerns.map((concern) => {
+      const flow = concernProcessFlow(concern, funded.get(concern.id) ?? 0);
+      const current = flow.steps.find((step) => step.key === flow.currentKey);
+      return [
+        concern.id,
+        current
+          ? `${flowCopy.stepOf
+              .replace("{current}", String(current.number))
+              .replace("{total}", String(flow.steps.length))} · ${
+              flowCopy.steps[current.key].title
+            }`
+          : flow.closedUnfounded
+            ? flowCopy.unfoundedNote
+            : flowCopy.closedNote,
+      ];
+    })
+  );
 
   const scopeLabel = isOfficial
     ? user.office
@@ -91,6 +118,16 @@ export default async function OfficialPage({
     { label: t.assigned, value: counts.assigned },
     { label: t.pending, value: counts.pending, hint: t.pendingHint },
     { label: t.highPriority, value: counts.highPriority, hint: t.highHint },
+    {
+      label: t.underAssessment,
+      value: counts.underAssessment,
+      hint: t.underAssessmentHint,
+    },
+    {
+      label: t.awaitingBudget,
+      value: counts.awaitingBudget,
+      hint: t.awaitingBudgetHint,
+    },
     { label: t.inProgress, value: counts.inProgress },
   ];
 
@@ -101,7 +138,13 @@ export default async function OfficialPage({
         description={scopeLabel}
       />
 
-      <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {isOfficial && user.officeId === null ? (
+        <Card title={t.noOffice}>
+          <p className="text-sm leading-relaxed text-ink-muted">{t.noOfficeHelp}</p>
+        </Card>
+      ) : null}
+
+      <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
           <StatCard
             key={stat.label}
@@ -188,7 +231,7 @@ export default async function OfficialPage({
                     {concern.priorityLevel && (
                       <PriorityBadge level={concern.priorityLevel} />
                     )}
-                    <StatusBadge status={concern.status} />
+                    <StatusBadge status={concern.status} locale={locale} />
                   </div>
                 </Link>
               </li>
@@ -229,9 +272,10 @@ export default async function OfficialPage({
         }
       >
         {cases.concerns.length === 0 ? (
-          <p className="py-10 text-center text-sm text-ink-muted">
-            {t.noMatch}
-          </p>
+          <EmptyState
+            title={t.emptyCaseload}
+            description={t.emptyCaseloadHint}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table data-stack className="w-full min-w-[760px] text-left text-sm">
@@ -275,7 +319,10 @@ export default async function OfficialPage({
                       )}
                     </td>
                     <td data-label={t.statusCol} className="py-3 pr-4">
-                      <StatusBadge status={concern.status} />
+                      <StatusBadge status={concern.status} locale={locale} />
+                      <p className="mt-1 text-xs font-medium text-brand-800">
+                        {flowHints.get(concern.id)}
+                      </p>
                       {concern.crew.required !== null && (
                         <p
                           className={`mt-1 text-xs ${
@@ -309,6 +356,19 @@ export default async function OfficialPage({
           </Button>
         </div>
       </Card>
+
+      <DeskGuide
+        title={t.howToTitle}
+        lead={t.howToLead}
+        steps={t.howToSteps}
+        mistakesTitle={howTo.ifWrong}
+        mistakes={t.howToIfWrong}
+        helpLabel={howTo.help}
+        hideLabel={howTo.hide}
+        showLabel={howTo.show}
+        storageKey="br-guide-official"
+        defaultOpen={fieldChecks.length === 0 && cases.concerns.length === 0}
+      />
     </div>
   );
 }

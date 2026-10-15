@@ -5,9 +5,9 @@ import { BalanceCards } from "@/components/treasury/balance-cards";
 import { FundingNeedCard } from "@/components/treasury/funding-need-card";
 import { AgingBars, LedgerTable } from "@/components/treasury/ledger-table";
 import { PageHeader } from "@/components/ui/page-header";
-import { StepGuide } from "@/components/cases/step-guide";
+import { DeskGuide } from "@/components/portals/desk-guide";
 import { db } from "@/lib/db";
-import { requirePermission } from "@/lib/auth/session";
+import { requirePermission, userCan } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { treasuryDashboard } from "@/lib/treasury/query";
@@ -28,6 +28,11 @@ export default async function TreasuryDashboardPage() {
   const locale = await getLocale();
   const t = copy[locale].revamp.treasuryDesk;
   const guide = t.guide;
+
+  const canApproveVouchers = await userCan(
+    user.role.key,
+    "treasury.disbursement.approve"
+  );
 
   const dashboard = await treasuryDashboard(db, {
     actor: {
@@ -73,7 +78,12 @@ export default async function TreasuryDashboardPage() {
     {
       label: t.awaitingApprovalVouchers,
       count: dashboard.counts.vouchersAwaitingApproval,
-      href: "/captain/approvals",
+      // The Captain (and an administrator covering that desk) approve these.
+      // The treasurer prepares and certifies them; sending that role to
+      // `/captain/approvals` is a door the middleware turns away.
+      href: canApproveVouchers
+        ? "/captain/approvals"
+        : "/treasury/disbursements?status=CERTIFIED",
     },
     {
       label: t.awaitingRelease,
@@ -103,10 +113,6 @@ export default async function TreasuryDashboardPage() {
           </Button>
         </div>
       </div>
-
-      <Card title={guide.title} description={guide.lead}>
-        <StepGuide steps={guide.steps} />
-      </Card>
 
       <BalanceCards totals={dashboard.totals} locale={locale} />
 
@@ -174,6 +180,19 @@ export default async function TreasuryDashboardPage() {
           </Button>
         </div>
       </Card>
+
+      <DeskGuide
+        title={guide.title}
+        lead={guide.lead}
+        steps={guide.steps}
+        mistakesTitle={copy[locale].revamp.howTo.ifWrong}
+        mistakes={t.ifWrong}
+        helpLabel={copy[locale].revamp.howTo.help}
+        hideLabel={copy[locale].revamp.howTo.hide}
+        showLabel={copy[locale].revamp.howTo.show}
+        storageKey="br-guide-treasury"
+        defaultOpen={pending.every((entry) => entry.count === 0)}
+      />
     </div>
   );
 }

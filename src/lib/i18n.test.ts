@@ -17,6 +17,14 @@ describe("copy", () => {
     expect(copy.fil.faqs).toHaveLength(copy.en.faqs.length);
     expect(copy.fil.home.workflow).toHaveLength(copy.en.home.workflow.length);
     expect(copy.fil.home.reportTypes).toHaveLength(copy.en.home.reportTypes.length);
+    expect(copy.fil.home.roles).toHaveLength(copy.en.home.roles.length);
+    expect(copy.en.home.roles).toHaveLength(6);
+    expect(copy.en.home.stats[1]?.value).toBe("9");
+    expect(Object.keys(copy.fil.header)).toEqual(Object.keys(copy.en.header));
+    expect(Object.keys(copy.fil.footer)).toEqual(Object.keys(copy.en.footer));
+    expect(Object.keys(copy.fil.charter)).toEqual(Object.keys(copy.en.charter));
+    expect(copy.fil.charter.services).toHaveLength(copy.en.charter.services.length);
+    expect(copy.fil.charter.roles).toHaveLength(copy.en.charter.roles.length);
     expect(Object.keys(copy.fil.resident)).toEqual(Object.keys(copy.en.resident));
     expect(Object.keys(copy.fil.submit.factors)).toEqual(
       Object.keys(copy.en.submit.factors)
@@ -26,6 +34,11 @@ describe("copy", () => {
       Object.keys(copy.en.notifications)
     );
     expect(Object.keys(copy.fil.official)).toEqual(Object.keys(copy.en.official));
+    expect(Object.keys(copy.fil.revamp.captain)).toEqual(
+      Object.keys(copy.en.revamp.captain)
+    );
+    expect(copy.en.submit.identityCta.length).toBeGreaterThan(0);
+    expect(copy.fil.submit.identityCta.length).toBeGreaterThan(0);
     expect(Object.keys(copy.fil.admin)).toEqual(Object.keys(copy.en.admin));
     expect(Object.keys(copy.fil.admin.mgr)).toEqual(Object.keys(copy.en.admin.mgr));
     expect(Object.keys(copy.fil.register)).toEqual(Object.keys(copy.en.register));

@@ -12,11 +12,16 @@ import { getResidentDashboard } from "@/lib/dashboards/resident";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import { DeskGuide } from "@/components/portals/desk-guide";
 import {
   CONSENT_PURPOSE_LABELS,
   type ConsentPurpose,
 } from "@/lib/privacy/catalog";
 import { hasConsent } from "@/lib/privacy/consent";
+import {
+  getIdentityState,
+  isIdentityGateEnabled,
+} from "@/lib/identity/verification";
 
 export const metadata: Metadata = {
   title: "Resident Dashboard",
@@ -29,11 +34,15 @@ export default async function ResidentPage() {
   const locale = await getLocale();
   const t = copy[locale].resident;
   const privacy = copy[locale].revamp.privacyCenter;
-  const [dashboard, consentGranted] = await Promise.all([
+  const [dashboard, consentGranted, identity, gateEnabled] = await Promise.all([
     getResidentDashboard(user.id),
     hasConsent(user.id, SUBMIT_CONSENT),
+    getIdentityState(user.id),
+    isIdentityGateEnabled(),
   ]);
   const { totals, recent, notifications, unreadNotifications } = dashboard;
+  const verification = copy[locale].revamp.verification;
+  const howTo = copy[locale].revamp.howTo;
 
   const stats = [
     { label: t.total, value: totals.total },
@@ -60,6 +69,23 @@ export default async function ResidentPage() {
 
       {/* Accounts created before consent records existed cannot file a concern
           until they grant one; saying so here saves them a failed submission. */}
+      {gateEnabled && !identity.isVerified && (
+        <Card title={verification.gateTitle}>
+          <p className="text-sm text-ink-muted">
+            {identity.isPending
+              ? verification.gatePending
+              : identity.status === "REJECTED"
+                ? verification.gateRejected
+                : verification.gateRequired}
+          </p>
+          <div className="mt-3">
+            <Button href="/resident/verification" size="sm">
+              {verification.title}
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {!consentGranted && (
         <Card
           title={privacy.consentRequiredTitle}
@@ -111,7 +137,7 @@ export default async function ResidentPage() {
                         {formatDate(concern.createdAt)}
                       </p>
                     </div>
-                    <StatusBadge status={concern.status} />
+                    <StatusBadge status={concern.status} locale={locale} />
                   </Link>
                 </li>
               ))}
@@ -188,6 +214,19 @@ export default async function ResidentPage() {
           </div>
         </Card>
       </div>
+
+      <DeskGuide
+        title={t.howToTitle}
+        lead={t.howToLead}
+        steps={t.howToSteps}
+        mistakesTitle={howTo.ifWrong}
+        mistakes={t.howToIfWrong}
+        helpLabel={howTo.help}
+        hideLabel={howTo.hide}
+        showLabel={howTo.show}
+        storageKey="br-guide-resident"
+        defaultOpen={totals.total === 0}
+      />
     </div>
   );
 }

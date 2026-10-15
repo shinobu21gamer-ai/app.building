@@ -6,16 +6,19 @@ import {
   Construction,
   Eye,
   GitBranch,
+  HardHat,
   HeartPulse,
+  Landmark,
   Lightbulb,
   MapPin,
   Recycle,
   Route,
   Shield,
   ShieldAlert,
-  Users,
+  ShieldCheck,
   UserRound,
-  Landmark,
+  Users,
+  Wallet,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
@@ -35,6 +38,7 @@ export const metadata: Metadata = {
 const WORKFLOW_ICONS = {
   submit: ClipboardCheck,
   prioritize: Shield,
+  check: MapPin,
   route: GitBranch,
   process: Route,
   resolve: Landmark,
@@ -53,6 +57,9 @@ const REPORT_ICONS = {
 const ROLE_ICONS = {
   residents: Users,
   officials: UserRound,
+  treasurer: Wallet,
+  captain: ShieldCheck,
+  crew: HardHat,
   admins: Landmark,
 } as const;
 
@@ -251,7 +258,7 @@ export default async function Home() {
           <h2 className="reveal text-2xl font-semibold text-ink">
             {t.home.rolesTitle}
           </h2>
-          <div className="reveal-stagger mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="reveal-stagger mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {t.home.roles.map((role) => {
               const Icon = ROLE_ICONS[role.key as keyof typeof ROLE_ICONS];
               return (

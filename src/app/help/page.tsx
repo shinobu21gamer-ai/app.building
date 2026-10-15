@@ -103,20 +103,44 @@ export default async function HelpPage() {
           <Button href="/track" variant="ghost">
             {t.help.track}
           </Button>
+          <Button href="/charter" variant="ghost">
+            {t.footer.charter}
+          </Button>
         </div>
       </section>
 
-      <section className="mt-12 grid gap-4 sm:grid-cols-2">
-        <Card title={t.help.officialTitle} description={t.help.officialDesc}>
-          <p className="max-w-3xl text-sm leading-relaxed text-ink-muted">
-            {t.help.officialBody}
-          </p>
-        </Card>
-        <Card title={t.help.adminTitle} description={t.help.adminDesc}>
-          <p className="max-w-3xl text-sm leading-relaxed text-ink-muted">
-            {t.help.adminBody}
-          </p>
-        </Card>
+      <section className="mt-12">
+        <h2 className="text-subtitle text-ink">{t.help.staffTitle}</h2>
+        <p className="mt-1 mb-4 text-sm text-ink-muted">
+          {t.help.officialDesc}
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card title={t.help.officialTitle} description={t.help.officialDesc}>
+            <p className="max-w-3xl text-sm leading-relaxed text-ink-muted">
+              {t.help.officialBody}
+            </p>
+          </Card>
+          <Card title={t.help.treasurerTitle} description={t.help.treasurerDesc}>
+            <p className="max-w-3xl text-sm leading-relaxed text-ink-muted">
+              {t.help.treasurerBody}
+            </p>
+          </Card>
+          <Card title={t.help.captainHelpTitle} description={t.help.captainDesc}>
+            <p className="max-w-3xl text-sm leading-relaxed text-ink-muted">
+              {t.help.captainBody}
+            </p>
+          </Card>
+          <Card title={t.help.crewTitle} description={t.help.crewDesc}>
+            <p className="max-w-3xl text-sm leading-relaxed text-ink-muted">
+              {t.help.crewBody}
+            </p>
+          </Card>
+          <Card title={t.help.adminTitle} description={t.help.adminDesc}>
+            <p className="max-w-3xl text-sm leading-relaxed text-ink-muted">
+              {t.help.adminBody}
+            </p>
+          </Card>
+        </div>
       </section>
 
       <section className="mt-12">

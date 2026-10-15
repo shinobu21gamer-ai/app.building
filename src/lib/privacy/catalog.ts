@@ -66,7 +66,7 @@ export const CONSENT_PURPOSES_DEFINITIONS: readonly ConsentPurposeDefinition[] =
       purpose: "SMS",
       label: "Text message updates",
       description:
-        "Send updates to the phone number on my account. Message rates may apply.",
+        "I agree the hall may send case updates by text if an SMS gateway is later configured. This checkbox only records consent — BarangayResolve does not send SMS today.",
       requiredAtSignup: false,
       withdrawable: true,
     },

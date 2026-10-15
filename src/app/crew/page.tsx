@@ -7,6 +7,8 @@ import { CrewJobForm } from "@/components/cases/crew-job-form";
 import { StepGuide } from "@/components/cases/step-guide";
 import { FieldCheckSubmitForm } from "@/components/cases/field-check-panel";
 import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { DeskGuide } from "@/components/portals/desk-guide";
 import { listCrewJobs } from "@/lib/cases/crew";
 import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import { formatDateTime } from "@/lib/format";
@@ -30,6 +32,7 @@ export default async function CrewHomePage() {
   const t = copy[locale].revamp.workflow;
 
   const flowCopy = copy[locale].flow;
+  const howTo = copy[locale].revamp.howTo;
   // Mirrors the query below, with the amount widened to a plain number
   // (Prisma returns Decimals) and the nullable columns kept nullable.
   type CrewPaymentRow = {
@@ -92,44 +95,6 @@ export default async function CrewHomePage() {
     <div className="space-y-6">
       <PageHeader title={t.jobTitle} description={t.jobDesc} />
 
-      <Card title={t.myPayments} description={t.myPaymentsDesc}>
-        {payments.length === 0 ? (
-          <p className="text-sm text-ink-subtle">{t.myPaymentsEmpty}</p>
-        ) : (
-          <>
-            <dl className="divide-y divide-line">
-              {payments.map((row) => (
-                <div
-                  key={row.id}
-                  className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2 text-sm"
-                >
-                  <dt className="text-ink-muted">
-                    {row.concern?.caseNumber ?? t.myPaymentsNoCase}
-                    {row.voucherNumber ? ` · ${row.voucherNumber}` : ""}
-                  </dt>
-                  <dd className="font-medium tabular-nums text-ink">
-                    ₱{Number(row.amount).toFixed(2)}
-                  </dd>
-                  {row.releasedAt && (
-                    <dd className="w-full text-xs text-ink-subtle sm:w-auto">
-                      {t.myPaymentsReleased}: {formatDateTime(row.releasedAt)}
-                    </dd>
-                  )}
-                </div>
-              ))}
-              <div className="flex items-baseline justify-between gap-4 py-2 text-sm">
-                <dt className="font-semibold text-ink">
-                  {t.myPaymentsTotal}
-                </dt>
-                <dd className="font-semibold tabular-nums text-emerald-700">
-                  ₱{paidTotal.toFixed(2)}
-                </dd>
-              </div>
-            </dl>
-          </>
-        )}
-      </Card>
-
       {fieldChecks.length > 0 && (
         <Card title={t.fieldCheck.forYou} description={t.fieldCheck.forYouDesc}>
           <ul className="space-y-4">
@@ -171,7 +136,7 @@ export default async function CrewHomePage() {
 
       {jobs.length === 0 ? (
         <Card>
-          <p className="text-sm text-ink-subtle">{t.jobEmpty}</p>
+          <EmptyState title={t.jobEmpty} description={t.jobEmptyHint} />
         </Card>
       ) : (
         <ul className="space-y-4">
@@ -185,7 +150,7 @@ export default async function CrewHomePage() {
                   description={job.concern.assignedOffice?.name ?? undefined}
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge status={job.concern.status} />
+                    <StatusBadge status={job.concern.status} locale={locale} />
                     {assessment?.workersNeeded ? (
                       <Badge tone="violet">
                         {t.jobWorkers}: {assessment.workersNeeded}
@@ -259,6 +224,57 @@ export default async function CrewHomePage() {
           })}
         </ul>
       )}
+
+      <Card title={t.myPayments} description={t.myPaymentsDesc}>
+        {payments.length === 0 ? (
+          <p className="text-sm text-ink-subtle">{t.myPaymentsEmpty}</p>
+        ) : (
+          <>
+            <dl className="divide-y divide-line">
+              {payments.map((row) => (
+                <div
+                  key={row.id}
+                  className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2 text-sm"
+                >
+                  <dt className="text-ink-muted">
+                    {row.concern?.caseNumber ?? t.myPaymentsNoCase}
+                    {row.voucherNumber ? ` · ${row.voucherNumber}` : ""}
+                  </dt>
+                  <dd className="font-medium tabular-nums text-ink">
+                    ₱{Number(row.amount).toFixed(2)}
+                  </dd>
+                  {row.releasedAt && (
+                    <dd className="w-full text-xs text-ink-subtle sm:w-auto">
+                      {t.myPaymentsReleased}: {formatDateTime(row.releasedAt)}
+                    </dd>
+                  )}
+                </div>
+              ))}
+              <div className="flex items-baseline justify-between gap-4 py-2 text-sm">
+                <dt className="font-semibold text-ink">
+                  {t.myPaymentsTotal}
+                </dt>
+                <dd className="font-semibold tabular-nums text-emerald-700">
+                  ₱{paidTotal.toFixed(2)}
+                </dd>
+              </div>
+            </dl>
+          </>
+        )}
+      </Card>
+
+      <DeskGuide
+        title={t.howToTitle}
+        lead={t.howToLead}
+        steps={t.howToSteps}
+        mistakesTitle={howTo.ifWrong}
+        mistakes={t.howToIfWrong}
+        helpLabel={howTo.help}
+        hideLabel={howTo.hide}
+        showLabel={howTo.show}
+        storageKey="br-guide-crew"
+        defaultOpen={jobs.length === 0 && fieldChecks.length === 0}
+      />
     </div>
   );
 }

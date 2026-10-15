@@ -15,6 +15,11 @@ import {
   type ConsentPurpose,
 } from "@/lib/privacy/catalog";
 import { hasConsent } from "@/lib/privacy/consent";
+import { needsVerifiedIdentity } from "@/lib/identity/policy";
+import {
+  getIdentityState,
+  isIdentityGateEnabled,
+} from "@/lib/identity/verification";
 
 export const metadata: Metadata = {
   title: "Submit Concern",
@@ -61,11 +66,16 @@ export default async function NewConcernPage() {
     );
   }
 
-  const [categories, factors, areas, types] = await Promise.all([
+  const [categories, factors, areas, types, identity, gateEnabled] =
+    await Promise.all([
     db.concernCategory.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: {
+        id: true,
+        name: true,
+        type: { select: { key: true } },
+      },
     }),
     db.priorityFactorConfig.findMany({
       where: { isActive: true },
@@ -82,9 +92,23 @@ export default async function NewConcernPage() {
     db.concernType.findMany({
       where: { isActive: true },
       orderBy: { displayOrder: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, key: true },
     }),
+    getIdentityState(user.id),
+    isIdentityGateEnabled(),
   ]);
+  const identityGate = gateEnabled
+    ? {
+        verified: identity.isVerified,
+        status: identity.status,
+        benefitTypeIds: types
+          .filter((type) => needsVerifiedIdentity(type.key))
+          .map((type) => type.id),
+        benefitCategoryIds: categories
+          .filter((category) => needsVerifiedIdentity(category.type?.key))
+          .map((category) => category.id),
+      }
+    : undefined;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -113,6 +137,7 @@ export default async function NewConcernPage() {
             areas={areas}
             types={types}
             locale={locale}
+            identityGate={identityGate}
           />
         )}
       </Card>

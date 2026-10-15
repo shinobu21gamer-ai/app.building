@@ -33,8 +33,16 @@ export function CrewJobForm({
     const data = new FormData(form);
     const payload = {
       kind: String(data.get("kind") ?? "PROGRESS"),
-      note: String(data.get("note") ?? ""),
+      note: String(data.get("note") ?? "").trim(),
     };
+    if (payload.note.length < 5) {
+      setError(t.jobNoteTooShort);
+      return;
+    }
+    if (payload.note.length > 500) {
+      setError(t.jobNoteTooLong);
+      return;
+    }
 
     setSubmitting(true);
     const result = await apiRequest(`/api/v1/crew/jobs/${concernId}`, {

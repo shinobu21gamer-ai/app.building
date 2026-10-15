@@ -125,6 +125,8 @@ export async function getOfficialDashboard(
       assigned: statusRows.reduce((sum, row) => sum + row._count._all, 0),
       pending: countOf(PENDING_STATUSES, statusCounts),
       highPriority: countOf(HIGH_PRIORITY_LEVELS, priorityCounts),
+      underAssessment: statusCounts.get("UNDER_ASSESSMENT") ?? 0,
+      awaitingBudget: statusCounts.get("AWAITING_BUDGET") ?? 0,
       inProgress: statusCounts.get("IN_PROGRESS") ?? 0,
     },
     recentlyResolved,

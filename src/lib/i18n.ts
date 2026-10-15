@@ -47,6 +47,7 @@ const en = {
   header: {
     track: "Track a case",
     help: "Help",
+    charter: "Charter",
     signIn: "Sign in",
     createAccount: "Create account",
     dashboard: "Dashboard",
@@ -67,8 +68,9 @@ const en = {
     signIn: "Sign in",
     track: "Track a case",
     help: "Help & FAQ",
+    charter: "Citizen's Charter",
     credit: "BarangayResolve — community concern management",
-    not911: "Not a substitute for 911, PNP, or BFP emergency response.",
+    not911: "Not a substitute for 911, PNP, BFP, or Katarungang Pambarangay.",
   },
   emergency: {
     heading: "Not for life-threatening emergencies",
@@ -88,7 +90,7 @@ const en = {
     dashboard: "Go to your dashboard",
     stats: [
       { value: "1", label: "Case number per report" },
-      { value: "5", label: "Status steps you can follow" },
+      { value: "9", label: "Hall steps from field check to close" },
       { value: "911", label: "Still the number for emergencies" },
     ],
     heroAlt:
@@ -112,7 +114,7 @@ const en = {
     reportTypes: [
       { key: "roads", title: "Roads & drainage", description: "Potholes, blocked canals, damaged paths." },
       { key: "waste", title: "Waste & sanitation", description: "Uncollected garbage, dumping, clogged sewers." },
-      { key: "peace", title: "Peace & order", description: "Noise, street safety, and related reports." },
+      { key: "peace", title: "Peace & order", description: "Street safety hazards such as dark corners. Neighbor disputes go to the Lupong Tagapamayapa, not this system." },
       { key: "health", title: "Health", description: "Barangay health and sanitation concerns." },
       { key: "lights", title: "Streetlights", description: "Dark corners and broken public lighting." },
       { key: "places", title: "Public places", description: "Plaza, covered court, market, and school zones." },
@@ -120,8 +122,11 @@ const en = {
     rolesTitle: "Built for every part of the barangay",
     roles: [
       { key: "residents", title: "Residents", body: "File a concern, keep the case number, watch every status change, and rate the resolution." },
-      { key: "officials", title: "Barangay officials", body: "Work the queue for your office — remarks, reassignment, and a recorded resolution." },
-      { key: "admins", title: "Administrators", body: "Manage accounts, offices, categories, routing, and priority rules from one hall dashboard." },
+      { key: "officials", title: "Barangay officials", body: "Work the queue for your office — field check, assessment, crew, remarks, and a recorded resolution." },
+      { key: "treasurer", title: "Treasurer", body: "Fund cases, prepare earmarks and vouchers, and certify that money is available. Cannot approve release." },
+      { key: "captain", title: "Barangay captain", body: "Approve money, verify proof of completion, and close cases. Does not assess or assign crew." },
+      { key: "crew", title: "Maintenance crew", body: "See only assigned jobs. Send a short progress note. Cannot open the office case sheet." },
+      { key: "admins", title: "Administrators", body: "Issue staff accounts, configure offices, categories, routing, and priority. Not a substitute for the captain's signature." },
     ],
     faqTitle: "Common questions",
     faqLead: "Accounts, photos, priority, and who can see your case.",
@@ -149,11 +154,135 @@ const en = {
     steps: [
       { key: "account", title: "Create a resident account", body: "Use your real name, a working email, and a phone number the hall can reach. Official and administrator accounts are issued by the barangay — they are not self-registered." },
       { key: "submit", title: "Submit a concern", body: "Choose a category, describe the problem, name the purok or landmark, rate how urgent and unsafe it is, and attach a photo. You will get a case number immediately." },
-      { key: "follow", title: "Follow the case", body: "Open My Concerns anytime, or use Track a case with the case number and your email. Status moves from submitted to assigned, in progress, resolved, then closed. Notifications appear when officials add a remark or finish the work." },
+      { key: "follow", title: "Follow the case", body: "Open My Concerns anytime, or use Track a case with the case number and your email. Status moves through submitted, assigned, under assessment, awaiting budget, in progress, resolved, then closed. Notifications appear when officials add a remark or finish the work." },
     ],
     createAccount: "Create an account",
     signIn: "Sign in",
     track: "Track a case",
+    staffTitle: "For hall staff",
+    treasurerTitle: "For the treasurer",
+    treasurerDesc: "Issued by an administrator.",
+    treasurerBody:
+      "Fund cases waiting in Awaiting budget, prepare allocations and earmarks, certify vouchers. You cannot approve money — that is the Captain. If a voucher sits on Certified, it is waiting on the Captain, not on you.",
+    captainHelpTitle: "For the barangay captain",
+    captainDesc: "Authorized Approving Official.",
+    captainBody:
+      "Approve budgets, earmarks and certified vouchers; verify proof of completion; close cases. You do not assess or assign crew. Open a case from Cases to close — the sheet only offers the steps you may do.",
+    crewTitle: "For maintenance crew",
+    crewDesc: "Assigned to jobs by an official.",
+    crewBody:
+      "Your home shows only your jobs. Check the plan, go to the location, send a short progress note (5–500 characters). You cannot open the office case sheet. If the list is empty, you are not assigned yet — that is expected.",
+  },
+  charter: {
+    kicker: "RA 11032 · Citizen's Charter",
+    title: "How this online window serves you",
+    lead:
+      "This is the posted map of the BarangayResolve frontline service: who may use it, what is required, how long a step should take, and how to complain if the hall is silent. It covers this software. Katarungang Pambarangay, certificates, and 911 remain separate.",
+    legal:
+      "Aligned with RA 11032 (Ease of Doing Business / Anti-Red Tape Act) for frontline intake, tracking, and notices; RA 10173 (Data Privacy Act) for personal data; RA 7160 for barangay service delivery; and COA GAM for LGUs for the money path (prepare → certify funds → Punong Barangay approval).",
+    notTitle: "This service is not",
+    notItems: [
+      {
+        title: "Not 911 / PNP / BFP",
+        body: "Life-threatening emergencies, fire, or a crime in progress: call 911. Do not wait for a case number.",
+      },
+      {
+        title: "Not Katarungang Pambarangay",
+        body: "Neighbor disputes, mediation, and Certificates to File Action belong to the Lupong Tagapamayapa. This system does not docket KP cases.",
+      },
+      {
+        title: "Not certificates or clearances",
+        body: "Barangay clearance, indigency, and residency documents are not issued here.",
+      },
+    ],
+    servicesTitle: "Frontline services in this system",
+    colService: "Service",
+    colWho: "Who",
+    colNeed: "Need",
+    colTime: "Time",
+    colResult: "Result",
+    canLabel: "Can",
+    cannotLabel: "Cannot",
+    servicesLead:
+      "Times below are working-day targets for the software's frontline steps (receive, acknowledge, status). Inspection, funding, and repair follow the hall's SLA policies and available funds — they are not the 3–7–20 clocks of a simple permit.",
+    services: [
+      {
+        name: "Submit a community concern",
+        who: "Registered residents",
+        need: "Account, category, description, location, photo (JPEG/PNG/WebP, ≤ 5 MB)",
+        time: "Immediate case number on successful submit",
+        result: "A tracked case routed to the office that handles that category",
+      },
+      {
+        name: "Track a case",
+        who: "The filer (signed in) or anyone with the case number and the filer's email",
+        need: "Case number + email",
+        time: "Immediate",
+        result: "Status, office, and dates. Photos and personal details stay off the public lookup.",
+      },
+      {
+        name: "Walk-in filing",
+        who: "Residents without a device or internet",
+        need: "Appear at the hall; staff create a resident account on a public terminal",
+        time: "Same visit, then the same online case",
+        result: "The resident owns the case. Staff accounts cannot file a concern on a resident's behalf.",
+      },
+      {
+        name: "Identity verification (when the gate is on)",
+        who: "Residents",
+        need: "A photo of a government ID",
+        time: "Queued for an administrator",
+        result: "Verified or rejected with a reason. ID numbers are masked for staff.",
+      },
+      {
+        name: "Data-subject request (RA 10173)",
+        who: "The account holder",
+        need: "Signed-in request from Privacy",
+        time: "Handled by an administrator under the retention policy",
+        result: "Access, correction, or erasure as the law and the remaining case record allow",
+      },
+    ],
+    whoTitle: "Who may do what",
+    whoLead:
+      "One person, one role. Money and case closure are split on purpose so the person who certifies funds is not the person who approves release.",
+    roles: [
+      {
+        title: "Resident",
+        can: "Submit, track own cases, give feedback, manage consent, request identity check.",
+        cannot: "See other people's cases, move status, or touch money.",
+      },
+      {
+        title: "Official",
+        can: "Work the office queue: field check, assess, plan crew, update status with proof, resolve.",
+        cannot: "Submit a resident concern, approve treasury releases, or close a case.",
+      },
+      {
+        title: "Crew",
+        can: "See assigned jobs and send a short progress note.",
+        cannot: "Open the office case sheet, start a case, or file a concern.",
+      },
+      {
+        title: "Treasurer",
+        can: "Fund cases, prepare allocations/earmarks/vouchers, certify that funds exist.",
+        cannot: "Approve a voucher or close a case. Certified vouchers wait on the Captain.",
+      },
+      {
+        title: "Captain (AAO)",
+        can: "Approve money, verify proof of completion, close cases, acknowledge SLA escalations.",
+        cannot: "Assess, assign crew, or certify funds.",
+      },
+      {
+        title: "Administrator",
+        can: "Issue staff accounts, configure offices, categories, routing, priority, privacy, and SLA.",
+        cannot: "Replace the Captain's approval in a real hall. Demo accounts keep roles separate on purpose.",
+      },
+    ],
+    complainTitle: "If the hall is silent",
+    complainBody:
+      "Use Help, then the hall's public assistance desk. RA 11032 expects a posted charter, an acknowledgment, and a way to escalate delay. This page is that charter for the online window. Administrative complaints against an official are filed with the Sangguniang Panlungsod/Bayan or the Ombudsman — not as a concern in this system.",
+    moneyTitle: "When a case needs money",
+    moneyBody:
+      "Work that costs money waits in Awaiting budget until an earmark is prepared, funds are certified available, and the Punong Barangay approves. A case cannot skip that gate. Dates on the journal cannot be in the future or earlier than the case allows.",
   },
   track: {
     title: "Track a case",
@@ -194,6 +323,8 @@ const en = {
     next: "You will be returned to",
     after: "after signing in.",
     invalidValue: "Invalid value",
+    staffHint:
+      "Official, treasurer, captain, crew and admin accounts are issued by the barangay. Only residents create an account here.",
   },
   register: {
     requiredLegend: "* Required field",
@@ -208,7 +339,8 @@ const en = {
     consentTransparency:
       "Publish my cases on the transparency page without my personal details.",
     consentNotifications: "Send me in-app notifications about my cases.",
-    consentSms: "Send case updates by text message to my phone number.",
+    consentSms:
+      "The hall may send case updates by text if an SMS service is later configured. This only records consent — no text is sent today.",
     title: "Create a resident account",
     description: "Register to submit and track community concerns.",
     firstName: "First name",
@@ -321,6 +453,26 @@ const en = {
     office: "Assigned office",
     awaiting: "Awaiting office assignment",
     photo: "Supporting image",
+    howToTitle: "How to use your account",
+    howToLead:
+      "Three steps: file a concern, watch its case number, and reply if the hall asks for more.",
+    howToIfWrong:
+      "If submit is blocked, the page names the reason — missing consent, missing photo, or identity verification for assistance and budget requests. Fix that item, then send again. You cannot edit a case after it is filed; add nothing secret in the description.",
+    howToSteps: [
+      {
+        title: "Submit a concern",
+        detail: "Category, place, photo, and how urgent it is. You get a case number at once.",
+      },
+      {
+        title: "Track it",
+        detail: "Open My Concerns, or Track a case with the number and your email.",
+      },
+      {
+        title: "Verify identity when money is involved",
+        detail:
+          "Assistance and budget requests need a verified ID first. Road and sanitation reports do not.",
+      },
+    ],
   },
   submit: {
     requiredLegend: "* Required field",
@@ -336,6 +488,8 @@ const en = {
     typeHelp:
       "Suggest the kind of help you need. The barangay confirms the type when it validates your concern.",
     typeUnset: "Not sure yet — let the barangay decide",
+    identityCta: "Verify identity",
+    identitySignIn: "Sign in to verify your identity",
     categoryPlaceholder: "Select a category",
     description: "Description",
     descriptionPlaceholder:
@@ -457,6 +611,32 @@ const en = {
     welcome: "Welcome, {name}",
     caseload: "{office} caseload",
     noOffice: "No office is assigned to your account.",
+    noOfficeHelp:
+      "Ask an administrator to assign you to an office. Until then you cannot see or work cases — this is not a bug, the queue is empty on purpose.",
+    howToTitle: "Your job on this desk",
+    howToLead:
+      "You only work cases routed to your office. Open a case and follow the numbered steps on its sheet. You cannot skip a step, and the form will say why if you try.",
+    howToIfWrong:
+      "A red or amber message on a form is the system stopping a broken step — read it, fix what it names (photo, remarks, missing assessment, waiting on treasury), then try again. You cannot close a case; that is the Captain's call.",
+    howToSteps: [
+      {
+        title: "Open a case from your queue",
+        detail: "The list below is only your office. Use Manage to open the case sheet.",
+      },
+      {
+        title: "Follow the numbered steps on the case",
+        detail:
+          "Check the site, assess cost and crew, send it to budget, assign workers, then record the resolution with a proof photo.",
+      },
+      {
+        title: "Wait when the step belongs to someone else",
+        detail:
+          "Validation is the admin desk. Money is the treasurer then the Captain. Closure is the Captain. The case sheet names the desk.",
+      },
+    ],
+    emptyCaseload: "No cases in your office yet.",
+    emptyCaseloadHint:
+      "New reports appear here after an administrator validates them and they are routed to your office.",
     systemFiltered: "System view — filtered by office",
     systemAll: "System view — all offices",
     assigned: "Assigned cases",
@@ -464,6 +644,10 @@ const en = {
     pendingHint: "Awaiting action",
     highPriority: "High priority",
     highHint: "High / critical",
+    underAssessment: "Under assessment",
+    underAssessmentHint: "Cost and crew being planned",
+    awaitingBudget: "Awaiting budget",
+    awaitingBudgetHint: "Waiting on the treasury",
     inProgress: "In progress",
     recentResolved: "Recently resolved",
     recentResolvedDesc: "The five most recently resolved cases in scope.",
@@ -700,6 +884,28 @@ const en = {
     welcome: "Welcome, {name}",
     overview:
       "Live system overview. Every figure is calculated from the database.",
+    howToTitle: "Start here as administrator",
+    howToLead:
+      "You configure the hall and validate new reports so offices can work them. The menu on the left is every desk; the three below are the ones a new admin uses first.",
+    howToIfWrong:
+      "If an official says they have no cases, check Users — they need an office. If a case sits on Submitted, open the validation queue and set its service type. Do not skip money or closure; those desks still belong to the treasurer and the Captain.",
+    howToSteps: [
+      {
+        title: "Validate new reports",
+        detail: "Confirm type, category and office so the case is assigned.",
+      },
+      {
+        title: "Give people the right account",
+        detail: "Users and Crew: office, role, and whether the account is active.",
+      },
+      {
+        title: "Keep routing and priority honest",
+        detail: "Categories, offices, routing rules and SLA live in this portal.",
+      },
+    ],
+    startValidation: "Open the validation queue",
+    startUsers: "Open users",
+    startCrew: "Open the crew roster",
     totalCases: "Total cases",
     resolvedClosed: "Resolved / closed",
     avgProcessing: "Average processing time",
@@ -1099,6 +1305,9 @@ const en = {
     actionDate: "Date of action",
     actionDateHint:
       "Defaults to today. An earlier day is allowed, but not before {date} and never in the future.",
+    actionDateInvalid: "Pick a real calendar day.",
+    actionDateFuture: "That day is in the future. Use today or an earlier day.",
+    actionDateTooOld: "That day is too early. The earliest allowed day is {date}.",
     proofPhoto: "Proof photo (required)",
     proofPhotoHint:
       "Every status update needs a photo as proof. JPEG, PNG, or WebP, up to 5 MB. Residents and your office can see it.",
@@ -1356,6 +1565,16 @@ const en = {
       question: "Can I rate how the barangay handled my case?",
       answer:
         "Yes. After a case is resolved you will be asked for a 1–5 rating and an optional comment. That feedback is stored with the case so the hall can improve how it works.",
+    },
+    {
+      question: "Is this Katarungang Pambarangay / the Lupon?",
+      answer:
+        "No. BarangayResolve is for community infrastructure and service concerns (roads, drainage, waste, lights, public places). Neighbor disputes, mediation, and Certificates to File Action stay with the Lupong Tagapamayapa under the Local Government Code. Call 911 for emergencies.",
+    },
+    {
+      question: "I have no internet. Can I still file?",
+      answer:
+        "Yes, at the hall. Staff can create a resident account on a public terminal so you file as yourself. Official, treasurer, captain, and crew accounts cannot submit a resident concern. The Citizen's Charter lists this service, who may use it, and how to complain about delay.",
     },
   ],
 
@@ -1731,6 +1950,12 @@ const en = {
       more: "More",
       sectionLabel: "Sections",
     },
+    howTo: {
+      hide: "Hide this guide",
+      show: "Show how this desk works",
+      ifWrong: "If something went wrong",
+      help: "Open the help page",
+    },
     portal: {
       permissionsTitle: "What your role can do",
       permissionsLead:
@@ -1758,6 +1983,8 @@ const en = {
       open: "Open",
       dashboardTitle: "Treasury",
       dashboardLead: "Live MOOE balances, what is waiting on an approval, and how old the pending vouchers are.",
+      ifWrong:
+        "You prepare and certify; the Captain approves. If a case will not leave Awaiting budget, the earmark is still with the Captain or the amount does not cover the estimate. A form error names the missing figure — do not type over the ledger.",
       balancesTitle: "Live balances",
       appropriated: "Appropriated",
       reserved: "Reserved",
@@ -2319,6 +2546,40 @@ const en = {
     captain: {
       title: "Captain",
       lead: "Approvals and oversight for the barangay captain as the Authorized Approving Official.",
+      welcome: "Welcome, {name}",
+      statReadyToClose: "Ready to close",
+      statReadyToCloseHint: "Proof verified as fully fixed",
+      statNeedVerify: "Need verification",
+      statNeedVerifyHint: "Resolved, proof not yet verified",
+      statApprovals: "Waiting on you",
+      statApprovalsHint: "Budgets, earmarks and vouchers",
+      statEscalations: "Open escalations",
+      statEscalationsHint: "Cases past their 48-hour window",
+      guideTitle: "Your work as approving official",
+      guideLead:
+        "Money does not move, and a case does not close, until you have decided.",
+      guideSteps: [
+        {
+          title: "Approve money",
+          detail:
+            "Open budget allocations, reserve earmarks for cases, and release vouchers the treasurer has certified.",
+        },
+        {
+          title: "Verify and close",
+          detail:
+            "Read the proof of completion on the case sheet, verify it, then close the case.",
+        },
+        {
+          title: "Watch escalations",
+          detail:
+            "Cases that sit too long in one stage are raised here so you can push the office that holds them.",
+        },
+      ],
+      queueApprovals: "Approvals waiting",
+      queueClosure: "Cases waiting to close",
+      openApprovals: "Open the approval desk",
+      ifWrong:
+        "You cannot assess, assign crew or start work from this desk. If an approval button is missing, the treasurer has not certified the voucher yet. If a case will not close, the proof is not verified as fully fixed — open the case and verify it first.",
       closeQueueTitle: "Cases to close",
       closeQueueLead:
         "Resolved cases with the proof already verified. Closing is the approving official's call — open a case to see the proof, verify it, and close it.",
@@ -2910,6 +3171,27 @@ const en = {
       jobTitle: "My assignments",
       jobDesc: "The cases you are booked on. Update the office as work moves.",
       jobEmpty: "No open assignments right now.",
+      jobEmptyHint:
+        "An official books you onto a repair case. Until then this list stays empty — that is normal, not a missing page.",
+      howToTitle: "Your job as crew",
+      howToLead:
+        "You only see cases you are assigned to. Follow the plan on the card, then send a short progress note.",
+      howToIfWrong:
+        "If send fails, the form names the reason — usually a note that is empty, shorter than 5 characters, or longer than 500. You cannot start a case yourself; wait until the office moves it to In progress.",
+      howToSteps: [
+        {
+          title: "Read the plan",
+          detail: "Workers needed, duration, equipment and the address are on the card.",
+        },
+        {
+          title: "Go to the location",
+          detail: "Use the map link when a pin is present.",
+        },
+        {
+          title: "Send progress",
+          detail: "A short note (5–500 characters). The office sees the same record.",
+        },
+      ],
     myPayments: "Your payments",
     myPaymentsDesc:
       "Crew pay goes out through vouchers prepared and released by the treasurer — nothing is automatic. What has been released for you so far:",
@@ -2924,6 +3206,8 @@ const en = {
       jobWorkers: "Crew on this case",
       jobNote: "Progress update",
       jobNotePlaceholder: "What happened on site?",
+      jobNoteTooShort: "Write at least 5 characters so the office knows what happened.",
+      jobNoteTooLong: "Keep the note under 500 characters.",
       jobKindProgress: "Progress",
       jobKindProblem: "Problem on site",
       jobKindCompletion: "Work completed",
@@ -3082,6 +3366,7 @@ const fil: typeof en = {
   header: {
     track: "Subaybayan ang kaso",
     help: "Tulong",
+    charter: "Charter",
     signIn: "Mag-sign in",
     createAccount: "Gumawa ng account",
     dashboard: "Dashboard",
@@ -3102,8 +3387,9 @@ const fil: typeof en = {
     signIn: "Mag-sign in",
     track: "Subaybayan ang kaso",
     help: "Tulong at FAQ",
+    charter: "Citizen's Charter",
     credit: "BarangayResolve — pamamahala ng community concern",
-    not911: "Hindi ito kapalit ng 911, PNP, o BFP sa oras ng emergency.",
+    not911: "Hindi ito kapalit ng 911, PNP, BFP, o Katarungang Pambarangay.",
   },
   emergency: {
     heading: "Hindi ito para sa emergency na banta sa buhay",
@@ -3123,7 +3409,7 @@ const fil: typeof en = {
     dashboard: "Pumunta sa dashboard",
     stats: [
       { value: "1", label: "Isang case number bawat ulat" },
-      { value: "5", label: "Mga hakbang ng status na masusundan" },
+      { value: "9", label: "Hakbang ng hall mula field check hanggang sara" },
       { value: "911", label: "Ito pa rin ang numero sa emergency" },
     ],
     heroAlt:
@@ -3147,7 +3433,7 @@ const fil: typeof en = {
     reportTypes: [
       { key: "roads", title: "Kalsada at drainage", description: "Burak, baradong kanal, sira na daanan." },
       { key: "waste", title: "Basura at sanitasyon", description: "Hindi nakolektang basura, tambakan, baradong alkantarilya." },
-      { key: "peace", title: "Peace and order", description: "Ingay, kaligtasan sa kalye, at kaugnay na ulat." },
+      { key: "peace", title: "Peace and order", description: "Panganib sa kalye tulad ng madilim na sulok. Ang alitan ng magkapitbahay ay sa Lupong Tagapamayapa, hindi dito." },
       { key: "health", title: "Kalusugan", description: "Mga concern sa kalusugan at sanitasyon ng barangay." },
       { key: "lights", title: "Ilaw sa kalye", description: "Madilim na sulok at sira na pampublikong ilaw." },
       { key: "places", title: "Pampublikong lugar", description: "Plasa, covered court, palengke, at sona ng paaralan." },
@@ -3155,8 +3441,11 @@ const fil: typeof en = {
     rolesTitle: "Para sa bawat bahagi ng barangay",
     roles: [
       { key: "residents", title: "Mga residente", body: "Maghain ng concern, panatilihin ang case number, sundan ang status, at bigyan ng rating ang resolusyon." },
-      { key: "officials", title: "Mga opisyal", body: "Asikasuhin ang pila ng tanggapan — tala, muling assignment, at naitalang resolusyon." },
-      { key: "admins", title: "Mga administrador", body: "Pamahalaan ang accounts, tanggapan, kategorya, routing, at priority mula sa isang dashboard." },
+      { key: "officials", title: "Mga opisyal", body: "Asikasuhin ang pila ng tanggapan — field check, pagtatasa, crew, tala, at naitalang resolusyon." },
+      { key: "treasurer", title: "Treasurer", body: "Pondohan ang kaso, maghanda ng earmark at voucher, at i-certify na may pera. Hindi mag-aapruba ng release." },
+      { key: "captain", title: "Punong barangay", body: "Aprubahan ang pera, i-verify ang proof, at isara ang kaso. Hindi mag-a-assess o magtatalaga ng crew." },
+      { key: "crew", title: "Maintenance crew", body: "Mga naka-assign na trabaho lang. Magpadala ng maikling tala. Hindi mabubuksan ang case sheet ng opisina." },
+      { key: "admins", title: "Mga administrador", body: "Mag-isyu ng staff account, i-set ang tanggapan, kategorya, routing, at priority. Hindi kapalit ng pirma ng captain." },
     ],
     faqTitle: "Mga madalas itanong",
     faqLead: "Account, litrato, priority, at kung sino ang makakakita ng kaso.",
@@ -3184,11 +3473,135 @@ const fil: typeof en = {
     steps: [
       { key: "account", title: "Gumawa ng resident account", body: "Gamitin ang tunay na pangalan, gumaganang email, at numerong matawagan ng hall. Ang account ng opisyal at administrador ay ibinibigay ng barangay — hindi ito sa public form." },
       { key: "submit", title: "Maghain ng concern", body: "Pumili ng kategorya, ilarawan ang problema, tukuyin ang purok o palatandaan, i-rate ang urgency at kaligtasan, at maglakip ng litrato. Agad kang bibigyan ng case number." },
-      { key: "follow", title: "Sundan ang kaso", body: "Buksan ang My Concerns, o gamitin ang Subaybayan ang kaso kasama ang case number at email. Dumadaan ang status mula submitted, assigned, in progress, resolved, hanggang closed." },
+      { key: "follow", title: "Sundan ang kaso", body: "Buksan ang My Concerns, o gamitin ang Subaybayan ang kaso kasama ang case number at email. Dumadaan ang status sa submitted, assigned, under assessment, awaiting budget, in progress, resolved, hanggang closed." },
     ],
     createAccount: "Gumawa ng account",
     signIn: "Mag-sign in",
     track: "Subaybayan ang kaso",
+    staffTitle: "Para sa staff ng hall",
+    treasurerTitle: "Para sa treasurer",
+    treasurerDesc: "Ibinibigay ng administrador.",
+    treasurerBody:
+      "Pondohan ang kasong nasa Awaiting budget, maghanda ng allocation at earmark, mag-certify ng voucher. Hindi ikaw ang mag-aapruba ng pera — sa Captain iyon. Kung CERTIFIED ang voucher, sa Captain ito naghihintay, hindi sa iyo.",
+    captainHelpTitle: "Para sa punong barangay",
+    captainDesc: "Authorized Approving Official.",
+    captainBody:
+      "Aprubahan ang badyet, earmark at certified na voucher; i-verify ang proof; isara ang kaso. Hindi ikaw mag-a-assess o magtatalaga ng crew. Buksan ang kaso mula sa Mga kasong isasara — ang sheet ay nagpapakita lang ng hakbang na pwede mo.",
+    crewTitle: "Para sa maintenance crew",
+    crewDesc: "Itinatalaga ng opisyal sa trabaho.",
+    crewBody:
+      "Ang home mo ay mga trabaho mo lang. Tingnan ang plano, pumunta sa lugar, magpadala ng maikling tala (5–500 character). Hindi mo mabubuksan ang case sheet ng opisina. Kung walang listahan, wala ka pang assignment — normal iyon.",
+  },
+  charter: {
+    kicker: "RA 11032 · Citizen's Charter",
+    title: "Paano kayo pinagsisilbihan ng online na bintanang ito",
+    lead:
+      "Ito ang naka-post na mapa ng frontline service ng BarangayResolve: sino ang puwedeng gumamit, ano ang kailangan, gaano katagal ang hakbang, at paano magreklamo kung tahimik ang hall. Tungkol ito sa software. Ang Katarungang Pambarangay, mga sertipiko, at 911 ay hiwalay.",
+    legal:
+      "Tugma sa RA 11032 (Ease of Doing Business / Anti-Red Tape Act) para sa pagtanggap, pagsubaybay, at abiso; RA 10173 (Data Privacy Act) para sa personal na datos; RA 7160 para sa serbisyo ng barangay; at COA GAM for LGUs para sa daloy ng pera (handa → certify ng pondo → pag-apruba ng Punong Barangay).",
+    notTitle: "Hindi ito",
+    notItems: [
+      {
+        title: "Hindi 911 / PNP / BFP",
+        body: "Emergency na banta sa buhay, sunog, o krimen na nagaganap: tumawag sa 911. Huwag maghintay ng case number.",
+      },
+      {
+        title: "Hindi Katarungang Pambarangay",
+        body: "Alitan ng magkapitbahay, mediation, at Certificate to File Action ay sa Lupong Tagapamayapa. Hindi nagtatala ng KP case ang sistemang ito.",
+      },
+      {
+        title: "Hindi sertipiko o clearance",
+        body: "Hindi dito kinukuha ang barangay clearance, indigency, at residency.",
+      },
+    ],
+    servicesTitle: "Mga frontline na serbisyo sa sistemang ito",
+    colService: "Serbisyo",
+    colWho: "Sino",
+    colNeed: "Kailangan",
+    colTime: "Oras",
+    colResult: "Resulta",
+    canLabel: "Puwede",
+    cannotLabel: "Hindi puwede",
+    servicesLead:
+      "Ang oras sa ibaba ay target sa working day para sa hakbang sa software (tanggap, acknowledge, status). Ang inspeksyon, pondo, at ayos ay sumusunod sa SLA at available na pondo — hindi ito ang 3–7–20 na orasan ng simpleng permit.",
+    services: [
+      {
+        name: "Maghain ng community concern",
+        who: "Mga rehistradong residente",
+        need: "Account, kategorya, paglalarawan, lokasyon, litrato (JPEG/PNG/WebP, ≤ 5 MB)",
+        time: "Agad ang case number kung successful ang submit",
+        result: "Isang sinusubaybayang kaso na naihatid sa tanggapan ng kategorya",
+      },
+      {
+        name: "Subaybayan ang kaso",
+        who: "Ang naghain (naka-sign in) o sinumang may case number at email ng naghain",
+        need: "Case number + email",
+        time: "Agad",
+        result: "Status, tanggapan, at petsa. Hindi kasama sa public lookup ang litrato at personal na detalye.",
+      },
+      {
+        name: "Pagha-file sa hall (walk-in)",
+        who: "Residente na walang device o internet",
+        need: "Pumunta sa hall; gagawa ang staff ng resident account sa public terminal",
+        time: "Sa iisang bisita, pagkatapos ay iisang online na kaso",
+        result: "Sa residente ang kaso. Hindi puwedeng maghain ng concern ng residente ang staff account.",
+      },
+      {
+        name: "Beripikasyon ng identidad (kung naka-on ang gate)",
+        who: "Mga residente",
+        need: "Litrato ng government ID",
+        time: "Nasa pila ng administrador",
+        result: "Verified o rejected na may dahilan. Naka-mask ang ID number sa staff.",
+      },
+      {
+        name: "Data-subject request (RA 10173)",
+        who: "May-ari ng account",
+        need: "Request na naka-sign in mula sa Privacy",
+        time: "Hinahawakan ng administrador ayon sa retention policy",
+        result: "Access, pagwawasto, o pagbura ayon sa batas at natitirang rekord ng kaso",
+      },
+    ],
+    whoTitle: "Sino ang puwedeng gumawa ng ano",
+    whoLead:
+      "Isang tao, isang role. Hiwalay ang pera at pagsasara ng kaso para ang nag-certify ng pondo ay hindi siyang mag-aapruba ng release.",
+    roles: [
+      {
+        title: "Residente",
+        can: "Maghain, subaybayan ang sariling kaso, mag-feedback, mag-manage ng consent, mag-request ng identity check.",
+        cannot: "Makita ang kaso ng iba, maggalaw ng status, o humawak ng pera.",
+      },
+      {
+        title: "Opisyal",
+        can: "Asikasuhin ang pila ng tanggapan: field check, pagtatasa, crew, update ng status na may proof, resolusyon.",
+        cannot: "Maghain ng concern ng residente, mag-apruba ng treasury release, o magsara ng kaso.",
+      },
+      {
+        title: "Crew",
+        can: "Makita ang naka-assign na trabaho at magpadala ng maikling tala.",
+        cannot: "Buksan ang case sheet ng opisina, simulan ang kaso, o maghain ng concern.",
+      },
+      {
+        title: "Treasurer",
+        can: "Pondohan ang kaso, maghanda ng allocation/earmark/voucher, i-certify na may pondo.",
+        cannot: "Mag-apruba ng voucher o magsara ng kaso. Ang CERTIFIED na voucher ay sa Captain naghihintay.",
+      },
+      {
+        title: "Captain (AAO)",
+        can: "Mag-apruba ng pera, i-verify ang proof, magsara ng kaso, i-acknowledge ang SLA escalation.",
+        cannot: "Mag-assess, magtatalaga ng crew, o mag-certify ng pondo.",
+      },
+      {
+        title: "Administrador",
+        can: "Mag-isyu ng staff account, i-set ang tanggapan, kategorya, routing, priority, privacy, at SLA.",
+        cannot: "Palitan ang pag-apruba ng Captain sa totoong hall. Hiwalay ang demo accounts para dito.",
+      },
+    ],
+    complainTitle: "Kung tahimik ang hall",
+    complainBody:
+      "Gamitin ang Tulong, tapos ang public assistance desk ng hall. Inaasahan ng RA 11032 ang naka-post na charter, acknowledgment, at paraan ng pag-escalate ng delay. Ito ang charter para sa online na bintana. Ang reklamo laban sa opisyal ay sa Sangguniang Panlungsod/Bayan o Ombudsman — hindi concern sa sistemang ito.",
+    moneyTitle: "Kapag kailangan ng pera ang kaso",
+    moneyBody:
+      "Ang trabahong may gastos ay naghihintay sa Awaiting budget hanggang may earmark, na-certify na may pondo, at inaprubahan ng Punong Barangay. Hindi puwedeng laktawan ang gate na iyon. Ang petsa sa journal ay hindi puwedeng sa hinaharap o mas maaga kaysa pinapayagan ng kaso.",
   },
   track: {
     title: "Subaybayan ang kaso",
@@ -3229,6 +3642,8 @@ const fil: typeof en = {
     next: "Ibabalik ka sa",
     after: "pagkatapos mag-sign in.",
     invalidValue: "Hindi valid na value",
+    staffHint:
+      "Ang account ng opisyal, treasurer, captain, crew at admin ay ibinibigay ng barangay. Mga residente lang ang gumagawa ng account dito.",
   },
   register: {
     requiredLegend: "* Kinakailangang field",
@@ -3243,7 +3658,8 @@ const fil: typeof en = {
     consentTransparency:
       "I-publish ang aking mga kaso sa transparency page na walang personal na detalye.",
     consentNotifications: "Padalhan ako ng abiso sa loob ng app tungkol sa aking mga kaso.",
-    consentSms: "Padalhan ako ng update sa pamamagitan ng text sa aking numero.",
+    consentSms:
+      "Puwedeng magpadala ang hall ng update sa text kung may SMS service sa hinaharap. Pahintulot lang ito — walang text na ipinapadala ngayon.",
     title: "Gumawa ng resident account",
     description: "Magrehistro para maghain at sundan ang community concern.",
     firstName: "Pangalan",
@@ -3356,6 +3772,26 @@ const fil: typeof en = {
     office: "Nakatalagang tanggapan",
     awaiting: "Hinihintay ang assignment sa tanggapan",
     photo: "Kasamang litrato",
+    howToTitle: "Paano gamitin ang account mo",
+    howToLead:
+      "Tatlong hakbang: maghain ng concern, sundan ang case number, at sagutin kung may tanong ang hall.",
+    howToIfWrong:
+      "Kung hindi matuloy ang paghain, pinangalanan ng page ang dahilan — walang consent, walang litrato, o kailangan ng ID para sa tulong at budget. Ayusin iyon, tapos i-send ulit. Hindi na mae-edit ang kaso pagkahain; huwag maglagay ng sikreto sa paglalarawan.",
+    howToSteps: [
+      {
+        title: "Maghain ng concern",
+        detail: "Kategorya, lugar, litrato, at gaano ka-urgent. Agad kang bibigyan ng case number.",
+      },
+      {
+        title: "Sundan ito",
+        detail: "Buksan ang Mga Concern Ko, o Subaybayan ang kaso gamit ang numero at email.",
+      },
+      {
+        title: "I-verify ang ID kung may pera",
+        detail:
+          "Ang tulong at budget ay kailangan muna ng verified ID. Hindi kailangan sa daan at sanitation.",
+      },
+    ],
   },
   submit: {
     requiredLegend: "* Kinakailangang field",
@@ -3371,6 +3807,8 @@ const fil: typeof en = {
     typeHelp:
       "Iminungkahi ang uri ng tulong na kailangan. Kukumpirmahin ito ng barangay kapag binalidate ang concern.",
     typeUnset: "Hindi sigurado — hayaan ang barangay ang magpasya",
+    identityCta: "I-verify ang pagkakakilanlan",
+    identitySignIn: "Mag-sign in para i-verify ang pagkakakilanlan",
     categoryPlaceholder: "Pumili ng kategorya",
     description: "Paglalarawan",
     descriptionPlaceholder:
@@ -3492,6 +3930,32 @@ const fil: typeof en = {
     welcome: "Kumusta, {name}",
     caseload: "Caseload ng {office}",
     noOffice: "Walang naka-assign na opisina sa account mo.",
+    noOfficeHelp:
+      "Sabihan ang administrador na i-assign ka sa isang tanggapan. Hangga't wala, walang lalabas na kaso — hindi ito sira, sadyang walang queue.",
+    howToTitle: "Ang trabaho mo sa desk na ito",
+    howToLead:
+      "Mga kasong naihatid sa inyong tanggapan lang ang ginagawa mo. Buksan ang kaso at sundan ang mga numero sa case sheet. Hindi pwedeng laktawan ang hakbang, at sasabihin ng form kung bakit kung subukan mo.",
+    howToIfWrong:
+      "Ang pulang o amber na mensahe sa form ay pagpigil sa maling hakbang — basahin, ayusin ang tinutukoy (larawan, tala, assessment, hinihintay ang treasury), tapos subukan ulit. Hindi mo isasara ang kaso; sa Captain iyon.",
+    howToSteps: [
+      {
+        title: "Buksan ang kaso mula sa queue",
+        detail: "Ang listahan sa ibaba ay tanggapan ninyo lang. Gamitin ang Manage para buksan ang case sheet.",
+      },
+      {
+        title: "Sundan ang mga numerong hakbang sa kaso",
+        detail:
+          "Suriin ang lugar, tantyahin ang gastos at crew, ipadala sa badyet, magtalaga ng workers, tapos i-record ang resolusyon na may litratong patunay.",
+      },
+      {
+        title: "Maghintay kung sa iba ang hakbang",
+        detail:
+          "Validation ay admin. Pera ay treasurer tapos Captain. Pagsasara ay Captain. Nakapangalan ang desk sa case sheet.",
+      },
+    ],
+    emptyCaseload: "Wala pang kaso sa tanggapan ninyo.",
+    emptyCaseloadHint:
+      "Lalabas dito ang bagong report pagkatapos i-validate ng administrador at maihatid sa inyong tanggapan.",
     systemFiltered: "System view — naka-filter ayon sa opisina",
     systemAll: "System view — lahat ng opisina",
     assigned: "Naka-assign na kaso",
@@ -3499,6 +3963,10 @@ const fil: typeof en = {
     pendingHint: "Naghihintay ng aksyon",
     highPriority: "Mataas na priority",
     highHint: "High / critical",
+    underAssessment: "Sinusuri",
+    underAssessmentHint: "Pinaplano ang gastos at crew",
+    awaitingBudget: "Naghihintay ng badyet",
+    awaitingBudgetHint: "Nasa treasury pa",
     inProgress: "Ginagawa",
     recentResolved: "Kamakailang na-resolve",
     recentResolvedDesc: "Limang pinakabagong na-resolve na kaso sa saklaw.",
@@ -3735,6 +4203,28 @@ const fil: typeof en = {
     welcome: "Kumusta, {name}",
     overview:
       "Live na overview ng sistema. Bawat numero ay mula sa database.",
+    howToTitle: "Simulan dito bilang administrador",
+    howToLead:
+      "Ikaw ang nagse-set up ng hall at nagva-validate ng bagong report para magawa ng mga tanggapan. Nasa menu sa kaliwa ang lahat ng desk; ang tatlo sa ibaba ang una ng bagong admin.",
+    howToIfWrong:
+      "Kung wala raw kaso ang opisyal, tingnan ang Users — kailangan nila ng tanggapan. Kung naka-Submitted ang kaso, buksan ang validation queue at itakda ang uri ng serbisyo. Huwag laktawan ang pera o pagsasara; sa treasurer at Captain pa rin iyon.",
+    howToSteps: [
+      {
+        title: "I-validate ang bagong report",
+        detail: "Kumpirmahin ang uri, kategorya at tanggapan para ma-assign ang kaso.",
+      },
+      {
+        title: "Bigyan ng tamang account ang tao",
+        detail: "Users at Crew: tanggapan, role, at kung aktibo ang account.",
+      },
+      {
+        title: "Panatilihing tama ang routing at priority",
+        detail: "Kategorya, tanggapan, routing at SLA ay nasa portal na ito.",
+      },
+    ],
+    startValidation: "Buksan ang validation queue",
+    startUsers: "Buksan ang users",
+    startCrew: "Buksan ang crew roster",
     totalCases: "Lahat ng kaso",
     resolvedClosed: "Resolved / closed",
     avgProcessing: "Average na oras ng proseso",
@@ -4136,6 +4626,11 @@ const fil: typeof en = {
     actionDate: "Petsa ng aksyon",
     actionDateHint:
       "Ngayong araw ang default. Puwede ang mas naunang araw, pero hindi bago sa {date} at hindi sa hinaharap.",
+    actionDateInvalid: "Pumili ng totoong araw sa kalendaryo.",
+    actionDateFuture:
+      "Nasa hinaharap ang araw na iyon. Gamitin ang ngayon o isang naunang araw.",
+    actionDateTooOld:
+      "Masyadong maaga ang araw na iyon. Ang pinakaunang pinapayagan ay {date}.",
     proofPhoto: "Litratong patunay (kailangan)",
     proofPhotoHint:
       "Kailangan ng litratong patunay ang bawat pagbabago ng status. JPEG, PNG, o WebP, hanggang 5 MB. Makikita ito ng residente at ng inyong opisina.",
@@ -4393,6 +4888,16 @@ const fil: typeof en = {
       question: "Puwede ko bang i-rate ang resolusyon?",
       answer:
         "Oo. Pagkatapos ma-resolve, hihingi ng rating na 1–5 at opsyonal na komento. Naitatala iyon sa kaso para mapabuti ng hall ang serbisyo.",
+    },
+    {
+      question: "Ito ba ang Katarungang Pambarangay / Lupon?",
+      answer:
+        "Hindi. Ang BarangayResolve ay para sa community infrastructure at serbisyo (kalsada, drainage, basura, ilaw, pampublikong lugar). Ang alitan ng magkapitbahay, mediation, at Certificate to File Action ay sa Lupong Tagapamayapa sa ilalim ng Local Government Code. Tumawag sa 911 sa emergency.",
+    },
+    {
+      question: "Walang internet. Puwede pa bang maghain?",
+      answer:
+        "Oo, sa hall. Puwedeng gumawa ang staff ng resident account sa public terminal para ikaw mismo ang maghain. Hindi puwedeng maghain ng concern ng residente ang account ng opisyal, treasurer, captain, o crew. Naka-lista sa Citizen's Charter ang serbisyo, sino ang puwede, at paano magreklamo kung may delay.",
     },
   ],
 
@@ -4769,6 +5274,12 @@ const fil: typeof en = {
       more: "Higit pa",
       sectionLabel: "Mga seksyon",
     },
+    howTo: {
+      hide: "Itago ang gabay na ito",
+      show: "Ipakita kung paano ang desk na ito",
+      ifWrong: "Kung may mali",
+      help: "Buksan ang tulong",
+    },
     portal: {
       permissionsTitle: "Ang kaya ng iyong role",
       permissionsLead:
@@ -4796,6 +5307,8 @@ const fil: typeof en = {
       open: "Buksan",
       dashboardTitle: "Treasury",
       dashboardLead: "Buhay na balanse ng MOOE, ang naghihintay ng aprobasyon, at kung gaano na katagal ang mga pending na voucher.",
+      ifWrong:
+        "Ikaw ang naghahanda at nagce-certify; ang Captain ang nag-aapruba. Kung hindi makaalis ang kaso sa Awaiting budget, nasa Captain pa ang earmark o hindi sapat sa estimate. Ang error sa form ang nagpapangalan ng kulang — huwag i-type over ang ledger.",
       balancesTitle: "Buhay na balanse",
       appropriated: "Nakalaan",
       reserved: "Nakareserba",
@@ -5338,6 +5851,40 @@ const fil: typeof en = {
     captain: {
       title: "Punong Barangay",
       lead: "Mga approval at oversight para sa captain bilang Authorized Approving Official.",
+      welcome: "Kumusta, {name}",
+      statReadyToClose: "Pwede nang isara",
+      statReadyToCloseHint: "Na-verify na ang proof na tapos ang trabaho",
+      statNeedVerify: "Kailangan i-verify",
+      statNeedVerifyHint: "Resolved na, hindi pa na-verify ang proof",
+      statApprovals: "Naghihintay sa iyo",
+      statApprovalsHint: "Mga badyet, earmark at voucher",
+      statEscalations: "Bukas na escalation",
+      statEscalationsHint: "Mga kasong lumampas sa 48 oras",
+      guideTitle: "Ang trabaho mo bilang approving official",
+      guideLead:
+        "Hindi gumagalaw ang pera, at hindi nagsasara ang kaso, hangga't hindi ka nagdesisyon.",
+      guideSteps: [
+        {
+          title: "Aprubahan ang pera",
+          detail:
+            "Buksan ang budget allocation, i-reserve ang earmark para sa kaso, at i-release ang voucher na na-certify ng treasurer.",
+        },
+        {
+          title: "I-verify at isara",
+          detail:
+            "Basahin ang proof of completion sa case sheet, i-verify, tapos isara ang kaso.",
+        },
+        {
+          title: "Bantayan ang escalation",
+          detail:
+            "Ang kasong matagal sa isang stage ay itataas dito para mapush mo ang tanggapan na humahawak nito.",
+        },
+      ],
+      queueApprovals: "Mga approval na naghihintay",
+      queueClosure: "Mga kasong isasara",
+      openApprovals: "Buksan ang approval desk",
+      ifWrong:
+        "Hindi ka mag-a-assess, magtatalaga ng crew, o magsisimula ng trabaho mula rito. Kung walang approve, hindi pa na-certify ng treasurer ang voucher. Kung hindi maisara ang kaso, hindi pa verified as fully fixed ang proof — buksan ang kaso at i-verify muna.",
       closeQueueTitle: "Mga kasong isasara",
       closeQueueLead:
         "Mga resolved na kaso na na-verify na ang proof. Ang pagtatapos ay desisyon ng approving official — buksan ang kaso para makita ang proof, i-verify ito, at isara.",
@@ -5924,6 +6471,27 @@ const fil: typeof en = {
       jobTitle: "Aking mga assignment",
       jobDesc: "Ang mga kasong nakatalaga sa iyo. I-update ang opisina habang umuusad ang trabaho.",
       jobEmpty: "Walang bukas na assignment ngayon.",
+      jobEmptyHint:
+        "Itinatalaga ka ng opisyal sa repair case. Hangga't wala, walang listahan — normal iyon, hindi nawawalang page.",
+      howToTitle: "Ang trabaho mo bilang crew",
+      howToLead:
+        "Mga kasong naka-assign sa iyo lang ang nakikita mo. Sundan ang plano sa card, tapos magpadala ng maikling tala ng progreso.",
+      howToIfWrong:
+        "Kung hindi matuloy ang send, pinangalanan ng form ang dahilan — kadalasan walang laman, mas maikli sa 5 character, o mas mahaba sa 500. Hindi ikaw magsisimula ng kaso; hintayin na I-move ng opisina sa In progress.",
+      howToSteps: [
+        {
+          title: "Basahin ang plano",
+          detail: "Kailangang workers, tagal, kagamitan at address ay nasa card.",
+        },
+        {
+          title: "Pumunta sa lugar",
+          detail: "Gamitin ang map link kung may pin.",
+        },
+        {
+          title: "Magpadala ng progress",
+          detail: "Maikling tala (5–500 character). Parehong record ang nakikita ng opisina.",
+        },
+      ],
     myPayments: "Mga bayad mo",
     myPaymentsDesc:
       "Ang sahod ng crew ay lumalabas sa pamamagitan ng voucher na inihanda at inilabas ng treasurer — walang awtomatikong paglabas. Ito ang nailabas na para sa iyo:",
@@ -5938,6 +6506,9 @@ const fil: typeof en = {
       jobWorkers: "Crew sa kasong ito",
       jobNote: "Update sa progreso",
       jobNotePlaceholder: "Ano ang nangyari sa site?",
+      jobNoteTooShort:
+        "Magsulat ng hindi bababa sa 5 character para malaman ng opisina ang nangyari.",
+      jobNoteTooLong: "Panatilihing wala pang 500 character ang tala.",
       jobKindProgress: "Progreso",
       jobKindProblem: "Problema sa site",
       jobKindCompletion: "Tapos na ang gawain",

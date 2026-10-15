@@ -34,6 +34,13 @@ type CategoryOption = { id: number; name: string };
 
 type TypeOption = { id: number; name: string };
 
+export type IdentityGateProps = {
+  verified: boolean;
+  status: string;
+  benefitTypeIds: number[];
+  benefitCategoryIds: number[];
+};
+
 export type FactorOption = {
   key: string;
   label: string;
@@ -103,6 +110,7 @@ export function SubmitConcernForm({
   types,
   locale = "en",
   anonymous = false,
+  identityGate,
 }: {
   userId: number;
   categories: CategoryOption[];
@@ -111,8 +119,10 @@ export function SubmitConcernForm({
   types?: TypeOption[];
   locale?: Locale;
   anonymous?: boolean;
+  identityGate?: IdentityGateProps;
 }) {
   const t = copy[locale].submit;
+  const verification = copy[locale].revamp.verification;
   const router = useRouter();
   const { showToast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
@@ -126,6 +136,23 @@ export function SubmitConcernForm({
   // the band score the engine sums is derived from the headcount, so a problem
   // affecting 800 families is recorded with its real figure.
   const [affectedPeople, setAffectedPeople] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [typeId, setTypeId] = useState("");
+  const identityBlocked = Boolean(
+    identityGate &&
+      !identityGate.verified &&
+      ((typeId !== "" &&
+        identityGate.benefitTypeIds.includes(Number(typeId))) ||
+        (typeId === "" &&
+          categoryId !== "" &&
+          identityGate.benefitCategoryIds.includes(Number(categoryId))))
+  );
+  const identityBlockedMessage =
+    identityGate?.status === "PENDING"
+      ? verification.gatePending
+      : identityGate?.status === "REJECTED"
+        ? verification.gateRejected
+        : verification.gateRequired;
   // The headcount field stands in for the affected-population factor, so it is
   // only asked for while that factor is switched on.
   const headcountFactor = factors.some(
@@ -190,6 +217,24 @@ export function SubmitConcernForm({
     setFormError(null);
 
     const data = new FormData(event.currentTarget);
+    const selectedTypeId = String(data.get("typeId") ?? "").trim();
+    const selectedCategoryId = String(data.get("categoryId") ?? "").trim();
+    const blockedNow = Boolean(
+      identityGate &&
+        !identityGate.verified &&
+        ((selectedTypeId !== "" &&
+          identityGate.benefitTypeIds.includes(Number(selectedTypeId))) ||
+          (selectedTypeId === "" &&
+            selectedCategoryId !== "" &&
+            identityGate.benefitCategoryIds.includes(
+              Number(selectedCategoryId)
+            )))
+    );
+    if (blockedNow) {
+      setFormError(identityBlockedMessage);
+      return;
+    }
+
     const values = {
       title: String(data.get("title") ?? ""),
       description: String(data.get("description") ?? ""),
@@ -396,6 +441,7 @@ export function SubmitConcernForm({
           id="categoryId"
           name="categoryId"
           defaultValue=""
+          onChange={(event) => setCategoryId(event.target.value)}
           className={cn(selectStyles(Boolean(fieldErrors.categoryId)), "pr-9")}
           onBlur={() => handleBlur("categoryId")}
           aria-describedby={fieldErrors.categoryId ? "categoryId-error" : undefined}
@@ -421,6 +467,7 @@ export function SubmitConcernForm({
           id="typeId"
           name="typeId"
           defaultValue=""
+          onChange={(event) => setTypeId(event.target.value)}
           className={selectStyles(false)}
         >
           <option value="">{t.typeUnset}</option>
@@ -430,6 +477,20 @@ export function SubmitConcernForm({
             </option>
           ))}
         </select>
+        {identityBlocked && (
+          <div className="mt-3 space-y-2 rounded-control border border-amber-200 bg-amber-50 px-3 py-2.5">
+            <p className="text-sm leading-relaxed text-amber-900">
+              {identityBlockedMessage}
+            </p>
+            <Button
+              href={anonymous ? "/login" : "/resident/verification"}
+              size="sm"
+              variant="outline"
+            >
+              {anonymous ? t.identitySignIn : t.identityCta}
+            </Button>
+          </div>
+        )}
       </div>
 
       <div>
@@ -681,7 +742,11 @@ export function SubmitConcernForm({
       </div>
 
       <div className="flex items-center gap-3 pt-1">
-        <Button type="submit" disabled={submitting} loading={submitting}>
+        <Button
+          type="submit"
+          disabled={submitting || identityBlocked}
+          loading={submitting}
+        >
           {submitting ? (
             t.sending
           ) : (

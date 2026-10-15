@@ -12,7 +12,7 @@ import {
 import { apiRequest } from "@/lib/api-client";
 import type { MaterialSuggestion } from "@/lib/cases/materials-templates";
 import { copy, type Locale } from "@/lib/i18n";
-import { todayManila } from "@/lib/cases/action-date";
+import { planWindowProblem } from "@/lib/cases/plan-window";
 
 const inputStyles =
   "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
@@ -191,9 +191,6 @@ export function AssessmentForm({
     .sort()[0];
   const planMin =
     storedFloor && storedFloor < nowLocal ? storedFloor : nowLocal;
-  // A plan may not stretch past the end of today in Manila: the picker keeps
-  // the browser honest and the API re-checks the same boundary.
-  const planMax = `${todayManila()}T23:59`;
 
   const checkboxes: Checkbox[] = [
     {
@@ -291,6 +288,26 @@ export function AssessmentForm({
     }
     if (payload.equipmentNotes.trim().length < 3) {
       setFormError(t.assessmentRequired);
+      return;
+    }
+    const startRaw = payload.scheduledStartAt.trim();
+    const endRaw = payload.scheduledEndAt.trim();
+    const windowProblem = planWindowProblem({
+      scheduledStartAt: startRaw ? new Date(startRaw) : null,
+      scheduledEndAt: endRaw ? new Date(endRaw) : null,
+      existing: defaults
+        ? {
+            scheduledStartAt: defaults.scheduledStartAt
+              ? new Date(defaults.scheduledStartAt)
+              : null,
+            scheduledEndAt: defaults.scheduledEndAt
+              ? new Date(defaults.scheduledEndAt)
+              : null,
+          }
+        : null,
+    });
+    if (windowProblem) {
+      setFormError(windowProblem);
       return;
     }
     for (const line of payload.materials) {
@@ -456,7 +473,6 @@ export function AssessmentForm({
               name="scheduledStartAt"
               type="datetime-local"
               min={planMin}
-              max={planMax}
               defaultValue={toLocalInput(defaults?.scheduledStartAt ?? null)}
             />
           </div>
@@ -467,7 +483,6 @@ export function AssessmentForm({
               name="scheduledEndAt"
               type="datetime-local"
               min={planMin}
-              max={planMax}
               defaultValue={toLocalInput(defaults?.scheduledEndAt ?? null)}
             />
             <p className="mt-1 text-xs text-ink-subtle">{t.scheduledHint}</p>
