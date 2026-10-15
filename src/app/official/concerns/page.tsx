@@ -18,6 +18,7 @@ import { formatDate } from "@/lib/format";
 import { firstParam } from "@/lib/utils";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import { CaseOwner } from "@/components/cases/case-owner";
 
 export const metadata: Metadata = {
   title: "Concerns",
@@ -193,6 +194,9 @@ export default async function OfficialConcernsPage({
                       {showOfficeScope && concern.assignedOffice
                         ? ` · ${concern.assignedOffice.name}`
                         : ""}
+                      {concern.assignedOfficial
+                        ? ` · ${concern.assignedOfficial.firstName} ${concern.assignedOfficial.lastName}`
+                        : ""}
                     </p>
                     <p className="mt-1 text-xs font-medium text-brand-800">
                       {flowHints.get(concern.id)}
@@ -251,6 +255,9 @@ export default async function OfficialConcernsPage({
                     </th>
                   )}
                   <th scope="col" className="py-2 pr-4 font-semibold">
+                    {t.officialCol}
+                  </th>
+                  <th scope="col" className="py-2 pr-4 font-semibold">
                     {t.submittedCol}
                   </th>
                   <th scope="col" className="py-2 font-semibold">
@@ -306,6 +313,13 @@ export default async function OfficialConcernsPage({
                         )}
                       </td>
                     )}
+                    <td className="py-3 pr-4 text-sm">
+                      <CaseOwner
+                        official={concern.assignedOfficial}
+                        empty={copy[locale].desk.officePool}
+                        compact
+                      />
+                    </td>
                     <td className="py-3 pr-4 text-ink-muted">
                       {formatDate(concern.createdAt)}
                     </td>

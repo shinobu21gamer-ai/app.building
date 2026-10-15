@@ -13,6 +13,7 @@ import { CASE_STATUSES } from "@/lib/cases/workflow";
 import { statusLabelFor } from "@/lib/i18n";
 import { residentSearch, residentConcernWhere, residentSearchHref, RESIDENT_PAGE_SIZE } from "@/lib/concerns/resident-search";
 import { getLocale } from "@/lib/locale";
+import { CaseOwner } from "@/components/cases/case-owner";
 
 export const metadata: Metadata = {
   title: "My Concerns",
@@ -46,6 +47,9 @@ export default async function MyConcernsPage({ searchParams }: {
     include: {
       category: true,
       assignedOffice: true,
+      assignedOfficial: {
+        select: { firstName: true, lastName: true, email: true },
+      },
       history: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -109,6 +113,9 @@ export default async function MyConcernsPage({ searchParams }: {
                       {concern.assignedOffice
                         ? ` · ${concern.assignedOffice.name}`
                         : ` · ${t.pendingRoute}`}
+                      {concern.assignedOfficial
+                        ? ` · ${concern.assignedOfficial.firstName} ${concern.assignedOfficial.lastName}`
+                        : ""}
                       {" · "}
                       {formatDateTime(
                         lastUpdated(concern.updatedAt, concern.history[0] ?? null)
@@ -144,6 +151,9 @@ export default async function MyConcernsPage({ searchParams }: {
                   </th>
                   <th scope="col" className="py-2 pr-4 font-semibold">
                     Assigned office
+                  </th>
+                  <th scope="col" className="py-2 pr-4 font-semibold">
+                    {t.official}
                   </th>
                   <th scope="col" className="py-2 pr-4 font-semibold">
                     Submitted
@@ -182,6 +192,13 @@ export default async function MyConcernsPage({ searchParams }: {
                       {concern.assignedOffice?.name ?? (
                         <span className="text-amber-700">{t.pendingRoute}</span>
                       )}
+                    </td>
+                    <td className="py-3 pr-4 text-sm">
+                      <CaseOwner
+                        official={concern.assignedOfficial}
+                        empty={t.officialEmpty}
+                        compact
+                      />
                     </td>
                     <td className="py-3 pr-4 text-ink-muted">
                       {formatDate(concern.createdAt)}

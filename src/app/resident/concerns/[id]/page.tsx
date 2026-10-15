@@ -36,6 +36,7 @@ import { getLocale } from "@/lib/locale";
 import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import { ConcernMap } from "@/components/concern/concern-map";
 import { PageHeader } from "@/components/ui/page-header";
+import { CaseOwner } from "@/components/cases/case-owner";
 
 export const metadata: Metadata = {
   title: "Case Details",
@@ -64,6 +65,9 @@ export default async function ConcernDetailPage({
     include: {
       category: true,
       assignedOffice: true,
+      assignedOfficial: {
+        select: { firstName: true, lastName: true, email: true },
+      },
       history: {
         include: {
           actor: { select: { firstName: true, lastName: true } },
@@ -272,6 +276,15 @@ export default async function ConcernDetailPage({
                       {t.awaiting}
                     </span>
                   )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-ink-subtle">{t.official}</dt>
+                <dd className="mt-0.5">
+                  <CaseOwner
+                    official={concern.assignedOfficial}
+                    empty={t.officialEmpty}
+                  />
                 </dd>
               </div>
             </dl>

@@ -34,6 +34,9 @@ export default async function CasePrintPage({
     include: {
       category: { select: { name: true } },
       assignedOffice: { select: { name: true } },
+      assignedOfficial: {
+        select: { firstName: true, lastName: true, email: true },
+      },
       history: {
         orderBy: { createdAt: "asc" },
         select: {
@@ -155,6 +158,16 @@ export default async function CasePrintPage({
             </dt>
             <dd className="mt-0.5 text-ink">
               {concern.assignedOffice?.name ?? "Not yet routed"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+              Assigned official
+            </dt>
+            <dd className="mt-0.5 text-ink">
+              {concern.assignedOfficial
+                ? `${concern.assignedOfficial.firstName} ${concern.assignedOfficial.lastName} · ${concern.assignedOfficial.email}`
+                : "No named official yet (office queue)"}
             </dd>
           </div>
           <div>
