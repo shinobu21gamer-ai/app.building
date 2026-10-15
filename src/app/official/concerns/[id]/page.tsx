@@ -41,6 +41,7 @@ import {
 } from "@/components/cases/resolution-verify-form";
 import { ResolutionForm } from "@/components/cases/resolution-form";
 import { PageHeader } from "@/components/ui/page-header";
+import { CaseOwner } from "@/components/cases/case-owner";
 import { loadPriorityConfig } from "@/lib/priority/config";
 import { caseFundingView } from "@/lib/treasury/query";
 import { formatPeso } from "@/lib/cases/manpower";
@@ -190,7 +191,9 @@ export default async function OfficialConcernDetailPage({
       assignments: {
         include: {
           office: { select: { id: true, name: true, code: true } },
-          official: { select: { id: true, firstName: true, lastName: true } },
+          official: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
           assignedBy: { select: { id: true, firstName: true, lastName: true } },
         },
         orderBy: { assignedAt: "asc" },
@@ -1199,9 +1202,14 @@ export default async function OfficialConcernDetailPage({
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-sm font-medium text-ink">
                         {assignment.office.name}
-                        {assignment.official
-                          ? ` · ${assignment.official.firstName} ${assignment.official.lastName}`
-                          : desk.officePoolSuffix}
+                        {assignment.official ? (
+                          <>
+                            {" · "}
+                            <CaseOwner official={assignment.official} empty="" compact />
+                          </>
+                        ) : (
+                          desk.officePoolSuffix
+                        )}
                       </span>
                       {assignment.isCurrent && (
                         <Badge tone="green">{desk.currentBadge}</Badge>
@@ -1252,10 +1260,11 @@ export default async function OfficialConcernDetailPage({
                 </div>
                 <div className="flex justify-between gap-3">
                   <dt className="text-ink-subtle">{desk.official}</dt>
-                  <dd className="font-medium text-ink">
-                    {currentAssignment.official
-                      ? `${currentAssignment.official.firstName} ${currentAssignment.official.lastName}`
-                      : desk.officePool}
+                  <dd className="text-right">
+                    <CaseOwner
+                      official={currentAssignment.official}
+                      empty={desk.officePool}
+                    />
                   </dd>
                 </div>
                 <div className="flex justify-between gap-3">

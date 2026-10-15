@@ -173,7 +173,7 @@ export async function listConcerns(filters: ConcernListFilters) {
         },
         assignedOffice: true,
         assignedOfficial: {
-          select: { id: true, firstName: true, lastName: true },
+          select: { id: true, firstName: true, lastName: true, email: true },
         },
         // The step of the case flow this row is on (see `concernProcessFlow`).
         caseAssessment: { select: { workersNeeded: true, totalCost: true } },

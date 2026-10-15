@@ -217,6 +217,7 @@ export const GET = withErrorBoundary(async (req: Request) => {
         ? {
             id: concern.assignedOfficial.id,
             name: `${concern.assignedOfficial.firstName} ${concern.assignedOfficial.lastName}`,
+            email: concern.assignedOfficial.email,
           }
         : null,
       submittedAt: concern.submittedAt,

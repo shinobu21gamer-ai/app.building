@@ -452,6 +452,9 @@ const en = {
     description: "Description",
     office: "Assigned office",
     awaiting: "Awaiting office assignment",
+    official: "Assigned official",
+    officialEmpty:
+      "No named official yet — the whole office queue holds this case.",
     photo: "Supporting image",
     howToTitle: "How to use your account",
     howToLead:
@@ -686,6 +689,7 @@ const en = {
     residentCol: "Resident",
     slaCol: "SLA",
     officeCol: "Office",
+    officialCol: "Official",
     submittedCol: "Submitted",
     overdue: "Overdue",
     due: "Due {date}",
@@ -1382,7 +1386,8 @@ const en = {
     assignmentDesc:
       "Determined by the configured routing rules. Officials may reassign.",
     official: "Official",
-    officePool: "Office pool",
+    officialEmail: "Email",
+    officePool: "Office pool — no named official yet",
     assigned: "Assigned",
     notRouted: "This concern has not been routed to an office yet.",
     cannotReassignResolved: "This case is resolved; it can no longer be reassigned.",
@@ -3771,6 +3776,9 @@ const fil: typeof en = {
     description: "Paglalarawan",
     office: "Nakatalagang tanggapan",
     awaiting: "Hinihintay ang assignment sa tanggapan",
+    official: "Nakatalagang opisyal",
+    officialEmpty:
+      "Wala pang naka-pangalang opisyal — ang buong pila ng tanggapan ang may hawak.",
     photo: "Kasamang litrato",
     howToTitle: "Paano gamitin ang account mo",
     howToLead:
@@ -4005,6 +4013,7 @@ const fil: typeof en = {
     residentCol: "Residente",
     slaCol: "SLA",
     officeCol: "Opisina",
+    officialCol: "Opisyal",
     submittedCol: "Nahain",
     overdue: "Overdue",
     due: "Due {date}",
@@ -4705,7 +4714,8 @@ const fil: typeof en = {
     assignmentDesc:
       "Ayon sa routing rules. Puwedeng mag-reassign ang opisyal.",
     official: "Opisyal",
-    officePool: "Office pool",
+    officialEmail: "Email",
+    officePool: "Office pool — wala pang naka-pangalang opisyal",
     assigned: "Naka-assign",
     notRouted: "Hindi pa naihatid ang concern sa isang opisina.",
     cannotReassignResolved: "Na-resolve na ang kaso; hindi na puwedeng i-reassign.",
