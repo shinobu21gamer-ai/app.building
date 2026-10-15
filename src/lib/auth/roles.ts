@@ -131,12 +131,14 @@ export const PORTAL_GUARDS: readonly {
 /**
  * Routes that live inside one portal's tree but are worked from another desk.
  *
- * A case has one sheet in this app — `/official/concerns/[id]` — and the Captain
+ * A case has one sheet in this app — `/official/concerns/[id]`. The Captain
  * works the last two steps of the flow on it: reading the proof of completion,
  * verifying it, and closing the case (docs/revamp/01-architecture.md §2). The
- * Captain's own desk is what lists those cases (`/captain/closure`), so the
- * office's tree has to admit them to that route — and, because the guard is a
- * table of roles rather than a special case in the middleware, to nothing else.
+ * treasurer opens the same sheet only to compare the case against an earmark
+ * (they cannot assess, assign crew, or move status). Those desks list the
+ * cases; the office's tree has to admit them to this route — and, because the
+ * guard is a table of roles rather than a special case in the middleware, to
+ * nothing else.
  *
  * What a reader may *do* once inside is not a routing question: the sheet and
  * its APIs decide that from their permissions. The Captain holds `case.view.all`,
@@ -157,13 +159,13 @@ export const SHARED_PORTAL_ROUTES: readonly {
   prefix: string;
   roles: readonly RoleKey[];
 }[] = [
-  // The case sheet: the Captain's one way into the office's tree.
-  { prefix: "/official/concerns/", roles: ["CAPTAIN"] },
+  // The case sheet: Captain (verify/close) and treasurer (compare funding).
+  { prefix: "/official/concerns/", roles: ["CAPTAIN", "TREASURER"] },
 ];
 
 /**
  * The roles that may open the case sheet: the office that holds the case, an
- * administrator, and the Captain.
+ * administrator, the Captain, and the treasurer (read the case against the money).
  *
  * The sheet's own page guards with this list, so the door the middleware opens
  * and the page behind it admit exactly the same readers. They used to disagree
@@ -173,7 +175,12 @@ export const SHARED_PORTAL_ROUTES: readonly {
  * reads the sheet is either on this list or behind a list of its own (the
  * printout, which is the office's paperwork, admits officials and admins).
  */
-export const CASE_SHEET_ROLES = ["OFFICIAL", "ADMIN", "CAPTAIN"] as const;
+export const CASE_SHEET_ROLES = [
+  "OFFICIAL",
+  "ADMIN",
+  "CAPTAIN",
+  "TREASURER",
+] as const;
 
 export function isRoleKey(value: unknown): value is RoleKey {
   return (

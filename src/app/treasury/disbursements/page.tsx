@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { requirePermission, userCan } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import { listCrewAssignments } from "@/lib/cases/crew";
 import {
   listAllocations,
   listDisbursements,
@@ -139,6 +140,32 @@ export default async function TreasuryDisbursementsPage({
     approvedEarmarks.find((row) => row.concernId === presetConcern?.id) ??
     null;
 
+  const assignedCrew =
+    canPrepare && presetConcern
+      ? await listCrewAssignments(db, presetConcern.id)
+      : [];
+  const presetCrewLines = assignedCrew
+    .filter((row) => row.isActive)
+    .map((row) => ({
+      userId: row.crew.id,
+      name: `${row.crew.firstName} ${row.crew.lastName}`.trim(),
+      amount: perWorkerAmount,
+    }));
+
+  const caseOptions = [
+    ...(presetConcern &&
+    !openCases.some((row) => row.id === presetConcern.id)
+      ? [
+          {
+            id: presetConcern.id,
+            caseNumber: presetConcern.caseNumber,
+            title: presetConcern.title,
+          },
+        ]
+      : []),
+    ...openCases,
+  ];
+
   const filters = [
     "ALL",
     "DRAFT",
@@ -172,6 +199,7 @@ export default async function TreasuryDisbursementsPage({
             presetAmount={perWorkerAmount}
             presetEarmarkId={linkedEarmark?.id ?? null}
             presetAllocationId={linkedEarmark?.allocationId ?? null}
+            presetCrewLines={presetCrewLines}
             defaultOpen={
               payCrew || presetConcern !== null || linkedEarmark !== null
             }
@@ -181,8 +209,10 @@ export default async function TreasuryDisbursementsPage({
               purpose: earmark.purpose,
               amount: earmark.amount,
               committed: earmark.committed,
+              concernId: earmark.concernId,
+              allocationId: earmark.allocationId,
             }))}
-            caseOptions={openCases}
+            caseOptions={caseOptions}
             locale={locale}
           />
         </Card>

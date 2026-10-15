@@ -11,9 +11,13 @@ import {
 
 describe("sharedRouteRoles", () => {
   it("names the Captain for the case sheet, sub-pages included", () => {
-    expect(sharedRouteRoles("/official/concerns/42")).toEqual(["CAPTAIN"]);
+    expect(sharedRouteRoles("/official/concerns/42")).toEqual([
+      "CAPTAIN",
+      "TREASURER",
+    ]);
     expect(sharedRouteRoles("/official/concerns/42/assessment")).toEqual([
       "CAPTAIN",
+      "TREASURER",
     ]);
   });
 
@@ -46,10 +50,15 @@ describe("canOpenPath", () => {
   });
 
   it("does not open the case sheet to anyone else", () => {
-    // The Captain's shared sheet is not a general door: the treasurer follows a
-    // funded case from the treasury's own pages, and a resident tracks their
-    // case at /resident/concerns/[id].
-    expect([...CASE_SHEET_ROLES]).toEqual(["OFFICIAL", "ADMIN", "CAPTAIN"]);
+    expect([...CASE_SHEET_ROLES]).toEqual([
+      "OFFICIAL",
+      "ADMIN",
+      "CAPTAIN",
+      "TREASURER",
+    ]);
+    expect(canOpenPath("TREASURER", "/official/concerns/42")).toBe(true);
+    expect(canOpenPath("TREASURER", "/official/concerns")).toBe(false);
+    expect(canOpenPath("TREASURER", "/official")).toBe(false);
   });
 
   it("admits to the sheet exactly the roles the sheet itself admits", () => {

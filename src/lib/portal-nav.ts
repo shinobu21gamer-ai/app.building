@@ -28,6 +28,22 @@ export function officialNavItems(t: PortalCopy): NavItem[] {
   ];
 }
 
+/** `/treasury` — funding, budgets, earmarks, vouchers, ledger. */
+export function treasuryNavItems(t: PortalCopy): NavItem[] {
+  const desk = t.revamp.treasuryDesk;
+  return [
+    { href: "/treasury", label: t.revamp.treasury.title },
+    { href: "/treasury/fund", label: desk.navFundCase },
+    { href: "/treasury/budgets", label: desk.navBudgets },
+    { href: "/treasury/earmarks", label: desk.earmarksTitle },
+    { href: "/treasury/disbursements", label: desk.navDisbursements },
+    { href: "/treasury/ledger", label: desk.navLedger },
+    { href: "/treasury/reports", label: t.revamp.reports.title },
+    { href: "/treasury/codes", label: desk.navCodes },
+    { href: "/notifications", label: t.revamp.common.notifications },
+  ];
+}
+
 /** `/captain` — approvals, escalations, the closure queue and the reports. */
 export function captainNavItems(t: PortalCopy): NavItem[] {
   return [

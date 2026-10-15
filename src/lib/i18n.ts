@@ -2305,19 +2305,19 @@ const en = {
         },
         reservedHint:
           "₱0 left on the budget line is expected: this money is reserved on the earmark, not sitting as free balance. Pay from this earmark — do not look for leftover available.",
-        nextTitle: "Give it to the official, then pay",
+        nextTitle: "What is left after this earmark",
         nextOfficial:
-          "The official does not receive cash. The reserved amount sits on the case. They open the case, move it to In progress, assign crew, and buy materials against this earmark.",
+          "Admin does not assign crew or buy materials — that is not Admin's job. The official already planned crew and cost during assessment. After this money is set aside they move the case to In progress so those crew can work. You do not hand them cash.",
         nextPay:
-          "To pay a crew member or a supplier, prepare a disbursement voucher against this earmark. Treasurer certifies funds → Captain approves release → treasurer releases with a receipt. That is when the money actually leaves.",
+          "Paying crew and suppliers is this voucher. It is not assigning the job again. Treasurer certifies → Captain approves → treasurer releases with a receipt. That is when the money leaves.",
         payCrew: "Pay crew from this earmark",
         paySupplier: "Pay a supplier from this earmark",
         nothingReserved: "Nothing is reserved until an earmark is approved.",
       },
       // ---- the guided funding flow: propose the earmark from the case ----
-      // The treasurer cannot open the case screens (those are scoped to the
-      // case's office), so the money side of "what does this case need?" is
-      // answered here instead of guessed from the earmark form's dropdowns.
+      // The treasurer can open the case sheet to compare figures, but cannot
+      // assess or assign crew. The money side of "what does this case need?"
+      // is still answered here so they are not guessing from dropdowns.
       fundCase: {
         title: "Fund a case",
         lead: "Work on a resident's concern cannot start until its budget is set aside. Three steps: what the case needs, which budget pays, and the hand-over to the Captain.",
@@ -2486,8 +2486,19 @@ const en = {
         "The receipt attached when the voucher was released. Visible to the treasurer, the Captain and the administrator.",
       crewMember: "Crew member",
       crewMemberHint:
-        "Pick the member so the payment is linked to their account — the name fills in itself.",
+        "Pick each member so the payment is linked to their account. One voucher is prepared per person — add every crew you are paying now.",
       crewMemberNone: "No crew accounts yet",
+      crewPayLead:
+        "Assigning crew to the job is the official's assessment step. This form only pays them. Link the case. Pay from the earmark, not the ₱0 left on the COA line.",
+      crewPayLines: "Crew to pay",
+      crewPayAdd: "Add another crew member",
+      crewPayRemove: "Remove",
+      crewPayNeedOne: "Add at least one crew member with an amount.",
+      crewPayNeedCase: "Link the case this crew payment is for.",
+      crewPayPrepared: "{count} draft voucher(s) prepared.",
+      linkedCaseRequired: "Linked case",
+      linkedCaseHint:
+        "Required for crew pay, and whenever the earmark belongs to a case — so the payment is on that case, not a loose voucher.",
       liquidate: "Liquidate",
       voucherLiquidated: "Liquidation recorded.",
       liquidationDue: "Liquidate by",
@@ -5666,11 +5677,11 @@ const fil: typeof en = {
         },
         reservedHint:
           "Normal ang ₱0 na natitira sa budget line: naka-reserba ang pera sa earmark, hindi naka-free balance. Magbayad mula sa earmark na ito — huwag maghanap ng natitirang available.",
-        nextTitle: "Ibigay sa opisyal, saka magbayad",
+        nextTitle: "Ano ang natitira pagkatapos ng earmark na ito",
         nextOfficial:
-          "Hindi tumatanggap ng pera ang opisyal. Naka-reserba ang halaga sa kaso. Binubuksan nila ang kaso, inililipat sa In progress, nagtatalaga ng crew, at bumibili ng materyales laban sa earmark na ito.",
+          "Hindi trabaho ng Admin ang magtalaga ng crew o bumili ng materyales. Naiplano na ng opisyal ang crew at gastos sa assessment. Kapag naitabi ang pera, inililipat nila ang kaso sa In progress para makapagtrabaho ang crew na iyon. Hindi mo sila binibigyan ng cash.",
         nextPay:
-          "Para magbayad sa crew o supplier, maghanda ng disbursement voucher laban sa earmark na ito. Magce-certify ang treasurer → aaprubahan ng Kapitan → ire-release ng treasurer na may resibo. Doon lang lumalabas ang pera.",
+          "Ang pagbayad sa crew at supplier ay ang voucher na ito. Hindi ito muling pagtalaga sa trabaho. Magce-certify ang treasurer → aaprubahan ng Kapitan → ire-release ng treasurer na may resibo. Doon lumalabas ang pera.",
         payCrew: "Bayaran ang crew mula rito",
         paySupplier: "Bayaran ang supplier mula rito",
         nothingReserved: "Walang naireserba hangga't walang naaaprubahang earmark.",
@@ -5840,8 +5851,19 @@ const fil: typeof en = {
         "Ang resibo na naka-attach nang i-release ang voucher. Nakikita ng treasurer, ng Captain, at ng administrator.",
       crewMember: "Crew member",
       crewMemberHint:
-        "Piliin ang miyembro upang ma-link ang bayad sa account nila — awtomatikong lalabas ang pangalan.",
+        "Piliin ang bawat miyembro para ma-link ang bayad sa account nila. Isang voucher bawat tao — idagdag lahat ng crew na babayaran ngayon.",
       crewMemberNone: "Wala pang crew account",
+      crewPayLead:
+        "Ang pagtalaga ng crew sa trabaho ay sa assessment ng opisyal. Ang form na ito ay pagbabayad lang. I-link ang kaso. Magbayad mula sa earmark, hindi sa ₱0 na natitira sa COA line.",
+      crewPayLines: "Crew na babayaran",
+      crewPayAdd: "Dagdagan ng isa pang crew",
+      crewPayRemove: "Alisin",
+      crewPayNeedOne: "Magdagdag ng kahit isang crew na may halaga.",
+      crewPayNeedCase: "I-link ang kasong babayaran ang crew.",
+      crewPayPrepared: "{count} draft na voucher ang naihanda.",
+      linkedCaseRequired: "Naka-link na kaso",
+      linkedCaseHint:
+        "Kailangan sa bayad sa crew, at kapag sa isang kaso ang earmark — para nasa kaso ang bayad, hindi malayang voucher.",
       liquidate: "Likidahin",
       voucherLiquidated: "Natala ang liquidation.",
       liquidationDue: "Likidahin bago ang",
