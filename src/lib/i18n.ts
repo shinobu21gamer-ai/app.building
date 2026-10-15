@@ -2142,7 +2142,15 @@ const en = {
         duplicateOpen: "Open it and adjust it",
         prefilledTitle: "Filled in from case {case}",
         prefilledBody:
-          "That case still needs {amount}, so the amount and the office are ready. Check the fund source and the COA account before you prepare it.",
+          "That case still needs {amount}. That figure is what you will set aside later as an earmark — not this box. This form opens a budget line: type the exact amount from the appropriation ordinance. It does not have to equal {amount}; it is often larger so other cases can draw from it too.",
+        amountVsCaseNeed:
+          "Case {case} still needs {need}. Copy the ordinance amount exactly. It does not have to match {need} unless the ordinance itself is that figure.",
+        amountFitExactOrdinance:
+          "This equals the case need ({need}). Keep it only if the ordinance is also {need} — a budget line is usually larger.",
+        amountFitPartialOrdinance:
+          "This is {short} short of the case need ({need}). The case cannot be fully funded from this line alone unless you add more later.",
+        amountFitOverOrdinance:
+          "This is {extra} more than the case need ({need}). That is fine — leftover stays on the line for other work.",
         createdTitle: "Allocation prepared — waiting on the Captain",
         createdBody:
           "It stays a draft until the Captain approves it. Only then can earmarks, vouchers and cases draw on it.",
@@ -2183,7 +2191,7 @@ const en = {
       earmarkCrewPaidNote:
         "The crew gets paid from this money: once the earmark is approved and released, the office cuts a disbursement for the crew's labour.",
       earmarkAmountCaseHint:
-        "Prefilled with the case's shortfall — adjust it if you are reserving more or less.",
+        "The case still needs {amount}. You may set aside less (a partial) or more; work cannot start until the full {amount} is set aside.",
       proposeEarmark: "Propose earmark",
       earmarkProposed: "Earmark proposed.",
       approveEarmark: "Approve earmark",
@@ -2361,6 +2369,15 @@ const en = {
           "The money comes from {line} — {available} still available on that line.",
         moneyFromBarangay: "the barangay-wide budget",
         amountToSetAside: "Amount to set aside",
+        needCallout: "This case still needs {amount}.",
+        needExactHint:
+          "You do not have to set aside that exact amount in one go. A smaller amount is a partial reservation — the case stays in Awaiting budget until the full need is covered. Matching {amount} (or more) is what lets the work start.",
+        amountFitEmpty: "Type how much to set aside. The remaining need is {amount}.",
+        amountFitExact: "This covers the remaining need exactly.",
+        amountFitPartial:
+          "Partial: {short} will still be needed after this. Work cannot start until the rest is set aside.",
+        amountFitOver:
+          "This is {extra} more than the remaining need. Extra stays reserved on this case.",
         setAsideButton: "Set aside {amount}",
         doNotFundButton: "Do not fund",
         doNotFundTitle: "Do not fund this case",
@@ -5483,7 +5500,15 @@ const fil: typeof en = {
         duplicateOpen: "Buksan at i-adjust iyon",
         prefilledTitle: "Punan mula sa kasong {case}",
         prefilledBody:
-          "Kailangan pa ng kasong iyon ang {amount}, kaya nakahanda na ang halaga at tanggapan. Tingnan ang fund source at COA account bago ihanda.",
+          "Kailangan pa ng kasong iyon ang {amount}. Iyon ang itatabi mamaya bilang earmark — hindi ang kahon na ito. Ang form na ito ay budget line: ilagay ang eksaktong halaga sa appropriation ordinance. Hindi kailangang tumugma sa {amount}; kadalasan mas malaki ito para may mahugot pa ang ibang kaso.",
+        amountVsCaseNeed:
+          "Kailangan pa ng kasong {case} ang {need}. Kopyahin ang eksaktong halaga sa ordinance. Hindi kailangang tumugma sa {need} maliban kung iyon din ang nakasaad sa ordinance.",
+        amountFitExactOrdinance:
+          "Tugma ito sa kailangan ng kaso ({need}). Panatilihin lang kung iyon din ang ordinance — kadalasan mas malaki ang budget line.",
+        amountFitPartialOrdinance:
+          "Kulang ito ng {short} sa kailangan ng kaso ({need}). Hindi nito mag-isa mapopondohan nang buo ang kaso maliban kung dagdagan pa.",
+        amountFitOverOrdinance:
+          "Higit ito ng {extra} sa kailangan ng kaso ({need}). Ayos iyon — ang natitira ay sa linya pa rin para sa ibang gawain.",
         createdTitle: "Naihanda ang allocation — hinihintay ang Kapitan",
         createdBody:
           "Draft pa ito hangga't hindi inaprubahan ng Kapitan. Doon pa lang makakakuha rito ang mga earmark, voucher at kaso.",
@@ -5524,7 +5549,7 @@ const fil: typeof en = {
       earmarkCrewPaidNote:
         "Dito bibilangin ang crew: kapag aprubahan at i-release ang earmark, ang opisina ang magkakagat ng disbursement para sa sahod ng crew.",
       earmarkAmountCaseHint:
-        "Prefilled ang kulang na halaga ng kaso — baguhin kung mag-iiba ang ihahagap mo.",
+        "Kailangan pa ng kaso ang {amount}. Puwedeng mas kaunti (partial) o mas marami; hindi magsisimula ang trabaho hangga't hindi naitabi ang buong {amount}.",
       proposeEarmark: "Ihain ang earmark",
       earmarkProposed: "Naihain ang earmark.",
       approveEarmark: "Aprubahan ang earmark",
@@ -5693,6 +5718,16 @@ const fil: typeof en = {
           "Galing sa {line} — {available} ang natitira sa badyet na iyon.",
         moneyFromBarangay: "badyet ng buong barangay",
         amountToSetAside: "Halagang ilalagay",
+        needCallout: "Kailangan pa ng kasong ito ang {amount}.",
+        needExactHint:
+          "Hindi kailangang iyon mismo ang ilagay sa iisang hakbang. Puwedeng mas maliit — mananatili ang kaso sa Awaiting budget hanggang mabuo ang kailangan. Kapag naitabi ang {amount} (o higit), doon lang magsisimula ang trabaho.",
+        amountFitEmpty:
+          "Ilagay kung magkano ang itatabi. Ang natitirang kailangan ay {amount}.",
+        amountFitExact: "Tama ito sa natitirang kailangan.",
+        amountFitPartial:
+          "Partial: kulang pa ng {short} pagkatapos nito. Hindi magsisimula ang trabaho hangga't hindi naitabi ang natitira.",
+        amountFitOver:
+          "Higit ito ng {extra} sa natitirang kailangan. Ang sobra ay naiiwan sa kasong ito.",
         setAsideButton: "Ilagay ang {amount}",
         doNotFundButton: "Huwag i-fund",
         doNotFundTitle: "Huwag i-fund ang kaso",

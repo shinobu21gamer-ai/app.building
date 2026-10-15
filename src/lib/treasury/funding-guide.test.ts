@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  amountFitDelta,
+  classifyAmountFit,
   compareFundingQueue,
   coversInTotal,
   fundingMoneyTotals,
@@ -439,5 +441,28 @@ describe("sortFundingQueue", () => {
     // Case 1 has waited since it was submitted, longer than case 2 has waited
     // in the money stage itself.
     expect(sorted.map((entry) => entry.concernId)).toEqual([1, 2]);
+  });
+});
+
+describe("classifyAmountFit", () => {
+  it("treats a blank or non-positive figure as empty", () => {
+    expect(classifyAmountFit(Number.NaN, 18_500)).toBe("empty");
+    expect(classifyAmountFit(0, 18_500)).toBe("empty");
+    expect(classifyAmountFit(-1, 18_500)).toBe("empty");
+  });
+
+  it("calls a peso-for-peso match exact, including half-centavo noise", () => {
+    expect(classifyAmountFit(18_500, 18_500)).toBe("exact");
+    expect(classifyAmountFit(18_500.004, 18_500)).toBe("exact");
+  });
+
+  it("calls a smaller figure a partial and a larger one over", () => {
+    expect(classifyAmountFit(10_000, 18_500)).toBe("partial");
+    expect(classifyAmountFit(20_000, 18_500)).toBe("over");
+  });
+
+  it("reports the peso gap the screens print", () => {
+    expect(amountFitDelta(10_000, 18_500)).toBe(8_500);
+    expect(amountFitDelta(20_000, 18_500)).toBe(1_500);
   });
 });
