@@ -33,7 +33,9 @@ export default async function CasePrintPage({
     where: { id: numericId, userId: user.id },
     include: {
       category: { select: { name: true } },
-      assignedOffice: { select: { name: true } },
+      assignedOffice: {
+        select: { name: true, contact: true, headOfficer: true },
+      },
       assignedOfficial: {
         select: { firstName: true, lastName: true, email: true },
       },
@@ -167,7 +169,9 @@ export default async function CasePrintPage({
             <dd className="mt-0.5 text-ink">
               {concern.assignedOfficial
                 ? `${concern.assignedOfficial.firstName} ${concern.assignedOfficial.lastName} · ${concern.assignedOfficial.email}`
-                : "No named official yet (office queue)"}
+                : concern.assignedOffice?.contact
+                  ? `${concern.assignedOffice.name} · ${concern.assignedOffice.contact}`
+                  : "No named official yet (office queue)"}
             </dd>
           </div>
           <div>

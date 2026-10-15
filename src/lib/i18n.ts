@@ -460,7 +460,16 @@ const en = {
     awaiting: "Awaiting office assignment",
     official: "Assigned official",
     officialEmpty:
-      "No named official yet — the whole office queue holds this case.",
+      "No named official yet — the whole office queue holds this case. Use the office contact below until someone is named.",
+    contactTitle: "Who to email if something happens",
+    contactLead:
+      "Keep your case number in the message. Write to the named official when there is one; otherwise write to the office that holds this case.",
+    contactOffice: "Office contact",
+    contactHead: "Head: {name}",
+    receiptTitle: "Concern submitted",
+    receiptLead:
+      "Keep this case number. Family can also check status with it and the email on your account.",
+    receiptTrack: "Track anytime at",
     photo: "Supporting image",
     howToTitle: "How to use your account",
     howToLead:
@@ -3838,7 +3847,16 @@ const fil: typeof en = {
     awaiting: "Hinihintay ang assignment sa tanggapan",
     official: "Nakatalagang opisyal",
     officialEmpty:
-      "Wala pang naka-pangalang opisyal — ang buong pila ng tanggapan ang may hawak.",
+      "Wala pang naka-pangalang opisyal — ang buong pila ng tanggapan ang may hawak. Gamitin muna ang contact ng tanggapan sa ibaba.",
+    contactTitle: "Sino ang ie-email kung may mangyari",
+    contactLead:
+      "Ilagay ang case number sa mensahe. Sulatan ang naka-pangalang opisyal kung meron; kung wala, sulatan ang tanggapan na may hawak ng kaso.",
+    contactOffice: "Contact ng tanggapan",
+    contactHead: "Punong opisyal: {name}",
+    receiptTitle: "Naihain ang concern",
+    receiptLead:
+      "Itago ang case number na ito. Puwede ring tignan ng pamilya gamit ito at ang email sa account mo.",
+    receiptTrack: "Sundan anytime sa",
     photo: "Kasamang litrato",
     howToTitle: "Paano gamitin ang account mo",
     howToLead:
