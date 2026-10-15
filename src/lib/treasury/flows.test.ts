@@ -33,6 +33,8 @@ function makeTx(seed: {
   entries?: Row[];
   earmarks?: Row[];
   vouchers?: Row[];
+  /** "Do not fund" decisions that proposing money must supersede. */
+  budgetDecisions?: Row[];
   /** Users the earmark notifications can find, as `{ id, roleKey, officeId, isActive }`. */
   users?: Row[];
 } = {}) {
@@ -51,6 +53,7 @@ function makeTx(seed: {
     entries: [...(seed.entries ?? [])] as Row[],
     earmarks: [...(seed.earmarks ?? [])] as Row[],
     vouchers: [...(seed.vouchers ?? [])] as Row[],
+    budgetDecisions: [...(seed.budgetDecisions ?? [])] as Row[],
     approvals: [] as Row[],
     users: [...(seed.users ?? [])] as Row[],
     notifications: [] as Row[],
@@ -162,7 +165,22 @@ function makeTx(seed: {
       findUnique: async () => state.allocation.fiscalYear,
       update: async () => state.allocation.fiscalYear,
     },
-    concern: { findUnique: async ({ where }: { where: { id: number } }) => ({ id: where.id }) },
+    concern: {
+      findUnique: async ({ where }: { where: { id: number } }) => ({
+        id: where.id,
+        caseNumber: `BR-2026-${String(where.id).padStart(4, "0")}`,
+      }),
+    },
+    // Proposing money for a case supersedes its "do not fund" decision.
+    budgetDecision: {
+      deleteMany: async ({ where }: { where: { concernId: number | null } }) => {
+        const before = state.budgetDecisions.length;
+        state.budgetDecisions = state.budgetDecisions.filter(
+          (row) => row.concernId !== where.concernId
+        );
+        return { count: before - state.budgetDecisions.length };
+      },
+    },
     user: {
       findUnique: async ({ where }: { where: { id: number } }) => ({ id: where.id }),
       // The earmark notifications look approvers up by role (and the case's
@@ -370,7 +388,12 @@ describe("earmark hand-off notifications", () => {
   });
 
   it("names the case an administrator proposed, so the Captain knows what it is for", async () => {
-    const { tx, state } = makeTx({ appropriation: 1000, users: HALL_USERS });
+    const { tx, state } = makeTx({
+      appropriation: 1000,
+      users: HALL_USERS,
+      // The case was refused before; the new proposal ends that refusal.
+      budgetDecisions: [{ id: 900, concernId: 7, decision: "NOT_FUNDED", reason: "No budget this year." }],
+    });
 
     await proposeEarmark(tx, {
       actor: admin,
@@ -386,6 +409,8 @@ describe("earmark hand-off notifications", () => {
     // proposed it, so they must not be told to approve their own earmark.
     expect(state.notifications.map((row) => row.userId)).not.toContain(1);
     expect(captainNote?.concernId).toBe(7);
+    // Proposing money supersedes the "do not fund" row: one call per case.
+    expect(state.budgetDecisions).toEqual([]);
   });
 
   it("tells the proposer and the case's own office that the money is set aside", async () => {
