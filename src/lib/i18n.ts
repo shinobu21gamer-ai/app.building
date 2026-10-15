@@ -2303,6 +2303,15 @@ const en = {
           RELEASED: "Released — {amount} has been paid out{caseSuffix}.",
           CANCELLED: "Cancelled — this earmark sets nothing aside.",
         },
+        reservedHint:
+          "₱0 left on the budget line is expected: this money is reserved on the earmark, not sitting as free balance. Pay from this earmark — do not look for leftover available.",
+        nextTitle: "Give it to the official, then pay",
+        nextOfficial:
+          "The official does not receive cash. The reserved amount sits on the case. They open the case, move it to In progress, assign crew, and buy materials against this earmark.",
+        nextPay:
+          "To pay a crew member or a supplier, prepare a disbursement voucher against this earmark. Treasurer certifies funds → Captain approves release → treasurer releases with a receipt. That is when the money actually leaves.",
+        payCrew: "Pay crew from this earmark",
+        paySupplier: "Pay a supplier from this earmark",
         nothingReserved: "Nothing is reserved until an earmark is approved.",
       },
       // ---- the guided funding flow: propose the earmark from the case ----
@@ -5655,6 +5664,15 @@ const fil: typeof en = {
           RELEASED: "Nailabas — {amount} ang naibayad{caseSuffix}.",
           CANCELLED: "Nakansela — walang inilalaan ang earmark na ito.",
         },
+        reservedHint:
+          "Normal ang ₱0 na natitira sa budget line: naka-reserba ang pera sa earmark, hindi naka-free balance. Magbayad mula sa earmark na ito — huwag maghanap ng natitirang available.",
+        nextTitle: "Ibigay sa opisyal, saka magbayad",
+        nextOfficial:
+          "Hindi tumatanggap ng pera ang opisyal. Naka-reserba ang halaga sa kaso. Binubuksan nila ang kaso, inililipat sa In progress, nagtatalaga ng crew, at bumibili ng materyales laban sa earmark na ito.",
+        nextPay:
+          "Para magbayad sa crew o supplier, maghanda ng disbursement voucher laban sa earmark na ito. Magce-certify ang treasurer → aaprubahan ng Kapitan → ire-release ng treasurer na may resibo. Doon lang lumalabas ang pera.",
+        payCrew: "Bayaran ang crew mula rito",
+        paySupplier: "Bayaran ang supplier mula rito",
         nothingReserved: "Walang naireserba hangga't walang naaaprubahang earmark.",
       },
       fundCase: {

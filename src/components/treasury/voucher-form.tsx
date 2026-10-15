@@ -60,6 +60,7 @@ export function VoucherForm({
   presetPayeeType = "SUPPLIER",
   presetParticulars = "",
   presetAmount = null,
+  defaultOpen = false,
   locale = "en",
 }: {
   allocations: VoucherAllocationOption[];
@@ -74,12 +75,14 @@ export function VoucherForm({
   presetPayee?: string;
   presetParticulars?: string;
   presetAmount?: number | null;
+  /** Opens the form straight away (Pay crew / pay-from-earmark deep links). */
+  defaultOpen?: boolean;
   locale?: Locale;
 }) {
   const t = copy[locale].revamp.treasuryDesk;
   const common = copy[locale].revamp.common;
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allocationId, setAllocationId] = useState<number | null>(

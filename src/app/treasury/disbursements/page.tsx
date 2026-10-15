@@ -34,7 +34,12 @@ const TONES: Record<string, "sky" | "amber" | "green" | "gray" | "red"> = {
 };
 
 type PageProps = {
-  searchParams: Promise<{ status?: string; concernId?: string; pay?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    concernId?: string;
+    pay?: string;
+    earmarkId?: string;
+  }>;
 };
 
 /** The voucher register: every step from draft to liquidation, newest first. */
@@ -42,7 +47,12 @@ export default async function TreasuryDisbursementsPage({
   searchParams,
 }: PageProps) {
   const user = await requirePermission("treasury.balance.view");
-  const { status, concernId: presetConcernParam, pay } = await searchParams;
+  const {
+    status,
+    concernId: presetConcernParam,
+    pay,
+    earmarkId: presetEarmarkParam,
+  } = await searchParams;
   const locale = await getLocale();
   const t = copy[locale].revamp.treasuryDesk;
   const actor = {
@@ -119,6 +129,16 @@ export default async function TreasuryDisbursementsPage({
       })
     : [];
 
+  const requestedEarmarkId =
+    Number.isInteger(Number(presetEarmarkParam)) &&
+    Number(presetEarmarkParam) > 0
+      ? Number(presetEarmarkParam)
+      : null;
+  const linkedEarmark =
+    approvedEarmarks.find((row) => row.id === requestedEarmarkId) ??
+    approvedEarmarks.find((row) => row.concernId === presetConcern?.id) ??
+    null;
+
   const filters = [
     "ALL",
     "DRAFT",
@@ -150,6 +170,11 @@ export default async function TreasuryDisbursementsPage({
             presetConcernId={presetConcern?.id ?? null}
             presetPayeeType={payCrew ? "CREW" : "SUPPLIER"}
             presetAmount={perWorkerAmount}
+            presetEarmarkId={linkedEarmark?.id ?? null}
+            presetAllocationId={linkedEarmark?.allocationId ?? null}
+            defaultOpen={
+              payCrew || presetConcern !== null || linkedEarmark !== null
+            }
             earmarks={approvedEarmarks.map((earmark) => ({
               id: earmark.id,
               code: earmark.code,
