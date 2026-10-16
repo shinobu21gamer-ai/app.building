@@ -28,6 +28,12 @@ function Photo({ src, alt, locale = "en" }: { src: string; alt: string; locale?:
     setFailed(false);
     setDisplaySrc(null);
 
+    // Server-inlined photos (data URLs) skip the extra fetch.
+    if (src.startsWith("data:")) {
+      setDisplaySrc(src);
+      return;
+    }
+
     async function load() {
       try {
         const response = await fetch(src, { credentials: "include", cache: "no-store" });
@@ -45,7 +51,9 @@ function Photo({ src, alt, locale = "en" }: { src: string; alt: string; locale?:
         objectUrl = URL.createObjectURL(blob);
         if (!cancelled) setDisplaySrc(objectUrl);
       } catch {
-        if (!cancelled) setFailed(true);
+        // Same-origin <img> still sends the session cookie. Use it when fetch
+        // is blocked (preview hosts, missing Content-Type, etc.).
+        if (!cancelled) setDisplaySrc(src);
       }
     }
 
@@ -92,7 +100,12 @@ function Photo({ src, alt, locale = "en" }: { src: string; alt: string; locale?:
         ) : displaySrc ? (
           // Natural size inside a scroll box; do not crop proof photos.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={displaySrc} alt={alt} className="h-auto w-full rounded-lg object-contain" />
+          <img
+            src={displaySrc}
+            alt={alt}
+            className="h-auto w-full rounded-lg object-contain"
+            onError={() => setFailed(true)}
+          />
         ) : (
           <p className="p-6 text-center text-sm text-ink-muted">{t.loading}</p>
         )}

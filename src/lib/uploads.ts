@@ -264,6 +264,44 @@ export function imageUrlForFile(filename: string): string {
   return `/api/v1/uploads/${filename}`;
 }
 
+/**
+ * Stored URLs are usually a site-relative `/api/v1/uploads/<file>`. Older rows
+ * kept a host. Fetching that host from a preview or another origin drops the
+ * session cookie, so the photo looks broken. Always load the path on this app.
+ */
+export function publicUploadSrc(url: string): string {
+  const marker = "/api/v1/uploads/";
+  const index = url.indexOf(marker);
+  if (index >= 0) return url.slice(index);
+  return url;
+}
+
+// Inline small photos as data URLs so the case sheet does not depend on a
+// second cookie-authenticated fetch (that is the path that showed "could not
+// be loaded" on Vercel). Larger files still go through the uploads API.
+const INLINE_PHOTO_MAX_BYTES = 350_000;
+
+export async function uploadedPhotoSrc(
+  url: string | null | undefined
+): Promise<{ src: string | null; missing: boolean }> {
+  if (!url) return { src: null, missing: false };
+  const pathname = publicUploadSrc(url);
+  const filename = pathname.split("/").pop() ?? "";
+  if (!isSafeImageFilename(filename)) {
+    return { src: pathname, missing: false };
+  }
+  const bytes = await readConcernImage(filename);
+  if (!bytes) return { src: null, missing: true };
+  const mime = imageMimeForFilename(filename) ?? "image/jpeg";
+  if (bytes.length <= INLINE_PHOTO_MAX_BYTES) {
+    return {
+      src: `data:${mime};base64,${bytes.toString("base64")}`,
+      missing: false,
+    };
+  }
+  return { src: pathname, missing: false };
+}
+
 export function isSafeImageFilename(filename: string): boolean {
   return SAFE_FILENAME.test(filename);
 }

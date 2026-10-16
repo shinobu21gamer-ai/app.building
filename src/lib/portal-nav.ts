@@ -44,6 +44,35 @@ export function treasuryNavItems(t: PortalCopy): NavItem[] {
   ];
 }
 
+/** `/admin` — hall configuration. Reused on the shared case sheet so an
+ *  administrator is not handed the office queue while they review a case. */
+export function adminNavItems(t: PortalCopy): NavItem[] {
+  const admin = t.admin;
+  const revamp = t.revamp.adminDesk;
+  return [
+    { href: "/admin", label: admin.navDashboard },
+    { href: "/admin/reports", label: admin.navReports },
+    { href: "/admin/users", label: admin.navUsers },
+    { href: "/admin/crew", label: admin.crew.navCrew },
+    { href: "/admin/officials", label: admin.navOfficials },
+    { href: "/admin/offices", label: admin.navOffices },
+    { href: "/admin/categories", label: admin.navCategories },
+    { href: "/admin/routing", label: admin.navRouting },
+    { href: "/admin/priority", label: admin.navPriority },
+    { href: "/admin/validation", label: revamp.validationNav },
+    { href: "/admin/field-checks", label: admin.fieldCheck.navFieldCheck },
+    { href: "/admin/verification", label: revamp.verificationNav },
+    { href: "/admin/privacy", label: revamp.privacyNav },
+    { href: "/admin/roles", label: revamp.rolesNav },
+    { href: "/admin/treasury", label: revamp.treasuryNav },
+    { href: "/admin/sla", label: revamp.slaNav },
+    { href: "/admin/audit", label: revamp.auditNav },
+    { href: "/admin/deleted", label: revamp.deletedNav },
+    { href: "/admin/settings", label: admin.navSettings },
+    { href: "/notifications", label: admin.navNotifications },
+  ];
+}
+
 /** `/captain` — approvals, escalations, the closure queue and the reports. */
 export function captainNavItems(t: PortalCopy): NavItem[] {
   return [

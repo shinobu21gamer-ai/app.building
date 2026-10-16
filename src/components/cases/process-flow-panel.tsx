@@ -28,6 +28,10 @@ export type FlowStepView = {
   yourTurn?: boolean;
   /** Person waiting on, when the case is assigned to someone by name. */
   waitingName?: string | null;
+  /** Hall email of that person, so the reader can contact them. */
+  waitingEmail?: string | null;
+  /** This step is the named official's work — always say who, or that nobody is assigned. */
+  namesOfficial?: boolean;
 };
 
 const DOT_STATE: Record<ProcessStepState, string> = {
@@ -280,6 +284,29 @@ export function ProcessFlowPanel({
                           ? t.notYouTitle
                           : active.owner}
                 </p>
+                {active.waitingName ? (
+                  <p className="mt-1 text-sm font-medium text-ink">
+                    {(yoursNow ? t.youAre : t.heldBy).replace(
+                      "{name}",
+                      active.waitingName
+                    )}
+                    {active.waitingEmail ? (
+                      <>
+                        <span className="text-ink-subtle"> · </span>
+                        <a
+                          href={`mailto:${active.waitingEmail}`}
+                          className="break-all font-normal text-brand-700 hover:underline"
+                        >
+                          {active.waitingEmail}
+                        </a>
+                      </>
+                    ) : null}
+                  </p>
+                ) : active.namesOfficial ? (
+                  <p className="mt-1 text-sm text-ink">
+                    {t.noNamedOfficial.replace("{desk}", active.desk)}
+                  </p>
+                ) : null}
                 <p className="mt-1 text-sm leading-relaxed text-ink">
                   {notYours && active.state === "current"
                     ? waitingCopy(active)

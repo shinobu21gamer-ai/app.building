@@ -12,7 +12,13 @@ vi.mock("@/lib/api", () => ({ createApiError: {
   badRequest: (message: string) => new Error(message),
   payloadTooLarge: (message: string) => new Error(message),
 } }));
-import { readConcernImage, saveConcernImage, usingDatabaseUploads } from "./uploads";
+import {
+  publicUploadSrc,
+  readConcernImage,
+  saveConcernImage,
+  uploadedPhotoSrc,
+  usingDatabaseUploads,
+} from "./uploads";
 const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const filename = "12345678-1234-1234-1234-123456789abc.png";
 let directory: string;
@@ -61,6 +67,23 @@ describe("durable photo storage", () => {
   });
   it("reports missing legacy files as unavailable", async () => {
     expect(await readConcernImage(filename)).toBeNull();
+  });
+  it("loads photos from this app even when the stored URL kept a host", () => {
+    expect(
+      publicUploadSrc("https://preview.example/api/v1/uploads/" + filename)
+    ).toBe(`/api/v1/uploads/${filename}`);
+  });
+  it("inlines small stored photos so the case sheet does not need a second fetch", async () => {
+    mocks.find.mockResolvedValue({ data: new Uint8Array(png) });
+    const view = await uploadedPhotoSrc(`/api/v1/uploads/${filename}`);
+    expect(view.missing).toBe(false);
+    expect(view.src?.startsWith("data:image/png;base64,")).toBe(true);
+  });
+  it("reports a recorded URL whose bytes are gone", async () => {
+    expect(await uploadedPhotoSrc(`/api/v1/uploads/${filename}`)).toEqual({
+      src: null,
+      missing: true,
+    });
   });
   it("still enforces upload quota before storing bytes", async () => {
     mocks.quota.mockResolvedValue(1);

@@ -25,6 +25,12 @@ import {
   roleActsOnProcessStep,
   type ProcessStepKey,
 } from "@/lib/cases/process-flow";
+import {
+  flowStepTodo,
+  flowStepWho,
+  stepNamesOfficial,
+} from "@/lib/cases/flow-copy";
+import { uploadedPhotoSrc } from "@/lib/uploads";
 import { planNeeds } from "@/lib/cases/plan-needs";
 import { realityCheckState } from "@/lib/cases/field-check-rules";
 import {
@@ -467,6 +473,7 @@ export default async function OfficialConcernDetailPage({
   const holderName = currentAssignment?.official
     ? `${currentAssignment.official.firstName} ${currentAssignment.official.lastName}`
     : null;
+  const holderEmail = currentAssignment?.official?.email ?? null;
   const verifySelf = verifyState === "SELF_RECORDED";
   const flowSteps: FlowStepView[] = flow.steps.map((step) => {
     const stepCopy = flowCopy.steps[step.key];
@@ -475,43 +482,22 @@ export default async function OfficialConcernDetailPage({
       verifySelfRecorded: verifySelf,
     });
     const yours = step.state === "current" && owns;
-    const todo =
-      step.key === "CHECK"
-        ? user.role.key === "ADMIN"
-          ? stepCopy.todoAdmin
-          : stepCopy.todoOfficial
-        : step.key === "FUND"
-          ? user.role.key === "CAPTAIN"
-            ? stepCopy.todoCaptain
-            : user.role.key === "TREASURER"
-              ? stepCopy.todoTreasury
-              : stepCopy.todoOfficial
-          : [...stepCopy.todo];
-    const who =
-      step.key === "FUND"
-        ? user.role.key === "OFFICIAL"
-          ? stepCopy.whoOfficial
-          : stepCopy.whoMoney
-        : stepCopy.who;
+    const namesOfficial = stepNamesOfficial(step.key);
     return {
       key: step.key,
       number: step.number,
       state: step.state,
       title: stepCopy.title,
       lead: stepCopy.lead,
-      todo,
+      todo: flowStepTodo(flowCopy.steps, step.key, user.role.key),
       owner: stepCopy.owner,
-      who,
+      who: flowStepWho(flowCopy.steps, step.key, user.role.key),
       desk: stepDesk[step.key],
       ownsStep: owns,
       yourTurn: yours,
-      waitingName:
-        step.key === "ASSESS" ||
-        step.key === "CREW" ||
-        step.key === "START" ||
-        step.key === "WORK"
-          ? holderName
-          : null,
+      namesOfficial,
+      waitingName: namesOfficial ? holderName : null,
+      waitingEmail: namesOfficial ? holderEmail : null,
       block: step.block ? flowCopy.blocks[step.block] : null,
     };
   });
@@ -982,6 +968,8 @@ export default async function OfficialConcernDetailPage({
     );
   }
 
+  const supportingPhoto = await uploadedPhotoSrc(concern.imageUrl);
+
   if (canClose && canManage && concern.status === "RESOLVED") {
     // The close form is only offered once the fix is verified as fixed: the
     // server enforces the same rule, and a form that could only fail is just
@@ -1013,7 +1001,15 @@ export default async function OfficialConcernDetailPage({
       {/* The Captain reaches this sheet from their own desk, which is the one
           place that lists cases for them — send them back there. */}
       <Button
-        href={user.role.key === "CAPTAIN" ? "/captain" : "/official/concerns"}
+        href={
+          user.role.key === "CAPTAIN"
+            ? "/captain"
+            : user.role.key === "ADMIN"
+              ? "/admin/validation"
+              : user.role.key === "TREASURER"
+                ? "/treasury"
+                : "/official/concerns"
+        }
         variant="ghost"
         size="sm"
       >
@@ -1052,9 +1048,80 @@ export default async function OfficialConcernDetailPage({
         }
       />
 
-      {/* The flow first, full width: the numbered steps, the one being worked on,
-          and only that step's form. Everything recorded about the case follows
-          underneath, so the work is never buried in a side column. */}
+      {/* Report first — who holds it and the photo — then the numbered steps.
+          Putting the facts above the form stops people guessing the official
+          and hunting for the picture under the flow. */}
+      <Card title={desk.detailsTitle}>
+        <dl className="space-y-4 text-sm">
+          <div>
+            <dt className="text-ink-subtle">{desk.official}</dt>
+            <dd className="mt-0.5">
+              <CaseOwner
+                official={currentAssignment?.official}
+                office={concern.assignedOffice}
+                empty={desk.officePool}
+              />
+            </dd>
+          </div>
+          <div>
+            <dt className="text-ink-subtle">{desk.category}</dt>
+            <dd className="mt-0.5 font-medium text-ink">
+              {concern.category.name}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-ink-subtle">{desk.location}</dt>
+            <dd className="mt-0.5 font-medium text-ink">
+              {concern.locationAddress}
+              {hasCoordinates(coordinates) ? (
+                <>
+                  {" · "}
+                  <a
+                    href={openStreetMapUrl(
+                      coordinates.lat,
+                      coordinates.lng
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-brand-700 hover:text-brand-800"
+                  >
+                    {desk.openMap}
+                  </a>
+                </>
+              ) : null}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-ink-subtle">{desk.residentLabel}</dt>
+            <dd className="mt-0.5 font-medium text-ink">
+              {userName(concern.user)} ({concern.user.email})
+            </dd>
+          </div>
+          <div>
+            <dt className="text-ink-subtle">{desk.description}</dt>
+            <dd className="mt-0.5 max-w-3xl whitespace-pre-wrap text-ink-muted">
+              {concern.description}
+            </dd>
+          </div>
+        </dl>
+
+        {supportingPhoto.missing ? (
+          <div className="mt-5 border-t border-line pt-5">
+            <p className="mb-2 text-ink-subtle">{desk.supportingImage}</p>
+            <p className="text-sm text-ink-muted">{desk.photoMissing}</p>
+          </div>
+        ) : supportingPhoto.src ? (
+          <div className="mt-5 border-t border-line pt-5">
+            <p className="mb-2 text-ink-subtle">{desk.supportingImage}</p>
+            <UploadedPhoto
+              src={supportingPhoto.src}
+              alt={`Supporting image for ${concern.caseNumber}`}
+              locale={locale}
+            />
+          </div>
+        ) : null}
+      </Card>
+
       <ProcessFlowPanel
         locale={locale}
         steps={flowSteps}
@@ -1100,62 +1167,6 @@ export default async function OfficialConcernDetailPage({
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card title={desk.detailsTitle} className="lg:col-span-2">
-            <dl className="space-y-4 text-sm">
-              <div>
-                <dt className="text-ink-subtle">{desk.category}</dt>
-                <dd className="mt-0.5 font-medium text-ink">
-                  {concern.category.name}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-ink-subtle">{desk.location}</dt>
-                <dd className="mt-0.5 font-medium text-ink">
-                  {concern.locationAddress}
-                  {hasCoordinates(coordinates) ? (
-                    <>
-                      {" · "}
-                      <a
-                        href={openStreetMapUrl(
-                          coordinates.lat,
-                          coordinates.lng
-                        )}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-semibold text-brand-700 hover:text-brand-800"
-                      >
-                        {desk.openMap}
-                      </a>
-                    </>
-                  ) : null}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-ink-subtle">{desk.residentLabel}</dt>
-                <dd className="mt-0.5 font-medium text-ink">
-                  {userName(concern.user)} ({concern.user.email})
-                </dd>
-              </div>
-              <div>
-                <dt className="text-ink-subtle">{desk.description}</dt>
-                <dd className="mt-0.5 max-w-3xl whitespace-pre-wrap text-ink-muted">
-                  {concern.description}
-                </dd>
-              </div>
-            </dl>
-
-            {concern.imageUrl && (
-              <div className="mt-5 border-t border-line pt-5">
-                <p className="mb-2 text-ink-subtle">{desk.supportingImage}</p>
-                <UploadedPhoto
-                  src={concern.imageUrl}
-                  alt={`Supporting image for ${concern.caseNumber}`}
-                  locale={locale}
-                />
-              </div>
-            )}
-          </Card>
-
           <Card title={desk.automatedTitle} description={desk.automatedDesc}>
             {automated ? (
               <PriorityBreakdown

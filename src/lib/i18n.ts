@@ -40,6 +40,7 @@ const en = {
     retry: "Try again",
     loading: "Loading photo…",
     unavailable: "This photo could not be loaded. Try again or sign in again. If it is still missing, contact the hall.",
+    gone: "This photo is on the case record but the file is not on the server. Ask the hall — it may have been uploaded before storage was set up.",
     scrollHint: "Scroll to inspect the full-size photo.",
   },
   photoPicker: {
@@ -1470,6 +1471,8 @@ const en = {
     residentLabel: "Resident",
     description: "Description",
     supportingImage: "Supporting image",
+    photoMissing:
+      "This photo is on the case record but the file is not on the server. Ask the hall.",
     overridden: "overridden",
     automatedTitle: "Automated recommendation",
     automatedDesc:
@@ -1633,6 +1636,10 @@ const en = {
     notYouTitle: "Not you",
     waitingOn: "Waiting for {desk}. You cannot do this step from this account.",
     waitingPerson: "Waiting for {name} at {desk}. You cannot do this step from this account.",
+    youAre: "You — {name}",
+    heldBy: "{name}",
+    noNamedOfficial:
+      "No person is assigned. {desk} holds this as a pool — assign an official so people know who to email.",
     yourPartDone:
       "Your part of this case is finished. Leave it for {desk} — you are not stuck.",
     waitingHint: "There is nothing for you to fill in on this step.",
@@ -1693,7 +1700,7 @@ const en = {
       ASSESS: {
         title: "Assess and plan the work",
         owner: "Official",
-        who: "Assigned official — not admin. Plan manpower and cost.",
+        who: "The named official plans manpower and cost. Admin does not do this step.",
         lead: "The official who holds the case does the four checks, then plans manpower and cost. This is new work, not a repeat of admin validation.",
         todo: [
           "Work through the four checks: eligibility, inspection, resources, approval.",
@@ -3518,6 +3525,7 @@ const fil: typeof en = {
     retry: "Subukan muli",
     loading: "Nilo-load ang larawan…",
     unavailable: "Hindi ma-load ang larawan. Subukan muli o mag-sign in ulit. Kung wala pa rin, makipag-ugnayan sa hall.",
+    gone: "Naka-rekord ang litrato pero wala ang file sa server. Tanungin ang hall — baka na-upload ito bago naka-setup ang storage.",
     scrollHint: "Mag-scroll para makita ang buong larawan.",
   },
   photoPicker: {
@@ -4952,6 +4960,8 @@ const fil: typeof en = {
     residentLabel: "Residente",
     description: "Deskripsyon",
     supportingImage: "Litrato",
+    photoMissing:
+      "Naka-rekord ang litrato pero wala ang file sa server. Tanungin ang hall.",
     overridden: "na-override",
     automatedTitle: "Automated na rekomendasyon",
     automatedDesc:
@@ -5115,6 +5125,10 @@ const fil: typeof en = {
     notYouTitle: "Hindi ikaw",
     waitingOn: "Sa {desk} ang hakbang na ito. Hindi mo ito magagawa sa account na ito.",
     waitingPerson: "Si {name} sa {desk} ang may hawak. Hindi mo ito magagawa sa account na ito.",
+    youAre: "Ikaw — {name}",
+    heldBy: "{name}",
+    noNamedOfficial:
+      "Walang naka-assign na tao. Ang {desk} ang may hawak bilang pool — mag-assign ng opisyal para may malinaw na i-email.",
     yourPartDone:
       "Tapos na ang parte mo sa kasong ito. Iwanan mo ito sa {desk} — hindi ka natigil.",
     waitingHint: "Walang form na pupunuan ka rito.",
@@ -5173,7 +5187,7 @@ const fil: typeof en = {
       ASSESS: {
         title: "I-assess at planuhin ang trabaho",
         owner: "Opisyal",
-        who: "Naka-assign na opisyal — hindi admin. Planuhin ang manpower at gastos.",
+        who: "Ang nakapangalang opisyal ang magpaplano ng manpower at gastos. Hindi ito trabaho ng admin.",
         lead: "Ang opisyal na may hawak ng kaso ang gumagawa ng apat na check, tapos nagpaplano ng manpower at gastos. Ito ay bagong trabaho, hindi ulit ng validation ng admin.",
         todo: [
           "Tapusin ang apat na check: eligibility, inspection, resources, approval.",
