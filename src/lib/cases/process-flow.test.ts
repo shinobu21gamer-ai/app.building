@@ -86,6 +86,24 @@ describe("caseProcessFlow", () => {
     expect(stepOf(sentBack, "VALIDATE").block).toBe("FIELD_CHECK_FAILED");
   });
 
+  it("does not mark Validate done while the field check is still open", () => {
+    // A type the resident picked, or an admin who typed the case too early,
+    // used to skip Check: the rail said Validate was Done.
+    const skipped = {
+      ...unchecked,
+      typeId: 4,
+      realityCheck: "OPEN" as const,
+    };
+    const flow = caseProcessFlow(skipped);
+    expect(flow.currentKey).toBe("CHECK");
+    expect(stepOf(skipped, "CHECK").state).toBe("current");
+    expect(stepOf(skipped, "VALIDATE")).toMatchObject({
+      state: "pending",
+      block: "FIELD_CHECK_OPEN",
+    });
+    expect(flow.doneCount).toBe(0);
+  });
+
   it("moves on to validation once the finding is approved as confirmed", () => {
     const confirmed = { ...unchecked, realityCheck: "PASSED" as const };
     const flow = caseProcessFlow(confirmed);

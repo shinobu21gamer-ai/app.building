@@ -236,7 +236,9 @@ export function ProcessFlowPanel({
             </div>
 
             <div className="min-w-0">
-              {panels[active.key] ? (
+              {panels[active.key] &&
+              !earlierUnfinished &&
+              (active.state === "current" || active.state === "done") ? (
                 panels[active.key]
               ) : (
                 <p className="rounded-control border border-dashed border-line bg-surface-sunken px-3 py-3 text-sm text-ink-muted">
@@ -247,7 +249,9 @@ export function ProcessFlowPanel({
                       )
                     : active.block
                       ? active.block
-                      : t.otherDesk.replace("{desk}", active.desk)}
+                      : active.state === "done"
+                        ? t.doneBadge
+                        : t.otherDesk.replace("{desk}", active.desk)}
                 </p>
               )}
             </div>

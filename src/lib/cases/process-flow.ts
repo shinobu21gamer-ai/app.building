@@ -202,14 +202,13 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
   push("CHECK", checkDone ? "done" : "pending", checkDone ? null : realityGate);
 
   // 2 — Validate the report: a service type decides routing, budget and crew.
+  // A type the resident suggested (or an admin who typed the case too early)
+  // does not finish this step: the check has to pass first.
+  const validated = checkDone && input.typeId !== null;
   push(
     "VALIDATE",
-    input.typeId !== null ? "done" : "pending",
-    input.typeId === null
-      ? // The reality check owns the case until it passes, so that is what the
-        // validation step is waiting for when no type is set yet.
-        (checkDone ? "NEEDS_TYPE" : realityGate)
-      : null
+    validated ? "done" : "pending",
+    validated ? null : !checkDone ? realityGate : "NEEDS_TYPE"
   );
 
   // 3 — Assess and plan: the four checks, the manpower plan and the estimate.
@@ -299,6 +298,26 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
           ? null
           : "NEEDS_VERIFICATION"
   );
+
+  // Later steps cannot finish while an earlier one is still open. Without this,
+  // a type set at filing marked Validate as Done while Check was still out.
+  if (!closed) {
+    let hold: ProcessBlock | null = null;
+    let previousDone = true;
+    for (const step of steps) {
+      if (!previousDone) {
+        if (step.state === "done") step.state = "pending";
+        if (step.block === null) step.block = hold;
+      }
+      if (step.state === "done") {
+        previousDone = true;
+        hold = null;
+      } else {
+        previousDone = false;
+        hold = step.block;
+      }
+    }
+  }
 
   // A case closed before its work steps existed is not "on step 2" forever.
   // Only an open case has a current step, and the steps a closed case never
