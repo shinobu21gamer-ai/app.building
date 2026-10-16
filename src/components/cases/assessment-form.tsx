@@ -82,7 +82,6 @@ export function AssessmentForm({
   locale = "en",
   defaults,
   suggestions = [],
-  legacyCase,
 }: {
   concernId: number;
   locale?: Locale;
@@ -93,7 +92,6 @@ export function AssessmentForm({
    * figures instead of typing the list; saved lines always win.
    */
   suggestions?: MaterialSuggestion[];
-  legacyCase?: boolean;
 }) {
   const t = copy[locale].revamp.workflow;
   const router = useRouter();
@@ -383,19 +381,20 @@ export function AssessmentForm({
     </div>
   );
 
+  const showNotes =
+    Boolean(defaults?.eligibilityNotes) ||
+    Boolean(defaults?.inspectionNotes) ||
+    Boolean(defaults?.resourcesVerificationNotes) ||
+    Boolean(defaults?.approvalNotes);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {legacyCase && (
-        <FormMessage tone="success">{t.legacyCase}</FormMessage>
-      )}
       {success && <FormMessage tone="success">{success}</FormMessage>}
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
 
       <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold text-ink">
-          {t.assessmentTitle}
-        </legend>
-        <p className="text-xs text-ink-subtle">{t.assessmentDesc}</p>
+        <legend className="text-sm font-semibold text-ink">{t.planStep1}</legend>
+        <p className="text-xs text-ink-subtle">{t.planStep1Desc}</p>
 
         {checkboxes.map((box) => {
           const hidden =
@@ -431,22 +430,22 @@ export function AssessmentForm({
           );
         })}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          {notesField("eligibilityNotes", t.eligibilityNotes, defaults?.eligibilityNotes ?? null)}
-          {notesField("inspectionNotes", t.inspectionNotes, defaults?.inspectionNotes ?? null)}
-          {notesField(
-            "resourcesVerificationNotes",
-            t.resourcesNotes,
-            defaults?.resourcesVerificationNotes ?? null
-          )}
-          {notesField("approvalNotes", t.approvalNotes, defaults?.approvalNotes ?? null)}
-        </div>
+        {showNotes && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {notesField("eligibilityNotes", t.eligibilityNotes, defaults?.eligibilityNotes ?? null)}
+            {notesField("inspectionNotes", t.inspectionNotes, defaults?.inspectionNotes ?? null)}
+            {notesField(
+              "resourcesVerificationNotes",
+              t.resourcesNotes,
+              defaults?.resourcesVerificationNotes ?? null
+            )}
+            {notesField("approvalNotes", t.approvalNotes, defaults?.approvalNotes ?? null)}
+          </div>
+        )}
       </fieldset>
 
       <fieldset className="space-y-3 border-t border-line pt-5">
-        <legend className="text-sm font-semibold text-ink">
-          {t.manpowerTitle}
-        </legend>
+        <legend className="text-sm font-semibold text-ink">{t.planStep2}</legend>
         <p className="text-xs text-ink-subtle">{t.manpowerDesc}</p>
 
         <div className="grid gap-4 sm:grid-cols-3">
@@ -537,9 +536,7 @@ export function AssessmentForm({
       </fieldset>
 
       <fieldset className="space-y-3 border-t border-line pt-5">
-        <legend className="text-sm font-semibold text-ink">
-          {t.costTitle}
-        </legend>
+        <legend className="text-sm font-semibold text-ink">{t.planStep3}</legend>
         <p className="text-xs text-ink-subtle">{t.costDesc}</p>
 
         <div className="space-y-3">
