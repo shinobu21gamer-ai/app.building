@@ -124,12 +124,16 @@ export function FieldCheckSubmitForm({
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (!photo) {
+      setError(t.photoRequired);
+      return;
+    }
     setBusy(true);
     setError(null);
     const body = new FormData();
     body.append("finding", finding);
     body.append("notes", notes);
-    if (photo) body.append("photo", photo);
+    body.append("photo", photo);
     const res = await apiRequest(`/api/v1/field-checks/${checkId}/submit`, {
       method: "POST",
       body,
@@ -184,11 +188,13 @@ export function FieldCheckSubmitForm({
         id={`photo-${checkId}`}
         name="photo"
         label={t.photo}
+        hint={t.photoHint}
+        required
         onChange={(file) => setPhoto(file)}
         locale={locale}
       />
       {error && <FormMessage tone="error">{error}</FormMessage>}
-      <Button type="submit" loading={busy} disabled={busy}>
+      <Button type="submit" loading={busy} disabled={busy || !photo}>
         {t.submit}
       </Button>
     </form>
@@ -205,6 +211,7 @@ export function FieldCheckPanel({
   checks,
   roster,
   location = null,
+  concernPhotoUrl = null,
   caseStatus,
   canRequest,
   canReview,
@@ -216,6 +223,8 @@ export function FieldCheckPanel({
   roster: RosterOption[];
   /** The resident's location, shown on every check so the checker knows where to go. */
   location?: FieldCheckLocation | null;
+  /** The photo on the original report, for comparison with the site photo. */
+  concernPhotoUrl?: string | null;
   caseStatus: string;
   canRequest: boolean;
   canReview: boolean;
@@ -301,15 +310,32 @@ export function FieldCheckPanel({
                   }}
                 />
                 {check.finding && (
-                  <div className="space-y-1 text-sm">
+                  <div className="space-y-2 text-sm">
                     <p>
                       <span className="font-medium">{t.findingResult}:</span>{" "}
                       {findingLabel(t, check.finding)}
                     </p>
                     {check.findingNotes && <p className="text-ink-subtle">{check.findingNotes}</p>}
-                    {check.findingPhotoUrl && (
-                      <UploadedPhoto src={check.findingPhotoUrl} alt={t.photo} locale={locale} />
-                    )}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {concernPhotoUrl ? (
+                        <div>
+                          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                            {t.residentPhoto}
+                          </p>
+                          <UploadedPhoto src={concernPhotoUrl} alt={t.residentPhoto} locale={locale} />
+                        </div>
+                      ) : null}
+                      <div>
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                          {t.sitePhoto}
+                        </p>
+                        {check.findingPhotoUrl ? (
+                          <UploadedPhoto src={check.findingPhotoUrl} alt={t.sitePhoto} locale={locale} />
+                        ) : (
+                          <p className="text-sm text-amber-800">{t.approveNeedsPhoto}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
                 {check.reviewNote && (
@@ -340,7 +366,7 @@ export function FieldCheckPanel({
                       <Button
                         type="button"
                         loading={busy === check.id}
-                        disabled={busy !== null}
+                        disabled={busy !== null || !check.findingPhotoUrl}
                         onClick={() => review(check.id, "APPROVE")}
                       >
                         {t.approve}

@@ -18,6 +18,7 @@ import {
   realityCheckState,
   type RealityCheckState,
 } from "@/lib/cases/field-check-rules";
+import { planNeeds } from "@/lib/cases/plan-needs";
 
 /**
  * The ordered steps of processing a concern, start to finish.
@@ -102,6 +103,10 @@ export type ProcessFlowInput = {
   verificationStatus: string | null;
   /** Where the reality check stands: it is step 1 of every case. */
   realityCheck: RealityCheckState;
+  /** Repair work needs a crew; noise and documents do not. Default true. */
+  needsCrew?: boolean;
+  /** Repair and ayuda need money set aside; a noise complaint does not. Default true. */
+  needsBudget?: boolean;
 };
 
 export type ProcessFlow = {
@@ -165,8 +170,10 @@ export function fundingSatisfied(
 export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
   const stage = stageOf(input.status);
   const closed = input.status === "CLOSED";
-  const crewOk = crewSatisfied(input.workersNeeded, input.activeCrew);
-  const funded = fundingSatisfied(input.estimatedCost, input.fundedAmount);
+  const needsCrew = input.needsCrew !== false;
+  const needsBudget = input.needsBudget !== false;
+  const crewOk = !needsCrew || crewSatisfied(input.workersNeeded, input.activeCrew);
+  const funded = !needsBudget || fundingSatisfied(input.estimatedCost, input.fundedAmount);
   // The VERIFY step only completes once the fix is confirmed fixed: a
   // partial verification still blocks closing, so it reads "pending" here.
   const verified = isCloseableVerification(input.verificationStatus);
@@ -202,14 +209,13 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
   push("CHECK", checkDone ? "done" : "pending", checkDone ? null : realityGate);
 
   // 2 — Validate the report: a service type decides routing, budget and crew.
+  // A type the resident suggested (or an admin who typed the case too early)
+  // does not finish this step: the check has to pass first.
+  const validated = checkDone && input.typeId !== null;
   push(
     "VALIDATE",
-    input.typeId !== null ? "done" : "pending",
-    input.typeId === null
-      ? // The reality check owns the case until it passes, so that is what the
-        // validation step is waiting for when no type is set yet.
-        (checkDone ? "NEEDS_TYPE" : realityGate)
-      : null
+    validated ? "done" : "pending",
+    validated ? null : !checkDone ? realityGate : "NEEDS_TYPE"
   );
 
   // 3 — Assess and plan: the four checks, the manpower plan and the estimate.
@@ -226,26 +232,34 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
           : "NEEDS_ASSESSMENT"
   );
 
-  // 4 — Wait for the budget: every case passes through here, so the estimate
-  //     reaches the treasury and the money is set aside before any work starts.
-  push(
-    "FUND",
-    funded ? "done" : "pending",
-    funded
-      ? null
-      : input.estimatedCost === null
-        ? "NEEDS_ESTIMATE"
-        : stage < 3
-          ? "WAITING_BUDGET_STAGE"
-          : "NEEDS_FUNDS"
-  );
+  // 4 — Wait for the budget. A noise complaint or a document request costs
+  //     nothing, so this step is not on the path.
+  if (!needsBudget) {
+    push("FUND", "notNeeded");
+  } else {
+    push(
+      "FUND",
+      funded ? "done" : "pending",
+      funded
+        ? null
+        : input.estimatedCost === null
+          ? "NEEDS_ESTIMATE"
+          : stage < 3
+            ? "WAITING_BUDGET_STAGE"
+            : "NEEDS_FUNDS"
+    );
+  }
 
-  // 5 — Assign the crew named in the plan.
-  push(
-    "CREW",
-    crewOk ? "done" : "pending",
-    crewOk ? null : input.workersNeeded === null ? "NEEDS_CREW_PLAN" : "NEEDS_CREW"
-  );
+  // 5 — Assign the crew named in the plan. Peace-and-order cases have no crew.
+  if (!needsCrew) {
+    push("CREW", "notNeeded");
+  } else {
+    push(
+      "CREW",
+      crewOk ? "done" : "pending",
+      crewOk ? null : input.workersNeeded === null ? "NEEDS_CREW_PLAN" : "NEEDS_CREW"
+    );
+  }
 
   // 6 — Start the work: everything the plan and the money rules require is in
   //     place before the case may move to IN_PROGRESS.
@@ -299,6 +313,26 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
           ? null
           : "NEEDS_VERIFICATION"
   );
+
+  // Later steps cannot finish while an earlier one is still open. Without this,
+  // a type set at filing marked Validate as Done while Check was still out.
+  if (!closed) {
+    let hold: ProcessBlock | null = null;
+    let previousDone = true;
+    for (const step of steps) {
+      if (!previousDone) {
+        if (step.state === "done") step.state = "pending";
+        if (step.block === null) step.block = hold;
+      }
+      if (step.state === "done" || step.state === "notNeeded") {
+        previousDone = true;
+        hold = null;
+      } else {
+        previousDone = false;
+        hold = step.block;
+      }
+    }
+  }
 
   // A case closed before its work steps existed is not "on step 2" forever.
   // Only an open case has a current step, and the steps a closed case never
@@ -366,6 +400,8 @@ export type FlowConcernRow = {
   status: string;
   /** The case's field checks: they decide the first step of the flow. */
   typeId: number | null;
+  type?: { key: string; requiresCrew?: boolean; requiresBudget?: boolean } | null;
+  category?: { code: string } | null;
   caseAssessment?: {
     workersNeeded: number | null;
     totalCost: unknown;
@@ -385,10 +421,16 @@ export function concernProcessFlow(
   concern: FlowConcernRow,
   fundedAmount = 0
 ): ProcessFlow {
+  const needs = planNeeds({
+    typeKey: concern.type?.key ?? null,
+    categoryCode: concern.category?.code ?? null,
+    requiresCrew: concern.type?.requiresCrew ?? null,
+    requiresBudget: concern.type?.requiresBudget ?? null,
+  });
   return caseProcessFlow({
     status: concern.status,
     typeId: concern.typeId,
-    hasAssessment: Boolean(concern.caseAssessment?.workersNeeded),
+    hasAssessment: concern.caseAssessment != null,
     workersNeeded: concern.caseAssessment?.workersNeeded ?? null,
     estimatedCost: concern.caseAssessment
       ? Number(concern.caseAssessment.totalCost ?? 0)
@@ -403,5 +445,35 @@ export function concernProcessFlow(
     realityCheck: realityCheckState(concern.fieldChecks ?? [], {
       legacyPassed: (STATUS_ORDER[concern.status as CaseStatus] ?? 0) >= 2,
     }),
+    needsCrew: needs.crew,
+    needsBudget: needs.budget,
   });
+}
+
+/**
+ * Which desk actually works a step. Admin may review the site check and
+ * validate the report — that is the whole of their case work. The assigned
+ * official plans, books crew and does the job. Admin having every permission
+ * in the matrix does not make Assess or Close theirs.
+ */
+export function roleOwnsProcessStep(role: string, key: ProcessStepKey): boolean {
+  switch (key) {
+    case "CHECK":
+      return role === "ADMIN" || role === "OFFICIAL" || role === "CREW";
+    case "VALIDATE":
+      return role === "ADMIN";
+    case "ASSESS":
+    case "CREW":
+    case "START":
+    case "WORK":
+      return role === "OFFICIAL";
+    case "FUND":
+      return role === "OFFICIAL" || role === "TREASURER" || role === "CAPTAIN";
+    case "VERIFY":
+      return role === "OFFICIAL" || role === "CAPTAIN";
+    case "CLOSE":
+      return role === "CAPTAIN";
+    default:
+      return false;
+  }
 }

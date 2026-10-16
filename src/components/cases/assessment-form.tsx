@@ -13,11 +13,27 @@ import { apiRequest } from "@/lib/api-client";
 import type { MaterialSuggestion } from "@/lib/cases/materials-templates";
 import { copy, type Locale } from "@/lib/i18n";
 import { planWindowProblem } from "@/lib/cases/plan-window";
+import type { PlanNeeds } from "@/lib/cases/plan-needs";
 
 const inputStyles =
   "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
 
 const moneyStyles = inputStyles;
+
+/** Amount for a line: qty × unit price when both are filled, else the typed amount. */
+function lineAmount(line: { quantity: string; unitPrice: string; amount: string }): string {
+  const qty = Number(line.quantity);
+  const price = Number(line.unitPrice);
+  if (
+    line.quantity.trim() !== "" &&
+    line.unitPrice.trim() !== "" &&
+    Number.isFinite(qty) &&
+    Number.isFinite(price)
+  ) {
+    return (qty * price).toFixed(2);
+  }
+  return line.amount;
+}
 
 export type AssessmentDefaults = {
   eligibilityChecked: boolean;
@@ -67,7 +83,7 @@ export function AssessmentForm({
   locale = "en",
   defaults,
   suggestions = [],
-  legacyCase,
+  needs,
 }: {
   concernId: number;
   locale?: Locale;
@@ -78,7 +94,8 @@ export function AssessmentForm({
    * figures instead of typing the list; saved lines always win.
    */
   suggestions?: MaterialSuggestion[];
-  legacyCase?: boolean;
+  /** What this kind of case actually needs. Noise has none of crew/budget. */
+  needs: PlanNeeds;
 }) {
   const t = copy[locale].revamp.workflow;
   const router = useRouter();
@@ -123,12 +140,28 @@ export function AssessmentForm({
     return [emptyMaterialLine()];
   });
   const materialsTotal = materials.reduce((sum: number, line: MaterialLine) => {
-    const value = Number(line.amount);
+    const value = Number(lineAmount(line));
     return sum + (Number.isFinite(value) && value > 0 ? value : 0);
   }, 0);
   const updateMaterial = (id: number, field: keyof MaterialLineDefault, value: string) => {
     setMaterials((rows) =>
-      rows.map((row) => (row.id === id ? { ...row, [field]: value } : row))
+      rows.map((row) => {
+        if (row.id !== id) return row;
+        const next = { ...row, [field]: value };
+        if (field === "quantity" || field === "unitPrice") {
+          const qty = Number(field === "quantity" ? value : next.quantity);
+          const price = Number(field === "unitPrice" ? value : next.unitPrice);
+          if (
+            Number.isFinite(qty) &&
+            Number.isFinite(price) &&
+            (field === "quantity" ? value : next.quantity) !== "" &&
+            (field === "unitPrice" ? value : next.unitPrice) !== ""
+          ) {
+            next.amount = (qty * price).toFixed(2);
+          }
+        }
+        return next;
+      })
     );
   };
   const removeMaterial = (id: number) => {
@@ -249,9 +282,13 @@ export function AssessmentForm({
       approvalRequired: data.get("approvalRequired") === "on",
       approved: data.get("approved") === "on",
       approvalNotes: String(data.get("approvalNotes") ?? ""),
-      workersNeeded: Number(data.get("workersNeeded") ?? 0),
-      estimatedDurationMinutes: Math.max(0, hours) * 60 + Math.max(0, minutes),
-      equipmentNotes: String(data.get("equipmentNotes") ?? ""),
+      workersNeeded: needs.crew ? Number(data.get("workersNeeded") ?? 0) : 0,
+      estimatedDurationMinutes: needs.crew
+        ? Math.max(0, hours) * 60 + Math.max(0, minutes)
+        : 15,
+      equipmentNotes: needs.equipment
+        ? String(data.get("equipmentNotes") ?? "")
+        : "none",
       scheduledStartAt: String(data.get("scheduledStartAt") ?? ""),
       scheduledEndAt: String(data.get("scheduledEndAt") ?? ""),
       laborCost: String(data.get("laborCost") ?? ""),
@@ -273,20 +310,20 @@ export function AssessmentForm({
           unit: line.unit.trim(),
           unitPrice:
             line.unitPrice.trim() === "" ? null : Number(line.unitPrice),
-          amount: Number(line.amount) || 0,
+          amount: Number(lineAmount(line)) || 0,
           note: line.note.trim(),
         })),
     };
 
-    if (!Number.isInteger(payload.workersNeeded) || payload.workersNeeded < 1) {
+    if (needs.crew && (!Number.isInteger(payload.workersNeeded) || payload.workersNeeded < 1)) {
       setFormError(t.assessmentRequired);
       return;
     }
-    if (payload.estimatedDurationMinutes < 15) {
+    if (needs.crew && payload.estimatedDurationMinutes < 15) {
       setFormError(t.assessmentRequired);
       return;
     }
-    if (payload.equipmentNotes.trim().length < 3) {
+    if (needs.equipment && payload.equipmentNotes.trim().length < 3) {
       setFormError(t.assessmentRequired);
       return;
     }
@@ -352,19 +389,20 @@ export function AssessmentForm({
     </div>
   );
 
+  const showNotes =
+    Boolean(defaults?.eligibilityNotes) ||
+    Boolean(defaults?.inspectionNotes) ||
+    Boolean(defaults?.resourcesVerificationNotes) ||
+    Boolean(defaults?.approvalNotes);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {legacyCase && (
-        <FormMessage tone="success">{t.legacyCase}</FormMessage>
-      )}
       {success && <FormMessage tone="success">{success}</FormMessage>}
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
 
       <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold text-ink">
-          {t.assessmentTitle}
-        </legend>
-        <p className="text-xs text-ink-subtle">{t.assessmentDesc}</p>
+        <legend className="text-sm font-semibold text-ink">{t.planStep1}</legend>
+        <p className="text-xs text-ink-subtle">{t.planStep1Desc}</p>
 
         {checkboxes.map((box) => {
           const hidden =
@@ -400,22 +438,29 @@ export function AssessmentForm({
           );
         })}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          {notesField("eligibilityNotes", t.eligibilityNotes, defaults?.eligibilityNotes ?? null)}
-          {notesField("inspectionNotes", t.inspectionNotes, defaults?.inspectionNotes ?? null)}
-          {notesField(
-            "resourcesVerificationNotes",
-            t.resourcesNotes,
-            defaults?.resourcesVerificationNotes ?? null
-          )}
-          {notesField("approvalNotes", t.approvalNotes, defaults?.approvalNotes ?? null)}
-        </div>
+        {showNotes && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {notesField("eligibilityNotes", t.eligibilityNotes, defaults?.eligibilityNotes ?? null)}
+            {notesField("inspectionNotes", t.inspectionNotes, defaults?.inspectionNotes ?? null)}
+            {notesField(
+              "resourcesVerificationNotes",
+              t.resourcesNotes,
+              defaults?.resourcesVerificationNotes ?? null
+            )}
+            {notesField("approvalNotes", t.approvalNotes, defaults?.approvalNotes ?? null)}
+          </div>
+        )}
       </fieldset>
 
+      {!needs.crew && !needs.budget ? (
+        <p className="rounded-control border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+          {t.noWorksHint}
+        </p>
+      ) : null}
+
+      {(needs.crew || needs.equipment) && (
       <fieldset className="space-y-3 border-t border-line pt-5">
-        <legend className="text-sm font-semibold text-ink">
-          {t.manpowerTitle}
-        </legend>
+        <legend className="text-sm font-semibold text-ink">{t.planStep2}</legend>
         <p className="text-xs text-ink-subtle">{t.manpowerDesc}</p>
 
         <div className="grid gap-4 sm:grid-cols-3">
@@ -489,6 +534,7 @@ export function AssessmentForm({
           </div>
         </div>
 
+        {needs.equipment && (
         <div>
           <Label htmlFor="equipmentNotes" required>
             {t.equipment}
@@ -503,12 +549,13 @@ export function AssessmentForm({
             defaultValue={defaults?.equipmentNotes ?? ""}
           />
         </div>
+        )}
       </fieldset>
+      )}
 
+      {needs.budget && (
       <fieldset className="space-y-3 border-t border-line pt-5">
-        <legend className="text-sm font-semibold text-ink">
-          {t.costTitle}
-        </legend>
+        <legend className="text-sm font-semibold text-ink">{t.planStep3}</legend>
         <p className="text-xs text-ink-subtle">{t.costDesc}</p>
 
         <div className="space-y-3">
@@ -529,76 +576,96 @@ export function AssessmentForm({
                 {t.materialsSkipHint}
               </p>
             ) : (
-            <div className="space-y-2">
-              {materials.map((line) => (
+            <div className="space-y-3">
+              {materials.map((line, index) => (
                 <div
                   key={line.id}
-                  className="grid grid-cols-2 items-start gap-2 sm:grid-cols-[1fr_4.5rem_4.5rem_6rem_6rem_2rem]"
+                  className="space-y-3 rounded-control border border-line bg-surface p-3"
                 >
-                  <input
-                    aria-label={t.materialName}
-                    value={line.name}
-                    maxLength={160}
-                    placeholder={t.materialName}
-                    onChange={(event) =>
-                      updateMaterial(line.id, "name", event.target.value)
-                    }
-                    className={inputStyles}
-                  />
-                  <input
-                    aria-label={t.materialQuantity}
-                    value={line.quantity}
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    placeholder={t.materialQuantity}
-                    onChange={(event) =>
-                      updateMaterial(line.id, "quantity", event.target.value)
-                    }
-                    className={inputStyles}
-                  />
-                  <input
-                    aria-label={t.materialUnit}
-                    value={line.unit}
-                    maxLength={24}
-                    placeholder={t.materialUnit}
-                    onChange={(event) =>
-                      updateMaterial(line.id, "unit", event.target.value)
-                    }
-                    className={inputStyles}
-                  />
-                  <input
-                    aria-label={t.materialUnitPrice}
-                    value={line.unitPrice}
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    placeholder={t.materialUnitPrice}
-                    onChange={(event) =>
-                      updateMaterial(line.id, "unitPrice", event.target.value)
-                    }
-                    className={inputStyles}
-                  />
-                  <input
-                    aria-label={t.materialAmount}
-                    value={line.amount}
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    placeholder={t.materialAmount}
-                    onChange={(event) =>
-                      updateMaterial(line.id, "amount", event.target.value)
-                    }
-                    className={inputStyles}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeMaterial(line.id)}
-                    className="h-10 rounded-control border border-line-strong bg-surface px-1 text-xs text-ink-subtle hover:text-red-700"
-                    aria-label={t.materialRemove}
-                  >
-                    ✕
-                  </button>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                      {t.materialName} {index + 1}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => removeMaterial(line.id)}
+                      className="text-xs font-medium text-ink-subtle hover:text-red-700"
+                      aria-label={t.materialRemove}
+                    >
+                      {t.materialRemove}
+                    </button>
+                  </div>
+                  <div>
+                    <Label htmlFor={`material-name-${line.id}`}>{t.materialName}</Label>
+                    <Input
+                      id={`material-name-${line.id}`}
+                      value={line.name}
+                      maxLength={160}
+                      placeholder={t.materialName}
+                      onChange={(event) =>
+                        updateMaterial(line.id, "name", event.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div>
+                      <Label htmlFor={`material-qty-${line.id}`}>{t.materialQuantity}</Label>
+                      <Input
+                        id={`material-qty-${line.id}`}
+                        value={line.quantity}
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          updateMaterial(line.id, "quantity", event.target.value)
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`material-unit-${line.id}`}>{t.materialUnit}</Label>
+                      <Input
+                        id={`material-unit-${line.id}`}
+                        value={line.unit}
+                        maxLength={24}
+                        placeholder="kg, pc, m"
+                        onChange={(event) =>
+                          updateMaterial(line.id, "unit", event.target.value)
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`material-price-${line.id}`}>{t.materialUnitPrice}</Label>
+                      <Input
+                        id={`material-price-${line.id}`}
+                        value={line.unitPrice}
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          updateMaterial(line.id, "unitPrice", event.target.value)
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`material-amount-${line.id}`}>{t.materialAmount}</Label>
+                      <Input
+                        id={`material-amount-${line.id}`}
+                        value={lineAmount(line)}
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        inputMode="decimal"
+                        readOnly={
+                          line.quantity.trim() !== "" && line.unitPrice.trim() !== ""
+                        }
+                        onChange={(event) =>
+                          updateMaterial(line.id, "amount", event.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -657,6 +724,7 @@ export function AssessmentForm({
           </div>
         </div>
       </fieldset>
+      )}
 
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={submitting} loading={submitting}>

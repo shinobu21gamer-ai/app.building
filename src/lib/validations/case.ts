@@ -3,7 +3,6 @@ import { CALENDAR_DAY_RE, isValidCalendarDay } from "@/lib/cases/action-date";
 import {
   MAX_DURATION_MINUTES,
   MAX_WORKERS_NEEDED,
-  MIN_WORKERS_NEEDED,
 } from "@/lib/cases/manpower";
 import {
   CREATABLE_OVERRIDE_KINDS,
@@ -205,7 +204,7 @@ export const assessmentSchema = z
     workersNeeded: z.coerce
       .number()
       .int("Workers needed must be a whole number.")
-      .min(MIN_WORKERS_NEEDED, "At least one worker is required.")
+      .min(0, "Workers needed cannot be negative.")
       .max(MAX_WORKERS_NEEDED, `At most ${MAX_WORKERS_NEEDED} workers.`),
     estimatedDurationMinutes: z.coerce
       .number()
@@ -218,8 +217,9 @@ export const assessmentSchema = z
     equipmentNotes: z
       .string()
       .trim()
-      .min(3, 'Equipment notes are required — write "none" if nothing is needed.')
-      .max(500, "Equipment notes are too long."),
+      .max(500, "Equipment notes are too long.")
+      .optional()
+      .transform((value) => value || "none"),
     scheduledStartAt: optionalInstant("Planned start"),
     scheduledEndAt: optionalInstant("Planned finish"),
 

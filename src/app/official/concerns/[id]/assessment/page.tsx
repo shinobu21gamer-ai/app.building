@@ -8,26 +8,20 @@ import { Badge, StatusBadge } from "@/components/ui/badge";
 import { AssessmentForm } from "@/components/cases/assessment-form";
 import { CrewPanel } from "@/components/cases/crew-panel";
 import { PageHeader } from "@/components/ui/page-header";
-import { caseWorkflowFlags } from "@/lib/cases/workflow";
 import { suggestedMaterials } from "@/lib/cases/materials-templates";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { planNeeds } from "@/lib/cases/plan-needs";
+import { formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
-  title: "Assessment and crew",
+  title: "Plan the work",
 };
 
 export const dynamic = "force-dynamic";
 
 type PageProps = { params: Promise<{ id: string }> };
 
-/**
- * The UNDER_ASSESSMENT desk: evaluation and approval, the manpower plan, the
- * labour-inclusive estimate, and the crew who will do the work. Officials see
- * only their own office's cases.
- */
-// One stored materials line as the page's include returns it.
 type MaterialRow = {
   name: string;
   quantity: unknown;
@@ -37,6 +31,10 @@ type MaterialRow = {
   note: string | null;
 };
 
+/**
+ * The official's plan: confirm the work, say how many people and how long,
+ * then the cost. Crew is picked after the plan is saved — not beside it.
+ */
 export default async function AssessmentPage({ params }: PageProps) {
   const user = await requirePermission("case.assess");
   const locale = await getLocale();
@@ -57,21 +55,18 @@ export default async function AssessmentPage({ params }: PageProps) {
       caseAssessment: {
         include: { materials: { orderBy: { sortOrder: "asc" } } },
       },
-      crewAssignments: { where: { isActive: true }, select: { id: true } },
     },
   });
   if (!concern) notFound();
 
-  const flags = caseWorkflowFlags({
-    status: concern.status,
-    workersNeeded: concern.caseAssessment?.workersNeeded ?? null,
-    activeCrew: concern.crewAssignments.length,
-  });
-
   const canOverrideShortfall = user.role.key !== "CREW";
-
-  // What this kind of concern usually buys, so a fresh assessment starts
-  // from the right list instead of an empty page.
+  const needs = planNeeds({
+    typeKey: concern.type?.key ?? null,
+    categoryCode: concern.category?.code ?? null,
+    requiresCrew: concern.type?.requiresCrew ?? null,
+    requiresBudget: concern.type?.requiresBudget ?? null,
+  });
+  const planSaved = concern.caseAssessment != null;
   const suggestions = suggestedMaterials({
     categoryCode: concern.category?.code ?? null,
     typeKey: concern.type?.key ?? null,
@@ -91,7 +86,7 @@ export default async function AssessmentPage({ params }: PageProps) {
               variant="outline"
               size="sm"
             >
-              {t.viewAssessment}
+              {t.backToCase}
             </Button>
           </>
         }
@@ -103,9 +98,6 @@ export default async function AssessmentPage({ params }: PageProps) {
         {concern.assignedOffice && (
           <span className="self-center">{concern.assignedOffice.name}</span>
         )}
-        <span className="self-center">
-          {t.crewProgress}: {flags.crewProgressLabel}
-        </span>
       </div>
 
       {concern.caseAssessment?.scheduledStartAt && (
@@ -118,13 +110,13 @@ export default async function AssessmentPage({ params }: PageProps) {
         </p>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card title={t.assessmentTitle} description={t.assessmentDesc}>
+      <div className="mx-auto max-w-3xl space-y-6">
+        <Card>
           <AssessmentForm
             concernId={concern.id}
             locale={locale}
-            suggestions={suggestions}
-            legacyCase={flags.legacy}
+            suggestions={needs.materials ? suggestions : []}
+            needs={needs}
             defaults={
               concern.caseAssessment
                 ? {
@@ -170,82 +162,22 @@ export default async function AssessmentPage({ params }: PageProps) {
           />
         </Card>
 
-        <div className="space-y-6">
-          <Card title={t.crewTitle} description={t.crewDesc}>
-            <CrewPanel
-              concernId={concern.id}
-              locale={locale}
-              canAssign={user.role.key !== "CREW"}
-              canOverrideShortfall={canOverrideShortfall}
-            />
-          </Card>
-
-          {concern.caseAssessment && (
-            <Card title={t.costTitle} description={t.costDesc}>
-              <dl className="space-y-2 text-sm">
-                {(
-                  [
-                    [t.labor, concern.caseAssessment.laborCost],
-                    [t.materials, concern.caseAssessment.materialsCost],
-                    [t.equipmentCost, concern.caseAssessment.equipmentCost],
-                    [t.other, concern.caseAssessment.otherCost],
-                    [t.estimate, concern.caseAssessment.totalCost],
-                  ] as Array<[string, unknown]>
-                ).map(([label, value]) => (
-                  <div key={String(label)} className="flex justify-between gap-3">
-                    <dt className="text-ink-subtle">{label}</dt>
-                    <dd className="font-medium tabular-nums text-ink">
-                      ₱{Number(value ?? 0).toFixed(2)}
-                    </dd>
-                  </div>
-                ))}
-                <div className="flex justify-between gap-3 border-t border-line pt-2 text-xs text-ink-subtle">
-                  <dt>{t.workersNeeded}</dt>
-                  <dd>
-                    {concern.caseAssessment.workersNeeded ?? "—"} ·{" "}
-                    {concern.caseAssessment.estimatedDurationMinutes ?? 0} min
-                  </dd>
-                </div>
-                {concern.caseAssessment.submittedAt && (
-                  <div className="flex justify-between gap-3 text-xs text-ink-subtle">
-                    <dt>{copy[locale].revamp.common.date}</dt>
-                    <dd>{formatDate(concern.caseAssessment.submittedAt)}</dd>
-                  </div>
-                )}
-              </dl>
-              {concern.caseAssessment.materials.length > 0 && (
-                <div className="mt-4 border-t border-line pt-3">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
-                    {t.materialsListTitle}
-                  </p>
-                  <ul className="divide-y divide-line text-sm">
-                    {concern.caseAssessment.materials.map(
-                      (line: MaterialRow, index: number) => (
-                      <li
-                        key={index}
-                        className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-1.5"
-                      >
-                        <span className="text-ink">
-                          {line.name}
-                          {line.quantity !== null && line.unit && (
-                            <span className="text-ink-subtle">
-                              {" "}
-                              · {String(line.quantity)} {line.unit}
-                            </span>
-                          )}
-                        </span>
-                        <span className="font-medium tabular-nums text-ink">
-                          ₱{Number(line.amount).toFixed(2)}
-                        </span>
-                      </li>
-                    ))
-                    }
-                  </ul>
-                </div>
-              )}
+        {needs.crew ? (
+          planSaved ? (
+            <Card title={t.crewNextTitle} description={t.crewDesc}>
+              <CrewPanel
+                concernId={concern.id}
+                locale={locale}
+                canAssign={user.role.key !== "CREW"}
+                canOverrideShortfall={canOverrideShortfall}
+              />
             </Card>
-          )}
-        </div>
+          ) : (
+            <p className="rounded-control border border-dashed border-line bg-surface-sunken px-3 py-3 text-sm text-ink-muted">
+              {t.crewAfterPlan}
+            </p>
+          )
+        ) : null}
       </div>
     </div>
   );

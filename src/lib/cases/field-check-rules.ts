@@ -90,19 +90,18 @@ export type FindingInput = {
 };
 
 /**
- * What a finding must carry. A "not confirmed" finding closes the case, so it
- * needs a written reason and a photo as evidence. "Cannot verify" needs a reason.
- * Returns a message for the first thing missing, or null when the finding is complete.
+ * What a finding must carry. Every finding needs a photo of the site so the
+ * admin can see what was there — without it there is no way to tell if the
+ * report is real. "Not confirmed" also needs a written reason (it closes the
+ * case). "Cannot verify" needs a reason.
  */
 export function findingProblem(input: FindingInput): string | null {
   const notes = input.notes?.trim() ?? "";
-  if (input.finding === "NOT_CONFIRMED") {
-    if (notes.length < 10) {
-      return "Describe what you found (at least 10 characters). A case is closed as unfounded only with a written reason.";
-    }
-    if (!input.hasPhoto) {
-      return "Attach a photo of the site. A case is closed as unfounded only with photo evidence.";
-    }
+  if (!input.hasPhoto) {
+    return "Attach a photo of the site. A finding without a photo cannot be approved — there is no way to tell if the report is real.";
+  }
+  if (input.finding === "NOT_CONFIRMED" && notes.length < 10) {
+    return "Describe what you found (at least 10 characters). A case is closed as unfounded only with a written reason.";
   }
   if (input.finding === "CANNOT_VERIFY" && notes.length < 10) {
     return "Say why the concern could not be verified (at least 10 characters).";

@@ -13,10 +13,16 @@ export type FlowStepView = {
   title: string;
   lead: string;
   todo: string[];
-  /** Who owns the step, already resolved into words ("Your office", "Treasury office"). */
+  /** Short owner on the rail (Admin, Official, Captain). */
+  owner: string;
+  /** Full who-does-this sentence on the card. */
+  who: string;
+  /** Named desk for the "the X handles this" fallback. */
   desk: string;
   /** Why the step cannot be worked on yet, in words. Null when it can. */
   block: string | null;
+  /** The signed-in person is the one who should act on the current step. */
+  yourTurn?: boolean;
 };
 
 const DOT_STATE: Record<ProcessStepState, string> = {
@@ -120,6 +126,9 @@ export function ProcessFlowPanel({
                 .replace("{total}", String(steps.length))}
               {active ? ` · ${active.title}` : ""}
             </h2>
+            <p className="mt-1 max-w-3xl text-sm leading-relaxed text-ink-muted">
+              {t.lead}
+            </p>
           </div>
           <p className="text-sm text-ink-subtle">
             {t.progress
@@ -148,7 +157,7 @@ export function ProcessFlowPanel({
                   onClick={() => setPicked(step.key)}
                   aria-current={step.state === "current" ? "step" : undefined}
                   className={cn(
-                    "flex w-full min-w-[9.5rem] items-center gap-2 rounded-control border px-2.5 py-2 text-left transition-colors",
+                    "flex w-full min-w-[11rem] items-center gap-2 rounded-control border px-2.5 py-2 text-left transition-colors",
                     CHIP_STATE[step.state],
                     isOpen ? "shadow-card" : "hover:bg-surface-muted"
                   )}
@@ -172,7 +181,7 @@ export function ProcessFlowPanel({
                       {step.title}
                     </span>
                     <span className="block text-[11px] text-ink-subtle">
-                      {stateLabel[step.state]}
+                      {stateLabel[step.state]} · {step.owner}
                     </span>
                   </span>
                 </button>
@@ -207,7 +216,10 @@ export function ProcessFlowPanel({
                 <dt className="text-caption font-semibold uppercase tracking-wide text-ink-subtle">
                   {t.whoDoesIt}
                 </dt>
-                <dd className="text-ink">{active.desk}</dd>
+                <dd className="text-ink">
+                  {active.who}
+                  {active.yourTurn ? ` · ${t.yourTurn}` : ""}
+                </dd>
               </dl>
 
               <div>
@@ -236,7 +248,9 @@ export function ProcessFlowPanel({
             </div>
 
             <div className="min-w-0">
-              {panels[active.key] ? (
+              {panels[active.key] &&
+              !earlierUnfinished &&
+              (active.state === "current" || active.state === "done") ? (
                 panels[active.key]
               ) : (
                 <p className="rounded-control border border-dashed border-line bg-surface-sunken px-3 py-3 text-sm text-ink-muted">
@@ -247,7 +261,9 @@ export function ProcessFlowPanel({
                       )
                     : active.block
                       ? active.block
-                      : t.otherDesk.replace("{desk}", active.desk)}
+                      : active.state === "done"
+                        ? t.doneBadge
+                        : t.otherDesk.replace("{desk}", active.desk)}
                 </p>
               )}
             </div>

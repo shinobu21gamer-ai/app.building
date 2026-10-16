@@ -1601,7 +1601,7 @@ const en = {
   // ── The step-by-step case flow, shared by the official and admin desks ──
   flow: {
     title: "Case flow",
-    lead: "Work the case from step 1 to step 9. The step highlighted below is the one being worked on now; finished steps are green.",
+    lead: "Admin: review the site check, then set type, category and office — then stop. Official: assess, book crew, start and finish the work. Treasurer sets money aside; the Captain approves it and closes the case.",
     stepOf: "Step {current} of {total}",
     progress: "{done} of {total} steps done",
     currentStep: "Current step",
@@ -1631,10 +1631,12 @@ const en = {
     deskFund: "Treasury office, then the Captain",
     deskCrew: "Crew on site",
     deskCaptain: "Captain's office",
+    yourTurn: "Your turn",
     steps: {
       CHECK: {
         title: "Check that the report is real",
-        who: "Assigned official (they may send crew), then admin reviews the finding",
+        owner: "Official → Admin",
+        who: "Official or crew goes to the site. Admin reviews the photo and finding. Nobody else acts until Admin approves.",
         lead: "Somebody goes to the location the resident gave and confirms what is actually there. This is step 1: nothing else happens on the case until that finding is approved.",
         todo: [
           "Read the report, the location and the photo.",
@@ -1645,7 +1647,8 @@ const en = {
       },
       VALIDATE: {
         title: "Validate the report",
-        who: "Admin only — the official does not repeat this",
+        owner: "Admin",
+        who: "Admin only — type, category, office. The official does not repeat this.",
         lead: "Admin confirms the service type and sends the case to the right office. Once saved, this step is finished. The official does not validate it again.",
         todo: [
           "Read the report, the location and the photo.",
@@ -1656,7 +1659,8 @@ const en = {
       },
       ASSESS: {
         title: "Assess and plan the work",
-        who: "Assigned official — not admin",
+        owner: "Official",
+        who: "Assigned official — not admin. Plan manpower and cost.",
         lead: "The official who holds the case does the four checks, then plans manpower and cost. This is new work, not a repeat of admin validation.",
         todo: [
           "Work through the four checks: eligibility, inspection, resources, approval.",
@@ -1667,7 +1671,8 @@ const en = {
       },
       FUND: {
         title: "Wait for the budget",
-        who: "Treasurer sets money aside; Captain approves — not admin, not the case official",
+        owner: "Treasurer → Captain",
+        who: "Treasurer sets money aside; Captain approves — not admin, not the case official.",
         lead: "Every case stops here: the estimate goes to the treasury and the money is set aside before any work starts.",
         todo: [
           "Save the cost estimate, then move the case to Awaiting budget.",
@@ -1677,7 +1682,8 @@ const en = {
       },
       CREW: {
         title: "Assign the crew",
-        who: "Assigned official — booking who will do the job, not paying them",
+        owner: "Official",
+        who: "Assigned official — booking who will do the job, not paying them.",
         lead: "Book the workers named in the plan before the work starts.",
         todo: [
           "Open the roster and pick the planned number of workers by name.",
@@ -1687,7 +1693,8 @@ const en = {
       },
       START: {
         title: "Start the work",
-        who: "Assigned official",
+        owner: "Official",
+        who: "Assigned official — after crew and money are in place.",
         lead: "With the crew complete and the money in place, the case moves to In progress.",
         todo: [
           "Confirm the crew is complete and that the funds are set aside.",
@@ -1697,7 +1704,8 @@ const en = {
       },
       WORK: {
         title: "Do the work and log progress",
-        who: "Assigned official and crew",
+        owner: "Official + crew",
+        who: "Assigned official and crew. Admin does not log the work.",
         lead: "Remarks and actions are recorded as the work goes on. The step ends with the resolution.",
         todo: [
           "Log progress remarks and the actions taken while the work goes on.",
@@ -1707,7 +1715,8 @@ const en = {
       },
       VERIFY: {
         title: "Verify the fix",
-        who: "Another official or the Captain — not the person who recorded the fix",
+        owner: "Other official / Captain",
+        who: "Another official or the Captain — not the person who recorded the fix.",
         lead: "Someone other than the official who recorded the resolution checks the proof.",
         todo: [
           "Compare the proof photo with the concern.",
@@ -1717,7 +1726,8 @@ const en = {
       },
       CLOSE: {
         title: "Close the case",
-        who: "Captain — not admin, not the case official",
+        owner: "Captain",
+        who: "Captain — not admin, not the case official.",
         lead: "The Captain closes the case and the resident is asked to rate the work.",
         todo: [
           "Check that the verification passed and the resident sees the resolution.",
@@ -1794,7 +1804,7 @@ const en = {
     recordTitle: "Case record",
     recordLead:
       "Everything recorded on this case: the report itself, the priority computation, the assignments, the resolution and the full history.",
-    openAssessment: "Open the assessment form",
+    openAssessment: "Plan the work",
   },
 
   // ── Revamp: role portals, identity verification, privacy centre ─────
@@ -3019,24 +3029,32 @@ const en = {
       },
     },
     workflow: {
-      assessmentTitle: "Evaluation and approval",
+      assessmentTitle: "Plan the work",
       assessmentDesc:
-        "Check eligibility, inspect the site, verify the resources, then record the approval.",
-      eligibility: "Eligibility checked",
-      eligibilityHint: "The concern qualifies for barangay assistance or works.",
+        "Three things, then save: confirm it is hall work, say how many people and how long, then the cost. You pick the crew after this.",
+      planStep1: "1. Confirm",
+      planStep1Desc: "Tick what is true. Notes are optional.",
+      planStep2: "2. People and time",
+      planStep3: "3. Cost",
+      backToCase: "Back to the case",
+      crewNextTitle: "Next: pick the crew",
+      crewAfterPlan: "Save the plan first. Then you pick the people by name.",
+      noWorksHint:
+        "This is not a repair. No equipment and no budget — confirm, then save. The office talks to the people involved; treasury is not in this case.",
+      eligibility: "This is barangay work",
+      eligibilityHint: "The hall can take this on.",
       eligibilityNotes: "Eligibility notes",
-      inspection: "Site inspection required",
-      inspectionCompleted: "Inspection completed",
+      inspection: "Someone still needs to inspect the site",
+      inspectionCompleted: "Inspection is done",
       inspectionNotes: "Inspection notes",
-      resources: "Resources verified",
-      resourcesHint: "Materials, equipment and funds are available.",
+      resources: "People and materials are available",
+      resourcesHint: "You can do this work with what the hall has.",
       resourcesNotes: "Resource verification notes",
-      approval: "Further approval required",
-      approved: "Approval obtained",
+      approval: "Someone else still has to sign",
+      approved: "That signature is on file",
       approvalNotes: "Approval notes",
-      manpowerTitle: "Manpower plan",
-      manpowerDesc:
-        "How many people are needed, how long the work takes, and with what equipment.",
+      manpowerTitle: "People and time",
+      manpowerDesc: "How many workers, how long, and what tools.",
       workersNeeded: "Workers needed",
       workersNeededHint: "At least one. Crew is assigned by name after this.",
       duration: "Estimated duration",
@@ -3048,8 +3066,8 @@ const en = {
       scheduledEnd: "Planned finish",
       scheduledHint:
         "Today or later — a plan cannot be set in the past. The planned window is what the double-booking check uses for the crew.",
-      costTitle: "Cost estimate",
-      costDesc: "Labour is part of the estimate — a plan without it is not costed.",
+      costTitle: "Cost",
+      costDesc: "Materials, labour, equipment. Labour is part of the total.",
       labor: "Labour",
       laborHint:
         "Computed from the crew rates on file. Enter a figure only when no rate exists.",
@@ -3107,7 +3125,14 @@ const en = {
         findingCannotVerify: "Could not verify",
         findingResult: "Finding",
         notes: "Notes",
-        photo: "Photo of the site (required if not confirmed)",
+        photo: "Photo of the site (required)",
+        photoHint:
+          "Take it at the location. Without a photo, admin cannot tell if the report is real.",
+        photoRequired: "Attach a photo of the site before you submit.",
+        residentPhoto: "Photo the resident sent",
+        sitePhoto: "Photo from the site check",
+        approveNeedsPhoto:
+          "There is no photo from the site. Send it back — do not approve a finding you cannot see.",
         submit: "Submit finding",
         approve: "Approve finding",
         sendBack: "Send back for another check",
@@ -5006,7 +5031,7 @@ const fil: typeof en = {
   // ── The step-by-step case flow, shared by the official and admin desks ──
   flow: {
     title: "Daloy ng kaso",
-    lead: "Sundin ang mga hakbang 1 hanggang 9. Ang naka-highlight sa ibaba ang ginagawa ngayon; berde ang mga natapos na.",
+    lead: "Admin: i-review ang field check, tapos i-set ang type, category at office — tapos tigil. Opisyal: mag-assess, mag-book ng crew, simulan at tapusin ang trabaho. Treasurer ang nagtatabi ng pera; Kapitan ang mag-aapruba at magsasara ng kaso.",
     stepOf: "Hakbang {current} ng {total}",
     progress: "{done} sa {total} hakbang ang tapos",
     currentStep: "Kasalukuyang hakbang",
@@ -5034,10 +5059,12 @@ const fil: typeof en = {
     deskFund: "Treasury office, tapos ang Kapitan",
     deskCrew: "Crew sa site",
     deskCaptain: "Tanggapan ng kapitan",
+    yourTurn: "Ikaw ngayon",
     steps: {
       CHECK: {
         title: "Tiyakin na totoo ang reklamo",
-        who: "Naka-assign na opisyal (puwedeng magpadala ng crew), tapos i-re-review ng admin ang finding",
+        owner: "Opisyal → Admin",
+        who: "Opisyal o crew ang pumupunta sa lugar. Admin ang magre-review ng litrato at finding. Walang ibang hakbang hangga't hindi inaaprubahan ng Admin.",
         lead: "May pumupunta sa lokasyong ibinigay ng residente para kumpirmahin ang aktwal na kalagayan doon. Ito ang hakbang 1: wala nang ibang mangyayari sa kaso hangga't hindi naaprubahan ang resulta.",
         todo: [
           "Basahin ang ulat, ang lokasyon at ang litrato.",
@@ -5048,7 +5075,8 @@ const fil: typeof en = {
       },
       VALIDATE: {
         title: "I-validate ang ulat",
-        who: "Admin lang — hindi inuulit ng opisyal",
+        owner: "Admin",
+        who: "Admin lang — type, category, office. Hindi inuulit ng opisyal.",
         lead: "Kinukumpirma ng admin ang uri ng serbisyo at ipinapadala ang kaso sa tamang tanggapan. Kapag na-save, tapos na ang hakbang na ito. Hindi na i-va-validate ulit ng opisyal.",
         todo: [
           "Basahin ang ulat, ang lokasyon at ang litrato.",
@@ -5059,7 +5087,8 @@ const fil: typeof en = {
       },
       ASSESS: {
         title: "I-assess at planuhin ang trabaho",
-        who: "Naka-assign na opisyal — hindi admin",
+        owner: "Opisyal",
+        who: "Naka-assign na opisyal — hindi admin. Planuhin ang manpower at gastos.",
         lead: "Ang opisyal na may hawak ng kaso ang gumagawa ng apat na check, tapos nagpaplano ng manpower at gastos. Ito ay bagong trabaho, hindi ulit ng validation ng admin.",
         todo: [
           "Tapusin ang apat na check: eligibility, inspection, resources, approval.",
@@ -5070,7 +5099,8 @@ const fil: typeof en = {
       },
       FUND: {
         title: "Hintayin ang budget",
-        who: "Treasurer ang nagtatabi ng pera; Kapitan ang mag-aapruba — hindi admin, hindi ang opisyal ng kaso",
+        owner: "Treasurer → Kapitan",
+        who: "Treasurer ang nagtatabi ng pera; Kapitan ang mag-aapruba — hindi admin, hindi ang opisyal ng kaso.",
         lead: "Lahat ng kaso ay dumadaan dito: napupunta sa treasury ang estimate at may nakalaang pondo bago magsimula ang trabaho.",
         todo: [
           "Ilipat ang kaso sa Awaiting budget para maaksyunan ng treasury.",
@@ -5080,7 +5110,8 @@ const fil: typeof en = {
       },
       CREW: {
         title: "I-assign ang crew",
-        who: "Naka-assign na opisyal — pagpili kung sino ang gagawa, hindi pagbabayad",
+        owner: "Opisyal",
+        who: "Naka-assign na opisyal — pagpili kung sino ang gagawa, hindi pagbabayad.",
         lead: "I-book ang mga manggagawang nasa plano bago magsimula ang trabaho.",
         todo: [
           "Buksan ang roster at piliin ang bilang ng manggagawa na nakasaad sa plano.",
@@ -5090,7 +5121,8 @@ const fil: typeof en = {
       },
       START: {
         title: "Simulan ang trabaho",
-        who: "Naka-assign na opisyal",
+        owner: "Opisyal",
+        who: "Naka-assign na opisyal — kapag kumpleto na ang crew at pera.",
         lead: "Kapag kumpleto ang crew at may nakalaang pera, lilipat ang kaso sa In progress.",
         todo: [
           "Kumpirmahin na kumpleto ang crew at may nakalaang pondo.",
@@ -5100,7 +5132,8 @@ const fil: typeof en = {
       },
       WORK: {
         title: "Gawin ang trabaho at itala ang progreso",
-        who: "Naka-assign na opisyal at crew",
+        owner: "Opisyal + crew",
+        who: "Naka-assign na opisyal at crew. Hindi admin ang maglo-log ng trabaho.",
         lead: "Naitatala ang mga remark at aksyon habang tumatakbo ang trabaho. Ang resolution ang nagtatapos sa hakbang na ito.",
         todo: [
           "Itala ang progreso at ang mga aksyong ginawa habang tumatakbo ang trabaho.",
@@ -5110,7 +5143,8 @@ const fil: typeof en = {
       },
       VERIFY: {
         title: "I-verify ang pagkukumpuni",
-        who: "Ibang opisyal o ang Kapitan — hindi ang nag-record ng pagkukumpuni",
+        owner: "Ibang opisyal / Kapitan",
+        who: "Ibang opisyal o ang Kapitan — hindi ang nag-record ng pagkukumpuni.",
         lead: "Ibang opisyal, hindi ang nag-record ng resolution, ang magche-check ng proof.",
         todo: [
           "Ihambing ang proof photo sa reklamo.",
@@ -5120,7 +5154,8 @@ const fil: typeof en = {
       },
       CLOSE: {
         title: "Isara ang kaso",
-        who: "Kapitan — hindi admin, hindi ang opisyal ng kaso",
+        owner: "Kapitan",
+        who: "Kapitan — hindi admin, hindi ang opisyal ng kaso.",
         lead: "Isinasara ng Kapitan ang kaso at hinihiling sa residente na i-rate ang trabaho.",
         todo: [
           "Tiyakin na pasado ang verification at nakikita ng residente ang resolution.",
@@ -5199,7 +5234,7 @@ const fil: typeof en = {
     recordTitle: "Record ng kaso",
     recordLead:
       "Lahat ng naitatala sa kasong ito: ang ulat, ang kalkulasyon ng priority, ang mga assignment, ang resolution at ang buong kasaysayan.",
-    openAssessment: "Buksan ang assessment form",
+    openAssessment: "Planuhin ang trabaho",
   },
 
   // ── Revamp: role portals, identity verification, privacy centre ─────
@@ -6407,24 +6442,32 @@ const fil: typeof en = {
       },
     },
     workflow: {
-      assessmentTitle: "Pagtatasa at pag-apruba",
+      assessmentTitle: "Planuhin ang trabaho",
       assessmentDesc:
-        "Suriin ang kwalipikasyon, inspeksyunin ang lugar, tiyakin ang resources, at itala ang aprubal.",
-      eligibility: "Nasuri ang kwalipikasyon",
-      eligibilityHint: "Kwalipikado ang concern sa ayuda o gawain ng barangay.",
+        "Tatlong bagay, saka i-save: kumpirmahin na gawain ng hall, ilan ang tao at gaano katagal, tapos ang gastos. Pipiliin ang crew pagkatapos.",
+      planStep1: "1. Kumpirmahin",
+      planStep1Desc: "I-tick kung totoo. Optional ang tala.",
+      planStep2: "2. Tao at oras",
+      planStep3: "3. Gastos",
+      backToCase: "Bumalik sa kaso",
+      crewNextTitle: "Sunod: piliin ang crew",
+      crewAfterPlan: "I-save muna ang plano. Saka pipiliin ang tao sa pangalan.",
+      noWorksHint:
+        "Hindi ito repair. Walang kagamitan at walang budget — kumpirmahin, saka i-save. Kausapin ng tanggapan ang mga tao; wala ang treasury sa kasong ito.",
+      eligibility: "Gawain ito ng barangay",
+      eligibilityHint: "Kaya itong gawin ng hall.",
       eligibilityNotes: "Tala sa kwalipikasyon",
-      inspection: "Kailangan ng inspeksyon sa lugar",
+      inspection: "Kailangan pang inspeksyunin ang lugar",
       inspectionCompleted: "Tapos na ang inspeksyon",
       inspectionNotes: "Tala sa inspeksyon",
-      resources: "Natiyak ang resources",
-      resourcesHint: "May materyales, kagamitan at pondo.",
+      resources: "May tao at materyales",
+      resourcesHint: "Kaya itong gawin sa meron ang hall.",
       resourcesNotes: "Tala sa pagtiyak ng resources",
-      approval: "Kailangan pa ng aprubal",
-      approved: "Nakuha ang aprubal",
+      approval: "May kailangan pang pirma",
+      approved: "Nakuha na ang pirma",
       approvalNotes: "Tala sa aprubal",
-      manpowerTitle: "Plano sa manggagawa",
-      manpowerDesc:
-        "Ilan ang kailangan, gaano katagal ang gawain, at anong kagamitan.",
+      manpowerTitle: "Tao at oras",
+      manpowerDesc: "Ilang manggagawa, gaano katagal, at anong kagamitan.",
       workersNeeded: "Bilang ng manggagawa",
       workersNeededHint: "Hindi bababa sa isa. Pipiliin ang crew sa pangalan pagkatapos.",
       duration: "Tantyang tagal",
@@ -6436,8 +6479,8 @@ const fil: typeof en = {
       scheduledEnd: "Planned finish",
       scheduledHint:
         "Ngayon o mas huli — hindi puwedeng ilagay sa nakaraan ang plano. Ang planned window ang basehan ng double-booking check ng crew.",
-      costTitle: "Tantyang gastos",
-      costDesc: "Kasama ang labor sa tantya — walang labor, walang tantya.",
+      costTitle: "Gastos",
+      costDesc: "Materyales, labor, kagamitan. Kasama ang labor sa kabuuan.",
       labor: "Labor",
       laborHint:
         "Kinukuwenta mula sa rates ng crew. Maglagay lang ng sariling figure kung walang rate.",
@@ -6495,7 +6538,14 @@ const fil: typeof en = {
         findingCannotVerify: "Hindi ma-verify",
         findingResult: "Resulta",
         notes: "Mga tala",
-        photo: "Larawan ng lugar (kailangan kung hindi kumpirmado)",
+        photo: "Larawan ng lugar (kailangan)",
+        photoHint:
+          "Kunin sa mismong lugar. Kung walang larawan, hindi malalaman ng admin kung totoo ang reklamo.",
+        photoRequired: "Maglakip ng larawan ng lugar bago magpasa.",
+        residentPhoto: "Larawang ipinadala ng residente",
+        sitePhoto: "Larawan mula sa pagsusuri sa lugar",
+        approveNeedsPhoto:
+          "Walang larawan mula sa lugar. Ibalik — huwag aprubahan ang finding na hindi mo nakikita.",
         submit: "Ipasa ang resulta",
         approve: "Aprubahan ang resulta",
         sendBack: "Ibalik para sa panibagong pagsusuri",

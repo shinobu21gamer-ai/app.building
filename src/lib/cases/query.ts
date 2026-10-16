@@ -163,6 +163,7 @@ export async function listConcerns(filters: ConcernListFilters) {
       skip: (page - 1) * CONCERN_LIST_LIMIT,
       include: {
         category: true,
+        type: { select: { key: true, requiresCrew: true, requiresBudget: true } },
         user: {
           select: {
             id: true,

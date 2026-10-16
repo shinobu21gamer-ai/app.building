@@ -3,6 +3,7 @@ import {
   caseProcessFlow,
   crewSatisfied,
   fundingSatisfied,
+  roleOwnsProcessStep,
   type ProcessFlowInput,
 } from "./process-flow";
 
@@ -84,6 +85,41 @@ describe("caseProcessFlow", () => {
       block: "FIELD_CHECK_FAILED",
     });
     expect(stepOf(sentBack, "VALIDATE").block).toBe("FIELD_CHECK_FAILED");
+  });
+
+  it("skips budget and crew on a noise complaint", () => {
+    const noise: ProcessFlowInput = {
+      ...base,
+      status: "ASSIGNED",
+      hasAssessment: false,
+      workersNeeded: null,
+      estimatedCost: null,
+      needsCrew: false,
+      needsBudget: false,
+    };
+    expect(stepOf(noise, "FUND").state).toBe("notNeeded");
+    expect(stepOf(noise, "CREW").state).toBe("notNeeded");
+    expect(caseProcessFlow(noise).currentKey).toBe("ASSESS");
+    const planned = { ...noise, hasAssessment: true, status: "UNDER_ASSESSMENT" };
+    expect(caseProcessFlow(planned).currentKey).toBe("START");
+  });
+
+  it("does not mark Validate done while the field check is still open", () => {
+    // A type the resident picked, or an admin who typed the case too early,
+    // used to skip Check: the rail said Validate was Done.
+    const skipped = {
+      ...unchecked,
+      typeId: 4,
+      realityCheck: "OPEN" as const,
+    };
+    const flow = caseProcessFlow(skipped);
+    expect(flow.currentKey).toBe("CHECK");
+    expect(stepOf(skipped, "CHECK").state).toBe("current");
+    expect(stepOf(skipped, "VALIDATE")).toMatchObject({
+      state: "pending",
+      block: "FIELD_CHECK_OPEN",
+    });
+    expect(flow.doneCount).toBe(0);
   });
 
   it("moves on to validation once the finding is approved as confirmed", () => {
@@ -312,5 +348,21 @@ describe("caseProcessFlow", () => {
     expect(flow.activeTotal).toBe(9);
     expect(flow.doneCount).toBe(6);
     expect(flow.percent).toBe(67);
+  });
+});
+
+describe("roleOwnsProcessStep", () => {
+  it("gives admin only the site-check review and validation", () => {
+    expect(roleOwnsProcessStep("ADMIN", "CHECK")).toBe(true);
+    expect(roleOwnsProcessStep("ADMIN", "VALIDATE")).toBe(true);
+    expect(roleOwnsProcessStep("ADMIN", "ASSESS")).toBe(false);
+    expect(roleOwnsProcessStep("ADMIN", "CLOSE")).toBe(false);
+  });
+
+  it("gives the assigned official the work after validation", () => {
+    expect(roleOwnsProcessStep("OFFICIAL", "VALIDATE")).toBe(false);
+    expect(roleOwnsProcessStep("OFFICIAL", "ASSESS")).toBe(true);
+    expect(roleOwnsProcessStep("OFFICIAL", "CREW")).toBe(true);
+    expect(roleOwnsProcessStep("OFFICIAL", "CLOSE")).toBe(false);
   });
 });

@@ -627,18 +627,16 @@ export async function validateConcern(
     );
   }
 
-  // Step 1 of the flow comes before this step: a report still waiting in the
-  // inbox has to be confirmed on site (send someone, read the finding, approve
-  // it) before it can be typed and routed. Validation is the door into ASSIGNED,
-  // so the gate lives here as well as on the assessment door.
-  if (concern.status === "SUBMITTED") {
-    const checks = await tx.fieldCheck.findMany({
-      where: { concernId: concern.id },
-      select: { status: true, finding: true },
-    });
-    const block = realityCheckBlock(realityCheckState(checks));
-    if (block) throw createApiError.badRequest(block);
-  }
+  // Step 1 of the flow comes before this step on every status: the location
+  // has to be confirmed on site before the report can be typed and routed.
+  // The gate used to run only while the case was SUBMITTED, which let an
+  // admin validate (or re-validate) while a field check was still out.
+  const checks = await tx.fieldCheck.findMany({
+    where: { concernId: concern.id },
+    select: { status: true, finding: true },
+  });
+  const block = realityCheckBlock(realityCheckState(checks));
+  if (block) throw createApiError.badRequest(block);
 
   const type = await tx.concernType.findUnique({
     where: { id: input.typeId },
