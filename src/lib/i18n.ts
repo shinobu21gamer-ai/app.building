@@ -1634,6 +1634,7 @@ const en = {
     steps: {
       CHECK: {
         title: "Check that the report is real",
+        who: "Assigned official (they may send crew), then admin reviews the finding",
         lead: "Somebody goes to the location the resident gave and confirms what is actually there. This is step 1: nothing else happens on the case until that finding is approved.",
         todo: [
           "Read the report, the location and the photo.",
@@ -1644,7 +1645,8 @@ const en = {
       },
       VALIDATE: {
         title: "Validate the report",
-        lead: "The admin desk confirms what the report is and sends it to the right office.",
+        who: "Admin only — the official does not repeat this",
+        lead: "Admin confirms the service type and sends the case to the right office. Once saved, this step is finished. The official does not validate it again.",
         todo: [
           "Read the report, the location and the photo.",
           "Pick the service type — it decides routing, budget and crew.",
@@ -1654,7 +1656,8 @@ const en = {
       },
       ASSESS: {
         title: "Assess and plan the work",
-        lead: "The assigned office works through the four checks, then plans the manpower and the cost.",
+        who: "Assigned official — not admin",
+        lead: "The official who holds the case does the four checks, then plans manpower and cost. This is new work, not a repeat of admin validation.",
         todo: [
           "Work through the four checks: eligibility, inspection, resources, approval.",
           "Plan how many workers, how long the work takes, and what equipment is needed.",
@@ -1664,6 +1667,7 @@ const en = {
       },
       FUND: {
         title: "Wait for the budget",
+        who: "Treasurer sets money aside; Captain approves — not admin, not the case official",
         lead: "Every case stops here: the estimate goes to the treasury and the money is set aside before any work starts.",
         todo: [
           "Save the cost estimate, then move the case to Awaiting budget.",
@@ -1673,6 +1677,7 @@ const en = {
       },
       CREW: {
         title: "Assign the crew",
+        who: "Assigned official — booking who will do the job, not paying them",
         lead: "Book the workers named in the plan before the work starts.",
         todo: [
           "Open the roster and pick the planned number of workers by name.",
@@ -1682,6 +1687,7 @@ const en = {
       },
       START: {
         title: "Start the work",
+        who: "Assigned official",
         lead: "With the crew complete and the money in place, the case moves to In progress.",
         todo: [
           "Confirm the crew is complete and that the funds are set aside.",
@@ -1691,6 +1697,7 @@ const en = {
       },
       WORK: {
         title: "Do the work and log progress",
+        who: "Assigned official and crew",
         lead: "Remarks and actions are recorded as the work goes on. The step ends with the resolution.",
         todo: [
           "Log progress remarks and the actions taken while the work goes on.",
@@ -1700,6 +1707,7 @@ const en = {
       },
       VERIFY: {
         title: "Verify the fix",
+        who: "Another official or the Captain — not the person who recorded the fix",
         lead: "Someone other than the official who recorded the resolution checks the proof.",
         todo: [
           "Compare the proof photo with the concern.",
@@ -1709,7 +1717,8 @@ const en = {
       },
       CLOSE: {
         title: "Close the case",
-        lead: "The approving official closes the case and the resident is asked to rate the work.",
+        who: "Captain — not admin, not the case official",
+        lead: "The Captain closes the case and the resident is asked to rate the work.",
         todo: [
           "Check that the verification passed and the resident sees the resolution.",
           "Close the case with a proof photo and remarks.",
@@ -1773,9 +1782,14 @@ const en = {
       ],
     },
     guide: {
-      title: "How a case moves, step by step",
-      lead: "Nine steps from the report to the closed case. Step 1 is the check that the report is real; each case below shows the step it is on now.",
+      title: "How a case moves — who does what",
+      lead: "Admin only validates the report (type, category, office). That is not done again. The assigned official then assesses, plans crew and cost, and does the work. Treasury funds it. The Captain closes it.",
       nextLabel: "Now on",
+      adminTitle: "Your step as administrator",
+      adminLead:
+        "Validate the report — type, category, office — then stop. The official, treasurer and Captain do everything after this. You are not stuck: open the queue and work the reports waiting there.",
+      adminAction: "Open the validation queue",
+      othersTitle: "After you validate (not your desk)",
     },
     recordTitle: "Case record",
     recordLead:
@@ -5023,6 +5037,7 @@ const fil: typeof en = {
     steps: {
       CHECK: {
         title: "Tiyakin na totoo ang reklamo",
+        who: "Naka-assign na opisyal (puwedeng magpadala ng crew), tapos i-re-review ng admin ang finding",
         lead: "May pumupunta sa lokasyong ibinigay ng residente para kumpirmahin ang aktwal na kalagayan doon. Ito ang hakbang 1: wala nang ibang mangyayari sa kaso hangga't hindi naaprubahan ang resulta.",
         todo: [
           "Basahin ang ulat, ang lokasyon at ang litrato.",
@@ -5033,7 +5048,8 @@ const fil: typeof en = {
       },
       VALIDATE: {
         title: "I-validate ang ulat",
-        lead: "Kinukumpirma ng admin desk kung ano ang ulat at ipinapadala ito sa tamang tanggapan.",
+        who: "Admin lang — hindi inuulit ng opisyal",
+        lead: "Kinukumpirma ng admin ang uri ng serbisyo at ipinapadala ang kaso sa tamang tanggapan. Kapag na-save, tapos na ang hakbang na ito. Hindi na i-va-validate ulit ng opisyal.",
         todo: [
           "Basahin ang ulat, ang lokasyon at ang litrato.",
           "Piliin ang uri ng serbisyo — ito ang nagtatakda ng routing, budget at crew.",
@@ -5043,7 +5059,8 @@ const fil: typeof en = {
       },
       ASSESS: {
         title: "I-assess at planuhin ang trabaho",
-        lead: "Dadaanin ng tanggapan ang apat na check, tapos planuhin ang manpower at gastos.",
+        who: "Naka-assign na opisyal — hindi admin",
+        lead: "Ang opisyal na may hawak ng kaso ang gumagawa ng apat na check, tapos nagpaplano ng manpower at gastos. Ito ay bagong trabaho, hindi ulit ng validation ng admin.",
         todo: [
           "Tapusin ang apat na check: eligibility, inspection, resources, approval.",
           "Planuhin kung ilang manggagawa, gaano katagal, at anong kagamitan ang kailangan.",
@@ -5053,6 +5070,7 @@ const fil: typeof en = {
       },
       FUND: {
         title: "Hintayin ang budget",
+        who: "Treasurer ang nagtatabi ng pera; Kapitan ang mag-aapruba — hindi admin, hindi ang opisyal ng kaso",
         lead: "Lahat ng kaso ay dumadaan dito: napupunta sa treasury ang estimate at may nakalaang pondo bago magsimula ang trabaho.",
         todo: [
           "Ilipat ang kaso sa Awaiting budget para maaksyunan ng treasury.",
@@ -5062,6 +5080,7 @@ const fil: typeof en = {
       },
       CREW: {
         title: "I-assign ang crew",
+        who: "Naka-assign na opisyal — pagpili kung sino ang gagawa, hindi pagbabayad",
         lead: "I-book ang mga manggagawang nasa plano bago magsimula ang trabaho.",
         todo: [
           "Buksan ang roster at piliin ang bilang ng manggagawa na nakasaad sa plano.",
@@ -5071,6 +5090,7 @@ const fil: typeof en = {
       },
       START: {
         title: "Simulan ang trabaho",
+        who: "Naka-assign na opisyal",
         lead: "Kapag kumpleto ang crew at may nakalaang pera, lilipat ang kaso sa In progress.",
         todo: [
           "Kumpirmahin na kumpleto ang crew at may nakalaang pondo.",
@@ -5080,6 +5100,7 @@ const fil: typeof en = {
       },
       WORK: {
         title: "Gawin ang trabaho at itala ang progreso",
+        who: "Naka-assign na opisyal at crew",
         lead: "Naitatala ang mga remark at aksyon habang tumatakbo ang trabaho. Ang resolution ang nagtatapos sa hakbang na ito.",
         todo: [
           "Itala ang progreso at ang mga aksyong ginawa habang tumatakbo ang trabaho.",
@@ -5089,6 +5110,7 @@ const fil: typeof en = {
       },
       VERIFY: {
         title: "I-verify ang pagkukumpuni",
+        who: "Ibang opisyal o ang Kapitan — hindi ang nag-record ng pagkukumpuni",
         lead: "Ibang opisyal, hindi ang nag-record ng resolution, ang magche-check ng proof.",
         todo: [
           "Ihambing ang proof photo sa reklamo.",
@@ -5098,7 +5120,8 @@ const fil: typeof en = {
       },
       CLOSE: {
         title: "Isara ang kaso",
-        lead: "Isinasara ng approving official ang kaso at hinihiling sa residente na i-rate ang trabaho.",
+        who: "Kapitan — hindi admin, hindi ang opisyal ng kaso",
+        lead: "Isinasara ng Kapitan ang kaso at hinihiling sa residente na i-rate ang trabaho.",
         todo: [
           "Tiyakin na pasado ang verification at nakikita ng residente ang resolution.",
           "Isara ang kaso na may proof photo at remarks.",
@@ -5164,9 +5187,14 @@ const fil: typeof en = {
       ],
     },
     guide: {
-      title: "Paano gumagalaw ang kaso, hakbang-hakbang",
-      lead: "Siyam na hakbang mula sa ulat hanggang sa pagsasara. Ang hakbang 1 ay ang pagsusuri kung totoo ang reklamo; nakikita sa bawat kaso sa ibaba ang hakbang nito ngayon.",
+      title: "Paano gumagalaw ang kaso — sino ang gumagawa",
+      lead: "Admin lang ang nagva-validate ng ulat (uri, kategorya, tanggapan). Hindi iyon inuulit. Ang naka-assign na opisyal ang mag-a-assess, magpaplano ng crew at gastos, at gagawa ng trabaho. Treasury ang pondo. Kapitan ang nagsasara.",
       nextLabel: "Ngayon sa",
+      adminTitle: "Ang hakbang mo bilang administrador",
+      adminLead:
+        "I-validate ang ulat — uri, kategorya, tanggapan — tapos tumigil. Opisyal, treasurer at Kapitan ang susunod. Hindi ka nakastuck: buksan ang pila at gawin ang mga ulat na nakaabang.",
+      adminAction: "Buksan ang validation queue",
+      othersTitle: "Pagkatapos mong mag-validate (hindi desk mo)",
     },
     recordTitle: "Record ng kaso",
     recordLead:
