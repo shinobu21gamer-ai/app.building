@@ -87,6 +87,23 @@ describe("caseProcessFlow", () => {
     expect(stepOf(sentBack, "VALIDATE").block).toBe("FIELD_CHECK_FAILED");
   });
 
+  it("skips budget and crew on a noise complaint", () => {
+    const noise: ProcessFlowInput = {
+      ...base,
+      status: "ASSIGNED",
+      hasAssessment: false,
+      workersNeeded: null,
+      estimatedCost: null,
+      needsCrew: false,
+      needsBudget: false,
+    };
+    expect(stepOf(noise, "FUND").state).toBe("notNeeded");
+    expect(stepOf(noise, "CREW").state).toBe("notNeeded");
+    expect(caseProcessFlow(noise).currentKey).toBe("ASSESS");
+    const planned = { ...noise, hasAssessment: true, status: "UNDER_ASSESSMENT" };
+    expect(caseProcessFlow(planned).currentKey).toBe("START");
+  });
+
   it("does not mark Validate done while the field check is still open", () => {
     // A type the resident picked, or an admin who typed the case too early,
     // used to skip Check: the rail said Validate was Done.

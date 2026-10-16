@@ -25,6 +25,7 @@ import {
   roleOwnsProcessStep,
   type ProcessStepKey,
 } from "@/lib/cases/process-flow";
+import { planNeeds } from "@/lib/cases/plan-needs";
 import { realityCheckState } from "@/lib/cases/field-check-rules";
 import {
   verificationActorState,
@@ -385,10 +386,16 @@ export default async function OfficialConcernDetailPage({
     { legacyPassed: stageIndex >= STATUS_ORDER.UNDER_ASSESSMENT }
   );
 
+  const needs = planNeeds({
+    typeKey: concern.type?.key ?? null,
+    categoryCode: concern.category?.code ?? null,
+    requiresCrew: concern.type?.requiresCrew ?? null,
+    requiresBudget: concern.type?.requiresBudget ?? null,
+  });
   const flow = caseProcessFlow({
     status: concern.status,
     typeId: concern.typeId,
-    hasAssessment: Boolean(concern.caseAssessment?.workersNeeded),
+    hasAssessment: concern.caseAssessment != null,
     workersNeeded: concern.caseAssessment?.workersNeeded ?? null,
     estimatedCost: concern.caseAssessment
       ? Number(concern.caseAssessment.totalCost ?? 0)
@@ -398,6 +405,8 @@ export default async function OfficialConcernDetailPage({
     hasResolution: Boolean(resolution),
     verificationStatus: resolution?.verificationStatus ?? null,
     realityCheck,
+    needsCrew: needs.crew,
+    needsBudget: needs.budget,
   });
 
   const stepState = (key: ProcessStepKey) =>

@@ -14,6 +14,7 @@ import { armCaseStageClock } from "@/lib/sla/escalation";
 import { canManageConcern, type WorkflowActor } from "@/lib/cases/workflow";
 import { planWindowProblem } from "@/lib/cases/plan-window";
 import { fieldCheckGateBlock } from "@/lib/cases/field-check-rules";
+import { planNeeds } from "@/lib/cases/plan-needs";
 import {
   isValidDurationMinutes,
   isValidWorkersNeeded,
@@ -130,6 +131,8 @@ export async function loadConcernForAssessment(
       status: true,
       assignedOfficeId: true,
       submittedAt: true,
+      type: { select: { key: true, requiresCrew: true, requiresBudget: true } },
+      category: { select: { code: true } },
       caseAssessment: {
         select: {
           id: true,
@@ -165,22 +168,46 @@ export async function saveAssessment(
   input: { concernId: number; actor: WorkflowActor; values: AssessmentInput }
 ): Promise<SaveAssessmentOutcome> {
   const concern = await loadConcernForAssessment(tx, input.concernId, input.actor);
-  const values = input.values;
+  const values = { ...input.values };
+  const needs = planNeeds({
+    typeKey: concern.type?.key ?? null,
+    categoryCode: concern.category?.code ?? null,
+    requiresCrew: concern.type?.requiresCrew ?? null,
+    requiresBudget: concern.type?.requiresBudget ?? null,
+  });
 
-  if (!isValidWorkersNeeded(values.workersNeeded)) {
+  if (needs.crew && !isValidWorkersNeeded(values.workersNeeded)) {
     throw createApiError.badRequest(
       "Workers needed must be a whole number of at least 1."
     );
   }
-  if (!isValidDurationMinutes(values.estimatedDurationMinutes)) {
+  if (!needs.crew) {
+    values.workersNeeded = Number.isFinite(values.workersNeeded)
+      ? Math.max(0, values.workersNeeded)
+      : 0;
+  }
+  if ((needs.crew || needs.equipment) && !isValidDurationMinutes(values.estimatedDurationMinutes)) {
     throw createApiError.badRequest(
       "An estimated duration of at least 15 minutes is required."
     );
   }
-  if (!values.equipmentNotes || values.equipmentNotes.trim().length < 3) {
+  if (!isValidDurationMinutes(values.estimatedDurationMinutes)) {
+    values.estimatedDurationMinutes = 15;
+  }
+  if (needs.equipment && (!values.equipmentNotes || values.equipmentNotes.trim().length < 3)) {
     throw createApiError.badRequest(
       "Equipment notes are required (write \"none\" when no equipment is needed)."
     );
+  }
+  if (!needs.equipment) {
+    values.equipmentNotes = values.equipmentNotes?.trim() || "none";
+  }
+  if (!needs.budget) {
+    values.laborCost = 0;
+    values.materialsCost = 0;
+    values.equipmentCost = 0;
+    values.otherCost = 0;
+    values.materials = [];
   }
   // The plan is a statement about work still to be done: neither end may be
   // pushed further into the past. A window that is already stored keeps its

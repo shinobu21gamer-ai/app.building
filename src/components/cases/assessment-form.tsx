@@ -13,6 +13,7 @@ import { apiRequest } from "@/lib/api-client";
 import type { MaterialSuggestion } from "@/lib/cases/materials-templates";
 import { copy, type Locale } from "@/lib/i18n";
 import { planWindowProblem } from "@/lib/cases/plan-window";
+import type { PlanNeeds } from "@/lib/cases/plan-needs";
 
 const inputStyles =
   "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30";
@@ -82,6 +83,7 @@ export function AssessmentForm({
   locale = "en",
   defaults,
   suggestions = [],
+  needs,
 }: {
   concernId: number;
   locale?: Locale;
@@ -92,6 +94,8 @@ export function AssessmentForm({
    * figures instead of typing the list; saved lines always win.
    */
   suggestions?: MaterialSuggestion[];
+  /** What this kind of case actually needs. Noise has none of crew/budget. */
+  needs: PlanNeeds;
 }) {
   const t = copy[locale].revamp.workflow;
   const router = useRouter();
@@ -278,9 +282,13 @@ export function AssessmentForm({
       approvalRequired: data.get("approvalRequired") === "on",
       approved: data.get("approved") === "on",
       approvalNotes: String(data.get("approvalNotes") ?? ""),
-      workersNeeded: Number(data.get("workersNeeded") ?? 0),
-      estimatedDurationMinutes: Math.max(0, hours) * 60 + Math.max(0, minutes),
-      equipmentNotes: String(data.get("equipmentNotes") ?? ""),
+      workersNeeded: needs.crew ? Number(data.get("workersNeeded") ?? 0) : 0,
+      estimatedDurationMinutes: needs.crew
+        ? Math.max(0, hours) * 60 + Math.max(0, minutes)
+        : 15,
+      equipmentNotes: needs.equipment
+        ? String(data.get("equipmentNotes") ?? "")
+        : "none",
       scheduledStartAt: String(data.get("scheduledStartAt") ?? ""),
       scheduledEndAt: String(data.get("scheduledEndAt") ?? ""),
       laborCost: String(data.get("laborCost") ?? ""),
@@ -307,15 +315,15 @@ export function AssessmentForm({
         })),
     };
 
-    if (!Number.isInteger(payload.workersNeeded) || payload.workersNeeded < 1) {
+    if (needs.crew && (!Number.isInteger(payload.workersNeeded) || payload.workersNeeded < 1)) {
       setFormError(t.assessmentRequired);
       return;
     }
-    if (payload.estimatedDurationMinutes < 15) {
+    if (needs.crew && payload.estimatedDurationMinutes < 15) {
       setFormError(t.assessmentRequired);
       return;
     }
-    if (payload.equipmentNotes.trim().length < 3) {
+    if (needs.equipment && payload.equipmentNotes.trim().length < 3) {
       setFormError(t.assessmentRequired);
       return;
     }
@@ -444,6 +452,13 @@ export function AssessmentForm({
         )}
       </fieldset>
 
+      {!needs.crew && !needs.budget ? (
+        <p className="rounded-control border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+          {t.noWorksHint}
+        </p>
+      ) : null}
+
+      {(needs.crew || needs.equipment) && (
       <fieldset className="space-y-3 border-t border-line pt-5">
         <legend className="text-sm font-semibold text-ink">{t.planStep2}</legend>
         <p className="text-xs text-ink-subtle">{t.manpowerDesc}</p>
@@ -519,6 +534,7 @@ export function AssessmentForm({
           </div>
         </div>
 
+        {needs.equipment && (
         <div>
           <Label htmlFor="equipmentNotes" required>
             {t.equipment}
@@ -533,8 +549,11 @@ export function AssessmentForm({
             defaultValue={defaults?.equipmentNotes ?? ""}
           />
         </div>
+        )}
       </fieldset>
+      )}
 
+      {needs.budget && (
       <fieldset className="space-y-3 border-t border-line pt-5">
         <legend className="text-sm font-semibold text-ink">{t.planStep3}</legend>
         <p className="text-xs text-ink-subtle">{t.costDesc}</p>
@@ -705,6 +724,7 @@ export function AssessmentForm({
           </div>
         </div>
       </fieldset>
+      )}
 
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={submitting} loading={submitting}>

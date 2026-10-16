@@ -3039,6 +3039,8 @@ const en = {
       backToCase: "Back to the case",
       crewNextTitle: "Next: pick the crew",
       crewAfterPlan: "Save the plan first. Then you pick the people by name.",
+      noWorksHint:
+        "This is not a repair. No equipment and no budget — confirm, then save. The office talks to the people involved; treasury is not in this case.",
       eligibility: "This is barangay work",
       eligibilityHint: "The hall can take this on.",
       eligibilityNotes: "Eligibility notes",
@@ -6450,6 +6452,8 @@ const fil: typeof en = {
       backToCase: "Bumalik sa kaso",
       crewNextTitle: "Sunod: piliin ang crew",
       crewAfterPlan: "I-save muna ang plano. Saka pipiliin ang tao sa pangalan.",
+      noWorksHint:
+        "Hindi ito repair. Walang kagamitan at walang budget — kumpirmahin, saka i-save. Kausapin ng tanggapan ang mga tao; wala ang treasury sa kasong ito.",
       eligibility: "Gawain ito ng barangay",
       eligibilityHint: "Kaya itong gawin ng hall.",
       eligibilityNotes: "Tala sa kwalipikasyon",

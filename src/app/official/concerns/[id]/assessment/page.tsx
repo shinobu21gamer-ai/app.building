@@ -9,6 +9,7 @@ import { AssessmentForm } from "@/components/cases/assessment-form";
 import { CrewPanel } from "@/components/cases/crew-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { suggestedMaterials } from "@/lib/cases/materials-templates";
+import { planNeeds } from "@/lib/cases/plan-needs";
 import { formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -59,7 +60,13 @@ export default async function AssessmentPage({ params }: PageProps) {
   if (!concern) notFound();
 
   const canOverrideShortfall = user.role.key !== "CREW";
-  const planSaved = Boolean(concern.caseAssessment?.workersNeeded);
+  const needs = planNeeds({
+    typeKey: concern.type?.key ?? null,
+    categoryCode: concern.category?.code ?? null,
+    requiresCrew: concern.type?.requiresCrew ?? null,
+    requiresBudget: concern.type?.requiresBudget ?? null,
+  });
+  const planSaved = concern.caseAssessment != null;
   const suggestions = suggestedMaterials({
     categoryCode: concern.category?.code ?? null,
     typeKey: concern.type?.key ?? null,
@@ -108,7 +115,8 @@ export default async function AssessmentPage({ params }: PageProps) {
           <AssessmentForm
             concernId={concern.id}
             locale={locale}
-            suggestions={suggestions}
+            suggestions={needs.materials ? suggestions : []}
+            needs={needs}
             defaults={
               concern.caseAssessment
                 ? {
@@ -154,20 +162,22 @@ export default async function AssessmentPage({ params }: PageProps) {
           />
         </Card>
 
-        {planSaved ? (
-          <Card title={t.crewNextTitle} description={t.crewDesc}>
-            <CrewPanel
-              concernId={concern.id}
-              locale={locale}
-              canAssign={user.role.key !== "CREW"}
-              canOverrideShortfall={canOverrideShortfall}
-            />
-          </Card>
-        ) : (
-          <p className="rounded-control border border-dashed border-line bg-surface-sunken px-3 py-3 text-sm text-ink-muted">
-            {t.crewAfterPlan}
-          </p>
-        )}
+        {needs.crew ? (
+          planSaved ? (
+            <Card title={t.crewNextTitle} description={t.crewDesc}>
+              <CrewPanel
+                concernId={concern.id}
+                locale={locale}
+                canAssign={user.role.key !== "CREW"}
+                canOverrideShortfall={canOverrideShortfall}
+              />
+            </Card>
+          ) : (
+            <p className="rounded-control border border-dashed border-line bg-surface-sunken px-3 py-3 text-sm text-ink-muted">
+              {t.crewAfterPlan}
+            </p>
+          )
+        ) : null}
       </div>
     </div>
   );

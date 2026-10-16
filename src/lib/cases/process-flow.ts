@@ -18,6 +18,7 @@ import {
   realityCheckState,
   type RealityCheckState,
 } from "@/lib/cases/field-check-rules";
+import { planNeeds } from "@/lib/cases/plan-needs";
 
 /**
  * The ordered steps of processing a concern, start to finish.
@@ -102,6 +103,10 @@ export type ProcessFlowInput = {
   verificationStatus: string | null;
   /** Where the reality check stands: it is step 1 of every case. */
   realityCheck: RealityCheckState;
+  /** Repair work needs a crew; noise and documents do not. Default true. */
+  needsCrew?: boolean;
+  /** Repair and ayuda need money set aside; a noise complaint does not. Default true. */
+  needsBudget?: boolean;
 };
 
 export type ProcessFlow = {
@@ -165,8 +170,10 @@ export function fundingSatisfied(
 export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
   const stage = stageOf(input.status);
   const closed = input.status === "CLOSED";
-  const crewOk = crewSatisfied(input.workersNeeded, input.activeCrew);
-  const funded = fundingSatisfied(input.estimatedCost, input.fundedAmount);
+  const needsCrew = input.needsCrew !== false;
+  const needsBudget = input.needsBudget !== false;
+  const crewOk = !needsCrew || crewSatisfied(input.workersNeeded, input.activeCrew);
+  const funded = !needsBudget || fundingSatisfied(input.estimatedCost, input.fundedAmount);
   // The VERIFY step only completes once the fix is confirmed fixed: a
   // partial verification still blocks closing, so it reads "pending" here.
   const verified = isCloseableVerification(input.verificationStatus);
@@ -225,26 +232,34 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
           : "NEEDS_ASSESSMENT"
   );
 
-  // 4 — Wait for the budget: every case passes through here, so the estimate
-  //     reaches the treasury and the money is set aside before any work starts.
-  push(
-    "FUND",
-    funded ? "done" : "pending",
-    funded
-      ? null
-      : input.estimatedCost === null
-        ? "NEEDS_ESTIMATE"
-        : stage < 3
-          ? "WAITING_BUDGET_STAGE"
-          : "NEEDS_FUNDS"
-  );
+  // 4 — Wait for the budget. A noise complaint or a document request costs
+  //     nothing, so this step is not on the path.
+  if (!needsBudget) {
+    push("FUND", "notNeeded");
+  } else {
+    push(
+      "FUND",
+      funded ? "done" : "pending",
+      funded
+        ? null
+        : input.estimatedCost === null
+          ? "NEEDS_ESTIMATE"
+          : stage < 3
+            ? "WAITING_BUDGET_STAGE"
+            : "NEEDS_FUNDS"
+    );
+  }
 
-  // 5 — Assign the crew named in the plan.
-  push(
-    "CREW",
-    crewOk ? "done" : "pending",
-    crewOk ? null : input.workersNeeded === null ? "NEEDS_CREW_PLAN" : "NEEDS_CREW"
-  );
+  // 5 — Assign the crew named in the plan. Peace-and-order cases have no crew.
+  if (!needsCrew) {
+    push("CREW", "notNeeded");
+  } else {
+    push(
+      "CREW",
+      crewOk ? "done" : "pending",
+      crewOk ? null : input.workersNeeded === null ? "NEEDS_CREW_PLAN" : "NEEDS_CREW"
+    );
+  }
 
   // 6 — Start the work: everything the plan and the money rules require is in
   //     place before the case may move to IN_PROGRESS.
@@ -309,7 +324,7 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
         if (step.state === "done") step.state = "pending";
         if (step.block === null) step.block = hold;
       }
-      if (step.state === "done") {
+      if (step.state === "done" || step.state === "notNeeded") {
         previousDone = true;
         hold = null;
       } else {
@@ -385,6 +400,8 @@ export type FlowConcernRow = {
   status: string;
   /** The case's field checks: they decide the first step of the flow. */
   typeId: number | null;
+  type?: { key: string; requiresCrew?: boolean; requiresBudget?: boolean } | null;
+  category?: { code: string } | null;
   caseAssessment?: {
     workersNeeded: number | null;
     totalCost: unknown;
@@ -404,10 +421,16 @@ export function concernProcessFlow(
   concern: FlowConcernRow,
   fundedAmount = 0
 ): ProcessFlow {
+  const needs = planNeeds({
+    typeKey: concern.type?.key ?? null,
+    categoryCode: concern.category?.code ?? null,
+    requiresCrew: concern.type?.requiresCrew ?? null,
+    requiresBudget: concern.type?.requiresBudget ?? null,
+  });
   return caseProcessFlow({
     status: concern.status,
     typeId: concern.typeId,
-    hasAssessment: Boolean(concern.caseAssessment?.workersNeeded),
+    hasAssessment: concern.caseAssessment != null,
     workersNeeded: concern.caseAssessment?.workersNeeded ?? null,
     estimatedCost: concern.caseAssessment
       ? Number(concern.caseAssessment.totalCost ?? 0)
@@ -422,6 +445,8 @@ export function concernProcessFlow(
     realityCheck: realityCheckState(concern.fieldChecks ?? [], {
       legacyPassed: (STATUS_ORDER[concern.status as CaseStatus] ?? 0) >= 2,
     }),
+    needsCrew: needs.crew,
+    needsBudget: needs.budget,
   });
 }
 
