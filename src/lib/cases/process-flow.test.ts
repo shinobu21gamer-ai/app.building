@@ -3,6 +3,7 @@ import {
   caseProcessFlow,
   crewSatisfied,
   fundingSatisfied,
+  roleActsOnProcessStep,
   roleOwnsProcessStep,
   type ProcessFlowInput,
 } from "./process-flow";
@@ -364,5 +365,29 @@ describe("roleOwnsProcessStep", () => {
     expect(roleOwnsProcessStep("OFFICIAL", "ASSESS")).toBe(true);
     expect(roleOwnsProcessStep("OFFICIAL", "CREW")).toBe(true);
     expect(roleOwnsProcessStep("OFFICIAL", "CLOSE")).toBe(false);
+  });
+
+  it("splits the budget step: official sends it, treasurer and captain fund it", () => {
+    expect(
+      roleActsOnProcessStep("OFFICIAL", "FUND", { block: "WAITING_BUDGET_STAGE" })
+    ).toBe(true);
+    expect(roleActsOnProcessStep("OFFICIAL", "FUND", { block: "NEEDS_FUNDS" })).toBe(
+      false
+    );
+    expect(
+      roleActsOnProcessStep("TREASURER", "FUND", { block: "NEEDS_FUNDS" })
+    ).toBe(true);
+    expect(
+      roleActsOnProcessStep("ADMIN", "FUND", { block: "NEEDS_FUNDS" })
+    ).toBe(false);
+  });
+
+  it("does not let the official who recorded the fix verify it", () => {
+    expect(
+      roleActsOnProcessStep("OFFICIAL", "VERIFY", { verifySelfRecorded: true })
+    ).toBe(false);
+    expect(
+      roleActsOnProcessStep("CAPTAIN", "VERIFY", { verifySelfRecorded: true })
+    ).toBe(true);
   });
 });

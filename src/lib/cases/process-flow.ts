@@ -482,3 +482,29 @@ export function roleOwnsProcessStep(role: string, key: ProcessStepKey): boolean 
       return false;
   }
 }
+
+/**
+ * Whether this account should act on the step *right now*, given what the
+ * step is waiting on. FUND is two desks: the official sends the case to
+ * Awaiting budget; treasurer then certifies and the Captain approves.
+ * The official who recorded a resolution does not verify their own fix.
+ */
+export function roleActsOnProcessStep(
+  role: string,
+  key: ProcessStepKey,
+  opts?: { block?: ProcessBlock | null; verifySelfRecorded?: boolean }
+): boolean {
+  if (key === "VERIFY" && opts?.verifySelfRecorded && role === "OFFICIAL") {
+    return false;
+  }
+  if (key === "FUND") {
+    const block = opts?.block ?? null;
+    if (block === "NEEDS_FUNDS") {
+      return role === "TREASURER" || role === "CAPTAIN";
+    }
+    if (block === "WAITING_BUDGET_STAGE" || block === "NEEDS_ESTIMATE") {
+      return role === "OFFICIAL";
+    }
+  }
+  return roleOwnsProcessStep(role, key);
+}

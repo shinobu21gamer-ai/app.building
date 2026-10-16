@@ -162,7 +162,11 @@ export default async function CaptainPage() {
       <DeskGuide
         title={t.guideTitle}
         lead={t.guideLead}
-        steps={t.guideSteps}
+        steps={t.guideSteps.map((step) => ({
+          ...step,
+          yoursLabel: copy[locale].flow.youDoThis,
+          highlight: true,
+        }))}
         mistakesTitle={copy[locale].revamp.howTo.ifWrong}
         mistakes={t.ifWrong}
         helpLabel={copy[locale].revamp.howTo.help}

@@ -22,7 +22,7 @@ import {
 } from "@/components/cases/process-flow-panel";
 import {
   caseProcessFlow,
-  roleOwnsProcessStep,
+  roleActsOnProcessStep,
   type ProcessStepKey,
 } from "@/lib/cases/process-flow";
 import { planNeeds } from "@/lib/cases/plan-needs";
@@ -467,19 +467,41 @@ export default async function OfficialConcernDetailPage({
   const holderName = currentAssignment?.official
     ? `${currentAssignment.official.firstName} ${currentAssignment.official.lastName}`
     : null;
+  const verifySelf = verifyState === "SELF_RECORDED";
   const flowSteps: FlowStepView[] = flow.steps.map((step) => {
     const stepCopy = flowCopy.steps[step.key];
-    const owns = roleOwnsProcessStep(user.role.key, step.key);
+    const owns = roleActsOnProcessStep(user.role.key, step.key, {
+      block: step.block,
+      verifySelfRecorded: verifySelf,
+    });
     const yours = step.state === "current" && owns;
+    const todo =
+      step.key === "CHECK"
+        ? user.role.key === "ADMIN"
+          ? stepCopy.todoAdmin
+          : stepCopy.todoOfficial
+        : step.key === "FUND"
+          ? user.role.key === "CAPTAIN"
+            ? stepCopy.todoCaptain
+            : user.role.key === "TREASURER"
+              ? stepCopy.todoTreasury
+              : stepCopy.todoOfficial
+          : [...stepCopy.todo];
+    const who =
+      step.key === "FUND"
+        ? user.role.key === "OFFICIAL"
+          ? stepCopy.whoOfficial
+          : stepCopy.whoMoney
+        : stepCopy.who;
     return {
       key: step.key,
       number: step.number,
       state: step.state,
       title: stepCopy.title,
       lead: stepCopy.lead,
-      todo: [...stepCopy.todo],
+      todo,
       owner: stepCopy.owner,
-      who: stepCopy.who,
+      who,
       desk: stepDesk[step.key],
       ownsStep: owns,
       yourTurn: yours,
@@ -1056,13 +1078,17 @@ export default async function OfficialConcernDetailPage({
             ? flowCopy.guide.adminAction
             : flowCopy.leaveCase
         }
-        panels={
-          flow.currentKey &&
-          panels[flow.currentKey] &&
-          roleOwnsProcessStep(user.role.key, flow.currentKey)
-            ? { [flow.currentKey]: panels[flow.currentKey] }
-            : {}
-        }
+        panels={Object.fromEntries(
+          (Object.entries(panels) as [ProcessStepKey, React.ReactNode][]).filter(
+            ([key]) => {
+              if (key === "VERIFY" && verifySelf) return true;
+              return roleActsOnProcessStep(user.role.key, key, {
+                block: stepState(key)?.block ?? null,
+                verifySelfRecorded: verifySelf,
+              });
+            }
+          )
+        )}
       />
 
       <section className="space-y-4">

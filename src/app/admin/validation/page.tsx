@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge, PriorityBadge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { StepGuide } from "@/components/cases/step-guide";
-import { concernProcessFlow } from "@/lib/cases/process-flow";
+import { concernProcessFlow, roleActsOnProcessStep } from "@/lib/cases/process-flow";
 import { fundedAmountsByConcern } from "@/lib/treasury/query";
 import { formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
@@ -124,9 +124,17 @@ export default async function ValidationQueuePage({
         <StepGuide
           steps={[
             {
+              title: flowCopy.steps.CHECK.title,
+              detail: flowCopy.steps.CHECK.lead,
+              who: flowCopy.steps.CHECK.who,
+              yoursLabel: flowCopy.youDoThis,
+              highlight: true,
+            },
+            {
               title: flowCopy.steps.VALIDATE.title,
               detail: flowCopy.steps.VALIDATE.lead,
               who: flowCopy.steps.VALIDATE.who,
+              yoursLabel: flowCopy.youDoThis,
               highlight: true,
             },
           ]}
@@ -219,15 +227,24 @@ export default async function ValidationQueuePage({
                     </ul>
 
                     {current && (
-                      <p className="mt-1 text-xs font-medium text-brand-800">
-                        {t.validationNext.replace(
-                          "{step}",
-                          `${flowCopy.stepOf
-                            .replace("{current}", String(current.number))
-                            .replace("{total}", String(flow.steps.length))} · ${
-                            flowCopy.steps[current.key].title
-                          }`
+                      <p
+                        className={cn(
+                          "mt-1 text-xs font-medium",
+                          roleActsOnProcessStep("ADMIN", current.key, {
+                            block: current.block,
+                          })
+                            ? "text-brand-800"
+                            : "text-amber-800"
                         )}
+                      >
+                        {roleActsOnProcessStep("ADMIN", current.key, {
+                          block: current.block,
+                        })
+                          ? `${flowCopy.youDoThis} · ${flowCopy.steps[current.key].title}`
+                          : `${flowCopy.notYouTitle} · ${flowCopy.waitingOn.replace(
+                              "{desk}",
+                              flowCopy.steps[current.key].owner
+                            )}`}
                       </p>
                     )}
                   </div>

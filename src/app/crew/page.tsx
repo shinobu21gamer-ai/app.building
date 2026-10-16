@@ -204,12 +204,13 @@ export default async function CrewHomePage() {
                         // the crew's job; before that, checking the plan is.
                         const current =
                           job.concern.status === "IN_PROGRESS" ? 2 : 0;
+                        const yours = index === current;
                         return {
                           title: step.title,
                           detail: step.detail,
-                          highlight: index === current,
-                          stateLabel:
-                            index === current ? flowCopy.currentBadge : undefined,
+                          highlight: yours,
+                          yoursLabel: yours ? flowCopy.youDoThis : flowCopy.yoursLater,
+                          stateLabel: yours ? flowCopy.yourTurn : flowCopy.laterBadge,
                         };
                       })}
                     />

@@ -5,6 +5,8 @@ export type GuideStep = {
   detail?: string;
   /** Who owns the step — so admin work is not read as the official's job. */
   who?: string;
+  /** "You do this now" / "Not you" — same idea as the case-flow card. */
+  yoursLabel?: string;
   /** Marks the step the reader is on right now. */
   highlight?: boolean;
   /** A one-word state shown next to the title ("Done", "Now"). */
@@ -71,8 +73,18 @@ export function StepGuide({
                   </span>
                 ) : null}
               </p>
+              {step.yoursLabel ? (
+                <p
+                  className={cn(
+                    "mt-0.5 text-xs font-semibold",
+                    step.highlight ? "text-brand-800" : "text-amber-800"
+                  )}
+                >
+                  {step.yoursLabel}
+                </p>
+              ) : null}
               {step.who ? (
-                <p className="mt-0.5 text-xs font-semibold text-brand-800">
+                <p className="mt-0.5 text-xs font-semibold text-ink-muted">
                   {step.who}
                 </p>
               ) : null}

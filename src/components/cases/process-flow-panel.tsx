@@ -117,10 +117,12 @@ export function ProcessFlowPanel({
     notNeeded: t.notNeededBadge,
   };
 
+  const owns = Boolean(active?.ownsStep);
   const yoursNow = Boolean(active && active.state === "current" && active.yourTurn);
-  const notYoursNow = Boolean(
-    active && active.state === "current" && !active.yourTurn && !active.ownsStep
-  );
+  const yoursLater = Boolean(active && active.state === "pending" && owns);
+  const yoursDone = Boolean(active && active.state === "done" && owns);
+  const notYours = Boolean(active && !owns && active.state !== "notNeeded");
+  const notYoursNow = Boolean(notYours && active?.state === "current");
 
   function waitingCopy(step: FlowStepView): string {
     if (step.waitingName) {
@@ -177,7 +179,9 @@ export function ProcessFlowPanel({
                 ? t.yourTurn
                 : step.state === "current" && !step.ownsStep
                   ? t.waitingBadge
-                  : stateLabel[step.state];
+                  : step.state === "pending" && step.ownsStep
+                    ? t.yoursLater
+                    : stateLabel[step.state];
             return (
               <li key={step.key} className="shrink-0">
                 <button
@@ -209,7 +213,10 @@ export function ProcessFlowPanel({
                       {step.title}
                     </span>
                     <span className="block text-[11px] text-ink-subtle">
-                      {chipStatus} · {step.yourTurn ? t.deskYou : step.owner}
+                      {chipStatus} ·{" "}
+                      {step.yourTurn || (step.ownsStep && step.state !== "current")
+                        ? t.deskYou
+                        : step.owner}
                     </span>
                   </span>
                 </button>
@@ -245,7 +252,7 @@ export function ProcessFlowPanel({
                   "rounded-control border px-3 py-2.5 text-sm",
                   yoursNow
                     ? "border-brand-200 bg-brand-50"
-                    : notYoursNow
+                    : notYours
                       ? "border-amber-200 bg-amber-50"
                       : "border-line bg-surface-sunken"
                 )}
@@ -256,23 +263,40 @@ export function ProcessFlowPanel({
                 <p
                   className={cn(
                     "mt-0.5 text-base font-semibold",
-                    yoursNow ? "text-brand-800" : notYoursNow ? "text-amber-900" : "text-ink"
+                    yoursNow || yoursLater || yoursDone
+                      ? "text-brand-800"
+                      : notYours
+                        ? "text-amber-900"
+                        : "text-ink"
                   )}
                 >
-                  {yoursNow ? t.youDoThis : notYoursNow ? t.notYouTitle : active.owner}
+                  {yoursNow
+                    ? t.youDoThis
+                    : yoursLater
+                      ? t.yoursLater
+                      : yoursDone
+                        ? t.yoursDone
+                        : notYours
+                          ? t.notYouTitle
+                          : active.owner}
                 </p>
                 <p className="mt-1 text-sm leading-relaxed text-ink">
-                  {yoursNow
-                    ? active.who
-                    : notYoursNow
-                      ? waitingCopy(active)
-                      : active.who}
+                  {notYours && active.state === "current"
+                    ? waitingCopy(active)
+                    : active.who}
                 </p>
                 {notYoursNow ? (
-                  <p className="mt-2 text-sm text-ink-muted">{t.yourPartDone.replace("{desk}", active.desk)}</p>
+                  <p className="mt-2 text-sm text-ink-muted">
+                    {t.yourPartDone.replace("{desk}", active.desk)}
+                  </p>
                 ) : null}
                 {yoursNow ? (
                   <p className="mt-2 text-sm text-ink-muted">{t.doThisBelow}</p>
+                ) : null}
+                {yoursLater && earlierUnfinished ? (
+                  <p className="mt-2 text-sm text-ink-muted">
+                    {t.laterYoursHint.replace("{number}", String(earlierUnfinished.number))}
+                  </p>
                 ) : null}
               </div>
 
@@ -306,24 +330,25 @@ export function ProcessFlowPanel({
             <div className="min-w-0">
               {panels[active.key] &&
               !earlierUnfinished &&
-              (active.state === "current" || active.state === "done") &&
-              !notYoursNow ? (
+              (active.state === "current" || active.state === "done") ? (
                 panels[active.key]
               ) : (
                 <div className="space-y-3 rounded-control border border-dashed border-line bg-surface-sunken px-3 py-3 text-sm text-ink-muted">
                   <p>
-                    {earlierUnfinished
-                      ? t.finishEarlier.replace(
-                          "{number}",
-                          String(earlierUnfinished.number)
-                        )
-                      : notYoursNow
+                    {active.state === "notNeeded"
+                      ? t.notNeededHint
+                      : notYours
                         ? t.waitingHint
-                        : active.block
-                          ? active.block
-                          : active.state === "done"
-                            ? t.doneBadge
-                            : t.otherDesk.replace("{desk}", active.desk)}
+                        : earlierUnfinished
+                          ? t.laterYoursHint.replace(
+                              "{number}",
+                              String(earlierUnfinished.number)
+                            )
+                          : active.block && owns
+                            ? active.block
+                            : active.state === "done"
+                              ? t.doneBadge
+                              : t.otherDesk.replace("{desk}", active.desk)}
                   </p>
                   {notYoursNow && leaveHref ? (
                     <Button href={leaveHref} size="sm">
