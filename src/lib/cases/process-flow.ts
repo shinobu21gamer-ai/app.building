@@ -424,3 +424,31 @@ export function concernProcessFlow(
     }),
   });
 }
+
+/**
+ * Which desk actually works a step. Admin may review the site check and
+ * validate the report — that is the whole of their case work. The assigned
+ * official plans, books crew and does the job. Admin having every permission
+ * in the matrix does not make Assess or Close theirs.
+ */
+export function roleOwnsProcessStep(role: string, key: ProcessStepKey): boolean {
+  switch (key) {
+    case "CHECK":
+      return role === "ADMIN" || role === "OFFICIAL" || role === "CREW";
+    case "VALIDATE":
+      return role === "ADMIN";
+    case "ASSESS":
+    case "CREW":
+    case "START":
+    case "WORK":
+      return role === "OFFICIAL";
+    case "FUND":
+      return role === "OFFICIAL" || role === "TREASURER" || role === "CAPTAIN";
+    case "VERIFY":
+      return role === "OFFICIAL" || role === "CAPTAIN";
+    case "CLOSE":
+      return role === "CAPTAIN";
+    default:
+      return false;
+  }
+}

@@ -22,6 +22,7 @@ import {
 } from "@/components/cases/process-flow-panel";
 import {
   caseProcessFlow,
+  roleOwnsProcessStep,
   type ProcessStepKey,
 } from "@/lib/cases/process-flow";
 import { realityCheckState } from "@/lib/cases/field-check-rules";
@@ -459,6 +460,10 @@ export default async function OfficialConcernDetailPage({
 
   const flowSteps: FlowStepView[] = flow.steps.map((step) => {
     const stepCopy = flowCopy.steps[step.key];
+    const yours =
+      step.state === "current" &&
+      canDoStep[step.key] &&
+      roleOwnsProcessStep(user.role.key, step.key);
     return {
       key: step.key,
       number: step.number,
@@ -466,7 +471,10 @@ export default async function OfficialConcernDetailPage({
       title: stepCopy.title,
       lead: stepCopy.lead,
       todo: [...stepCopy.todo],
-      desk: canDoStep[step.key] ? flowCopy.deskYou : stepDesk[step.key],
+      owner: stepCopy.owner,
+      who: stepCopy.who,
+      desk: stepDesk[step.key],
+      yourTurn: yours,
       block: step.block ? flowCopy.blocks[step.block] : null,
     };
   });
@@ -1019,7 +1027,13 @@ export default async function OfficialConcernDetailPage({
         percent={flow.percent}
         finished={flow.finished}
         unfounded={flow.closedUnfounded}
-        panels={panels}
+        panels={
+          flow.currentKey &&
+          panels[flow.currentKey] &&
+          roleOwnsProcessStep(user.role.key, flow.currentKey)
+            ? { [flow.currentKey]: panels[flow.currentKey] }
+            : {}
+        }
       />
 
       <section className="space-y-4">

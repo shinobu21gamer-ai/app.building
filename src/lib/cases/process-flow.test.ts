@@ -3,6 +3,7 @@ import {
   caseProcessFlow,
   crewSatisfied,
   fundingSatisfied,
+  roleOwnsProcessStep,
   type ProcessFlowInput,
 } from "./process-flow";
 
@@ -330,5 +331,21 @@ describe("caseProcessFlow", () => {
     expect(flow.activeTotal).toBe(9);
     expect(flow.doneCount).toBe(6);
     expect(flow.percent).toBe(67);
+  });
+});
+
+describe("roleOwnsProcessStep", () => {
+  it("gives admin only the site-check review and validation", () => {
+    expect(roleOwnsProcessStep("ADMIN", "CHECK")).toBe(true);
+    expect(roleOwnsProcessStep("ADMIN", "VALIDATE")).toBe(true);
+    expect(roleOwnsProcessStep("ADMIN", "ASSESS")).toBe(false);
+    expect(roleOwnsProcessStep("ADMIN", "CLOSE")).toBe(false);
+  });
+
+  it("gives the assigned official the work after validation", () => {
+    expect(roleOwnsProcessStep("OFFICIAL", "VALIDATE")).toBe(false);
+    expect(roleOwnsProcessStep("OFFICIAL", "ASSESS")).toBe(true);
+    expect(roleOwnsProcessStep("OFFICIAL", "CREW")).toBe(true);
+    expect(roleOwnsProcessStep("OFFICIAL", "CLOSE")).toBe(false);
   });
 });
