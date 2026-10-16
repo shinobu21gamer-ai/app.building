@@ -141,6 +141,8 @@ export function tileMosaic(
   const anchorY = Math.min(size - 1, Math.floor(point.y));
   const startX = Math.max(0, Math.min(size - columns, anchorX - 1));
   const startY = Math.max(0, Math.min(size - rows, anchorY - 1));
+  // Exported so a tap on the mosaic can be turned back into a lat/lng
+  // with the same origin the tiles used.
 
   const tiles: MapTile[] = [];
   for (let row = 0; row < rows; row += 1) {
@@ -160,7 +162,42 @@ export function tileMosaic(
       leftPercent: Math.min(100, Math.max(0, leftPercent)),
       topPercent: Math.min(100, Math.max(0, topPercent)),
     },
+    startX,
+    startY,
+    columns,
+    rows,
+    zoom: z,
     attribution: OSM_ATTRIBUTION,
     attributionUrl: OSM_COPYRIGHT_URL,
   };
+}
+
+/**
+ * Inverse of `tilePoint`: fractional OSM tile x/y → WGS84. Used when the
+ * resident taps the static mosaic to drop a pin (Leaflet is not required).
+ */
+export function latLngFromTilePoint(
+  x: number,
+  y: number,
+  zoom: number
+): { lat: number; lng: number } {
+  const z = Number.isFinite(zoom) ? Math.max(0, Math.min(22, Math.floor(zoom))) : 0;
+  const size = 2 ** z;
+  const clampedX = Math.min(size, Math.max(0, x));
+  const clampedY = Math.min(size, Math.max(0, y));
+  const lng = (clampedX / size) * 360 - 180;
+  const n = Math.PI - (2 * Math.PI * clampedY) / size;
+  const lat = (180 / Math.PI) * Math.atan(Math.sinh(n));
+  return { lat: clampLatitude(lat), lng: normalizeLongitude(lng) };
+}
+
+/** Where a tap on the mosaic lands, in WGS84. Percents are 0–100 of the grid. */
+export function pickOnMosaic(
+  mosaic: { startX: number; startY: number; columns: number; rows: number; zoom: number },
+  leftPercent: number,
+  topPercent: number
+): { lat: number; lng: number } {
+  const tileX = mosaic.startX + (leftPercent / 100) * mosaic.columns;
+  const tileY = mosaic.startY + (topPercent / 100) * mosaic.rows;
+  return latLngFromTilePoint(tileX, tileY, mosaic.zoom);
 }

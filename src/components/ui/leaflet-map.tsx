@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapPin } from "lucide-react";
 
 import "leaflet/dist/leaflet.css";
 
@@ -214,25 +213,18 @@ export function LeafletMap({
   }, [lat, lng, showPin, state]);
 
   if (state === "failed") {
-    if (!showPin) {
-      return (
-        <div className="flex flex-col items-center gap-1.5 rounded-card border border-dashed border-line-strong bg-surface-muted px-4 py-8 text-center">
-          <MapPin size={20} className="text-ink-subtle" aria-hidden="true" />
-          <p className="text-sm text-ink-subtle">{emptyPinLabel ?? title}</p>
-        </div>
-      );
-    }
     return (
       <MapFrame
-        lat={lat}
-        lng={lng}
+        lat={showPin ? lat : null}
+        lng={showPin ? lng : null}
         zoom={zoom}
         title={title}
-        emptyLabel={title}
+        emptyLabel={emptyPinLabel ?? title}
         openLabel={openLabel}
         attribution="© OpenStreetMap contributors"
         attributionUrl="https://www.openstreetmap.org/copyright"
         className={className}
+        onPick={onPick}
       />
     );
   }

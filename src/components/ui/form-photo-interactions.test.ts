@@ -74,16 +74,53 @@ describe("profile phone interactions", () => {
 });
 
 describe("photo interactions", () => {
-  it("replaces broken images with a retry message and retries direct loading", async () => {
+  function stubPhotoFetch(ok: boolean) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        ok
+          ? {
+              ok: true,
+              blob: async () =>
+                new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" }),
+            }
+          : { ok: false, blob: async () => new Blob() }
+      )
+    );
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: () => "blob:photo",
+      revokeObjectURL: () => undefined,
+    });
+  }
+
+  it("replaces broken images with a retry message and retries with the session cookie", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, blob: async () => new Blob() });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: () => "blob:photo",
+      revokeObjectURL: () => undefined,
+    });
     await act(async () => root.render(createElement(UploadedPhoto, { src, alt: "Proof" })));
-    const image = container.querySelector("img")!;
-    await act(async () => image.dispatchEvent(new Event("error")));
+    await act(async () => {
+      await fetchMock.mock.results[0]?.value;
+    });
     expect(container.textContent).toContain("This photo could not be loaded");
+    fetchMock.mockResolvedValue({
+      ok: true,
+      blob: async () => new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" }),
+    });
     await act(async () => button("Try again").click());
-    expect(new URL(container.querySelector("img")!.src).pathname).toBe(src);
+    await act(async () => {
+      await fetchMock.mock.results.at(-1)?.value;
+    });
+    expect(fetchMock).toHaveBeenCalledWith(src, expect.objectContaining({ credentials: "include" }));
+    expect(container.querySelector("img")?.getAttribute("src")).toBe("blob:photo");
     expect(container.textContent).not.toContain("This photo could not be loaded");
   });
   it("opens and closes a full-size modal using the photo controls", async () => {
+    stubPhotoFetch(true);
     // jsdom has no top layer: stub only the native dialog methods; the React
     // click handlers and DOM controls are real. Browser focus trapping is not
     // asserted here.
@@ -96,6 +133,10 @@ describe("photo interactions", () => {
     const show = vi.spyOn(HTMLDialogElement.prototype, "showModal").mockImplementation(function (this: HTMLDialogElement) { this.setAttribute("open", ""); });
     const close = vi.spyOn(HTMLDialogElement.prototype, "close").mockImplementation(function (this: HTMLDialogElement) { this.removeAttribute("open"); this.dispatchEvent(new Event("close")); });
     await act(async () => root.render(createElement(UploadedPhoto, { src, alt: "Proof" })));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
     await act(async () => button("View full photo").click());
     expect(show).toHaveBeenCalledOnce();
     expect(container.querySelector("dialog")!.open).toBe(true);

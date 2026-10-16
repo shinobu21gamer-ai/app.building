@@ -6,6 +6,7 @@ import {
   normalizeLongitude,
   openStreetMapUrl,
   OSM_TILE_URL,
+  pickOnMosaic,
   tileMosaic,
   tilePoint,
   tileUrl,
@@ -62,6 +63,15 @@ describe("normalizeLongitude", () => {
     expect(normalizeLongitude(181)).toBeCloseTo(-179, 6);
     expect(normalizeLongitude(-181)).toBeCloseTo(179, 6);
     expect(normalizeLongitude(120.98)).toBeCloseTo(120.98, 6);
+  });
+});
+
+describe("pickOnMosaic", () => {
+  it("round-trips a tap on the centre of the Dasmariñas mosaic", () => {
+    const mosaic = tileMosaic(14.3294, 120.9367, 16, 3, 2);
+    const picked = pickOnMosaic(mosaic, mosaic.marker.leftPercent, mosaic.marker.topPercent);
+    expect(picked.lat).toBeCloseTo(14.3294, 4);
+    expect(picked.lng).toBeCloseTo(120.9367, 4);
   });
 });
 

@@ -4,9 +4,9 @@ import { useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Button } from "@/components/ui/button";
 import { FormMessage, Input, Label } from "@/components/ui/field";
-import { LeafletMap } from "@/components/ui/leaflet-map";
+import { MapFrame } from "@/components/ui/map-frame";
 import { copy, type Locale } from "@/lib/i18n";
-import { MAP_DEFAULT_CENTER } from "@/lib/maps";
+import { OSM_ATTRIBUTION, OSM_COPYRIGHT_URL } from "@/lib/maps";
 
 export type GeotagValue = {
   lat: string;
@@ -66,12 +66,6 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
     Number.isFinite(lngNum) &&
     Math.abs(latNum) <= 90 &&
     Math.abs(lngNum) <= 180;
-  // Before any pin exists the map opens over the barangay so "tap the map"
-  // starts from the neighbourhood — without drawing a pin there, which would
-  // claim a location the resident never chose.
-  const centre = hasPin
-    ? { lat: latNum, lng: lngNum }
-    : { lat: MAP_DEFAULT_CENTER.lat, lng: MAP_DEFAULT_CENTER.lng };
 
   function fail(kind: FailureKind) {
     setStatus("failed");
@@ -199,21 +193,8 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
       );
     };
 
-    // If permission was already denied, the browser will not show a prompt
-    // again — say so (and how to fix it) instead of spinning first.
-    if (typeof navigator.permissions?.query === "function") {
-      navigator.permissions
-        .query({ name: "geolocation" })
-        .then((result) => {
-          if (result.state === "denied") {
-            fail("denied");
-          } else {
-            attempt(true, false);
-          }
-        })
-        .catch(() => attempt(true, false));
-      return;
-    }
+    // Always ask. In an iframe some browsers report "denied" without ever
+    // showing a prompt; skipping getCurrentPosition then left the pin dead.
     attempt(true, false);
   }
 
@@ -292,15 +273,16 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
       )}
 
       <div className="space-y-1.5">
-        <LeafletMap
-          lat={centre.lat}
-          lng={centre.lng}
-          zoom={14}
+        <MapFrame
+          lat={hasPin ? latNum : null}
+          lng={hasPin ? lngNum : null}
+          zoom={15}
           title={t.geotagTitle}
+          emptyLabel={t.geotagNoPin}
           openLabel={t.geotagOpenMap}
+          attribution={OSM_ATTRIBUTION}
+          attributionUrl={OSM_COPYRIGHT_URL}
           onPick={pickOnMap}
-          showPin={hasPin}
-          emptyPinLabel={t.geotagNoPin}
         />
         <p className="text-xs text-ink-subtle">{t.geotagTapMap}</p>
       </div>
