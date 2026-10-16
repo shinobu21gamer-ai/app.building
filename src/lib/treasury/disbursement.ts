@@ -158,7 +158,7 @@ export async function createDisbursement(tx: Tx, input: CreateVoucherInput) {
     const liveOnEarmark = await tx.disbursement.findMany({
       where: {
         earmarkId: earmark.id,
-        status: { in: ["SUBMITTED", "CERTIFIED", "APPROVED", "RELEASED", "LIQUIDATED"] },
+        status: { in: ["DRAFT", "SUBMITTED", "CERTIFIED", "APPROVED", "RELEASED", "LIQUIDATED"] },
       },
       select: { amount: true },
     });
@@ -169,7 +169,7 @@ export async function createDisbursement(tx: Tx, input: CreateVoucherInput) {
     const earmarkAmount = toMoney(earmark.amount);
     if (roundMoney(committed + amount) > earmarkAmount) {
       throw createApiError.conflict(
-        `Earmark ${earmark.code ?? earmark.id} holds ₱${earmarkAmount.toFixed(2)} and ₱${committed.toFixed(2)} of it is already committed. The most this voucher can be is ₱${roundMoney(earmarkAmount - committed).toFixed(2)}.`
+        `Earmark ${earmark.code ?? earmark.id} holds ₱${earmarkAmount.toFixed(2)}. Existing draft and active vouchers reserve ₱${committed.toFixed(2)}, leaving at most ₱${roundMoney(earmarkAmount - committed).toFixed(2)} for this voucher.`
       );
     }
     earmarkId = earmark.id;
@@ -190,12 +190,34 @@ export async function createDisbursement(tx: Tx, input: CreateVoucherInput) {
     });
     if (!concern) throw createApiError.badRequest("Pick an existing case.");
   }
+  if (input.payeeType === "CREW" && (input.concernId === null || input.payeeUserId === null)) {
+    throw createApiError.badRequest("Crew vouchers must name a crew account and link to a case.");
+  }
   if (input.payeeUserId !== null) {
     const payee = await tx.user.findUnique({
       where: { id: input.payeeUserId },
-      select: { id: true },
+      select: { id: true, role: { select: { key: true } } },
     });
-    if (!payee) throw createApiError.badRequest("Pick an existing resident.");
+    if (!payee) throw createApiError.badRequest("Pick an existing payee account.");
+    if (input.payeeType === "CREW" && payee.role.key !== "CREW") {
+      throw createApiError.badRequest("Crew vouchers can only pay a crew account.");
+    }
+    if (input.payeeType === "CREW" && input.concernId !== null) {
+      const existingCrewVoucher = await tx.disbursement.findFirst({
+        where: {
+          concernId: input.concernId,
+          payeeType: "CREW",
+          payeeUserId: input.payeeUserId,
+          status: { notIn: ["REJECTED", "CANCELLED"] },
+        },
+        select: { voucherNumber: true, status: true },
+      });
+      if (existingCrewVoucher) {
+        throw createApiError.conflict(
+          `This crew member already has voucher ${existingCrewVoucher.voucherNumber ?? "on file"} for this case (${existingCrewVoucher.status}). Cancel or reject it before preparing another.`
+        );
+      }
+    }
   }
 
   const number = await nextVoucherNumber(tx, new Date());

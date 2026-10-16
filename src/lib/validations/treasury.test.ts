@@ -1,5 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { fiscalYearCreateSchema } from "./treasury";
+import { disbursementCrewBatchSchema, fiscalYearCreateSchema } from "./treasury";
+
+describe("disbursementCrewBatchSchema", () => {
+  const batch = {
+    allocationId: 7,
+    earmarkId: 9,
+    concernId: 12,
+    crew: [
+      { payeeUserId: 31, amount: 100 },
+      { payeeUserId: 32, amount: 200 },
+    ],
+  };
+
+  it("accepts distinct crew members for one case and earmark", () => {
+    expect(disbursementCrewBatchSchema.safeParse(batch).success).toBe(true);
+  });
+
+  it("rejects duplicate crew members within a batch", () => {
+    const result = disbursementCrewBatchSchema.safeParse({
+      ...batch,
+      crew: [batch.crew[0], { ...batch.crew[0], amount: 50 }],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path.join(".") === "crew.1.payeeUserId")).toBe(true);
+    }
+  });
+});
 
 // Far-future dates so these checks never go stale relative to "today" as the
 // fiscal-year schema also refines startsOn/endsOn against todayManila().

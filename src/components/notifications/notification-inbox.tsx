@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +47,14 @@ export function NotificationInbox({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [securityNotice, setSecurityNotice] = useState<string | null>(null);
+  const [passwordResetNeeded, setPasswordResetNeeded] = useState(false);
+  const [securityBusy, setSecurityBusy] = useState(false);
+
+  useEffect(() => {
+    setItems(notifications);
+    setRemainingUnread(unreadCount);
+  }, [notifications, unreadCount]);
 
   const visible =
     filter === "unread"
@@ -86,6 +94,58 @@ export function NotificationInbox({
       })
     );
     if (refresh) router.refresh();
+  }
+
+  async function respondToLoginAlert(item: NotificationItem, wasMe: boolean) {
+    if (!wasMe && !window.confirm(t.loginAlertConfirm)) return;
+    setError(null);
+    setSuccess(null);
+    setSecurityNotice(null);
+    setSecurityBusy(true);
+    const result = await apiRequest<{
+      wasMe: boolean;
+      sessionsRevoked?: boolean;
+      passwordResetRequired?: boolean;
+    }>(`/api/v1/auth/login-alerts/${item.id}`, {
+      method: "POST",
+      body: JSON.stringify({ wasMe }),
+    });
+    setSecurityBusy(false);
+    if (!result.success) {
+      setError(result.error.message);
+      return;
+    }
+
+    setItems((current) =>
+      current.map((entry) =>
+        entry.id === item.id
+          ? {
+              ...entry,
+              title: wasMe ? "Sign-in confirmed" : "Unrecognized sign-in reported",
+              message: wasMe
+                ? t.loginAlertConfirmed
+                : t.loginAlertSecured,
+              isRead: true,
+              readAt: new Date().toISOString(),
+            }
+          : entry
+      )
+    );
+    if (!item.isRead) {
+      const nextUnreadCount = Math.max(0, remainingUnread - 1);
+      setRemainingUnread(nextUnreadCount);
+      window.dispatchEvent(
+        new CustomEvent("notifications:changed", {
+          detail: { unreadCount: nextUnreadCount },
+        })
+      );
+    }
+    if (wasMe) {
+      setSecurityNotice(t.loginAlertConfirmed);
+    } else {
+      setSecurityNotice(t.loginAlertSecured);
+      setPasswordResetNeeded(true);
+    }
   }
 
   async function markAllRead() {
@@ -129,6 +189,16 @@ export function NotificationInbox({
     <div className="space-y-6">
       {success && <FormMessage tone="success">{success}</FormMessage>}
       {error && <FormMessage tone="error">{error}</FormMessage>}
+      {securityNotice && (
+        <div role="status" className="space-y-2 rounded-control border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
+          <p>{securityNotice}</p>
+          {passwordResetNeeded && (
+            <Link href="/reset-password" className="font-semibold underline">
+              {t.loginAlertResetPassword}
+            </Link>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -168,6 +238,9 @@ export function NotificationInbox({
         <ul className="divide-y divide-line rounded-card border border-line bg-surface">
           {visible.map((item) => {
             const unread = !item.isRead;
+            const pendingLoginAlert =
+              item.type === "LOGIN_SECURITY_ALERT" &&
+              item.title === "Was this sign-in you?";
             const href = notificationHref({
               type: item.type,
               role,
@@ -203,7 +276,9 @@ export function NotificationInbox({
                       </span>
                     )}
                     {href && (
-                      <span className="font-semibold text-brand-700">{t.open}</span>
+                      <span className="inline-flex items-center rounded-md border border-brand-200 bg-white px-2.5 py-1 font-semibold text-brand-700 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50">
+                        {t.open}
+                      </span>
                     )}
                   </div>
 
@@ -220,6 +295,26 @@ export function NotificationInbox({
                         className="rounded-md px-2 py-1 text-xs font-semibold text-ink-muted transition-[background-color,color] duration-150 hover:bg-surface-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:opacity-50"
                       >
                         {t.markRead}
+                      </button>
+                    </div>
+                  )}
+                  {pendingLoginAlert && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void respondToLoginAlert(item, true)}
+                        disabled={securityBusy}
+                        className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
+                      >
+                        {t.loginAlertWasMe}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void respondToLoginAlert(item, false)}
+                        disabled={securityBusy}
+                        className="rounded-md border border-danger-100 bg-white px-3 py-2 text-xs font-semibold text-danger-700 hover:bg-danger-50 disabled:opacity-50"
+                      >
+                        {t.loginAlertNotMe}
                       </button>
                     </div>
                   )}

@@ -643,6 +643,9 @@ export function UserManager({
                   </option>
                 ))}
               </select>
+              <p className="mt-1 text-xs text-ink-subtle">
+                {t.roleChoices.replace("{roles}", roles.map((role) => role.name).join(", "))}
+              </p>
             </div>
           )}
 

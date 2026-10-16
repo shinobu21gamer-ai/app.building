@@ -38,7 +38,11 @@ export const PATCH = withErrorBoundary(async (req: Request) => {
 
   const updated = await db.user.update({
     where: { id: current.id },
-    data: { passwordHash, tokenVersion: { increment: 1 } },
+    data: {
+      passwordHash,
+      tokenVersion: { increment: 1 },
+      loginLockedAt: null,
+    },
     include: { role: true, office: true },
   });
 

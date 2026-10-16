@@ -89,7 +89,7 @@ function Photo({ src, alt, locale = "en" }: { src: string; alt: string; locale?:
 
   return (
     <div className="space-y-2">
-      <div className="max-h-80 overflow-auto overscroll-contain rounded-xl border border-line bg-surface-sunken p-2">
+      <div className="flex max-h-80 items-center justify-center overflow-hidden rounded-xl border border-line bg-surface-sunken p-2">
         {failed ? (
           <div
             role="status"
@@ -112,7 +112,7 @@ function Photo({ src, alt, locale = "en" }: { src: string; alt: string; locale?:
           <img
             src={displaySrc}
             alt={alt}
-            className="h-auto w-full rounded-lg object-contain"
+            className="max-h-[18rem] w-auto max-w-full rounded-lg object-contain"
             onError={() => setFailed(true)}
           />
         ) : (

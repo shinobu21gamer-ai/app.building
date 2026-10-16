@@ -403,11 +403,15 @@ export const POST = withErrorBoundary(async (req: Request) => {
   }
   const filename = await saveConcernImage(imageEntry, user.id);
   const duplicateOfId = await findLikelyDuplicate({
-    userId: user.id,
     categoryId: input.categoryId,
     title: input.title,
     locationAddress: input.locationAddress,
   });
+  const allowPossibleDuplicate = form.get("allowPossibleDuplicate") === "true";
+  if (duplicateOfId !== null && !allowPossibleDuplicate) {
+    await deleteConcernImage(filename);
+    throw createApiError.possibleDuplicate();
+  }
 
   let created;
   try {

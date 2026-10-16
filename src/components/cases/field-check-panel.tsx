@@ -354,12 +354,20 @@ export function FieldCheckPanel({
                   }}
                 />
                 {check.finding && (
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 rounded-control border border-line bg-surface-sunken p-3 text-sm">
+                    <p className="font-semibold text-ink">
+                      {t.checkerReply.replace("{name}", check.assigneeName)}
+                    </p>
                     <p>
                       <span className="font-medium">{t.findingResult}:</span>{" "}
                       {findingLabel(t, check.finding)}
                     </p>
-                    {check.findingNotes && <p className="text-ink-subtle">{check.findingNotes}</p>}
+                    {check.findingNotes && (
+                      <p className="whitespace-pre-wrap break-words text-ink-muted">
+                        <span className="font-medium text-ink">{t.notes}:</span>{" "}
+                        {check.findingNotes}
+                      </p>
+                    )}
                     <div className="grid gap-3 sm:grid-cols-2">
                       {concernPhotoUrl ? (
                         <div>

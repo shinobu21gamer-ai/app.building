@@ -44,6 +44,12 @@ export const createApiError = {
     new ApiError(HttpStatus.NOT_FOUND, "NOT_FOUND", message),
   conflict: (message: string) =>
     new ApiError(HttpStatus.CONFLICT, "CONFLICT", message),
+  possibleDuplicate: () =>
+    new ApiError(
+      HttpStatus.CONFLICT,
+      "POSSIBLE_DUPLICATE",
+      "A similar open concern may already be reported. Review the warning before submitting."
+    ),
   payloadTooLarge: (message = "The uploaded content is too large.") =>
     new ApiError(HttpStatus.PAYLOAD_TOO_LARGE, "PAYLOAD_TOO_LARGE", message),
   tooManyRequests: (

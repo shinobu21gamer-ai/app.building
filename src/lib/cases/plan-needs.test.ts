@@ -20,6 +20,15 @@ describe("planNeeds", () => {
     });
   });
 
+  it("keeps the repair plan when an old or incorrect category says document request", () => {
+    expect(planNeeds({ categoryCode: "DOC_REQUEST", typeKey: "REPAIR" })).toEqual({
+      crew: true,
+      budget: true,
+      equipment: true,
+      materials: true,
+    });
+  });
+
   it("asks for money but not a crew on ayuda", () => {
     expect(planNeeds({ typeKey: "AYUDA" })).toEqual({
       crew: false,

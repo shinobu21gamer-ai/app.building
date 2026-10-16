@@ -128,6 +128,8 @@ export function SubmitConcernForm({
   const formRef = useRef<HTMLFormElement>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [possibleDuplicate, setPossibleDuplicate] = useState(false);
+  const [allowPossibleDuplicate, setAllowPossibleDuplicate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -341,6 +343,7 @@ export function SubmitConcernForm({
     if (count !== "") payload.set("affectedPeople", count);
     payload.set("safetyScore", values.safetyScore);
     if (selectedFile) payload.set("image", selectedFile);
+    payload.set("allowPossibleDuplicate", String(allowPossibleDuplicate));
 
     setSubmitting(true);
     const result = await apiRequest<{ redirect: string }>(
@@ -350,6 +353,12 @@ export function SubmitConcernForm({
     setSubmitting(false);
 
     if (!result.success) {
+      if (result.error.code === "POSSIBLE_DUPLICATE") {
+        setPossibleDuplicate(true);
+        setAllowPossibleDuplicate(false);
+        setFormError(null);
+        return;
+      }
       if (
         result.error.code === "VALIDATION_ERROR" &&
         Array.isArray(result.error.details)
@@ -378,9 +387,46 @@ export function SubmitConcernForm({
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5" noValidate>
+    <form
+      ref={formRef}
+      onSubmit={handleSubmit}
+      onChange={(event) => {
+        if ((event.target as HTMLElement).id === "possible-duplicate-confirm") {
+          setAllowPossibleDuplicate((event.target as HTMLInputElement).checked);
+          return;
+        }
+        if (possibleDuplicate) {
+          setPossibleDuplicate(false);
+          setAllowPossibleDuplicate(false);
+        }
+      }}
+      className="space-y-5"
+      noValidate
+    >
       <DraftControls userId={userId} formRef={formRef} locale={locale} />
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
+      {possibleDuplicate && (
+        <div
+          role="alert"
+          className="rounded-control border border-warning-100 bg-warning-50 p-4 text-sm text-warning-700"
+        >
+          <p className="flex items-center gap-2 font-semibold">
+            <AlertTriangle size={17} aria-hidden="true" />
+            {t.duplicateTitle}
+          </p>
+          <p className="mt-2">{t.duplicateMessage}</p>
+          <label className="mt-3 flex cursor-pointer items-start gap-2 font-medium">
+            <input
+              id="possible-duplicate-confirm"
+              type="checkbox"
+              checked={allowPossibleDuplicate}
+              onChange={(event) => setAllowPossibleDuplicate(event.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-brand-700"
+            />
+            <span>{t.duplicateConfirm}</span>
+          </label>
+        </div>
+      )}
 
       {Object.values(fieldErrors).some(Boolean) && (
         <div role="alert" className="rounded-control border border-danger-100 bg-danger-50 p-3 text-sm text-danger-700">
@@ -748,7 +794,11 @@ export function SubmitConcernForm({
       <div className="flex items-center gap-3 pt-1">
         <Button
           type="submit"
-          disabled={submitting || identityBlocked}
+          disabled={
+            submitting ||
+            identityBlocked ||
+            (possibleDuplicate && !allowPossibleDuplicate)
+          }
           loading={submitting}
         >
           {submitting ? (
@@ -756,7 +806,7 @@ export function SubmitConcernForm({
           ) : (
             <>
               <Send size={16} />
-              {t.send}
+              {possibleDuplicate ? t.duplicateContinue : t.send}
             </>
           )}
         </Button>

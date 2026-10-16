@@ -660,10 +660,15 @@ export async function validateConcern(
   if (input.categoryId) {
     const category = await tx.concernCategory.findUnique({
       where: { id: input.categoryId },
-      select: { id: true, isActive: true },
+      select: { id: true, isActive: true, typeId: true },
     });
     if (!category || !category.isActive) {
       throw createApiError.badRequest("Select an active category.");
+    }
+    if (category.typeId !== null && category.typeId !== type.id) {
+      throw createApiError.badRequest(
+        "The selected category belongs to a different service type. Choose the category that matches this concern before validating."
+      );
     }
   }
 

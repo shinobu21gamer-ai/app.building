@@ -126,6 +126,21 @@ describe("photo interactions", () => {
     expect(container.querySelector("img")?.getAttribute("src")).toBe("blob:photo");
     expect(container.textContent).not.toContain("This photo could not be loaded");
   });
+  it("fits the whole thumbnail inside its frame instead of clipping tall photos", async () => {
+    stubPhotoFetch(true);
+    await act(async () => root.render(createElement(UploadedPhoto, { src, alt: "Proof" })));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const frame = container.querySelector(".rounded-xl");
+    const image = container.querySelector("img");
+    expect(frame?.className).toContain("overflow-hidden");
+    expect(frame?.className).not.toContain("overflow-auto");
+    expect(image?.className).toContain("max-h-[18rem]");
+    expect(image?.className).toContain("object-contain");
+  });
+
   it("opens and closes a full-size modal using the photo controls", async () => {
     stubPhotoFetch(true);
     // jsdom has no top layer: stub only the native dialog methods; the React

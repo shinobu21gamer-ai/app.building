@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { sortJournal, type JournalEntryDates } from "@/lib/cases/journal";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { copy, type Copy, type Locale } from "@/lib/i18n";
+import { uploadedPhotoSrc } from "@/lib/uploads";
 
 type HistoryEntry = {
   id: number;
@@ -16,6 +17,7 @@ type HistoryEntry = {
   occurredOn: Date | null;
   /** Proof photo attached to a status change. */
   attachmentUrl: string | null;
+  photoMissing?: boolean;
 };
 
 export type ResolutionInfo = {
@@ -74,7 +76,7 @@ export function describeJournalEntry(
  * to, so a backdated action sits where it happened. Each entry also shows when
  * it was recorded, which never changes.
  */
-export function CaseTimeline({
+export async function CaseTimeline({
   entries,
   resolution,
   locale = "en",
@@ -84,6 +86,17 @@ export function CaseTimeline({
   locale?: Locale;
 }) {
   const t = copy[locale].desk;
+  const timelineEntries = await Promise.all(
+    sortJournal(entries).map(async (entry) => {
+      if (!entry.attachmentUrl) return entry;
+      const photo = await uploadedPhotoSrc(entry.attachmentUrl);
+      return {
+        ...entry,
+        attachmentUrl: photo.src ?? null,
+        photoMissing: photo.missing,
+      };
+    })
+  );
 
   if (entries.length === 0) {
     return <p className="text-sm text-ink-subtle">{t.noActivity}</p>;
@@ -91,7 +104,7 @@ export function CaseTimeline({
 
   return (
     <ol className="space-y-5">
-      {sortJournal(entries).map((entry) => (
+      {timelineEntries.map((entry) => (
         <li key={entry.id} className="relative border-l border-line pl-4">
           <span className="absolute top-1.5 -left-[5px] h-2.5 w-2.5 rounded-full bg-brand-600" />
           <div className="flex flex-wrap items-center gap-2">
@@ -132,6 +145,11 @@ export function CaseTimeline({
                 {t.proofPhotoCaption}
               </figcaption>
             </figure>
+          )}
+          {entry.photoMissing && (
+            <p role="status" className="mt-2 text-sm text-ink-subtle">
+              {copy[locale].photoViewer.gone}
+            </p>
           )}
           <p className="mt-1 text-xs text-ink-faint">
             {entry.occurredOn
