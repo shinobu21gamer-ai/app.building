@@ -391,8 +391,12 @@ export function SubmitConcernForm({
       ref={formRef}
       onSubmit={handleSubmit}
       onChange={(event) => {
-        if ((event.target as HTMLElement).id === "possible-duplicate-confirm") {
-          setAllowPossibleDuplicate((event.target as HTMLInputElement).checked);
+        const target = event.target;
+        if (
+          target instanceof HTMLInputElement &&
+          target.id === "possible-duplicate-confirm"
+        ) {
+          setAllowPossibleDuplicate(target.checked);
           return;
         }
         if (possibleDuplicate) {
