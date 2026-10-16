@@ -1785,6 +1785,11 @@ const en = {
       title: "How a case moves — who does what",
       lead: "Admin only validates the report (type, category, office). That is not done again. The assigned official then assesses, plans crew and cost, and does the work. Treasury funds it. The Captain closes it.",
       nextLabel: "Now on",
+      adminTitle: "Your step as administrator",
+      adminLead:
+        "Validate the report — type, category, office — then stop. The official, treasurer and Captain do everything after this. You are not stuck: open the queue and work the reports waiting there.",
+      adminAction: "Open the validation queue",
+      othersTitle: "After you validate (not your desk)",
     },
     recordTitle: "Case record",
     recordLead:
@@ -5185,6 +5190,11 @@ const fil: typeof en = {
       title: "Paano gumagalaw ang kaso — sino ang gumagawa",
       lead: "Admin lang ang nagva-validate ng ulat (uri, kategorya, tanggapan). Hindi iyon inuulit. Ang naka-assign na opisyal ang mag-a-assess, magpaplano ng crew at gastos, at gagawa ng trabaho. Treasury ang pondo. Kapitan ang nagsasara.",
       nextLabel: "Ngayon sa",
+      adminTitle: "Ang hakbang mo bilang administrador",
+      adminLead:
+        "I-validate ang ulat — uri, kategorya, tanggapan — tapos tumigil. Opisyal, treasurer at Kapitan ang susunod. Hindi ka nakastuck: buksan ang pila at gawin ang mga ulat na nakaabang.",
+      adminAction: "Buksan ang validation queue",
+      othersTitle: "Pagkatapos mong mag-validate (hindi desk mo)",
     },
     recordTitle: "Record ng kaso",
     recordLead:

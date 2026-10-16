@@ -120,25 +120,16 @@ export default async function ValidationQueuePage({
         description={t.validationQueueDesc}
       />
 
-      <Card title={flowCopy.guide.title} description={flowCopy.guide.lead}>
+      <Card title={flowCopy.guide.adminTitle} description={flowCopy.guide.adminLead}>
         <StepGuide
-          steps={(
-            [
-              flowCopy.steps.VALIDATE,
-              flowCopy.steps.ASSESS,
-              flowCopy.steps.FUND,
-              flowCopy.steps.CREW,
-              flowCopy.steps.START,
-              flowCopy.steps.WORK,
-              flowCopy.steps.VERIFY,
-              flowCopy.steps.CLOSE,
-            ] as const
-            ).map((step, index) => ({
-              title: step.title,
-              detail: step.lead,
-              who: step.who,
-              highlight: index === 0,
-            }))}
+          steps={[
+            {
+              title: flowCopy.steps.VALIDATE.title,
+              detail: flowCopy.steps.VALIDATE.lead,
+              who: flowCopy.steps.VALIDATE.who,
+              highlight: true,
+            },
+          ]}
         />
       </Card>
 

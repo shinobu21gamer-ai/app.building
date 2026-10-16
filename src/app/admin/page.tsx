@@ -106,26 +106,38 @@ export default async function AdminPage() {
         />
       </div>
 
-      <Card title={flowCopy.guide.title} description={flowCopy.guide.lead}>
-        <StepGuide
-          steps={(
-            [
-              flowCopy.steps.VALIDATE,
-              flowCopy.steps.ASSESS,
-              flowCopy.steps.FUND,
-              flowCopy.steps.CREW,
-              flowCopy.steps.START,
-              flowCopy.steps.WORK,
-              flowCopy.steps.VERIFY,
-              flowCopy.steps.CLOSE,
-            ] as const
-            ).map((step, index) => ({
+      <Card title={flowCopy.guide.adminTitle} description={flowCopy.guide.adminLead}>
+        <div className="space-y-4">
+          <StepGuide
+            steps={[
+              {
+                title: flowCopy.steps.VALIDATE.title,
+                detail: flowCopy.steps.VALIDATE.lead,
+                who: flowCopy.steps.VALIDATE.who,
+                highlight: true,
+              },
+            ]}
+          />
+          <Button href="/admin/validation">{flowCopy.guide.adminAction}</Button>
+          <StepGuide
+            title={flowCopy.guide.othersTitle}
+            steps={(
+              [
+                flowCopy.steps.ASSESS,
+                flowCopy.steps.FUND,
+                flowCopy.steps.CREW,
+                flowCopy.steps.START,
+                flowCopy.steps.WORK,
+                flowCopy.steps.VERIFY,
+                flowCopy.steps.CLOSE,
+              ] as const
+            ).map((step) => ({
               title: step.title,
               detail: step.lead,
               who: step.who,
-              highlight: index === 0,
             }))}
-        />
+          />
+        </div>
       </Card>
 
       <AlertComposer locale={locale} />
