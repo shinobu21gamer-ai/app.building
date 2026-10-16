@@ -143,6 +143,15 @@ function makeTx(seed: {
         state.vouchers.filter((row) =>
           where?.earmarkId === undefined || row.earmarkId === where.earmarkId
         ),
+      findFirst: async ({ where }: { where: Row }) => {
+        const excludedStatuses = (where.status as Row | undefined)?.notIn as string[] | undefined;
+        return state.vouchers.find((row) =>
+          row.concernId === where.concernId &&
+          row.payeeType === where.payeeType &&
+          row.payeeUserId === where.payeeUserId &&
+          !excludedStatuses?.includes(String(row.status))
+        ) ?? null;
+      },
       count: async () => state.vouchers.length,
       create: async ({ data }: { data: Row }) => {
         const voucher: Row = { id: state.nextId++, ...data };
@@ -182,7 +191,13 @@ function makeTx(seed: {
       },
     },
     user: {
-      findUnique: async ({ where }: { where: { id: number } }) => ({ id: where.id }),
+      findUnique: async ({ where }: { where: { id: number } }) => {
+        const user = state.users.find((row) => row.id === where.id);
+        return {
+          id: where.id,
+          role: { key: String((user?.role as Row | undefined)?.key ?? "RESIDENT") },
+        };
+      },
       // The earmark notifications look approvers up by role (and the case's
       // office by role + officeId). Filtered just far enough for those lookups
       // to be exercised; the money rules under test never read users.
@@ -232,6 +247,36 @@ function reservedEntry(amount: number, appropriation = 1000): Row {
 // ---------------------------------------------------------------------------
 
 describe("voucher preparation against a live balance", () => {
+  it("refuses a second active crew voucher for the same case and crew member", async () => {
+    const { tx, state } = makeTx({
+      appropriation: 5000,
+      users: [{ id: 88, role: { key: "CREW" } }],
+      vouchers: [{
+        id: 22,
+        voucherNumber: "DV-2026-10-0001",
+        allocationId: 1,
+        concernId: 9,
+        payeeType: "CREW",
+        payeeUserId: 88,
+        status: "DRAFT",
+        amount: 500,
+      }],
+    });
+
+    await expect(createDisbursement(tx, {
+      actor: treasurer,
+      allocationId: 1,
+      earmarkId: null,
+      concernId: 9,
+      payee: "Crew Member",
+      payeeType: "CREW",
+      payeeUserId: 88,
+      amount: 500,
+      particulars: "Crew labour",
+    })).rejects.toThrow(/already has voucher DV-2026-10-0001/);
+    expect(state.vouchers).toHaveLength(1);
+  });
+
   it("refuses a voucher bigger than what is available", async () => {
     const { tx } = makeTx({ appropriation: 1000 });
 

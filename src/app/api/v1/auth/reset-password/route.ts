@@ -94,7 +94,11 @@ export const POST = withErrorBoundary(async (req: Request) => {
 
     await tx.user.update({
       where: { id: user.id },
-      data: { passwordHash: newPasswordHash, tokenVersion: { increment: 1 } },
+      data: {
+        passwordHash: newPasswordHash,
+        tokenVersion: { increment: 1 },
+        loginLockedAt: null,
+      },
     });
   });
 

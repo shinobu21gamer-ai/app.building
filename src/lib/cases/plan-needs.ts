@@ -48,12 +48,13 @@ export function planNeeds(input: {
   const type = input.typeKey ?? null;
   const category = input.categoryCode ?? null;
 
-  if (category !== null && NO_WORKS_CATEGORIES.has(category)) return NO_WORKS;
+  // A validated service type is authoritative. Legacy/misclassified category
+  // values must not silently suppress the crew and budget plan for REPAIR.
+  if (type === "REPAIR") return WORKS;
   if (type === "DOCUMENTS") return NO_WORKS;
   if (type === "AYUDA" || type === "BUDGET") return MONEY_ONLY;
-  if (type === "REPAIR" || (category !== null && REPAIR_CATEGORIES.has(category))) {
-    return WORKS;
-  }
+  if (category !== null && NO_WORKS_CATEGORIES.has(category)) return NO_WORKS;
+  if (category !== null && REPAIR_CATEGORIES.has(category)) return WORKS;
   if (input.requiresCrew) return WORKS;
   if (input.requiresBudget) return MONEY_ONLY;
   return NO_WORKS;

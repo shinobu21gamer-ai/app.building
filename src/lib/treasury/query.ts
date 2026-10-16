@@ -320,7 +320,7 @@ export async function listEarmarks(
       committed: roundMoney(
         row.disbursements
           .filter((voucher) =>
-            ["SUBMITTED", "CERTIFIED", "APPROVED", "RELEASED", "LIQUIDATED"].includes(
+            ["DRAFT", "SUBMITTED", "CERTIFIED", "APPROVED", "RELEASED", "LIQUIDATED"].includes(
               voucher.status
             )
           )

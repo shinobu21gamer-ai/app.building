@@ -15,16 +15,14 @@ function similarity(left: Set<string>, right: Set<string>): number {
   return overlap / (left.size + right.size - overlap);
 }
 
-/** Finds a strong recent duplicate without blocking submission. */
+/** Finds a strong recent match across residents; the caller asks for confirmation before creating the linked report. */
 export async function findLikelyDuplicate(input: {
-  userId: number;
   categoryId: number;
   title: string;
   locationAddress: string;
 }): Promise<number | null> {
   const candidates = await db.concern.findMany({
     where: {
-      userId: input.userId,
       categoryId: input.categoryId,
       createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
       status: { not: "CLOSED" },
@@ -42,7 +40,7 @@ export async function findLikelyDuplicate(input: {
       const candidateTitle = normalize(candidate.title);
       const sameTitle = title === candidateTitle;
       const sameLocation = location === normalize(candidate.locationAddress);
-      return sameTitle || (sameLocation && similarity(titleTokens, tokens(candidate.title)) >= 0.7);
+      return sameLocation && (sameTitle || similarity(titleTokens, tokens(candidate.title)) >= 0.7);
     })?.id ?? null
   );
 }

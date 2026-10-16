@@ -18,26 +18,31 @@ export function LanguageToggle({
   }
 
   return (
-    <div
-      role="group"
-      aria-label={label}
-      className="inline-flex rounded-control border border-line p-0.5 text-xs font-semibold"
-    >
-      {(["en", "fil"] as const).map((value) => (
-        <button
-          key={value}
-          type="button"
-          aria-pressed={locale === value}
-          onClick={() => setLocale(value)}
-          className={
-            locale === value
-              ? "rounded-md bg-brand-700 px-2 py-1 text-white"
-              : "rounded-md px-2 py-1 text-ink-muted hover:bg-surface-sunken"
-          }
-        >
-          {value === "en" ? "EN" : "FIL"}
-        </button>
-      ))}
+    <div className="inline-flex items-center gap-1.5">
+      <span className="text-xs font-medium text-ink-muted">{label}</span>
+      <div
+        role="group"
+        aria-label={label}
+        className="inline-flex rounded-control border border-line p-0.5 text-xs font-semibold"
+      >
+        {(["en", "fil"] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            aria-label={value === "en" ? "English" : "Filipino"}
+            title={value === "en" ? "English" : "Filipino"}
+            aria-pressed={locale === value}
+            onClick={() => setLocale(value)}
+            className={
+              locale === value
+                ? "rounded-md bg-brand-700 px-2 py-1 text-white"
+                : "rounded-md px-2 py-1 text-ink-muted hover:bg-surface-sunken"
+            }
+          >
+            {value === "en" ? "EN" : "FIL"}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

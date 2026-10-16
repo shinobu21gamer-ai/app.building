@@ -137,6 +137,19 @@ export function VoucherForm({
       : (openEarmarks.find((row) => row.id === earmarkId) ?? null);
   const caseLockedToEarmark = selectedEarmark?.concernId ?? null;
   const caseRequired = payeeType === "CREW" || caseLockedToEarmark !== null;
+  const selectedCaseId = caseLockedToEarmark ?? concernId;
+  const linkedCaseId = selectedCaseId;
+  const crewTotal = crewLines.reduce((sum, line) => {
+    const amount = Number(line.amount);
+    return sum + (Number.isFinite(amount) && amount > 0 ? amount : 0);
+  }, 0);
+  const earmarkAvailable = selectedEarmark
+    ? Math.max(0, selectedEarmark.amount - selectedEarmark.committed)
+    : null;
+  const crewOverEarmark =
+    payeeType === "CREW" &&
+    earmarkAvailable !== null &&
+    crewTotal > earmarkAvailable + 0.005;
 
   const crewById = useMemo(
     () => new Map(crewMembers.map((member) => [member.id, member])),
@@ -195,48 +208,55 @@ export function VoucherForm({
         setError(t.crewPayNeedOne);
         return;
       }
+      const selectedCrewIds = rows.map((row) => row.member.id);
+      if (new Set(selectedCrewIds).size !== selectedCrewIds.length) {
+        setBusy(false);
+        setError(t.crewPayDuplicate);
+        return;
+      }
       if (linkedCase === null) {
         setBusy(false);
         setError(t.crewPayNeedCase);
         return;
       }
+      const batchTotal = rows.reduce((sum, row) => sum + row.amount, 0);
+      const availableOnEarmark = selectedEarmark
+        ? Math.max(0, selectedEarmark.amount - selectedEarmark.committed)
+        : 0;
+      if (batchTotal > availableOnEarmark + 0.005) {
+        setBusy(false);
+        setError(
+          t.crewPayOverEarmark
+            .replace("{total}", formatPeso(batchTotal))
+            .replace("{available}", formatPeso(availableOnEarmark))
+        );
+        return;
+      }
 
-      let prepared = 0;
-      for (const row of rows) {
-        const result = await apiRequest<{ voucherNumber: string }>(
-          "/api/v1/treasury/disbursements",
-          {
-            method: "POST",
-            body: JSON.stringify({
-              allocationId: Number(formData.get("allocationId")),
-              earmarkId,
-              concernId: linkedCase,
-              payee: row.member.name,
-              payeeType: "CREW",
+      const result = await apiRequest<{ vouchers: Array<{ voucherNumber: string }> }>(
+        "/api/v1/treasury/disbursements/crew-batch",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            allocationId: Number(formData.get("allocationId")),
+            earmarkId,
+            concernId: linkedCase,
+            crew: rows.map((row) => ({
               payeeUserId: row.member.id,
               amount: row.amount,
-              particulars:
-                particulars.trim() === ""
-                  ? `Crew labour — ${row.member.name}`
-                  : particulars,
-              modeOfPayment: modeOfPayment === "" ? undefined : modeOfPayment,
-            }),
-          }
-        );
-        if (!result.success) {
-          setBusy(false);
-          setError(
-            prepared > 0
-              ? `${t.crewPayPrepared.replace("{count}", String(prepared))} ${result.error.message}`
-              : result.error.message
-          );
-          router.refresh();
-          return;
+            })),
+            particulars: particulars.trim() || undefined,
+            modeOfPayment: modeOfPayment === "" ? undefined : modeOfPayment,
+          }),
         }
-        prepared += 1;
-      }
+      );
       setBusy(false);
-      setOpen(false);
+      if (!result.success) {
+        setError(result.error.message);
+        return;
+      }
+      setNotice(t.crewPayPrepared.replace("{count}", String(result.data.vouchers.length)));
+      setCrewLines([newLine()]);
       router.refresh();
       return;
     }
@@ -396,7 +416,7 @@ export function VoucherForm({
             ))}
           </select>
         </div>
-        {caseOptions.length > 0 && (
+        {payeeType !== "CREW" && (caseOptions.length > 0 || caseRequired) && (
           <div className="sm:col-span-2">
             <Label htmlFor="voucher-case" required={caseRequired}>
               {caseRequired ? t.linkedCaseRequired : t.linkedCase}
@@ -414,14 +434,22 @@ export function VoucherForm({
               }
               className={selectStyles}
             >
-              <option value="">—</option>
+              <option value="">
+                {caseOptions.length > 0 ? t.linkedCaseChoose : t.crewPayNoCases}
+              </option>
+              {selectedCaseId !== null &&
+                !caseOptions.some((option) => option.id === selectedCaseId) && (
+                  <option value={selectedCaseId}>Case #{selectedCaseId}</option>
+                )}
               {caseOptions.map((option) => (
                 <option key={option.id} value={option.id}>
                   {option.caseNumber} — {option.title}
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-ink-subtle">{t.linkedCaseHint}</p>
+            <p className="mt-1 text-xs text-ink-subtle">
+              {caseOptions.length === 0 ? t.crewPayNoCases : t.linkedCaseHint}
+            </p>
           </div>
         )}
       </div>
@@ -430,6 +458,35 @@ export function VoucherForm({
         <div className="space-y-3">
           <p className="text-sm font-semibold text-ink">{t.crewPayLines}</p>
           <p className="text-xs text-ink-subtle">{t.crewMemberHint}</p>
+          <div className="rounded-control border border-line bg-surface-sunken p-3">
+            <Label htmlFor="voucher-case" required>{t.linkedCaseRequired}</Label>
+            <select
+              id="voucher-case"
+              name="concernId"
+              required
+              value={caseLockedToEarmark ?? concernId ?? ""}
+              disabled={caseLockedToEarmark !== null}
+              onChange={(event) =>
+                setConcernId(event.target.value === "" ? null : Number(event.target.value))
+              }
+              className={selectStyles}
+            >
+              <option value="">
+                {caseOptions.length > 0 ? t.linkedCaseChoose : t.crewPayNoCases}
+              </option>
+              {selectedCaseId !== null && !caseOptions.some((option) => option.id === selectedCaseId) && (
+                <option value={selectedCaseId}>Case #{selectedCaseId}</option>
+              )}
+              {caseOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.caseNumber} — {option.title}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-ink-subtle">
+              {t.linkedCaseHint}
+            </p>
+          </div>
           {crewLines.map((line, index) => (
             <div key={line.key} className="grid gap-3 sm:grid-cols-[1fr_8rem_auto]">
               <select
@@ -447,12 +504,18 @@ export function VoucherForm({
                 className={selectStyles}
               >
                 <option value="">—</option>
-                {crewMembers.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.name}
-                    {member.trade ? ` · ${member.trade}` : ""}
-                  </option>
-                ))}
+                {crewMembers.map((member) => {
+                  const alreadySelected = crewLines.some(
+                    (other) =>
+                      other.key !== line.key && Number(other.userId) === member.id
+                  );
+                  return (
+                    <option key={member.id} value={member.id} disabled={alreadySelected}>
+                      {member.name}
+                      {member.trade ? ` · ${member.trade}` : ""}
+                    </option>
+                  );
+                })}
               </select>
               <Input
                 aria-label={t.amountLabel}
@@ -492,6 +555,25 @@ export function VoucherForm({
               ) : null}
             </div>
           ))}
+          <div className="rounded-control border border-line bg-surface-sunken px-3 py-2 text-sm">
+            <p className="font-semibold text-ink">
+              {t.crewPayTotal.replace("{total}", formatPeso(crewTotal))}
+            </p>
+            {earmarkAvailable !== null ? (
+              <p className="mt-1 text-ink-muted">
+                {t.crewPayAvailable.replace("{available}", formatPeso(earmarkAvailable))}
+              </p>
+            ) : (
+              <p className="mt-1 text-ink-subtle">{t.crewPayNeedEarmark}</p>
+            )}
+            {crewOverEarmark && earmarkAvailable !== null && (
+              <p role="alert" className="mt-1 font-medium text-danger-700">
+                {t.crewPayOverEarmark
+                  .replace("{total}", formatPeso(crewTotal))
+                  .replace("{available}", formatPeso(earmarkAvailable))}
+              </p>
+            )}
+          </div>
           <Button
             type="button"
             size="sm"
@@ -520,7 +602,14 @@ export function VoucherForm({
       </div>
 
       <div className="flex gap-2">
-        <Button type="submit" disabled={busy}>
+        <Button
+          type="submit"
+          disabled={
+            busy ||
+            crewOverEarmark ||
+            (payeeType === "CREW" && linkedCaseId === null)
+          }
+        >
           {busy ? common.saving : t.prepareVoucher}
         </Button>
         <Button

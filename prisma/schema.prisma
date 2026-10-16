@@ -197,6 +197,8 @@ model User {
   // Incremented whenever the user's password changes (self-change, admin
   // reset) so every previously-issued session JWT becomes invalid.
   tokenVersion Int      @default(0)
+  // Set when the account owner reports an unrecognized sign-in; password reset clears it.
+  loginLockedAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

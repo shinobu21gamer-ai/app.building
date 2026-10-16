@@ -14,6 +14,7 @@ import {
   setSessionCookie,
 } from "@/lib/auth/session";
 import { loginSchema } from "@/lib/validations/auth";
+import { isNewLoginContext } from "@/lib/auth/login-alert";
 import { recordAudit, requestMeta } from "@/lib/audit";
 import {
   checkLoginAllowed,
@@ -87,6 +88,32 @@ export const POST = withErrorBoundary(async (req: Request) => {
     throw createApiError.forbidden("Your account has been deactivated.");
   }
 
+  if (user.loginLockedAt) {
+    await recordAudit({
+      action: "LOGIN_SECURITY_LOCKED",
+      resourceType: "user",
+      resourceId: String(user.id),
+      description: "Login blocked because the account is secured after an unrecognized sign-in report.",
+      userId: user.id,
+      ip,
+      userAgent,
+    });
+    throw createApiError.forbidden(
+      "This account was secured after an unrecognized sign-in. Contact a barangay administrator for a reset code, then reset your password to unlock it."
+    );
+  }
+
+  const previousLogin = await db.audit.findFirst({
+    where: {
+      userId: user.id,
+      action: "LOGIN_SUCCESS",
+      createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
+    },
+    orderBy: { createdAt: "desc" },
+    select: { userAgent: true, ip: true },
+  });
+  const isNewContext = isNewLoginContext(previousLogin, { userAgent, ip });
+
   await clearLoginFailures(data.email);
   await recordAudit({
     action: "LOGIN_SUCCESS",
@@ -106,6 +133,28 @@ export const POST = withErrorBoundary(async (req: Request) => {
     tv: user.tokenVersion,
   });
   await setSessionCookie(token);
+
+  if (isNewContext) {
+    try {
+      const detectedAt = new Intl.DateTimeFormat("en-PH", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Asia/Manila",
+      }).format(new Date());
+      await db.notification.create({
+        data: {
+          userId: user.id,
+          concernId: null,
+          type: "LOGIN_SECURITY_ALERT",
+          title: "Was this sign-in you?",
+          message: `A sign-in from a different browser, device, or network was detected on ${detectedAt}. If this was not you, choose “Not me” to sign out all sessions.`,
+        },
+      });
+    } catch (error) {
+      // A security inbox alert must never prevent a valid user from signing in.
+      console.error("[auth] could not create new-browser login alert:", error);
+    }
+  }
 
   return ok({
     user: publicUser(user),

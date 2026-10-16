@@ -301,6 +301,32 @@ export const MODES_OF_PAYMENT = [
   "PAYROLL",
 ] as const;
 
+export const disbursementCrewBatchSchema = z
+  .object({
+    allocationId: z.coerce.number().int().positive("Pick an allocation."),
+    earmarkId: z.coerce.number().int().positive("Pick an approved earmark."),
+    concernId: z.coerce.number().int().positive("Link the case this payment is for."),
+    crew: z.array(z.object({
+      payeeUserId: z.coerce.number().int().positive(),
+      amount: amountSchema("Each crew voucher amount"),
+    })).min(1).max(20),
+    particulars: optionalText(300),
+    modeOfPayment: z.enum(MODES_OF_PAYMENT).optional(),
+  })
+  .superRefine((value, ctx) => {
+    const seen = new Set<number>();
+    value.crew.forEach((line, index) => {
+      if (seen.has(line.payeeUserId)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["crew", index, "payeeUserId"],
+          message: "Select each crew member only once.",
+        });
+      }
+      seen.add(line.payeeUserId);
+    });
+  });
+
 export const disbursementCreateSchema = z.object({
   allocationId: z.coerce.number().int().positive("Pick an allocation."),
   earmarkId: nullableId("Earmark"),
