@@ -70,11 +70,14 @@ export default async function AdminPage() {
         <Button href="/admin/validation" size="sm">
           {t.startValidation}
         </Button>
+        <Button href="/admin/field-checks" size="sm" variant="outline">
+          {t.startFieldChecks}
+        </Button>
+        <Button href="/admin/verification" size="sm" variant="outline">
+          {t.startVerification}
+        </Button>
         <Button href="/admin/users" size="sm" variant="outline">
           {t.startUsers}
-        </Button>
-        <Button href="/admin/crew" size="sm" variant="outline">
-          {t.startCrew}
         </Button>
       </div>
 
@@ -111,9 +114,17 @@ export default async function AdminPage() {
           <StepGuide
             steps={[
               {
+                title: flowCopy.steps.CHECK.title,
+                detail: flowCopy.steps.CHECK.lead,
+                who: flowCopy.steps.CHECK.who,
+                yoursLabel: flowCopy.youDoThis,
+                highlight: true,
+              },
+              {
                 title: flowCopy.steps.VALIDATE.title,
                 detail: flowCopy.steps.VALIDATE.lead,
                 who: flowCopy.steps.VALIDATE.who,
+                yoursLabel: flowCopy.youDoThis,
                 highlight: true,
               },
             ]}
@@ -135,6 +146,7 @@ export default async function AdminPage() {
               title: step.title,
               detail: step.lead,
               who: step.who,
+              yoursLabel: flowCopy.notYouTitle,
             }))}
           />
         </div>

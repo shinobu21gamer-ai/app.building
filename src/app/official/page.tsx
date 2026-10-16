@@ -9,9 +9,12 @@ import { Button } from "@/components/ui/button";
 import { PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ConcernFilters } from "@/components/cases/concern-filters";
-import { FieldCheckSubmitForm } from "@/components/cases/field-check-panel";
+import {
+  FieldCheckHeading,
+  FieldCheckSubmitForm,
+} from "@/components/cases/field-check-panel";
 import { parseConcernFilters } from "@/lib/cases/query";
-import { concernProcessFlow } from "@/lib/cases/process-flow";
+import { concernProcessFlow, roleActsOnProcessStep } from "@/lib/cases/process-flow";
 import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import { getOfficialDashboard } from "@/lib/dashboards/official";
 import { fundedAmountsByConcern } from "@/lib/treasury/query";
@@ -94,11 +97,13 @@ export default async function OfficialPage({
       return [
         concern.id,
         current
-          ? `${flowCopy.stepOf
-              .replace("{current}", String(current.number))
-              .replace("{total}", String(flow.steps.length))} · ${
-              flowCopy.steps[current.key].title
-            }`
+          ? `${
+              roleActsOnProcessStep(user.role.key, current.key, {
+                block: current.block,
+              })
+                ? flowCopy.youDoThis
+                : flowCopy.notYouTitle
+            } · ${flowCopy.steps[current.key].title}`
           : flow.closedUnfounded
             ? flowCopy.unfoundedNote
             : flowCopy.closedNote,
@@ -166,11 +171,12 @@ export default async function OfficialPage({
                 key={check.id}
                 className="space-y-2 rounded-xl border border-line p-4"
               >
-                <p className="text-sm font-medium text-ink">
-                  {fieldCheckCopy.caseLabel} {check.concern.caseNumber} ·{" "}
-                  {check.concern.title}
-                </p>
-                <p className="text-sm text-ink-subtle">{check.instructions}</p>
+                <FieldCheckHeading
+                  caseNumber={check.concern.caseNumber}
+                  title={check.concern.title}
+                  instructions={check.instructions}
+                  locale={locale}
+                />
                 {check.reviewNote && (
                   <p className="rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                     {fieldCheckCopy.reviewNote}: {check.reviewNote}
@@ -360,7 +366,11 @@ export default async function OfficialPage({
       <DeskGuide
         title={t.howToTitle}
         lead={t.howToLead}
-        steps={t.howToSteps}
+        steps={t.howToSteps.map((step, index) => ({
+          ...step,
+          yoursLabel: index === 2 ? flowCopy.notYouTitle : flowCopy.youDoThis,
+          highlight: index !== 2,
+        }))}
         mistakesTitle={howTo.ifWrong}
         mistakes={t.howToIfWrong}
         helpLabel={howTo.help}

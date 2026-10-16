@@ -8,6 +8,8 @@
 export type NavItem = {
   href: string;
   label: string;
+  /** Sidebar/More grouping. Same label on consecutive items makes one heading. */
+  section?: string;
 };
 
 /**

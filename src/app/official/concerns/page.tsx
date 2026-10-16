@@ -12,7 +12,7 @@ import {
   listConcerns,
   parseConcernFilters,
 } from "@/lib/cases/query";
-import { concernProcessFlow } from "@/lib/cases/process-flow";
+import { concernProcessFlow, roleActsOnProcessStep } from "@/lib/cases/process-flow";
 import { fundedAmountsByConcern } from "@/lib/treasury/query";
 import { formatDate } from "@/lib/format";
 import { firstParam } from "@/lib/utils";
@@ -100,11 +100,13 @@ export default async function OfficialConcernsPage({
       return [
         concern.id,
         current
-          ? `${flowCopy.stepOf
-              .replace("{current}", String(current.number))
-              .replace("{total}", String(flow.steps.length))} · ${
-              flowCopy.steps[current.key].title
-            }`
+          ? `${
+              roleActsOnProcessStep(user.role.key, current.key, {
+                block: current.block,
+              })
+                ? flowCopy.youDoThis
+                : flowCopy.notYouTitle
+            } · ${flowCopy.steps[current.key].title}`
           : flow.closedUnfounded
             ? flowCopy.unfoundedNote
             : flowCopy.closedNote,

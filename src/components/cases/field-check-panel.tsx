@@ -89,6 +89,37 @@ function LocationLine({
 
 type Copy = (typeof copy)["en"]["revamp"]["workflow"]["fieldCheck"];
 
+/**
+ * Case number, title, and the note the admin (or official) sent with the
+ * check. Without a "Notes:" label that line looked like more of the title.
+ */
+export function FieldCheckHeading({
+  caseNumber,
+  title,
+  instructions,
+  locale = "en",
+}: {
+  caseNumber: string;
+  title: string;
+  instructions: string;
+  locale?: Locale;
+}) {
+  const t = copy[locale].revamp.workflow.fieldCheck;
+  return (
+    <div className="space-y-1">
+      <p className="text-sm font-medium text-ink break-words">
+        {t.caseLabel} {caseNumber} · {title}
+      </p>
+      {instructions.trim() ? (
+        <p className="text-sm text-ink">
+          <span className="font-medium">{t.notes}:</span>{" "}
+          <span className="whitespace-pre-wrap break-words">{instructions}</span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function findingLabel(t: Copy, finding: string | null): string {
   if (finding === "CONFIRMED") return t.findingConfirmed;
   if (finding === "NOT_CONFIRMED") return t.findingNotConfirmed;
@@ -305,7 +336,14 @@ export function FieldCheckPanel({
                     {t.assignedTo}: {check.assigneeName} · {t.requestedBy} {check.requestedByName}
                   </span>
                 </div>
-                <p className="text-sm text-ink">{check.instructions}</p>
+                {check.instructions.trim() ? (
+                  <p className="text-sm text-ink">
+                    <span className="font-medium">{t.notes}:</span>{" "}
+                    <span className="whitespace-pre-wrap break-words">
+                      {check.instructions}
+                    </span>
+                  </p>
+                ) : null}
                 <LocationLine
                   location={location}
                   labels={{

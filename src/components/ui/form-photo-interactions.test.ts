@@ -105,7 +105,14 @@ describe("photo interactions", () => {
     await act(async () => root.render(createElement(UploadedPhoto, { src, alt: "Proof" })));
     await act(async () => {
       await fetchMock.mock.results[0]?.value;
+      await Promise.resolve();
     });
+    const broken = container.querySelector("img");
+    if (broken) {
+      await act(async () => {
+        broken.dispatchEvent(new Event("error"));
+      });
+    }
     expect(container.textContent).toContain("This photo could not be loaded");
     fetchMock.mockResolvedValue({
       ok: true,

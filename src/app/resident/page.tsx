@@ -22,6 +22,7 @@ import {
   getIdentityState,
   isIdentityGateEnabled,
 } from "@/lib/identity/verification";
+import { notificationHref } from "@/lib/notifications/href";
 
 export const metadata: Metadata = {
   title: "Resident Dashboard",
@@ -190,13 +191,15 @@ export default async function ResidentPage() {
                   </div>
                 );
 
+                const href = notificationHref({
+                  type: notification.type,
+                  role: "RESIDENT",
+                  concernId: notification.concernId,
+                });
                 return (
                   <li key={notification.id}>
-                    {notification.concernId ? (
-                      <Link
-                        href={`/resident/concerns/${notification.concernId}`}
-                        className="block py-3 hover:bg-surface-muted"
-                      >
+                    {href ? (
+                      <Link href={href} className="block py-3 hover:bg-surface-muted">
                         {body}
                       </Link>
                     ) : (

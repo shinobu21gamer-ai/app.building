@@ -40,6 +40,7 @@ const en = {
     retry: "Try again",
     loading: "Loading photo…",
     unavailable: "This photo could not be loaded. Try again or sign in again. If it is still missing, contact the hall.",
+    gone: "This photo is on the case record but the file is not on the server. Ask the hall — it may have been uploaded before storage was set up.",
     scrollHint: "Scroll to inspect the full-size photo.",
   },
   photoPicker: {
@@ -627,6 +628,7 @@ const en = {
     empty: "No notifications yet. Updates about your concerns will appear here.",
     emptyUnread: "You have no unread notifications.",
     new: "New",
+    open: "Open",
   },
   official: {
     navDashboard: "Dashboard",
@@ -720,6 +722,10 @@ const en = {
   },
   admin: {
     navDashboard: "Dashboard",
+    navSectionWork: "Today's work",
+    navSectionPeople: "People",
+    navSectionHall: "Hall setup",
+    navSectionRecords: "Records",
     navReports: "Reports",
     navUsers: "Users",
     crew: {
@@ -930,6 +936,8 @@ const en = {
       },
     ],
     startValidation: "Open the validation queue",
+    startFieldChecks: "Open field checks",
+    startVerification: "Open ID verification",
     startUsers: "Open users",
     startCrew: "Open the crew roster",
     totalCases: "Total cases",
@@ -1469,6 +1477,8 @@ const en = {
     residentLabel: "Resident",
     description: "Description",
     supportingImage: "Supporting image",
+    photoMissing:
+      "This photo is on the case record but the file is not on the server. Ask the hall.",
     overridden: "overridden",
     automatedTitle: "Automated recommendation",
     automatedDesc:
@@ -1628,6 +1638,19 @@ const en = {
     unfoundedNote:
       "The field check did not confirm this report, so the case was closed as unfounded. The steps that never happened are marked as not needed, and the resident was told why.",
     deskYou: "You",
+    youDoThis: "You do this now",
+    notYouTitle: "Not you",
+    waitingOn: "Waiting for {desk}. You cannot do this step from this account.",
+    waitingPerson: "Waiting for {name} at {desk}. You cannot do this step from this account.",
+    youAre: "You — {name}",
+    heldBy: "{name}",
+    noNamedOfficial:
+      "No person is assigned. {desk} holds this as a pool — assign an official so people know who to email.",
+    yourPartDone:
+      "Your part of this case is finished. Leave it for {desk} — you are not stuck.",
+    waitingHint: "There is nothing for you to fill in on this step.",
+    doThisBelow: "Use the form on this step. Save when it is complete.",
+    leaveCase: "Leave this case",
     // Step 8 when the reader recorded the resolution: the independent check is
     // somebody else's, and the card has to say so instead of "You".
     deskVerifyOther: "A colleague in the office, or the Captain",
@@ -1639,6 +1662,10 @@ const en = {
     deskCrew: "Crew on site",
     deskCaptain: "Captain's office",
     yourTurn: "Your turn",
+    yoursLater: "Yours later",
+    yoursDone: "You already did this",
+    laterYoursHint: "Finish step {number} first. Then this step is yours.",
+    notNeededHint: "This step is not needed on this case.",
     steps: {
       CHECK: {
         title: "Check that the report is real",
@@ -1650,6 +1677,18 @@ const en = {
           "Send an official or a crew member to look at the site.",
           "They record the finding: real, not real, or could not verify.",
           "Approve the finding. A report that is not real closes the case as unfounded.",
+        ],
+        todoOfficial: [
+          "Read the report, the location and the photo.",
+          "Send an official or a crew member to look at the site.",
+          "They record the finding: real, not real, or could not verify.",
+          "Stop. Admin approves the finding — you do not.",
+        ],
+        todoAdmin: [
+          "Read the report, the location and the photo.",
+          "Review the site photo and the finding.",
+          "Approve the finding. A report that is not real closes the case as unfounded.",
+          "Then validate the type. Do not plan crew or cost.",
         ],
       },
       VALIDATE: {
@@ -1667,7 +1706,7 @@ const en = {
       ASSESS: {
         title: "Assess and plan the work",
         owner: "Official",
-        who: "Assigned official — not admin. Plan manpower and cost.",
+        who: "The named official plans manpower and cost. Admin does not do this step.",
         lead: "The official who holds the case does the four checks, then plans manpower and cost. This is new work, not a repeat of admin validation.",
         todo: [
           "Work through the four checks: eligibility, inspection, resources, approval.",
@@ -1680,11 +1719,30 @@ const en = {
         title: "Wait for the budget",
         owner: "Treasurer → Captain",
         who: "Treasurer sets money aside; Captain approves — not admin, not the case official.",
+        whoOfficial:
+          "You send the case to Awaiting budget. You do not set money aside or approve it.",
+        whoMoney:
+          "Treasurer certifies funds; Captain approves. The case official does not approve money.",
         lead: "Every case stops here: the estimate goes to the treasury and the money is set aside before any work starts.",
         todo: [
           "Save the cost estimate, then move the case to Awaiting budget.",
           "The treasurer prepares an earmark for this case; the Captain approves it.",
           "Work cannot start until the amount set aside covers the cost estimate.",
+        ],
+        todoOfficial: [
+          "The cost estimate must already be saved.",
+          "Move the case to Awaiting budget so the treasury can see it.",
+          "Stop. You do not certify or approve money.",
+        ],
+        todoTreasury: [
+          "Prepare an earmark that covers the cost estimate.",
+          "Certify that funds are available.",
+          "The Captain approves. You do not approve spending or close the case.",
+        ],
+        todoCaptain: [
+          "The treasurer has certified funds.",
+          "Approve the earmark if it covers the estimate.",
+          "You do not assess the case, assign crew, or certify funds yourself.",
         ],
       },
       CREW: {
@@ -3473,6 +3531,7 @@ const fil: typeof en = {
     retry: "Subukan muli",
     loading: "Nilo-load ang larawan…",
     unavailable: "Hindi ma-load ang larawan. Subukan muli o mag-sign in ulit. Kung wala pa rin, makipag-ugnayan sa hall.",
+    gone: "Naka-rekord ang litrato pero wala ang file sa server. Tanungin ang hall — baka na-upload ito bago naka-setup ang storage.",
     scrollHint: "Mag-scroll para makita ang buong larawan.",
   },
   photoPicker: {
@@ -4060,6 +4119,7 @@ const fil: typeof en = {
     empty: "Wala pang abiso. Lalabas dito ang update sa iyong concern.",
     emptyUnread: "Wala kang hindi pa nababasang abiso.",
     new: "Bago",
+    open: "Buksan",
   },
   official: {
     navDashboard: "Dashboard",
@@ -4153,6 +4213,10 @@ const fil: typeof en = {
   },
   admin: {
     navDashboard: "Dashboard",
+    navSectionWork: "Trabaho ngayon",
+    navSectionPeople: "Mga tao",
+    navSectionHall: "Setup ng hall",
+    navSectionRecords: "Mga rekord",
     navReports: "Mga ulat",
     navUsers: "Mga user",
     crew: {
@@ -4363,6 +4427,8 @@ const fil: typeof en = {
       },
     ],
     startValidation: "Buksan ang validation queue",
+    startFieldChecks: "Buksan ang field checks",
+    startVerification: "Buksan ang ID verification",
     startUsers: "Buksan ang users",
     startCrew: "Buksan ang crew roster",
     totalCases: "Lahat ng kaso",
@@ -4906,6 +4972,8 @@ const fil: typeof en = {
     residentLabel: "Residente",
     description: "Deskripsyon",
     supportingImage: "Litrato",
+    photoMissing:
+      "Naka-rekord ang litrato pero wala ang file sa server. Tanungin ang hall.",
     overridden: "na-override",
     automatedTitle: "Automated na rekomendasyon",
     automatedDesc:
@@ -5065,6 +5133,19 @@ const fil: typeof en = {
     unfoundedNote:
       "Hindi nakumpirma ng pagsusuri sa lugar na totoo ang reklamong ito, kaya isinara ang kaso bilang walang batayan. Ang mga hakbang na hindi nangyari ay minarkahan na hindi kailangan, at sinabihan ang residente kung bakit.",
     deskYou: "Ikaw",
+    youDoThis: "Ikaw ang gagawa nito ngayon",
+    notYouTitle: "Hindi ikaw",
+    waitingOn: "Sa {desk} ang hakbang na ito. Hindi mo ito magagawa sa account na ito.",
+    waitingPerson: "Si {name} sa {desk} ang may hawak. Hindi mo ito magagawa sa account na ito.",
+    youAre: "Ikaw — {name}",
+    heldBy: "{name}",
+    noNamedOfficial:
+      "Walang naka-assign na tao. Ang {desk} ang may hawak bilang pool — mag-assign ng opisyal para may malinaw na i-email.",
+    yourPartDone:
+      "Tapos na ang parte mo sa kasong ito. Iwanan mo ito sa {desk} — hindi ka natigil.",
+    waitingHint: "Walang form na pupunuan ka rito.",
+    doThisBelow: "Gamitin ang form sa hakbang na ito. I-save kapag tapos na.",
+    leaveCase: "Umalis sa kasong ito",
     deskVerifyOther: "Kasamahan sa tanggapan, o ang Kapitan",
     deskAdmin: "Admin desk",
     deskCheck: "Admin desk, kasama ang taong ipapadala sa lugar",
@@ -5074,6 +5155,10 @@ const fil: typeof en = {
     deskCrew: "Crew sa site",
     deskCaptain: "Tanggapan ng kapitan",
     yourTurn: "Ikaw ngayon",
+    yoursLater: "Sa iyo mamaya",
+    yoursDone: "Tapos mo na ito",
+    laterYoursHint: "Tapusin muna ang hakbang {number}. Pagkatapos, sa iyo ang hakbang na ito.",
+    notNeededHint: "Hindi kailangan ang hakbang na ito sa kasong ito.",
     steps: {
       CHECK: {
         title: "Tiyakin na totoo ang reklamo",
@@ -5085,6 +5170,18 @@ const fil: typeof en = {
           "Magpadala ng official o crew member para tingnan ang lugar.",
           "Itatala niya ang resulta: totoo, hindi totoo, o hindi ma-verify.",
           "Aprubahan ang resulta. Ang reklamong hindi totoo ay isinasara bilang walang batayan.",
+        ],
+        todoOfficial: [
+          "Basahin ang ulat, ang lokasyon at ang litrato.",
+          "Magpadala ng official o crew member para tingnan ang lugar.",
+          "Itatala niya ang resulta: totoo, hindi totoo, o hindi ma-verify.",
+          "Tigil. Admin ang mag-aapruba ng finding — hindi ikaw.",
+        ],
+        todoAdmin: [
+          "Basahin ang ulat, ang lokasyon at ang litrato.",
+          "I-review ang litrato sa lugar at ang finding.",
+          "Aprubahan ang finding. Ang reklamong hindi totoo ay isinasara bilang walang batayan.",
+          "Tapos i-validate ang type. Huwag magplano ng crew o gastos.",
         ],
       },
       VALIDATE: {
@@ -5102,7 +5199,7 @@ const fil: typeof en = {
       ASSESS: {
         title: "I-assess at planuhin ang trabaho",
         owner: "Opisyal",
-        who: "Naka-assign na opisyal — hindi admin. Planuhin ang manpower at gastos.",
+        who: "Ang nakapangalang opisyal ang magpaplano ng manpower at gastos. Hindi ito trabaho ng admin.",
         lead: "Ang opisyal na may hawak ng kaso ang gumagawa ng apat na check, tapos nagpaplano ng manpower at gastos. Ito ay bagong trabaho, hindi ulit ng validation ng admin.",
         todo: [
           "Tapusin ang apat na check: eligibility, inspection, resources, approval.",
@@ -5115,11 +5212,30 @@ const fil: typeof en = {
         title: "Hintayin ang budget",
         owner: "Treasurer → Kapitan",
         who: "Treasurer ang nagtatabi ng pera; Kapitan ang mag-aapruba — hindi admin, hindi ang opisyal ng kaso.",
+        whoOfficial:
+          "Ikaw ang magpapadala ng kaso sa Awaiting budget. Hindi ikaw ang nagtatabi o nag-aapruba ng pera.",
+        whoMoney:
+          "Treasurer ang nagce-certify ng pondo; Kapitan ang mag-aapruba. Hindi inaaprubahan ng opisyal ng kaso ang pera.",
         lead: "Lahat ng kaso ay dumadaan dito: napupunta sa treasury ang estimate at may nakalaang pondo bago magsimula ang trabaho.",
         todo: [
           "Ilipat ang kaso sa Awaiting budget para maaksyunan ng treasury.",
           "Maghahanda ang treasurer ng earmark para sa kasong ito; ang Kapitan ang mag-aaprubahan nito.",
           "Hindi pa puwedeng magsimula ang trabaho hangga't hindi sakop ng nakalaang halaga ang estimate.",
+        ],
+        todoOfficial: [
+          "Nakasa-save na dapat ang cost estimate.",
+          "Ilipat ang kaso sa Awaiting budget para makita ng treasury.",
+          "Tigil. Hindi ikaw ang magce-certify o mag-aapruba ng pera.",
+        ],
+        todoTreasury: [
+          "Maghanda ng earmark na sasakop sa cost estimate.",
+          "I-certify na may available na pondo.",
+          "Ang Kapitan ang mag-aapruba. Hindi ikaw ang mag-aapruba ng gastos o magsasara ng kaso.",
+        ],
+        todoCaptain: [
+          "Na-certify na ng treasurer ang pondo.",
+          "Aprubahan ang earmark kung sakop nito ang estimate.",
+          "Hindi ikaw mag-a-assess, mag-a-assign ng crew, o magce-certify ng pondo.",
         ],
       },
       CREW: {

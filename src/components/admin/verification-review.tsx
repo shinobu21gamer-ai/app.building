@@ -7,6 +7,7 @@ import { FieldError, FormMessage, Label, Textarea } from "@/components/ui/field"
 import { apiRequest } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
 import { copy, type Locale } from "@/lib/i18n";
+import { UploadedPhoto } from "@/components/ui/uploaded-photo";
 
 type Submission = {
   userId: number;
@@ -44,8 +45,9 @@ const STATUS_TONE: Record<string, "amber" | "green" | "red" | "gray"> = {
  * Identity verification queue.
  *
  * The ID number itself is never sent to the browser: only the stored last four
- * characters and a link to the uploaded image, which is itself gated and
- * logged when an administrator opens someone else's document.
+ * characters and the uploaded image. That file is gated by the session cookie
+ * (same as case proof photos), so it is shown in-page — opening it in a new
+ * tab would fail because the tab does not send that cookie.
  */
 export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
   const t = copy[locale].revamp.adminDesk;
@@ -57,6 +59,7 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
   const [reasonError, setReasonError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [openImageFor, setOpenImageFor] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     const query = status === "" ? "" : `?status=${encodeURIComponent(status)}`;
@@ -168,15 +171,18 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
                     <Badge tone={STATUS_TONE[submission.status] ?? "gray"}>
                       {submission.status}
                     </Badge>
-                    {submission.idImageUrl && (
-                      <a
-                        className="text-xs text-brand-700 underline"
-                        href={submission.idImageUrl}
-                        target="_blank"
-                        rel="noreferrer"
+                    {submission.idImageUrl && openImageFor !== submission.userId && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setOpenImageFor(submission.userId)}
                       >
                         {t.viewDoc}
-                      </a>
+                      </Button>
+                    )}
+                    {submission.hasIdImage && !submission.idImageUrl && (
+                      <p className="text-xs text-ink-muted">{t.viewDoc}: —</p>
                     )}
                     {submission.status === "PENDING" && (
                       <>
@@ -206,6 +212,17 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
                     )}
                   </div>
                 </div>
+
+                {submission.idImageUrl && openImageFor === submission.userId && (
+                  <div className="mt-3 border-t border-line pt-3">
+                    <p className="mb-2 text-xs font-medium text-ink">{t.viewDoc}</p>
+                    <UploadedPhoto
+                      src={submission.idImageUrl}
+                      alt={`${submission.resident.name} — ${t.identityDoc}`}
+                      locale={locale}
+                    />
+                  </div>
+                )}
 
                 {rejectingId === submission.userId && (
                   <div className="mt-3 space-y-2 border-t border-line pt-3">

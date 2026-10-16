@@ -14,8 +14,17 @@ export function UploadedPhoto(props: { src: string; alt: string; locale?: Locale
   return <Photo key={`${props.src}:${props.locale ?? "en"}`} {...props} />;
 }
 
+/** Same-origin path for stored upload URLs that kept a host. */
+function sameOriginUpload(src: string): string {
+  if (src.startsWith("data:")) return src;
+  const marker = "/api/v1/uploads/";
+  const index = src.indexOf(marker);
+  return index >= 0 ? src.slice(index) : src;
+}
+
 function Photo({ src, alt, locale = "en" }: { src: string; alt: string; locale?: Locale }) {
   const t = copy[locale].photoViewer;
+  const href = sameOriginUpload(src);
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [displaySrc, setDisplaySrc] = useState<string | null>(null);
@@ -28,16 +37,32 @@ function Photo({ src, alt, locale = "en" }: { src: string; alt: string; locale?:
     setFailed(false);
     setDisplaySrc(null);
 
+    // Server-inlined photos (data URLs) skip the extra fetch.
+    if (href.startsWith("data:")) {
+      setDisplaySrc(href);
+      return;
+    }
+
     async function load() {
       try {
-        const response = await fetch(src, { credentials: "include", cache: "no-store" });
+        const response = await fetch(href, { credentials: "include", cache: "no-store" });
         if (!response.ok) throw new Error("unavailable");
         const blob = await response.blob();
-        if (!blob.type.startsWith("image/")) throw new Error("unavailable");
+        // Some hosts omit Content-Type or send octet-stream; the file is still
+        // an image (the upload API only stores jpg/png/webp). Reject JSON/HTML
+        // error bodies so a login page never renders as a "photo".
+        const mime = blob.type.toLowerCase();
+        const looksLikeImage =
+          mime.startsWith("image/") ||
+          mime === "application/octet-stream" ||
+          mime === "";
+        if (!looksLikeImage) throw new Error("unavailable");
         objectUrl = URL.createObjectURL(blob);
         if (!cancelled) setDisplaySrc(objectUrl);
       } catch {
-        if (!cancelled) setFailed(true);
+        // Same-origin <img> still sends the session cookie. Use it when fetch
+        // is blocked (preview hosts, missing Content-Type, etc.).
+        if (!cancelled) setDisplaySrc(href);
       }
     }
 
@@ -46,7 +71,7 @@ function Photo({ src, alt, locale = "en" }: { src: string; alt: string; locale?:
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [src, attempt]);
+  }, [href, attempt]);
 
   useEffect(() => {
     if (!open) return;
@@ -84,7 +109,12 @@ function Photo({ src, alt, locale = "en" }: { src: string; alt: string; locale?:
         ) : displaySrc ? (
           // Natural size inside a scroll box; do not crop proof photos.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={displaySrc} alt={alt} className="h-auto w-full rounded-lg object-contain" />
+          <img
+            src={displaySrc}
+            alt={alt}
+            className="h-auto w-full rounded-lg object-contain"
+            onError={() => setFailed(true)}
+          />
         ) : (
           <p className="p-6 text-center text-sm text-ink-muted">{t.loading}</p>
         )}

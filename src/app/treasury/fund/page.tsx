@@ -157,7 +157,16 @@ export default async function TreasuryFundCasePage({
       />
 
       <Card title={t.howTitle} description={t.howLead}>
-        <StepGuide steps={t.howSteps} />
+        <StepGuide
+          steps={t.howSteps.map((step, index) => ({
+            ...step,
+            yoursLabel:
+              index === 1
+                ? copy[locale].flow.youDoThis
+                : copy[locale].flow.notYouTitle,
+            highlight: index === 1,
+          }))}
+        />
       </Card>
 
       {actionable.length === 0 ? (

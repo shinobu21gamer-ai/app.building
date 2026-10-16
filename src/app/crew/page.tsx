@@ -5,7 +5,10 @@ import { Card } from "@/components/ui/card";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { CrewJobForm } from "@/components/cases/crew-job-form";
 import { StepGuide } from "@/components/cases/step-guide";
-import { FieldCheckSubmitForm } from "@/components/cases/field-check-panel";
+import {
+  FieldCheckHeading,
+  FieldCheckSubmitForm,
+} from "@/components/cases/field-check-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DeskGuide } from "@/components/portals/desk-guide";
@@ -100,10 +103,12 @@ export default async function CrewHomePage() {
           <ul className="space-y-4">
             {fieldChecks.map((check) => (
               <li key={check.id} className="space-y-2 rounded-xl border border-line p-4">
-                <p className="text-sm font-medium text-ink">
-                  {t.fieldCheck.caseLabel} {check.concern.caseNumber} · {check.concern.title}
-                </p>
-                <p className="text-sm text-ink-subtle">{check.instructions}</p>
+                <FieldCheckHeading
+                  caseNumber={check.concern.caseNumber}
+                  title={check.concern.title}
+                  instructions={check.instructions}
+                  locale={locale}
+                />
                 {check.reviewNote && (
                   <p className="rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                     {t.fieldCheck.reviewNote}: {check.reviewNote}
@@ -204,12 +209,13 @@ export default async function CrewHomePage() {
                         // the crew's job; before that, checking the plan is.
                         const current =
                           job.concern.status === "IN_PROGRESS" ? 2 : 0;
+                        const yours = index === current;
                         return {
                           title: step.title,
                           detail: step.detail,
-                          highlight: index === current,
-                          stateLabel:
-                            index === current ? flowCopy.currentBadge : undefined,
+                          highlight: yours,
+                          yoursLabel: yours ? flowCopy.youDoThis : flowCopy.yoursLater,
+                          stateLabel: yours ? flowCopy.yourTurn : flowCopy.laterBadge,
                         };
                       })}
                     />

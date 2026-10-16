@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge, PriorityBadge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { StepGuide } from "@/components/cases/step-guide";
-import { concernProcessFlow } from "@/lib/cases/process-flow";
+import { concernProcessFlow, roleActsOnProcessStep } from "@/lib/cases/process-flow";
 import { fundedAmountsByConcern } from "@/lib/treasury/query";
 import { formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
@@ -22,9 +22,9 @@ export const dynamic = "force-dynamic";
 type View = "queue" | "done" | "all";
 
 /**
- * Admin validation queue: submitted concerns that still need a confirmed
- * service type (or that are sitting in SUBMITTED), plus — behind the second tab
- * — the reports whose validation is finished.
+ * Admin validation queue: concerns the admin has not saved validation on
+ * (`validatedAt` is empty — a type from filing does not count), plus — behind
+ * the second tab — the reports whose validation is finished.
  *
  * "How do I know a report is done?" is the question this desk exists to answer,
  * so each row carries the four checks validation consists of (type, category,
@@ -48,7 +48,7 @@ export default async function ValidationQueuePage({
   const [queue, done] = await Promise.all([
     db.concern.findMany({
       where: {
-        OR: [{ typeId: null }, { status: "SUBMITTED" }],
+        validatedAt: null,
         status: { notIn: ["RESOLVED", "CLOSED"] },
       },
       orderBy: { submittedAt: "asc" },
@@ -70,8 +70,8 @@ export default async function ValidationQueuePage({
     }),
     db.concern.findMany({
       where: {
-        typeId: { not: null },
-        status: { notIn: ["SUBMITTED", "RESOLVED", "CLOSED"] },
+        validatedAt: { not: null },
+        status: { notIn: ["RESOLVED", "CLOSED"] },
       },
       orderBy: { validatedAt: "desc" },
       take: 100,
@@ -124,9 +124,17 @@ export default async function ValidationQueuePage({
         <StepGuide
           steps={[
             {
+              title: flowCopy.steps.CHECK.title,
+              detail: flowCopy.steps.CHECK.lead,
+              who: flowCopy.steps.CHECK.who,
+              yoursLabel: flowCopy.youDoThis,
+              highlight: true,
+            },
+            {
               title: flowCopy.steps.VALIDATE.title,
               detail: flowCopy.steps.VALIDATE.lead,
               who: flowCopy.steps.VALIDATE.who,
+              yoursLabel: flowCopy.youDoThis,
               highlight: true,
             },
           ]}
@@ -219,15 +227,24 @@ export default async function ValidationQueuePage({
                     </ul>
 
                     {current && (
-                      <p className="mt-1 text-xs font-medium text-brand-800">
-                        {t.validationNext.replace(
-                          "{step}",
-                          `${flowCopy.stepOf
-                            .replace("{current}", String(current.number))
-                            .replace("{total}", String(flow.steps.length))} · ${
-                            flowCopy.steps[current.key].title
-                          }`
+                      <p
+                        className={cn(
+                          "mt-1 text-xs font-medium",
+                          roleActsOnProcessStep("ADMIN", current.key, {
+                            block: current.block,
+                          })
+                            ? "text-brand-800"
+                            : "text-amber-800"
                         )}
+                      >
+                        {roleActsOnProcessStep("ADMIN", current.key, {
+                          block: current.block,
+                        })
+                          ? `${flowCopy.youDoThis} · ${flowCopy.steps[current.key].title}`
+                          : `${flowCopy.notYouTitle} · ${flowCopy.waitingOn.replace(
+                              "{desk}",
+                              flowCopy.steps[current.key].owner
+                            )}`}
                       </p>
                     )}
                   </div>
