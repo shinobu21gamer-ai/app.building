@@ -59,6 +59,10 @@ describe("private uploaded photo access", () => {
     actor(3, "CAPTAIN"); mocks.concern.mockResolvedValue(owner);
     expect((await get()).status).toBe(200);
   });
+  it("allows the treasurer to see case photos when comparing an earmark", async () => {
+    actor(5, "TREASURER"); mocks.concern.mockResolvedValue(owner);
+    expect((await get()).status).toBe(200);
+  });
   it("does not grant the Captain access to residents' ID photos", async () => {
     actor(3, "CAPTAIN"); mocks.identity.mockResolvedValue({ userId: 1 });
     await expect(get()).rejects.toThrow("403");
@@ -73,7 +77,12 @@ describe("private uploaded photo access", () => {
     actor(8, "CREW"); mocks.fieldCheck.mockResolvedValue({ concern: owner, assigneeId: 8 });
     expect((await get()).status).toBe(200);
     expect(mocks.fieldCheck).toHaveBeenCalledWith(expect.objectContaining({
-      where: { findingPhotoUrl: `/api/v1/uploads/${filename}` },
+      where: {
+        OR: [
+          { findingPhotoUrl: `/api/v1/uploads/${filename}` },
+          { findingPhotoUrl: { endsWith: `/${filename}` } },
+        ],
+      },
     }));
   });
   it("denies an unrelated crew member access to a field-check photo", async () => {
@@ -93,7 +102,12 @@ describe("private uploaded photo access", () => {
     await expect(get()).rejects.toThrow("404");
     expect(mocks.read).not.toHaveBeenCalled();
     expect(mocks.disbursement).toHaveBeenCalledWith(expect.objectContaining({
-      where: { proofUrl: `/api/v1/uploads/${filename}` },
+      where: {
+        OR: [
+          { proofUrl: `/api/v1/uploads/${filename}` },
+          { proofUrl: { endsWith: `/${filename}` } },
+        ],
+      },
     }));
   });
   it("serves a voucher receipt to the treasurer and the Captain only", async () => {
