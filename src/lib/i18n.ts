@@ -627,6 +627,7 @@ const en = {
     empty: "No notifications yet. Updates about your concerns will appear here.",
     emptyUnread: "You have no unread notifications.",
     new: "New",
+    open: "Open",
   },
   official: {
     navDashboard: "Dashboard",
@@ -4104,6 +4105,7 @@ const fil: typeof en = {
     empty: "Wala pang abiso. Lalabas dito ang update sa iyong concern.",
     emptyUnread: "Wala kang hindi pa nababasang abiso.",
     new: "Bago",
+    open: "Buksan",
   },
   official: {
     navDashboard: "Dashboard",

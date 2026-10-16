@@ -33,7 +33,15 @@ function Photo({ src, alt, locale = "en" }: { src: string; alt: string; locale?:
         const response = await fetch(src, { credentials: "include", cache: "no-store" });
         if (!response.ok) throw new Error("unavailable");
         const blob = await response.blob();
-        if (!blob.type.startsWith("image/")) throw new Error("unavailable");
+        // Some hosts omit Content-Type or send octet-stream; the file is still
+        // an image (the upload API only stores jpg/png/webp). Reject JSON/HTML
+        // error bodies so a login page never renders as a "photo".
+        const mime = blob.type.toLowerCase();
+        const looksLikeImage =
+          mime.startsWith("image/") ||
+          mime === "application/octet-stream" ||
+          mime === "";
+        if (!looksLikeImage) throw new Error("unavailable");
         objectUrl = URL.createObjectURL(blob);
         if (!cancelled) setDisplaySrc(objectUrl);
       } catch {

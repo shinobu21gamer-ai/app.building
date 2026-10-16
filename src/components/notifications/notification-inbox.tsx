@@ -9,6 +9,7 @@ import { FormMessage } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 import { copy, type Locale } from "@/lib/i18n";
+import { notificationHref } from "@/lib/notifications/href";
 
 export type NotificationItem = {
   id: number;
@@ -22,12 +23,6 @@ export type NotificationItem = {
 };
 
 type Filter = "all" | "unread";
-
-function caseHref(role: string, concernId: number): string {
-  return role === "RESIDENT"
-    ? `/resident/concerns/${concernId}`
-    : `/official/concerns/${concernId}`;
-}
 
 /**
  * Notifications inbox. Every row is produced by a real domain event on the
@@ -58,19 +53,22 @@ export function NotificationInbox({
       ? items.filter((item) => !item.isRead)
       : items;
 
-  async function markRead(item: NotificationItem) {
+  async function markRead(item: NotificationItem, options?: { refresh?: boolean }) {
     if (item.isRead) return;
-    setError(null);
-    setSuccess(null);
-    setBusy(true);
+    const refresh = options?.refresh !== false;
+    if (refresh) {
+      setError(null);
+      setSuccess(null);
+      setBusy(true);
+    }
     const result = await apiRequest<{ notification: NotificationItem }>(
       `/api/v1/notifications/${item.id}`,
       { method: "PATCH", body: JSON.stringify({ isRead: true }) }
     );
-    setBusy(false);
+    if (refresh) setBusy(false);
 
     if (!result.success) {
-      setError(result.error.message);
+      if (refresh) setError(result.error.message);
       return;
     }
     setItems((current) =>
@@ -87,7 +85,7 @@ export function NotificationInbox({
         detail: { unreadCount: nextUnreadCount },
       })
     );
-    router.refresh();
+    if (refresh) router.refresh();
   }
 
   async function markAllRead() {
@@ -170,55 +168,79 @@ export function NotificationInbox({
         <ul className="divide-y divide-line rounded-card border border-line bg-surface">
           {visible.map((item) => {
             const unread = !item.isRead;
-            return (
-              <li
-                key={item.id}
-                className={unread ? "bg-brand-50/40 px-4 py-4" : "px-4 py-4"}
-              >
-                <div className="flex items-start gap-3">
-                  <span
-                    className={
-                      unread
-                        ? "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-brand-600"
-                        : "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-slate-200"
-                    }
-                    aria-hidden
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-ink">
-                        {item.title}
-                      </p>
-                      {unread && <Badge tone="blue">{t.new}</Badge>}
-                    </div>
-                    <p className="mt-1 text-sm text-ink-muted">{item.message}</p>
+            const href = notificationHref({
+              type: item.type,
+              role,
+              concernId: item.concern?.id ?? null,
+            });
+            const rowClass = unread
+              ? "block bg-brand-50/40 px-4 py-4"
+              : "block px-4 py-4";
+            const row = (
+              <div className="flex items-start gap-3">
+                <span
+                  className={
+                    unread
+                      ? "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-brand-600"
+                      : "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-slate-200"
+                  }
+                  aria-hidden
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-ink">
+                      {item.title}
+                    </p>
+                    {unread && <Badge tone="blue">{t.new}</Badge>}
+                  </div>
+                  <p className="mt-1 text-sm text-ink-muted">{item.message}</p>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-subtle">
-                      <span>{formatDateTime(item.createdAt)}</span>
-                      {item.concern && (
-                        <Link
-                          href={caseHref(role, item.concern.id)}
-                          className="font-medium text-brand-700 hover:text-brand-800"
-                        >
-                          {item.concern.caseNumber} · {item.concern.title}
-                        </Link>
-                      )}
-                    </div>
-
-                    {unread && (
-                      <div className="mt-2">
-                        <button
-                          type="button"
-                          onClick={() => markRead(item)}
-                          disabled={busy}
-                          className="rounded-md px-2 py-1 text-xs font-semibold text-ink-muted transition-[background-color,color] duration-150 hover:bg-surface-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:opacity-50"
-                        >
-                          {t.markRead}
-                        </button>
-                      </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-subtle">
+                    <span>{formatDateTime(item.createdAt)}</span>
+                    {item.concern && (
+                      <span className="font-medium text-brand-700">
+                        {item.concern.caseNumber} · {item.concern.title}
+                      </span>
+                    )}
+                    {href && (
+                      <span className="font-semibold text-brand-700">{t.open}</span>
                     )}
                   </div>
+
+                  {unread && (
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void markRead(item);
+                        }}
+                        disabled={busy}
+                        className="rounded-md px-2 py-1 text-xs font-semibold text-ink-muted transition-[background-color,color] duration-150 hover:bg-surface-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 disabled:opacity-50"
+                      >
+                        {t.markRead}
+                      </button>
+                    </div>
+                  )}
                 </div>
+              </div>
+            );
+            return (
+              <li key={item.id}>
+                {href ? (
+                  <Link
+                    href={href}
+                    onClick={() => {
+                      if (!item.isRead) void markRead(item, { refresh: false });
+                    }}
+                    className={`${rowClass} hover:bg-surface-sunken/60`}
+                  >
+                    {row}
+                  </Link>
+                ) : (
+                  <div className={rowClass}>{row}</div>
+                )}
               </li>
             );
           })}
