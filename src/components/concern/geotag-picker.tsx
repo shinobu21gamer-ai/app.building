@@ -289,7 +289,9 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <Label htmlFor="geotag-lat">{t.geotagLat}</Label>
+          <Label htmlFor="geotag-lat" optional>
+            {t.geotagLat}
+          </Label>
           <Input
             id="geotag-lat"
             type="number"
@@ -309,7 +311,9 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
           />
         </div>
         <div>
-          <Label htmlFor="geotag-lng">{t.geotagLng}</Label>
+          <Label htmlFor="geotag-lng" optional>
+            {t.geotagLng}
+          </Label>
           <Input
             id="geotag-lng"
             type="number"
@@ -328,7 +332,9 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
           />
         </div>
         <div>
-          <Label htmlFor="geotag-purok">{t.geotagPurok}</Label>
+          <Label htmlFor="geotag-purok" optional>
+            {t.geotagPurok}
+          </Label>
           <Input
             id="geotag-purok"
             maxLength={100}
@@ -340,7 +346,9 @@ export function GeotagPicker({ locale = "en" }: { locale?: Locale }) {
           />
         </div>
         <div>
-          <Label htmlFor="geotag-source">{t.geotagSource}</Label>
+          <Label htmlFor="geotag-source" optional>
+            {t.geotagSource}
+          </Label>
           <select
             id="geotag-source"
             value={value.source}

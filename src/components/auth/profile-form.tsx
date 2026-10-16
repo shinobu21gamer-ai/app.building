@@ -132,7 +132,9 @@ export function ProfileForm({
       </div>
 
       <div>
-        <Label htmlFor="phone">{t.phone}</Label>
+        <Label htmlFor="phone" optional>
+          {t.phone}
+        </Label>
         <Input
           id="phone"
           type="tel"
@@ -158,7 +160,9 @@ export function ProfileForm({
       </div>
 
       <div>
-        <Label htmlFor="address">{t.address}</Label>
+        <Label htmlFor="address" optional>
+          {t.address}
+        </Label>
         <Input
           id="address"
           value={form.address}

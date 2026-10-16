@@ -149,7 +149,9 @@ export function ReassignForm({
       </div>
 
       <div>
-        <Label htmlFor="assign-official">{t.assignOfficial}</Label>
+        <Label htmlFor="assign-official" optional>
+          {t.assignOfficial}
+        </Label>
         <select
           id="assign-official"
           value={officialId}

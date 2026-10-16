@@ -205,7 +205,15 @@ export default async function OfficialConcernDetailPage({
           official: { select: { firstName: true, lastName: true } },
         },
       },
-      type: { select: { id: true, name: true, key: true } },
+      type: {
+        select: {
+          id: true,
+          name: true,
+          key: true,
+          requiresCrew: true,
+          requiresBudget: true,
+        },
+      },
       caseAssessment: {
         include: { materials: { orderBy: { sortOrder: "asc" } } },
       },

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FieldError, FormMessage, Input, Label } from "@/components/ui/field";
+import { FieldError, FieldRequirement, FormMessage, Input, Label } from "@/components/ui/field";
 import { PhotoPicker } from "@/components/ui/photo-picker";
 import { apiRequest } from "@/lib/api-client";
 import { extractFieldErrors } from "@/lib/validation-errors";
@@ -171,6 +171,9 @@ export function VerificationForm({
             <div>
               <Label htmlFor="identity-type-label">
                 {t.verification.idTypeLabel}
+                <span className="ml-1">
+                  <FieldRequirement required />
+                </span>
               </Label>
               <Input
                 id="identity-type-label"

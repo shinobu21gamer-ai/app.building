@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  FieldRequirement,
   FormMessage,
   Label,
   Select,
@@ -160,7 +161,10 @@ export function FieldCheckSubmitForm({
       />
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-ink">{t.finding}</legend>
+        <legend className="flex flex-wrap items-baseline justify-between gap-2 text-sm font-medium text-ink">
+          <span>{t.finding}</span>
+          <FieldRequirement required />
+        </legend>
         {(["CONFIRMED", "NOT_CONFIRMED", "CANNOT_VERIFY"] as const).map((value) => (
           <label key={value} className="flex items-center gap-2 text-sm">
             <input
@@ -175,7 +179,9 @@ export function FieldCheckSubmitForm({
         ))}
       </fieldset>
       <div className="space-y-1">
-        <Label htmlFor={`notes-${checkId}`}>{t.notes}</Label>
+        <Label htmlFor={`notes-${checkId}`} optional>
+          {t.notes}
+        </Label>
         <Textarea
           id={`notes-${checkId}`}
           rows={3}
@@ -350,7 +356,9 @@ export function FieldCheckPanel({
                       <p className="text-sm text-warn">{t.closeWarning}</p>
                     )}
                     <div className="space-y-1">
-                      <Label htmlFor={`review-${check.id}`}>{t.reviewNote}</Label>
+                      <Label htmlFor={`review-${check.id}`} optional>
+                        {t.reviewNote}
+                      </Label>
                       <Textarea
                         id={`review-${check.id}`}
                         rows={2}
@@ -405,7 +413,9 @@ export function FieldCheckPanel({
           <form onSubmit={request} className="space-y-3 border-t border-line pt-4">
             <h3 className="text-sm font-semibold text-ink">{t.requestTitle}</h3>
             <div className="space-y-1">
-              <Label htmlFor="fc-assignee">{t.assignee}</Label>
+              <Label htmlFor="fc-assignee" required>
+                {t.assignee}
+              </Label>
               <Select
                 id="fc-assignee"
                 value={assigneeId}
@@ -423,7 +433,9 @@ export function FieldCheckPanel({
               )}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="fc-instructions">{t.instructions}</Label>
+              <Label htmlFor="fc-instructions" required>
+                {t.instructions}
+              </Label>
               <Textarea
                 id="fc-instructions"
                 rows={3}

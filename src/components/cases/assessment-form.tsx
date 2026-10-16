@@ -7,6 +7,7 @@ import {
   FormMessage,
   Input,
   Label,
+  RequiredLegend,
   Textarea,
 } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
@@ -384,7 +385,9 @@ export function AssessmentForm({
     defaultValue: string | null
   ) => (
     <div>
-      <Label htmlFor={name}>{label}</Label>
+      <Label htmlFor={name} optional>
+        {label}
+      </Label>
       <Textarea id={name} name={name} rows={2} maxLength={1000} defaultValue={defaultValue ?? ""} />
     </div>
   );
@@ -399,6 +402,7 @@ export function AssessmentForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       {success && <FormMessage tone="success">{success}</FormMessage>}
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
+      <RequiredLegend>{copy[locale].revamp.requiredLegend}</RequiredLegend>
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-semibold text-ink">{t.planStep1}</legend>
@@ -512,7 +516,9 @@ export function AssessmentForm({
             </p>
           </div>
           <div>
-            <Label htmlFor="scheduledStart">{t.scheduledStart}</Label>
+            <Label htmlFor="scheduledStart" optional>
+              {t.scheduledStart}
+            </Label>
             <Input
               id="scheduledStart"
               name="scheduledStartAt"
@@ -522,7 +528,9 @@ export function AssessmentForm({
             />
           </div>
           <div>
-            <Label htmlFor="scheduledEnd">{t.scheduledEnd}</Label>
+            <Label htmlFor="scheduledEnd" optional>
+              {t.scheduledEnd}
+            </Label>
             <Input
               id="scheduledEnd"
               name="scheduledEndAt"
@@ -596,7 +604,9 @@ export function AssessmentForm({
                     </button>
                   </div>
                   <div>
-                    <Label htmlFor={`material-name-${line.id}`}>{t.materialName}</Label>
+                    <Label htmlFor={`material-name-${line.id}`} required>
+                      {t.materialName}
+                    </Label>
                     <Input
                       id={`material-name-${line.id}`}
                       value={line.name}
@@ -609,7 +619,9 @@ export function AssessmentForm({
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <div>
-                      <Label htmlFor={`material-qty-${line.id}`}>{t.materialQuantity}</Label>
+                      <Label htmlFor={`material-qty-${line.id}`} optional>
+                        {t.materialQuantity}
+                      </Label>
                       <Input
                         id={`material-qty-${line.id}`}
                         value={line.quantity}
@@ -623,7 +635,9 @@ export function AssessmentForm({
                       />
                     </div>
                     <div>
-                      <Label htmlFor={`material-unit-${line.id}`}>{t.materialUnit}</Label>
+                      <Label htmlFor={`material-unit-${line.id}`} optional>
+                        {t.materialUnit}
+                      </Label>
                       <Input
                         id={`material-unit-${line.id}`}
                         value={line.unit}
@@ -635,7 +649,9 @@ export function AssessmentForm({
                       />
                     </div>
                     <div>
-                      <Label htmlFor={`material-price-${line.id}`}>{t.materialUnitPrice}</Label>
+                      <Label htmlFor={`material-price-${line.id}`} optional>
+                        {t.materialUnitPrice}
+                      </Label>
                       <Input
                         id={`material-price-${line.id}`}
                         value={line.unitPrice}
@@ -649,7 +665,9 @@ export function AssessmentForm({
                       />
                     </div>
                     <div>
-                      <Label htmlFor={`material-amount-${line.id}`}>{t.materialAmount}</Label>
+                      <Label htmlFor={`material-amount-${line.id}`} optional>
+                        {t.materialAmount}
+                      </Label>
                       <Input
                         id={`material-amount-${line.id}`}
                         value={lineAmount(line)}
@@ -688,7 +706,9 @@ export function AssessmentForm({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="laborCost">{t.labor}</Label>
+            <Label htmlFor="laborCost" optional>
+              {t.labor}
+            </Label>
             <Input
               id="laborCost"
               name="laborCost"
@@ -701,7 +721,9 @@ export function AssessmentForm({
             <p className="mt-1 text-xs text-ink-subtle">{t.laborHint}</p>
           </div>
           <div>
-            <Label htmlFor="equipmentCost">{t.equipmentCost}</Label>
+            <Label htmlFor="equipmentCost" optional>
+              {t.equipmentCost}
+            </Label>
             <Input
               id="equipmentCost"
               name="equipmentCost"
@@ -712,7 +734,9 @@ export function AssessmentForm({
             />
           </div>
           <div>
-            <Label htmlFor="otherCost">{t.other}</Label>
+            <Label htmlFor="otherCost" optional>
+              {t.other}
+            </Label>
             <Input
               id="otherCost"
               name="otherCost"

@@ -11,6 +11,12 @@ const en = {
   openMenu: "Open menu",
   closeMenu: "Close menu",
   language: "Language",
+  fieldMark: {
+    required: "Required",
+    optional: "Optional",
+    legend:
+      "Fields marked Required must be filled in. Fields marked Optional can be skipped.",
+  },
   reportingExperience: {
     draftTitle: "Keep a draft before you leave",
     draftHint: "Save only if this is your own device. Text is kept in this tab session for up to 24 hours and cleared at sign-out. Photos and GPS pins are not saved. A draft is not submitted automatically.",
@@ -334,7 +340,7 @@ const en = {
       "Official, treasurer, captain, crew and admin accounts are issued by the barangay. Only residents create an account here.",
   },
   register: {
-    requiredLegend: "* Required field",
+    requiredLegend: "Fields marked Required must be filled in. Fields marked Optional can be skipped.",
     invalidValue: "Invalid value",
     consentTitle: "Consent",
     consentLegend:
@@ -353,8 +359,8 @@ const en = {
     firstName: "First name",
     lastName: "Last name",
     email: "Email",
-    phone: "Phone (optional)",
-    address: "Address (optional)",
+    phone: "Phone",
+    address: "Address",
     addressPlaceholder: "Purok, street, barangay",
     password: "Password",
     passwordHint:
@@ -494,7 +500,7 @@ const en = {
     ],
   },
   submit: {
-    requiredLegend: "* Required field",
+    requiredLegend: "Fields marked Required must be filled in. Fields marked Optional can be skipped.",
     title: "Submit a Concern",
     lead: "Describe the community concern. A case number will be generated and you can track its status from My Concerns.",
     unavailable:
@@ -503,7 +509,7 @@ const en = {
     concernTitle: "Concern title",
     titlePlaceholder: "e.g. Broken street light on Mabini Street",
     category: "Category",
-    typeLabel: "Service type (optional)",
+    typeLabel: "Service type",
     typeHelp:
       "Suggest the kind of help you need. The barangay confirms the type when it validates your concern.",
     typeUnset: "Not sure yet — let the barangay decide",
@@ -594,11 +600,11 @@ const en = {
     emailLocked: "Email cannot be changed.",
     firstName: "First name",
     lastName: "Last name",
-    phone: "Phone (optional)",
+    phone: "Phone",
     phoneKeep: "Saved number: {phone}. Leave blank to keep it, or enter a new number.",
     phoneRemove: "Remove saved number",
     phoneRemoved: "The saved number will be removed when you save.",
-    address: "Address (optional)",
+    address: "Address",
     save: "Save changes",
     saving: "Saving…",
     saved: "Profile updated.",
@@ -1328,7 +1334,7 @@ const en = {
     actionDateInvalid: "Pick a real calendar day.",
     actionDateFuture: "That day is in the future. Use today or an earlier day.",
     actionDateTooOld: "That day is too early. The earliest allowed day is {date}.",
-    proofPhoto: "Proof photo (required)",
+    proofPhoto: "Proof photo",
     proofPhotoHint:
       "Every status update needs a photo as proof. JPEG, PNG, or WebP, up to 5 MB. Residents and your office can see it.",
     proofRequired:
@@ -1424,7 +1430,7 @@ const en = {
     noOffices: "No active offices are available for assignment.",
     selectOffice: "Select an office to assign this concern to.",
     assignOffice: "Responsible office",
-    assignOfficial: "Specific official (optional)",
+    assignOfficial: "Specific official",
     assignAny: "Assign to the office (any official)",
     assignOfficialHint:
       "Whoever is selected is recorded on the assignment; all officials in the office are notified.",
@@ -1533,7 +1539,7 @@ const en = {
     rating3: "3 — Neutral",
     rating2: "2 — Dissatisfied",
     rating1: "1 — Very dissatisfied",
-    comment: "Comment (optional)",
+    comment: "Comment",
     commentPlaceholder: "Anything else you would like the barangay to know?",
     thanks: "Thank you for your feedback.",
     updated: "Your feedback has been updated.",
@@ -1876,7 +1882,7 @@ const en = {
       typeScope: "Service type",
       priorityScope: "Priority",
       notifyRoles: "Also notify (comma separated)",
-      requiredLegend: "* Required field",
+      requiredLegend: "Fields marked Required must be filled in. Fields marked Optional can be skipped.",
       saved: "Policy saved.",
       runsTitle: "Escalation runs",
       runsLead: "The last runs of the hourly job, straight from the job's own record.",
@@ -1966,7 +1972,7 @@ const en = {
       previous: "Previous",
       next: "Next",
     },
-    requiredLegend: "* Required field",
+    requiredLegend: "Fields marked Required must be filled in. Fields marked Optional can be skipped.",
     common: {
       save: "Save",
       saving: "Saving...",
@@ -2024,7 +2030,7 @@ const en = {
       navCodes: "Codes and funds",
       navApprovals: "Approvals",
       navFundCase: "Fund a case",
-      requiredLegend: "* Required field",
+      requiredLegend: "Fields marked Required must be filled in. Fields marked Optional can be skipped.",
       open: "Open",
       dashboardTitle: "Treasury",
       dashboardLead: "Live MOOE balances, what is waiting on an approval, and how old the pending vouchers are.",
@@ -3438,6 +3444,12 @@ const fil: typeof en = {
   openMenu: "Buksan ang menu",
   closeMenu: "Isara ang menu",
   language: "Wika",
+  fieldMark: {
+    required: "Kinakailangan",
+    optional: "Opsyonal",
+    legend:
+      "Dapat lagyan ang mga field na may markang Kinakailangan. Puwedeng laktawan ang may markang Opsyonal.",
+  },
   reportingExperience: {
     draftTitle: "Mag-save ng draft bago umalis",
     draftHint: "Mag-save lang sa sarili mong device. Ang teksto ay nasa tab session nang hanggang 24 oras at nabubura sa pag-sign out. Hindi kasama ang larawan o GPS pin. Hindi awtomatikong ipinapasa ang draft.",
@@ -3761,7 +3773,7 @@ const fil: typeof en = {
       "Ang account ng opisyal, treasurer, captain, crew at admin ay ibinibigay ng barangay. Mga residente lang ang gumagawa ng account dito.",
   },
   register: {
-    requiredLegend: "* Kinakailangang field",
+    requiredLegend: "Dapat lagyan ang mga field na may markang Kinakailangan. Puwedeng laktawan ang may markang Opsyonal.",
     invalidValue: "Hindi valid na value",
     consentTitle: "Pahintulot",
     consentLegend:
@@ -3780,8 +3792,8 @@ const fil: typeof en = {
     firstName: "Pangalan",
     lastName: "Apelyido",
     email: "Email",
-    phone: "Telepono (opsyonal)",
-    address: "Address (opsyonal)",
+    phone: "Telepono",
+    address: "Address",
     addressPlaceholder: "Purok, kalye, barangay",
     password: "Password",
     passwordHint:
@@ -3921,7 +3933,7 @@ const fil: typeof en = {
     ],
   },
   submit: {
-    requiredLegend: "* Kinakailangang field",
+    requiredLegend: "Dapat lagyan ang mga field na may markang Kinakailangan. Puwedeng laktawan ang may markang Opsyonal.",
     title: "Maghain ng Concern",
     lead: "Ilarawan ang community concern. Bibigyan ka ng case number na masusundan sa Mga Concern Ko.",
     unavailable:
@@ -3930,7 +3942,7 @@ const fil: typeof en = {
     concernTitle: "Pamagat",
     titlePlaceholder: "hal. Sira na ilaw sa Mabini Street",
     category: "Kategorya",
-    typeLabel: "Uri ng serbisyo (opsyonal)",
+    typeLabel: "Uri ng serbisyo",
     typeHelp:
       "Iminungkahi ang uri ng tulong na kailangan. Kukumpirmahin ito ng barangay kapag binalidate ang concern.",
     typeUnset: "Hindi sigurado — hayaan ang barangay ang magpasya",
@@ -4021,11 +4033,11 @@ const fil: typeof en = {
     emailLocked: "Hindi puwedeng palitan ang email.",
     firstName: "Pangalan",
     lastName: "Apelyido",
-    phone: "Telepono (opsyonal)",
+    phone: "Telepono",
     phoneKeep: "Naka-save na numero: {phone}. Iwang blangko para panatilihin, o ilagay ang bagong numero.",
     phoneRemove: "Alisin ang naka-save na numero",
     phoneRemoved: "Maaalis ang naka-save na numero kapag nag-save ka.",
-    address: "Address (opsyonal)",
+    address: "Address",
     save: "I-save",
     saving: "Sine-save…",
     saved: "Na-update ang profile.",
@@ -4759,7 +4771,7 @@ const fil: typeof en = {
       "Nasa hinaharap ang araw na iyon. Gamitin ang ngayon o isang naunang araw.",
     actionDateTooOld:
       "Masyadong maaga ang araw na iyon. Ang pinakaunang pinapayagan ay {date}.",
-    proofPhoto: "Litratong patunay (kailangan)",
+    proofPhoto: "Litratong patunay",
     proofPhotoHint:
       "Kailangan ng litratong patunay ang bawat pagbabago ng status. JPEG, PNG, o WebP, hanggang 5 MB. Makikita ito ng residente at ng inyong opisina.",
     proofRequired:
@@ -4855,7 +4867,7 @@ const fil: typeof en = {
     noOffices: "Walang active na opisina para sa assignment.",
     selectOffice: "Pumili ng opisina na pag-aassignan ng concern.",
     assignOffice: "Opisinang responsable",
-    assignOfficial: "Tiyak na opisyal (opsyonal)",
+    assignOfficial: "Tiyak na opisyal",
     assignAny: "I-assign sa opisina (sinumang opisyal)",
     assignOfficialHint:
       "Naitatala ang napiling opisyal sa assignment; aabisuhan ang lahat ng opisyal sa opisina.",
@@ -4964,7 +4976,7 @@ const fil: typeof en = {
     rating3: "3 — Neutral",
     rating2: "2 — Hindi satisfied",
     rating1: "1 — Napakasama",
-    comment: "Komento (opsyonal)",
+    comment: "Komento",
     commentPlaceholder: "May gusto ka pa bang malaman ng barangay?",
     thanks: "Salamat sa iyong feedback.",
     updated: "Na-update ang iyong feedback.",
@@ -5307,7 +5319,7 @@ const fil: typeof en = {
       typeScope: "Uri ng serbisyo",
       priorityScope: "Priyoridad",
       notifyRoles: "Abisuhan din (hiwalay ng kuwit)",
-      requiredLegend: "* Kinakailangang field",
+      requiredLegend: "Dapat lagyan ang mga field na may markang Kinakailangan. Puwedeng laktawan ang may markang Opsyonal.",
       saved: "Nai-save ang patakaran.",
       runsTitle: "Mga pagpapatakbo ng escalation",
       runsLead: "Ang huling pagtakbo ng oras-oras na job, mula mismo sa talaan nito.",
@@ -5398,7 +5410,7 @@ const fil: typeof en = {
       previous: "Nauna",
       next: "Susunod",
     },
-    requiredLegend: "* Kinakailangang field",
+    requiredLegend: "Dapat lagyan ang mga field na may markang Kinakailangan. Puwedeng laktawan ang may markang Opsyonal.",
     common: {
       save: "I-save",
       saving: "Sine-save...",
@@ -5456,7 +5468,7 @@ const fil: typeof en = {
       navCodes: "Codes at pondo",
       navApprovals: "Mga aprobasyon",
       navFundCase: "Pondohan ang kaso",
-      requiredLegend: "* Kinakailangang field",
+      requiredLegend: "Dapat lagyan ang mga field na may markang Kinakailangan. Puwedeng laktawan ang may markang Opsyonal.",
       open: "Buksan",
       dashboardTitle: "Treasury",
       dashboardLead: "Buhay na balanse ng MOOE, ang naghihintay ng aprobasyon, at kung gaano na katagal ang mga pending na voucher.",

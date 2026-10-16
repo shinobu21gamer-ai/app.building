@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { FormMessage, Label, Textarea } from "@/components/ui/field";
+import { FormMessage, Label, RequiredLegend, Textarea } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api-client";
 import { copy, type Locale } from "@/lib/i18n";
 
@@ -78,6 +78,7 @@ export function ValidationForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       {success && <FormMessage tone="success">{success}</FormMessage>}
       {error && <FormMessage tone="error">{error}</FormMessage>}
+      <RequiredLegend>{copy[locale].revamp.requiredLegend}</RequiredLegend>
 
       <div>
         <Label htmlFor="validation-type" required>
@@ -102,7 +103,9 @@ export function ValidationForm({
       </div>
 
       <div>
-        <Label htmlFor="validation-category">{t.validationCategory}</Label>
+        <Label htmlFor="validation-category" optional>
+          {t.validationCategory}
+        </Label>
         <select
           id="validation-category"
           name="categoryId"
@@ -119,7 +122,9 @@ export function ValidationForm({
       </div>
 
       <div>
-        <Label htmlFor="validation-priority">{t.validationPriority}</Label>
+        <Label htmlFor="validation-priority" optional>
+          {t.validationPriority}
+        </Label>
         <select
           id="validation-priority"
           name="priorityLevel"

@@ -171,7 +171,9 @@ export function ResolutionForm({
           </select>
         </div>
         <div>
-          <Label htmlFor="resolution-on">{t.resolutionDate}</Label>
+          <Label htmlFor="resolution-on" optional>
+            {t.resolutionDate}
+          </Label>
           <Input
             id="resolution-on"
             name="resolvedOn"

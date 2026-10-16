@@ -553,7 +553,7 @@ export function UserManager({
             )}
           </div>
           <div>
-            <Label htmlFor="user-phone">
+            <Label htmlFor="user-phone" optional>
               <span className="inline-flex items-center gap-1.5">
                 <Phone size={14} className="text-ink-subtle" />
                 {t.phone}
@@ -573,7 +573,7 @@ export function UserManager({
             )}
           </div>
           <div>
-            <Label htmlFor="user-password" required={!editingId}>
+            <Label htmlFor="user-password" required={!editingId} optional={Boolean(editingId)}>
               <span className="inline-flex items-center gap-1.5">
                 <Lock size={14} className="text-ink-subtle" />
                 {t.password} {editingId ? t.passwordKeep : ""}
@@ -609,7 +609,7 @@ export function UserManager({
             )}
           </div>
           <div>
-            <Label htmlFor="user-address">
+            <Label htmlFor="user-address" optional>
               <span className="inline-flex items-center gap-1.5">
                 <MapPin size={14} className="text-ink-subtle" />
                 {t.address}

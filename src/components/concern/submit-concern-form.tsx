@@ -15,7 +15,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FieldError, FormMessage, Input, Label, RequiredLegend, Textarea } from "@/components/ui/field";
+import { FieldError, FieldRequirement, FormMessage, Input, Label, RequiredLegend, Textarea } from "@/components/ui/field";
 import { PhotoPicker } from "@/components/ui/photo-picker";
 import { useToast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api-client";
@@ -461,7 +461,9 @@ export function SubmitConcernForm({
       </div>
 
       <div>
-        <Label htmlFor="typeId">{t.typeLabel}</Label>
+        <Label htmlFor="typeId" optional>
+          {t.typeLabel}
+        </Label>
         <p className="mb-1 text-xs text-ink-subtle">{t.typeHelp}</p>
         <select
           id="typeId"
@@ -578,9 +580,12 @@ export function SubmitConcernForm({
       </div>
 
       <div className="rounded-control border border-dashed border-line-strong p-4">
-        <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
-          <MapPin size={14} className="text-ink-subtle" />
-          {t.pin}
+        <p className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-ink">
+          <span className="inline-flex items-center gap-1.5">
+            <MapPin size={14} className="text-ink-subtle" />
+            {t.pin}
+          </span>
+          <FieldRequirement optional />
         </p>
         <p className="mb-3 mt-1 text-xs text-ink-subtle">{t.pinHelp}</p>
         <GeotagPicker locale={locale} />
@@ -600,6 +605,9 @@ export function SubmitConcernForm({
                 <div key={factor.key}>
                   <Label htmlFor="affectedPeople">
                     {t.affectedPeopleLabel}
+                    <span className="ml-1">
+                      <FieldRequirement required />
+                    </span>
                   </Label>
                   {factor.description && (
                     <p className="mb-1 text-xs text-ink-subtle">
@@ -707,12 +715,8 @@ export function SubmitConcernForm({
         <PhotoPicker
           id="image"
           name="image"
-          label={
-            <span className="inline-flex items-center gap-1.5">
-              <ImageIcon size={14} className="text-ink-subtle" />
-              {t.image}
-            </span>
-          }
+          label={t.image}
+          hideLabel
           required
           hint={t.imageHelp}
           onChange={handleFilePick}
