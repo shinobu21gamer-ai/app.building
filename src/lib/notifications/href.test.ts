@@ -47,6 +47,15 @@ describe("notificationHref", () => {
     ).toBe("/captain/approvals");
   });
 
+  it("opens the prefilled crew-payment voucher for the treasurer when a case is resolved", () => {
+    expect(
+      notificationHref({ type: "CREW_PAYMENT_READY", role: "TREASURER", concernId: 18 }),
+    ).toBe("/treasury/disbursements?concernId=18&pay=CREW");
+    expect(
+      notificationHref({ type: "CREW_PAYMENT_READY", role: "TREASURER", concernId: null }),
+    ).toBe("/treasury/disbursements");
+  });
+
   it("opens the fund desk for the treasurer on earmark notes", () => {
     expect(
       notificationHref({ type: "EARMARK_PROPOSED", role: "TREASURER", concernId: 8 }),

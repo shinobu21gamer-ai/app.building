@@ -16,6 +16,7 @@ import {
   notifyResidentAssigned,
   notifyResolutionRecorded,
   notifyStatusChanged,
+  notifyTreasurerCrewPaymentReady,
 } from "@/lib/notifications/service";
 import {
   allowedTransitions,
@@ -477,6 +478,16 @@ export async function changeConcernStatus(
   }
 
   if (input.status === "RESOLVED") {
+    const crewAssignments = await tx.crewAssignment.findMany({
+      where: { concernId: concern.id },
+      select: { crewId: true },
+    });
+    await notifyTreasurerCrewPaymentReady(tx, {
+      concernId: concern.id,
+      caseNumber: concern.caseNumber,
+      crewCount: new Set(crewAssignments.map((assignment) => assignment.crewId)).size,
+    });
+
     await notifyResolutionRecorded(tx, {
       userId: concern.userId,
       concernId: concern.id,
