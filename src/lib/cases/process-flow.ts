@@ -400,8 +400,13 @@ export type FlowConcernRow = {
   status: string;
   /** The case's field checks: they decide the first step of the flow. */
   typeId: number | null;
-  type?: { key: string; requiresCrew?: boolean; requiresBudget?: boolean } | null;
-  category?: { code: string } | null;
+  /** Optional: list pages that only selected `name` still type-check. */
+  type?: {
+    key?: string | null;
+    requiresCrew?: boolean | null;
+    requiresBudget?: boolean | null;
+  } | null;
+  category?: { code?: string | null } | null;
   caseAssessment?: {
     workersNeeded: number | null;
     totalCost: unknown;

@@ -54,8 +54,8 @@ export default async function ValidationQueuePage({
       orderBy: { submittedAt: "asc" },
       take: 100,
       include: {
-        category: { select: { name: true } },
-        type: { select: { name: true } },
+        category: { select: { name: true, code: true } },
+        type: { select: { name: true, key: true, requiresCrew: true, requiresBudget: true } },
         assignedOffice: { select: { name: true } },
         user: { select: { firstName: true, lastName: true } },
         caseAssessment: { select: { workersNeeded: true, totalCost: true } },
@@ -76,8 +76,8 @@ export default async function ValidationQueuePage({
       orderBy: { validatedAt: "desc" },
       take: 100,
       include: {
-        category: { select: { name: true } },
-        type: { select: { name: true } },
+        category: { select: { name: true, code: true } },
+        type: { select: { name: true, key: true, requiresCrew: true, requiresBudget: true } },
         assignedOffice: { select: { name: true } },
         user: { select: { firstName: true, lastName: true } },
         caseAssessment: { select: { workersNeeded: true, totalCost: true } },
