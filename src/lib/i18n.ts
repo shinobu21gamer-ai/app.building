@@ -1628,6 +1628,15 @@ const en = {
     unfoundedNote:
       "The field check did not confirm this report, so the case was closed as unfounded. The steps that never happened are marked as not needed, and the resident was told why.",
     deskYou: "You",
+    youDoThis: "You do this now",
+    notYouTitle: "Not you",
+    waitingOn: "Waiting for {desk}. You cannot do this step from this account.",
+    waitingPerson: "Waiting for {name} at {desk}. You cannot do this step from this account.",
+    yourPartDone:
+      "Your part of this case is finished. Leave it for {desk} — you are not stuck.",
+    waitingHint: "There is nothing for you to fill in on this step.",
+    doThisBelow: "Use the form on this step. Save when it is complete.",
+    leaveCase: "Leave this case",
     // Step 8 when the reader recorded the resolution: the independent check is
     // somebody else's, and the card has to say so instead of "You".
     deskVerifyOther: "A colleague in the office, or the Captain",
@@ -5065,6 +5074,15 @@ const fil: typeof en = {
     unfoundedNote:
       "Hindi nakumpirma ng pagsusuri sa lugar na totoo ang reklamong ito, kaya isinara ang kaso bilang walang batayan. Ang mga hakbang na hindi nangyari ay minarkahan na hindi kailangan, at sinabihan ang residente kung bakit.",
     deskYou: "Ikaw",
+    youDoThis: "Ikaw ang gagawa nito ngayon",
+    notYouTitle: "Hindi ikaw",
+    waitingOn: "Sa {desk} ang hakbang na ito. Hindi mo ito magagawa sa account na ito.",
+    waitingPerson: "Si {name} sa {desk} ang may hawak. Hindi mo ito magagawa sa account na ito.",
+    yourPartDone:
+      "Tapos na ang parte mo sa kasong ito. Iwanan mo ito sa {desk} — hindi ka natigil.",
+    waitingHint: "Walang form na pupunuan ka rito.",
+    doThisBelow: "Gamitin ang form sa hakbang na ito. I-save kapag tapos na.",
+    leaveCase: "Umalis sa kasong ito",
     deskVerifyOther: "Kasamahan sa tanggapan, o ang Kapitan",
     deskAdmin: "Admin desk",
     deskCheck: "Admin desk, kasama ang taong ipapadala sa lugar",

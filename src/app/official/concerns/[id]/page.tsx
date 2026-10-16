@@ -463,24 +463,14 @@ export default async function OfficialConcernDetailPage({
   // to Awaiting budget, and the treasury office sets the money aside.
   const fundStep = stepState("FUND");
   const fundNeedsSending = fundStep?.block === "WAITING_BUDGET_STAGE";
-  const canDoStep: Record<ProcessStepKey, boolean> = {
-    CHECK: (canRequestFieldCheck || canReviewFieldCheck) && canManage,
-    VALIDATE: canValidate,
-    ASSESS: canAssess && canManage,
-    FUND: fundNeedsSending && canProgress && canManage,
-    CREW: canAssignCrew && canManage,
-    START: canProgress && canManage,
-    WORK: canProgress && canManage,
-    VERIFY: verifyState === "CAN_VERIFY",
-    CLOSE: canClose && canManage,
-  };
 
+  const holderName = currentAssignment?.official
+    ? `${currentAssignment.official.firstName} ${currentAssignment.official.lastName}`
+    : null;
   const flowSteps: FlowStepView[] = flow.steps.map((step) => {
     const stepCopy = flowCopy.steps[step.key];
-    const yours =
-      step.state === "current" &&
-      canDoStep[step.key] &&
-      roleOwnsProcessStep(user.role.key, step.key);
+    const owns = roleOwnsProcessStep(user.role.key, step.key);
+    const yours = step.state === "current" && owns;
     return {
       key: step.key,
       number: step.number,
@@ -491,7 +481,15 @@ export default async function OfficialConcernDetailPage({
       owner: stepCopy.owner,
       who: stepCopy.who,
       desk: stepDesk[step.key],
+      ownsStep: owns,
       yourTurn: yours,
+      waitingName:
+        step.key === "ASSESS" ||
+        step.key === "CREW" ||
+        step.key === "START" ||
+        step.key === "WORK"
+          ? holderName
+          : null,
       block: step.block ? flowCopy.blocks[step.block] : null,
     };
   });
@@ -1044,6 +1042,20 @@ export default async function OfficialConcernDetailPage({
         percent={flow.percent}
         finished={flow.finished}
         unfounded={flow.closedUnfounded}
+        leaveHref={
+          user.role.key === "ADMIN"
+            ? "/admin/validation"
+            : user.role.key === "CAPTAIN"
+              ? "/captain"
+              : user.role.key === "TREASURER"
+                ? "/treasury"
+                : "/official/concerns"
+        }
+        leaveLabel={
+          user.role.key === "ADMIN"
+            ? flowCopy.guide.adminAction
+            : flowCopy.leaveCase
+        }
         panels={
           flow.currentKey &&
           panels[flow.currentKey] &&

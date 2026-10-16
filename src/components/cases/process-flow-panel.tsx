@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Check, Minus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { copy, type Locale } from "@/lib/i18n";
 import type { ProcessStepKey, ProcessStepState } from "@/lib/cases/process-flow";
@@ -21,8 +22,12 @@ export type FlowStepView = {
   desk: string;
   /** Why the step cannot be worked on yet, in words. Null when it can. */
   block: string | null;
-  /** The signed-in person is the one who should act on the current step. */
+  /** This account's role is the desk that works the step. */
+  ownsStep?: boolean;
+  /** The signed-in person should act on the current step right now. */
   yourTurn?: boolean;
+  /** Person waiting on, when the case is assigned to someone by name. */
+  waitingName?: string | null;
 };
 
 const DOT_STATE: Record<ProcessStepState, string> = {
@@ -45,11 +50,9 @@ const CHIP_STATE: Record<ProcessStepState, string> = {
  * The step-by-step case flow: the numbered rail, the step being worked on, and
  * the form that does that step's work.
  *
- * The rail is horizontal so the work below it gets the full width of the page —
- * the forms used to be stacked in a narrow right-hand column, which is exactly
- * what made "what do I do next?" hard to answer. Every step's instructions are
- * one click away; the desk that owns a step is named on the card, so a worker
- * never wonders whether a missing step is theirs or the treasury's.
+ * The current-step card answers "is this me?" first — Your turn, or Not you —
+ * so an admin who already validated is not left reading "save the assessment"
+ * as if it were their form.
  */
 export function ProcessFlowPanel({
   locale = "en",
@@ -60,6 +63,8 @@ export function ProcessFlowPanel({
   percent,
   finished,
   unfounded = false,
+  leaveHref,
+  leaveLabel,
   panels = {},
 }: {
   locale?: Locale;
@@ -75,6 +80,9 @@ export function ProcessFlowPanel({
    * instead of telling the reader every step was worked.
    */
   unfounded?: boolean;
+  /** Where to go when this step is not yours (queue, desk). */
+  leaveHref?: string;
+  leaveLabel?: string;
   /** The form that does each step's work, keyed by step. */
   panels?: Partial<Record<ProcessStepKey, ReactNode>>;
 }) {
@@ -108,6 +116,20 @@ export function ProcessFlowPanel({
     pending: t.laterBadge,
     notNeeded: t.notNeededBadge,
   };
+
+  const yoursNow = Boolean(active && active.state === "current" && active.yourTurn);
+  const notYoursNow = Boolean(
+    active && active.state === "current" && !active.yourTurn && !active.ownsStep
+  );
+
+  function waitingCopy(step: FlowStepView): string {
+    if (step.waitingName) {
+      return t.waitingPerson
+        .replace("{name}", step.waitingName)
+        .replace("{desk}", step.desk);
+    }
+    return t.waitingOn.replace("{desk}", step.desk);
+  }
 
   return (
     <section
@@ -150,6 +172,12 @@ export function ProcessFlowPanel({
         <ol className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
           {steps.map((step) => {
             const isOpen = step.key === openKey;
+            const chipStatus =
+              step.state === "current" && step.yourTurn
+                ? t.yourTurn
+                : step.state === "current" && !step.ownsStep
+                  ? t.waitingBadge
+                  : stateLabel[step.state];
             return (
               <li key={step.key} className="shrink-0">
                 <button
@@ -181,7 +209,7 @@ export function ProcessFlowPanel({
                       {step.title}
                     </span>
                     <span className="block text-[11px] text-ink-subtle">
-                      {stateLabel[step.state]} · {step.owner}
+                      {chipStatus} · {step.yourTurn ? t.deskYou : step.owner}
                     </span>
                   </span>
                 </button>
@@ -212,33 +240,61 @@ export function ProcessFlowPanel({
                 </p>
               </div>
 
-              <dl className="rounded-control border border-line bg-surface-sunken px-3 py-2 text-sm">
-                <dt className="text-caption font-semibold uppercase tracking-wide text-ink-subtle">
+              <div
+                className={cn(
+                  "rounded-control border px-3 py-2.5 text-sm",
+                  yoursNow
+                    ? "border-brand-200 bg-brand-50"
+                    : notYoursNow
+                      ? "border-amber-200 bg-amber-50"
+                      : "border-line bg-surface-sunken"
+                )}
+              >
+                <p className="text-caption font-semibold uppercase tracking-wide text-ink-subtle">
                   {t.whoDoesIt}
-                </dt>
-                <dd className="text-ink">
-                  {active.who}
-                  {active.yourTurn ? ` · ${t.yourTurn}` : ""}
-                </dd>
-              </dl>
-
-              <div>
-                <p className="text-sm font-semibold text-ink">{t.whatToDo}</p>
-                <ul className="mt-1.5 space-y-1.5">
-                  {active.todo.map((line) => (
-                    <li
-                      key={line}
-                      className="flex gap-2 text-sm leading-relaxed text-ink-muted"
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500"
-                      />
-                      <span>{line}</span>
-                    </li>
-                  ))}
-                </ul>
+                </p>
+                <p
+                  className={cn(
+                    "mt-0.5 text-base font-semibold",
+                    yoursNow ? "text-brand-800" : notYoursNow ? "text-amber-900" : "text-ink"
+                  )}
+                >
+                  {yoursNow ? t.youDoThis : notYoursNow ? t.notYouTitle : active.owner}
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-ink">
+                  {yoursNow
+                    ? active.who
+                    : notYoursNow
+                      ? waitingCopy(active)
+                      : active.who}
+                </p>
+                {notYoursNow ? (
+                  <p className="mt-2 text-sm text-ink-muted">{t.yourPartDone.replace("{desk}", active.desk)}</p>
+                ) : null}
+                {yoursNow ? (
+                  <p className="mt-2 text-sm text-ink-muted">{t.doThisBelow}</p>
+                ) : null}
               </div>
+
+              {yoursNow ? (
+                <div>
+                  <p className="text-sm font-semibold text-ink">{t.whatToDo}</p>
+                  <ul className="mt-1.5 space-y-1.5">
+                    {active.todo.map((line) => (
+                      <li
+                        key={line}
+                        className="flex gap-2 text-sm leading-relaxed text-ink-muted"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500"
+                        />
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
 
               {nextStep && active.state === "current" ? (
                 <p className="text-xs text-ink-subtle">
@@ -250,21 +306,31 @@ export function ProcessFlowPanel({
             <div className="min-w-0">
               {panels[active.key] &&
               !earlierUnfinished &&
-              (active.state === "current" || active.state === "done") ? (
+              (active.state === "current" || active.state === "done") &&
+              !notYoursNow ? (
                 panels[active.key]
               ) : (
-                <p className="rounded-control border border-dashed border-line bg-surface-sunken px-3 py-3 text-sm text-ink-muted">
-                  {earlierUnfinished
-                    ? t.finishEarlier.replace(
-                        "{number}",
-                        String(earlierUnfinished.number)
-                      )
-                    : active.block
-                      ? active.block
-                      : active.state === "done"
-                        ? t.doneBadge
-                        : t.otherDesk.replace("{desk}", active.desk)}
-                </p>
+                <div className="space-y-3 rounded-control border border-dashed border-line bg-surface-sunken px-3 py-3 text-sm text-ink-muted">
+                  <p>
+                    {earlierUnfinished
+                      ? t.finishEarlier.replace(
+                          "{number}",
+                          String(earlierUnfinished.number)
+                        )
+                      : notYoursNow
+                        ? t.waitingHint
+                        : active.block
+                          ? active.block
+                          : active.state === "done"
+                            ? t.doneBadge
+                            : t.otherDesk.replace("{desk}", active.desk)}
+                  </p>
+                  {notYoursNow && leaveHref ? (
+                    <Button href={leaveHref} size="sm">
+                      {leaveLabel ?? t.leaveCase}
+                    </Button>
+                  ) : null}
+                </div>
               )}
             </div>
           </div>
