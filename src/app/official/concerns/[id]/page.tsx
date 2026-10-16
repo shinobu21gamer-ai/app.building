@@ -409,6 +409,9 @@ export default async function OfficialConcernDetailPage({
   const flow = caseProcessFlow({
     status: concern.status,
     typeId: concern.typeId,
+    validated:
+      Boolean(concern.validatedAt) ||
+      stageIndex >= STATUS_ORDER.UNDER_ASSESSMENT,
     hasAssessment: concern.caseAssessment != null,
     workersNeeded: concern.caseAssessment?.workersNeeded ?? null,
     estimatedCost: concern.caseAssessment

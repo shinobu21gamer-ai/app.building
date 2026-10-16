@@ -12,6 +12,7 @@ import {
 const base: ProcessFlowInput = {
   status: "ASSIGNED",
   typeId: 4,
+  validated: true,
   hasAssessment: false,
   workersNeeded: null,
   estimatedCost: null,
@@ -130,6 +131,27 @@ describe("caseProcessFlow", () => {
     expect(flow.currentNumber).toBe(2);
     expect(stepOf(confirmed, "CHECK").state).toBe("done");
     expect(stepOf(confirmed, "VALIDATE").block).toBe("NEEDS_TYPE");
+  });
+
+  it("does not jump from Check to Assess just because a type was already picked", () => {
+    // Filing or routing can fill typeId. That used to mark Validate as Done
+    // the moment the site check passed, so the rail skipped step 2.
+    const typedAtFiling = {
+      ...unchecked,
+      status: "ASSIGNED" as const,
+      typeId: 4,
+      validated: false,
+      realityCheck: "PASSED" as const,
+    };
+    const flow = caseProcessFlow(typedAtFiling);
+    expect(flow.currentKey).toBe("VALIDATE");
+    expect(flow.currentNumber).toBe(2);
+    expect(stepOf(typedAtFiling, "CHECK").state).toBe("done");
+    expect(stepOf(typedAtFiling, "VALIDATE")).toMatchObject({
+      state: "current",
+      block: "NEEDS_TYPE",
+    });
+    expect(stepOf(typedAtFiling, "ASSESS").state).toBe("pending");
   });
 
   it("keeps the budget step for every case — nothing is skipped", () => {

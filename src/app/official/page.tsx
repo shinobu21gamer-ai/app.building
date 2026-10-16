@@ -9,7 +9,10 @@ import { Button } from "@/components/ui/button";
 import { PriorityBadge, StatusBadge } from "@/components/ui/badge";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ConcernFilters } from "@/components/cases/concern-filters";
-import { FieldCheckSubmitForm } from "@/components/cases/field-check-panel";
+import {
+  FieldCheckHeading,
+  FieldCheckSubmitForm,
+} from "@/components/cases/field-check-panel";
 import { parseConcernFilters } from "@/lib/cases/query";
 import { concernProcessFlow, roleActsOnProcessStep } from "@/lib/cases/process-flow";
 import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
@@ -168,11 +171,12 @@ export default async function OfficialPage({
                 key={check.id}
                 className="space-y-2 rounded-xl border border-line p-4"
               >
-                <p className="text-sm font-medium text-ink">
-                  {fieldCheckCopy.caseLabel} {check.concern.caseNumber} ·{" "}
-                  {check.concern.title}
-                </p>
-                <p className="text-sm text-ink-subtle">{check.instructions}</p>
+                <FieldCheckHeading
+                  caseNumber={check.concern.caseNumber}
+                  title={check.concern.title}
+                  instructions={check.instructions}
+                  locale={locale}
+                />
                 {check.reviewNote && (
                   <p className="rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                     {fieldCheckCopy.reviewNote}: {check.reviewNote}

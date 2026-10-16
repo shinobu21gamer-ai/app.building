@@ -22,9 +22,9 @@ export const dynamic = "force-dynamic";
 type View = "queue" | "done" | "all";
 
 /**
- * Admin validation queue: submitted concerns that still need a confirmed
- * service type (or that are sitting in SUBMITTED), plus — behind the second tab
- * — the reports whose validation is finished.
+ * Admin validation queue: concerns the admin has not saved validation on
+ * (`validatedAt` is empty — a type from filing does not count), plus — behind
+ * the second tab — the reports whose validation is finished.
  *
  * "How do I know a report is done?" is the question this desk exists to answer,
  * so each row carries the four checks validation consists of (type, category,
@@ -48,7 +48,7 @@ export default async function ValidationQueuePage({
   const [queue, done] = await Promise.all([
     db.concern.findMany({
       where: {
-        OR: [{ typeId: null }, { status: "SUBMITTED" }],
+        validatedAt: null,
         status: { notIn: ["RESOLVED", "CLOSED"] },
       },
       orderBy: { submittedAt: "asc" },
@@ -70,8 +70,8 @@ export default async function ValidationQueuePage({
     }),
     db.concern.findMany({
       where: {
-        typeId: { not: null },
-        status: { notIn: ["SUBMITTED", "RESOLVED", "CLOSED"] },
+        validatedAt: { not: null },
+        status: { notIn: ["RESOLVED", "CLOSED"] },
       },
       orderBy: { validatedAt: "desc" },
       take: 100,

@@ -87,6 +87,12 @@ export type ProcessFlowInput = {
   status: string;
   /** The service type set by validation; null until an admin validates. */
   typeId: number | null;
+  /**
+   * Admin actually saved the validation step (`validatedAt`). A type the
+   * resident picked at filing, or routing that filled typeId, is not enough —
+   * that used to mark step 2 Done and jump the case to Assess.
+   */
+  validated?: boolean;
   /** A saved assessment with a manpower plan. */
   hasAssessment: boolean;
   /** Workers planned; null when no plan is saved. */
@@ -208,10 +214,10 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
           : null;
   push("CHECK", checkDone ? "done" : "pending", checkDone ? null : realityGate);
 
-  // 2 — Validate the report: a service type decides routing, budget and crew.
-  // A type the resident suggested (or an admin who typed the case too early)
-  // does not finish this step: the check has to pass first.
-  const validated = checkDone && input.typeId !== null;
+  // 2 — Validate the report: admin confirms type, category and office.
+  // A type sitting on the case from filing is not this step — the admin still
+  // has to save validation, or the rail jumps from Check to Assess.
+  const validated = checkDone && input.validated === true;
   push(
     "VALIDATE",
     validated ? "done" : "pending",
@@ -400,6 +406,8 @@ export type FlowConcernRow = {
   status: string;
   /** The case's field checks: they decide the first step of the flow. */
   typeId: number | null;
+  /** When the admin saved validation. Missing on cases that only have a type. */
+  validatedAt?: Date | string | null;
   /** Optional: list pages that only selected `name` still type-check. */
   type?: {
     key?: string | null;
@@ -432,9 +440,13 @@ export function concernProcessFlow(
     requiresCrew: concern.type?.requiresCrew ?? null,
     requiresBudget: concern.type?.requiresBudget ?? null,
   });
+  const stage = STATUS_ORDER[concern.status as CaseStatus] ?? 0;
   return caseProcessFlow({
     status: concern.status,
     typeId: concern.typeId,
+    // Already in assessment (or further) before this gate existed: do not send
+    // those cases back to the admin queue.
+    validated: Boolean(concern.validatedAt) || stage >= STATUS_ORDER.UNDER_ASSESSMENT,
     hasAssessment: concern.caseAssessment != null,
     workersNeeded: concern.caseAssessment?.workersNeeded ?? null,
     estimatedCost: concern.caseAssessment
