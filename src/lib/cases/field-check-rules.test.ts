@@ -72,8 +72,12 @@ describe("fieldCheckGateBlock", () => {
 });
 
 describe("findingProblem", () => {
-  it("accepts a confirmed finding with no notes or photo", () => {
-    expect(findingProblem({ finding: "CONFIRMED", notes: null, hasPhoto: false })).toBeNull();
+  it("rejects a confirmed finding with no photo", () => {
+    expect(findingProblem({ finding: "CONFIRMED", notes: null, hasPhoto: false })).toMatch(/photo/);
+  });
+
+  it("accepts a confirmed finding with a photo and no notes", () => {
+    expect(findingProblem({ finding: "CONFIRMED", notes: null, hasPhoto: true })).toBeNull();
   });
 
   it("requires notes and a photo for a not-confirmed finding", () => {
@@ -86,8 +90,11 @@ describe("findingProblem", () => {
     ).toBeNull();
   });
 
-  it("requires a reason for cannot-verify", () => {
-    expect(findingProblem({ finding: "CANNOT_VERIFY", notes: "", hasPhoto: false })).toMatch(/could not be verified/);
+  it("requires a reason and a photo for cannot-verify", () => {
+    expect(findingProblem({ finding: "CANNOT_VERIFY", notes: "", hasPhoto: true })).toMatch(/could not be verified/);
+    expect(
+      findingProblem({ finding: "CANNOT_VERIFY", notes: "Gate was locked, no view of the site", hasPhoto: false })
+    ).toMatch(/photo/);
   });
 });
 

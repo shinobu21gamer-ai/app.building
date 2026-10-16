@@ -240,6 +240,12 @@ export async function reviewFieldCheck(
   const note = input.note?.trim() || null;
   const now = new Date();
 
+  if (input.decision === "APPROVE" && !check.findingPhotoUrl) {
+    throw createApiError.badRequest(
+      "There is no photo from the site. Send the check back — do not approve a finding you cannot see."
+    );
+  }
+
   if (input.decision === "REQUEST_RECHECK") {
     await tx.fieldCheck.update({
       where: { id: check.id },

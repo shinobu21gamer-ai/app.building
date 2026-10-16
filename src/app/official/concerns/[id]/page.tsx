@@ -499,6 +499,7 @@ export default async function OfficialConcernDetailPage({
           assigneeName: `${check.assignee.firstName} ${check.assignee.lastName}`,
           requestedByName: `${check.requestedBy.firstName} ${check.requestedBy.lastName}`,
         }))}
+        concernPhotoUrl={concern.imageUrl}
         location={{
           address: concern.locationAddress,
           purok: concern.locationPurok,

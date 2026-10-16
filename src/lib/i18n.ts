@@ -3107,7 +3107,14 @@ const en = {
         findingCannotVerify: "Could not verify",
         findingResult: "Finding",
         notes: "Notes",
-        photo: "Photo of the site (required if not confirmed)",
+        photo: "Photo of the site (required)",
+        photoHint:
+          "Take it at the location. Without a photo, admin cannot tell if the report is real.",
+        photoRequired: "Attach a photo of the site before you submit.",
+        residentPhoto: "Photo the resident sent",
+        sitePhoto: "Photo from the site check",
+        approveNeedsPhoto:
+          "There is no photo from the site. Send it back — do not approve a finding you cannot see.",
         submit: "Submit finding",
         approve: "Approve finding",
         sendBack: "Send back for another check",
@@ -6495,7 +6502,14 @@ const fil: typeof en = {
         findingCannotVerify: "Hindi ma-verify",
         findingResult: "Resulta",
         notes: "Mga tala",
-        photo: "Larawan ng lugar (kailangan kung hindi kumpirmado)",
+        photo: "Larawan ng lugar (kailangan)",
+        photoHint:
+          "Kunin sa mismong lugar. Kung walang larawan, hindi malalaman ng admin kung totoo ang reklamo.",
+        photoRequired: "Maglakip ng larawan ng lugar bago magpasa.",
+        residentPhoto: "Larawang ipinadala ng residente",
+        sitePhoto: "Larawan mula sa pagsusuri sa lugar",
+        approveNeedsPhoto:
+          "Walang larawan mula sa lugar. Ibalik — huwag aprubahan ang finding na hindi mo nakikita.",
         submit: "Ipasa ang resulta",
         approve: "Aprubahan ang resulta",
         sendBack: "Ibalik para sa panibagong pagsusuri",
