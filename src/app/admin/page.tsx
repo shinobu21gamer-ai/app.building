@@ -70,11 +70,14 @@ export default async function AdminPage() {
         <Button href="/admin/validation" size="sm">
           {t.startValidation}
         </Button>
+        <Button href="/admin/field-checks" size="sm" variant="outline">
+          {t.startFieldChecks}
+        </Button>
+        <Button href="/admin/verification" size="sm" variant="outline">
+          {t.startVerification}
+        </Button>
         <Button href="/admin/users" size="sm" variant="outline">
           {t.startUsers}
-        </Button>
-        <Button href="/admin/crew" size="sm" variant="outline">
-          {t.startCrew}
         </Button>
       </div>
 

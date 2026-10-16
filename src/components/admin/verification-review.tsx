@@ -174,7 +174,7 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
                     {submission.idImageUrl && openImageFor !== submission.userId && (
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                         onClick={() => setOpenImageFor(submission.userId)}
                       >

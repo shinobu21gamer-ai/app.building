@@ -14,8 +14,17 @@ export function UploadedPhoto(props: { src: string; alt: string; locale?: Locale
   return <Photo key={`${props.src}:${props.locale ?? "en"}`} {...props} />;
 }
 
+/** Same-origin path for stored upload URLs that kept a host. */
+function sameOriginUpload(src: string): string {
+  if (src.startsWith("data:")) return src;
+  const marker = "/api/v1/uploads/";
+  const index = src.indexOf(marker);
+  return index >= 0 ? src.slice(index) : src;
+}
+
 function Photo({ src, alt, locale = "en" }: { src: string; alt: string; locale?: Locale }) {
   const t = copy[locale].photoViewer;
+  const href = sameOriginUpload(src);
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [displaySrc, setDisplaySrc] = useState<string | null>(null);
@@ -29,14 +38,14 @@ function Photo({ src, alt, locale = "en" }: { src: string; alt: string; locale?:
     setDisplaySrc(null);
 
     // Server-inlined photos (data URLs) skip the extra fetch.
-    if (src.startsWith("data:")) {
-      setDisplaySrc(src);
+    if (href.startsWith("data:")) {
+      setDisplaySrc(href);
       return;
     }
 
     async function load() {
       try {
-        const response = await fetch(src, { credentials: "include", cache: "no-store" });
+        const response = await fetch(href, { credentials: "include", cache: "no-store" });
         if (!response.ok) throw new Error("unavailable");
         const blob = await response.blob();
         // Some hosts omit Content-Type or send octet-stream; the file is still
@@ -53,7 +62,7 @@ function Photo({ src, alt, locale = "en" }: { src: string; alt: string; locale?:
       } catch {
         // Same-origin <img> still sends the session cookie. Use it when fetch
         // is blocked (preview hosts, missing Content-Type, etc.).
-        if (!cancelled) setDisplaySrc(src);
+        if (!cancelled) setDisplaySrc(href);
       }
     }
 
@@ -62,7 +71,7 @@ function Photo({ src, alt, locale = "en" }: { src: string; alt: string; locale?:
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [src, attempt]);
+  }, [href, attempt]);
 
   useEffect(() => {
     if (!open) return;

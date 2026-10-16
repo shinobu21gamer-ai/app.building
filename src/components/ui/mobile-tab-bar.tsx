@@ -100,11 +100,18 @@ export function MobileTabBar({
         closeLabel={closeLabel}
       >
         <ul className="grid gap-1">
-          {more.map((item) => {
+          {more.map((item, index) => {
             const Icon = iconFor(item.href);
             const isActive = item.href === active;
+            const showSection =
+              Boolean(item.section) && item.section !== more[index - 1]?.section;
             return (
               <li key={item.href}>
+                {showSection ? (
+                  <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-ink-subtle first:pt-0">
+                    {item.section}
+                  </p>
+                ) : null}
                 <Link
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}

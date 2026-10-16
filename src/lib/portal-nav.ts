@@ -2,7 +2,7 @@
 //
 // They live here rather than inside their layouts because one shell renders two
 // roles' menus: the Captain opens the shared case sheet under `/official`
-// (`SHARED_PORTAL_ROUTES` in `@/lib/auth/roles`), and while they are on it the
+// (`SHARED_PORTAL_ROUTES` in `@/lib/auth/roles`), and while they sit on it the
 // official shell must offer the Captain's own desks. Handing a Captain the
 // office's menu would be a wall of doors that turn them away — the queue, the
 // dashboard and the reports are all scoped to one office.
@@ -44,32 +44,41 @@ export function treasuryNavItems(t: PortalCopy): NavItem[] {
   ];
 }
 
-/** `/admin` — hall configuration. Reused on the shared case sheet so an
- *  administrator is not handed the office queue while they review a case. */
+/**
+ * `/admin` — hall configuration. Daily case work is listed first so the phone
+ * tabs are Dashboard, Validation, Field checks and ID verification — not
+ * Reports / Users / Crew, which buried the desks admin actually uses on a
+ * case. Reused on the shared case sheet so an administrator is not handed
+ * the office queue while they review a case.
+ */
 export function adminNavItems(t: PortalCopy): NavItem[] {
   const admin = t.admin;
   const revamp = t.revamp.adminDesk;
+  const work = admin.navSectionWork;
+  const people = admin.navSectionPeople;
+  const hall = admin.navSectionHall;
+  const records = admin.navSectionRecords;
   return [
-    { href: "/admin", label: admin.navDashboard },
-    { href: "/admin/reports", label: admin.navReports },
-    { href: "/admin/users", label: admin.navUsers },
-    { href: "/admin/crew", label: admin.crew.navCrew },
-    { href: "/admin/officials", label: admin.navOfficials },
-    { href: "/admin/offices", label: admin.navOffices },
-    { href: "/admin/categories", label: admin.navCategories },
-    { href: "/admin/routing", label: admin.navRouting },
-    { href: "/admin/priority", label: admin.navPriority },
-    { href: "/admin/validation", label: revamp.validationNav },
-    { href: "/admin/field-checks", label: admin.fieldCheck.navFieldCheck },
-    { href: "/admin/verification", label: revamp.verificationNav },
-    { href: "/admin/privacy", label: revamp.privacyNav },
-    { href: "/admin/roles", label: revamp.rolesNav },
-    { href: "/admin/treasury", label: revamp.treasuryNav },
-    { href: "/admin/sla", label: revamp.slaNav },
-    { href: "/admin/audit", label: revamp.auditNav },
-    { href: "/admin/deleted", label: revamp.deletedNav },
-    { href: "/admin/settings", label: admin.navSettings },
-    { href: "/notifications", label: admin.navNotifications },
+    { href: "/admin", label: admin.navDashboard, section: work },
+    { href: "/admin/validation", label: revamp.validationNav, section: work },
+    { href: "/admin/field-checks", label: admin.fieldCheck.navFieldCheck, section: work },
+    { href: "/admin/verification", label: revamp.verificationNav, section: work },
+    { href: "/admin/users", label: admin.navUsers, section: people },
+    { href: "/admin/crew", label: admin.crew.navCrew, section: people },
+    { href: "/admin/officials", label: admin.navOfficials, section: people },
+    { href: "/admin/roles", label: revamp.rolesNav, section: people },
+    { href: "/admin/offices", label: admin.navOffices, section: hall },
+    { href: "/admin/categories", label: admin.navCategories, section: hall },
+    { href: "/admin/routing", label: admin.navRouting, section: hall },
+    { href: "/admin/priority", label: admin.navPriority, section: hall },
+    { href: "/admin/treasury", label: revamp.treasuryNav, section: hall },
+    { href: "/admin/sla", label: revamp.slaNav, section: hall },
+    { href: "/admin/settings", label: admin.navSettings, section: hall },
+    { href: "/admin/reports", label: admin.navReports, section: records },
+    { href: "/admin/privacy", label: revamp.privacyNav, section: records },
+    { href: "/admin/audit", label: revamp.auditNav, section: records },
+    { href: "/admin/deleted", label: revamp.deletedNav, section: records },
+    { href: "/notifications", label: admin.navNotifications, section: records },
   ];
 }
 

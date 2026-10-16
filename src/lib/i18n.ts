@@ -722,6 +722,10 @@ const en = {
   },
   admin: {
     navDashboard: "Dashboard",
+    navSectionWork: "Today's work",
+    navSectionPeople: "People",
+    navSectionHall: "Hall setup",
+    navSectionRecords: "Records",
     navReports: "Reports",
     navUsers: "Users",
     crew: {
@@ -932,6 +936,8 @@ const en = {
       },
     ],
     startValidation: "Open the validation queue",
+    startFieldChecks: "Open field checks",
+    startVerification: "Open ID verification",
     startUsers: "Open users",
     startCrew: "Open the crew roster",
     totalCases: "Total cases",
@@ -4207,6 +4213,10 @@ const fil: typeof en = {
   },
   admin: {
     navDashboard: "Dashboard",
+    navSectionWork: "Trabaho ngayon",
+    navSectionPeople: "Mga tao",
+    navSectionHall: "Setup ng hall",
+    navSectionRecords: "Mga rekord",
     navReports: "Mga ulat",
     navUsers: "Mga user",
     crew: {
@@ -4417,6 +4427,8 @@ const fil: typeof en = {
       },
     ],
     startValidation: "Buksan ang validation queue",
+    startFieldChecks: "Buksan ang field checks",
+    startVerification: "Buksan ang ID verification",
     startUsers: "Buksan ang users",
     startCrew: "Buksan ang crew roster",
     totalCases: "Lahat ng kaso",

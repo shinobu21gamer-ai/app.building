@@ -68,11 +68,18 @@ export function RoleNav({
         className="nav-scroll relative min-h-0 max-h-[calc(100dvh-6rem)] overflow-y-scroll overscroll-contain rounded-xl border border-line bg-surface/60 p-2 focus-visible:outline-2 focus-visible:outline-brand-600"
       >
         <ul className="grid gap-0.5">
-          {items.map((item) => {
+          {items.map((item, index) => {
             const Icon = iconFor(item.href);
             const active = item.href === activeHref;
+            const showSection =
+              Boolean(item.section) && item.section !== items[index - 1]?.section;
             return (
               <li key={item.href}>
+                {showSection ? (
+                  <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-ink-subtle first:pt-1">
+                    {item.section}
+                  </p>
+                ) : null}
                 <Link
                   ref={active ? activeRef : undefined}
                   href={item.href}

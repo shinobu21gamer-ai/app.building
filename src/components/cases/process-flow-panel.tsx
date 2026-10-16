@@ -172,10 +172,41 @@ export function ProcessFlowPanel({
           />
         </div>
 
-        {/* Nine steps do not fit on a phone, so the rail scrolls sideways
-            there; from `sm` up they wrap, because a hidden step is a step
-            somebody forgets. */}
-        <ol className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+        {/* Phone: numbered dots only — nine named chips do not fit. From `sm`
+            up the chips wrap so every step stays named. */}
+        <ol className="flex gap-1 overflow-x-auto pb-1 sm:hidden">
+          {steps.map((step) => {
+            const isOpen = step.key === openKey;
+            return (
+              <li key={step.key} className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setPicked(step.key)}
+                  aria-current={step.state === "current" ? "step" : undefined}
+                  aria-label={`${step.number}. ${step.title} — ${
+                    step.state === "current" && step.yourTurn
+                      ? t.yourTurn
+                      : stateLabel[step.state]
+                  }`}
+                  className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-full border text-xs font-semibold",
+                    DOT_STATE[step.state],
+                    isOpen ? "ring-2 ring-brand-600 ring-offset-2" : ""
+                  )}
+                >
+                  {step.state === "done" ? (
+                    <Check size={13} aria-hidden="true" />
+                  ) : step.state === "notNeeded" ? (
+                    <Minus size={13} aria-hidden="true" />
+                  ) : (
+                    step.number
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+        <ol className="hidden gap-2 sm:flex sm:flex-wrap">
           {steps.map((step) => {
             const isOpen = step.key === openKey;
             const chipStatus =
@@ -187,13 +218,13 @@ export function ProcessFlowPanel({
                     ? t.yoursLater
                     : stateLabel[step.state];
             return (
-              <li key={step.key} className="shrink-0">
+              <li key={step.key} className="min-w-0 sm:max-w-[14rem] sm:flex-1">
                 <button
                   type="button"
                   onClick={() => setPicked(step.key)}
                   aria-current={step.state === "current" ? "step" : undefined}
                   className={cn(
-                    "flex w-full min-w-[11rem] items-center gap-2 rounded-control border px-2.5 py-2 text-left transition-colors",
+                    "flex w-full items-center gap-2 rounded-control border px-2.5 py-2 text-left transition-colors",
                     CHIP_STATE[step.state],
                     isOpen ? "shadow-card" : "hover:bg-surface-muted"
                   )}
@@ -216,7 +247,7 @@ export function ProcessFlowPanel({
                     <span className="block truncate text-xs font-semibold">
                       {step.title}
                     </span>
-                    <span className="block text-[11px] text-ink-subtle">
+                    <span className="block truncate text-[11px] text-ink-subtle">
                       {chipStatus} ·{" "}
                       {step.yourTurn || (step.ownsStep && step.state !== "current")
                         ? t.deskYou
