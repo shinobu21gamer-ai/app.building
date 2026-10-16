@@ -18,14 +18,12 @@ export function FieldRequirement({
   if (required) {
     return (
       <span className="inline-flex items-center gap-0.5">
-        <span aria-hidden="true" className="text-danger-600">
+        <span
+          aria-label={copy.en.fieldMark.required}
+          title={copy.en.fieldMark.required}
+          className="text-danger-600"
+        >
           *
-        </span>
-        <span className="text-xs font-semibold text-danger-700 [:lang(fil)]:hidden">
-          {copy.en.fieldMark.required}
-        </span>
-        <span className="hidden text-xs font-semibold text-danger-700 [:lang(fil)]:inline">
-          {copy.fil.fieldMark.required}
         </span>
       </span>
     );

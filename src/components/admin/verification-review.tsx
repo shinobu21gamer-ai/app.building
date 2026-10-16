@@ -217,7 +217,7 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
                   <div className="mt-3 border-t border-line pt-3">
                     <p className="mb-2 text-xs font-medium text-ink">{t.viewDoc}</p>
                     <UploadedPhoto
-                      src={submission.idImageUrl}
+                      src={`/api/v1/admin/identity/${submission.userId}/image`}
                       alt={`${submission.resident.name} — ${t.identityDoc}`}
                       locale={locale}
                     />
