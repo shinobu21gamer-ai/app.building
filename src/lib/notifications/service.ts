@@ -24,6 +24,7 @@ export const NOTIFICATION_TYPES = {
   EARMARK_PROPOSED: "EARMARK_PROPOSED",
   EARMARK_APPROVED: "EARMARK_APPROVED",
   EARMARK_CANCELLED: "EARMARK_CANCELLED",
+  CREW_PAYMENT_READY: "CREW_PAYMENT_READY",
 } as const;
 
 export type NotificationType =
@@ -408,7 +409,44 @@ export async function notifyFieldCheckReviewed(
 
 
 // ---- Treasury events ----------------------------------------------
-//
+
+/**
+ * Alerts every active treasurer once a crew-assigned case is resolved, so the
+ * payment handoff does not depend on someone remembering to check the case.
+ */
+export async function notifyTreasurerCrewPaymentReady(
+  db: Db,
+  input: { concernId: number; caseNumber: string; crewCount: number }
+): Promise<number> {
+  if (input.crewCount < 1) return 0;
+
+  const treasurers = await db.user.findMany({
+    where: { isActive: true, role: { key: "TREASURER" } },
+    select: { id: true },
+  });
+  let sent = 0;
+  for (const treasurer of treasurers) {
+    const existing = await db.notification.findFirst({
+      where: {
+        userId: treasurer.id,
+        concernId: input.concernId,
+        type: NOTIFICATION_TYPES.CREW_PAYMENT_READY,
+      },
+      select: { id: true },
+    });
+    if (existing) continue;
+    await createNotification(db, {
+      userId: treasurer.id,
+      concernId: input.concernId,
+      type: NOTIFICATION_TYPES.CREW_PAYMENT_READY,
+      title: "Crew payment ready for review",
+      message: `Case ${input.caseNumber} is resolved and has ${input.crewCount} assigned crew member${input.crewCount === 1 ? "" : "s"}. Review the crew payment request in Treasury.`,
+    });
+    sent += 1;
+  }
+  return sent;
+}
+
 // A case cannot leave AWAITING_BUDGET until an earmark is approved, and an
 // earmark may not be approved by whoever proposed it. Without these three
 // notifications the hand-off is invisible: the proposer waits for an approval

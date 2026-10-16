@@ -165,10 +165,10 @@ describe("sidebar scrolling", () => {
     await act(async () => root.render(createElement(RoleNav, { label: "Admin menu", items: [
       { href: "/admin", label: "Dashboard" }, { href: "/admin/privacy", label: "Privacy desk" },
     ] })));
-    const region = container.querySelector<HTMLDivElement>('[role="region"]')!;
+    const region = container.querySelector<HTMLElement>("nav[aria-label='Admin menu']")!;
     expect(region.scrollTop).toBe(512);
     expect(region.tabIndex).toBe(0);
-    expect(region.className).toContain("overflow-y-scroll");
+    expect(region.className).toContain("overflow-y-auto");
     expect(container.querySelector('[aria-current="page"]')!.textContent).toContain("Privacy desk");
     expect(bounds).toHaveBeenCalled();
   });

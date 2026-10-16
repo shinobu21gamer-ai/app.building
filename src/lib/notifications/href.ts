@@ -28,6 +28,12 @@ export function notificationHref(input: NotificationHrefInput): string | null {
 
   if (type === "CONSENT_REQUIRED") return "/privacy/requests";
 
+  if (type === "CREW_PAYMENT_READY" && role === "TREASURER") {
+    return concernId
+      ? `/treasury/disbursements?concernId=${concernId}&pay=CREW`
+      : "/treasury/disbursements";
+  }
+
   if (type === "FIELD_CHECK_ASSIGNED" && role === "CREW") return "/crew";
 
   if (type === "CONCERN_SUBMITTED" && role === "ADMIN") {
