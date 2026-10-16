@@ -65,7 +65,7 @@ export function RoleNav({
         tabIndex={0}
         role="region"
         aria-label={label}
-        className="nav-scroll relative min-h-0 max-h-[calc(100dvh-6rem)] overflow-y-scroll overscroll-contain rounded-xl border border-line bg-surface/60 p-2 focus-visible:outline-2 focus-visible:outline-brand-600"
+        className="nav-scroll relative h-[calc(100dvh-6rem)] min-h-0 overflow-y-auto overscroll-contain rounded-xl border border-line bg-surface/60 p-2 focus-visible:outline-2 focus-visible:outline-brand-600"
       >
         <ul className="grid gap-0.5">
           {items.map((item, index) => {

@@ -886,7 +886,7 @@ export default async function OfficialConcernDetailPage({
               <p className="text-sm font-semibold text-ink">
                 {desk.crewPayTitle}
               </p>
-              {canPrepareVoucher && !isFinalized && (
+              {canPrepareVoucher && (
                 <Button
                   href={`/treasury/disbursements?concernId=${concern.id}&pay=CREW`}
                   size="sm"
