@@ -117,6 +117,22 @@ export type MapTile = {
   row: number;
 };
 
+/** Origin of a mosaic, enough to invert a tap back into WGS84. */
+export type MosaicGrid = {
+  startX: number;
+  startY: number;
+  columns: number;
+  rows: number;
+  zoom: number;
+};
+
+export type TileMosaic = MosaicGrid & {
+  tiles: MapTile[];
+  marker: { leftPercent: number; topPercent: number };
+  attribution: string;
+  attributionUrl: string;
+};
+
 /**
  * A `columns × rows` mosaic of tiles centred on the point, plus the marker
  * position as a percentage of the mosaic. Tiles are clamped to the world so a
@@ -128,12 +144,7 @@ export function tileMosaic(
   zoom: number,
   columns = 3,
   rows = 2
-): {
-  tiles: MapTile[];
-  marker: { leftPercent: number; topPercent: number };
-  attribution: string;
-  attributionUrl: string;
-} {
+): TileMosaic {
   const z = Number.isFinite(zoom) ? Math.max(0, Math.min(22, Math.floor(zoom))) : 0;
   const size = 2 ** z;
   const point = tilePoint(lat, lng, z);
@@ -193,7 +204,7 @@ export function latLngFromTilePoint(
 
 /** Where a tap on the mosaic lands, in WGS84. Percents are 0–100 of the grid. */
 export function pickOnMosaic(
-  mosaic: { startX: number; startY: number; columns: number; rows: number; zoom: number },
+  mosaic: MosaicGrid,
   leftPercent: number,
   topPercent: number
 ): { lat: number; lng: number } {
