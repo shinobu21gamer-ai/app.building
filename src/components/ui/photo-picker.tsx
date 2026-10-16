@@ -22,6 +22,7 @@ export function PhotoPicker({
   label,
   hint,
   required = false,
+  hideLabel = false,
   accept = DEFAULT_ACCEPT,
   onChange,
   locale = "en",
@@ -33,6 +34,8 @@ export function PhotoPicker({
   label: ReactNode;
   hint?: ReactNode;
   required?: boolean;
+  /** Parent already rendered the Label for this id. */
+  hideLabel?: boolean;
   accept?: string;
   /** Notified with the picked file (or null when removed). */
   onChange?: (file: File | null) => void;
@@ -62,9 +65,11 @@ export function PhotoPicker({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={id} required={required}>
-        {label}
-      </Label>
+      {hideLabel ? null : (
+        <Label htmlFor={id} required={required} optional={!required}>
+          {label}
+        </Label>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"

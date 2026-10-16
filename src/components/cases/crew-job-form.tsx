@@ -66,7 +66,9 @@ export function CrewJobForm({
       {error && <FormMessage tone="error">{error}</FormMessage>}
 
       <div>
-        <Label htmlFor={`job-kind-${concernId}`}>{t.jobNote}</Label>
+        <Label htmlFor={`job-kind-${concernId}`} required>
+          {t.jobNote}
+        </Label>
         <select
           id={`job-kind-${concernId}`}
           name="kind"

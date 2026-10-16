@@ -118,7 +118,9 @@ export function CaseNoteForm({
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
 
       <div>
-        <Label htmlFor="note-kind">{t.noteKind}</Label>
+        <Label htmlFor="note-kind" required>
+          {t.noteKind}
+        </Label>
         <select
           id="note-kind"
           name="kind"
@@ -131,7 +133,9 @@ export function CaseNoteForm({
       </div>
 
       <div>
-        <Label htmlFor="note-occurred-on">{t.actionDate}</Label>
+        <Label htmlFor="note-occurred-on" required>
+          {t.actionDate}
+        </Label>
         <input
           id="note-occurred-on"
           name="occurredOn"
@@ -147,7 +151,9 @@ export function CaseNoteForm({
       </div>
 
       <div>
-        <Label htmlFor="note-remarks">{t.noteDetails}</Label>
+        <Label htmlFor="note-remarks" required>
+          {t.noteDetails}
+        </Label>
         <Textarea
           id="note-remarks"
           name="remarks"

@@ -1,10 +1,50 @@
 import { ChevronDown } from "lucide-react";
 
+import { copy } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+
+/**
+ * Word marker for required vs optional. Language follows `<html lang>` so
+ * every Label does not have to thread a locale prop. `:lang(fil)` matches
+ * descendants of `html[lang=fil]`.
+ */
+export function FieldRequirement({
+  required,
+  optional,
+}: {
+  required?: boolean;
+  optional?: boolean;
+}) {
+  if (required) {
+    return (
+      <span className="inline-flex items-center gap-0.5">
+        <span aria-hidden="true" className="text-danger-600">
+          *
+        </span>
+        <span className="text-xs font-semibold text-danger-700 [:lang(fil)]:hidden">
+          {copy.en.fieldMark.required}
+        </span>
+        <span className="hidden text-xs font-semibold text-danger-700 [:lang(fil)]:inline">
+          {copy.fil.fieldMark.required}
+        </span>
+      </span>
+    );
+  }
+  if (optional) {
+    return (
+      <span className="text-xs font-medium text-ink-subtle">
+        <span className="[:lang(fil)]:hidden">{copy.en.fieldMark.optional}</span>
+        <span className="hidden [:lang(fil)]:inline">{copy.fil.fieldMark.optional}</span>
+      </span>
+    );
+  }
+  return null;
+}
 
 export function Label({
   htmlFor,
   required,
+  optional,
   children,
 }: {
   htmlFor: string;
@@ -13,26 +53,33 @@ export function Label({
    * set this, and every form shows a legend explaining it.
    */
   required?: boolean;
+  /** Renders an Optional marker. Ignored when `required` is set. */
+  optional?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-1 block text-sm font-medium text-ink-muted"
+      className="mb-1 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-sm font-medium text-ink-muted"
     >
-      {children}
-      {required ? (
-        <span aria-hidden="true" className="ml-0.5 text-danger-600">
-          *
-        </span>
-      ) : null}
+      <span>{children}</span>
+      <FieldRequirement required={required} optional={optional && !required} />
     </label>
   );
 }
 
-/** Legend that explains the `*` marker; place it once per form. */
-export function RequiredLegend({ children }: { children: React.ReactNode }) {
-  return <p className="text-caption text-ink-subtle">{children}</p>;
+/** Legend that explains the Required / Optional markers; place it once per form. */
+export function RequiredLegend({ children }: { children?: React.ReactNode }) {
+  return (
+    <p className="text-caption text-ink-subtle">
+      {children ?? (
+        <>
+          <span className="[:lang(fil)]:hidden">{copy.en.fieldMark.legend}</span>
+          <span className="hidden [:lang(fil)]:inline">{copy.fil.fieldMark.legend}</span>
+        </>
+      )}
+    </p>
+  );
 }
 
 /** Short helper under a control: what to type, or why the field exists. */

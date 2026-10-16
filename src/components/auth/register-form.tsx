@@ -222,7 +222,9 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
       </div>
 
       <div>
-        <Label htmlFor="phone">{t.phone}</Label>
+        <Label htmlFor="phone" optional>
+          {t.phone}
+        </Label>
         <Input
           id="phone"
           name="phone"
@@ -242,7 +244,9 @@ const validateField = useCallback((name: FormFieldName, value: string) => {
       </div>
 
       <div>
-        <Label htmlFor="address">{t.address}</Label>
+        <Label htmlFor="address" optional>
+          {t.address}
+        </Label>
         <Input
           id="address"
           name="address"

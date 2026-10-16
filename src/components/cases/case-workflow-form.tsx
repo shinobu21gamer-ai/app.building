@@ -7,6 +7,7 @@ import {
   FieldError,
   FormMessage,
   Label,
+  RequiredLegend,
   Textarea,
 } from "@/components/ui/field";
 import { PhotoPicker } from "@/components/ui/photo-picker";
@@ -143,9 +144,12 @@ export function CaseWorkflowForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       {success && <FormMessage tone="success">{success}</FormMessage>}
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
+      <RequiredLegend>{copy[locale].revamp.requiredLegend}</RequiredLegend>
 
       <div>
-        <Label htmlFor="workflow-status">{t.nextAction}</Label>
+        <Label htmlFor="workflow-status" required>
+          {t.nextAction}
+        </Label>
         {/* Inside a flow step there is exactly one correct next status, so it is
             stated rather than offered as a one-option dropdown. */}
         {allowedTransitions.length > 1 ? (
@@ -176,7 +180,9 @@ export function CaseWorkflowForm({
       </div>
 
       <div>
-        <Label htmlFor="workflow-action-date">{t.actionDate}</Label>
+        <Label htmlFor="workflow-action-date" required>
+          {t.actionDate}
+        </Label>
         <input
           id="workflow-action-date"
           name="occurredOn"
@@ -203,7 +209,9 @@ export function CaseWorkflowForm({
       </div>
 
       <div>
-        <Label htmlFor="workflow-override">{t.workflowOverrideLabel}</Label>
+        <Label htmlFor="workflow-override" optional>
+          {t.workflowOverrideLabel}
+        </Label>
         <Textarea
           id="workflow-override"
           name="overrideReason"
@@ -214,7 +222,9 @@ export function CaseWorkflowForm({
       </div>
 
       <div>
-        <Label htmlFor="workflow-remarks">{t.remarks}</Label>
+        <Label htmlFor="workflow-remarks" required>
+          {t.remarks}
+        </Label>
         <Textarea
           id="workflow-remarks"
           name="remarks"

@@ -84,7 +84,9 @@ export function FeedbackForm({
       {formError && <FormMessage tone="error">{formError}</FormMessage>}
 
       <div>
-        <Label htmlFor="feedback-was-resolved">{t.wasResolved}</Label>
+        <Label htmlFor="feedback-was-resolved" required>
+          {t.wasResolved}
+        </Label>
         <select
           id="feedback-was-resolved"
           name="wasResolved"
@@ -97,7 +99,9 @@ export function FeedbackForm({
       </div>
 
       <div>
-        <Label htmlFor="feedback-rating">{t.rating}</Label>
+        <Label htmlFor="feedback-rating" required>
+          {t.rating}
+        </Label>
         <select
           id="feedback-rating"
           name="rating"
@@ -113,7 +117,9 @@ export function FeedbackForm({
       </div>
 
       <div>
-        <Label htmlFor="feedback-comment">{t.comment}</Label>
+        <Label htmlFor="feedback-comment" optional>
+          {t.comment}
+        </Label>
         <Textarea
           id="feedback-comment"
           name="comment"
