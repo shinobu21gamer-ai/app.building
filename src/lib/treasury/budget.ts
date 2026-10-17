@@ -13,6 +13,7 @@ import {
   notifyEarmarkApproved,
   notifyEarmarkCancelled,
   notifyEarmarkProposed,
+  notifyStatusChanged,
 } from "@/lib/notifications/service";
 import { codeUsable } from "@/lib/treasury/coa";
 import {
@@ -514,6 +515,84 @@ export async function proposeEarmark(
 }
 
 /**
+ * Moves a case into AWAITING_BUDGET when an earmark approval completes its
+ * funding before the official sent it there.
+ *
+ * Nothing stopped the treasury from funding a case that is still
+ * UNDER_ASSESSMENT, and when that happens the case has substantively done
+ * what the budget stage exists for — the estimate reached the treasury and
+ * the money is set aside — yet its status never "waited", so the flow held
+ * the official on step 4 (or, before that was fixed, offered a Start the
+ * workflow refuses). The approval is the moment the facts complete, so the
+ * case moves itself, with the footprint a manual move leaves: a BUDGET
+ * history entry and the resident's notification (the caller re-arms the
+ * stage clock and refreshes the public record). A case whose assessment
+ * still needs its own sign-off is left alone — that approval is the
+ * official's to record first. Returns whether the case moved.
+ */
+async function advanceFundedCaseToAwaitingBudget(
+  tx: Tx,
+  input: { concernId: number; actor: Actor }
+): Promise<boolean> {
+  const concern = await tx.concern.findUnique({
+    where: { id: input.concernId },
+    select: {
+      id: true,
+      status: true,
+      userId: true,
+      caseNumber: true,
+      caseAssessment: {
+        select: { totalCost: true, approvalRequired: true, status: true },
+      },
+    },
+  });
+  if (!concern || concern.status !== "UNDER_ASSESSMENT") return false;
+
+  const estimate =
+    concern.caseAssessment?.totalCost === null ||
+    concern.caseAssessment?.totalCost === undefined
+      ? null
+      : toMoney(concern.caseAssessment.totalCost);
+  // No estimate (or a ₱0 one): the budget stage has nothing to wait for, and
+  // the zero-cost path may go straight to work, so leave the case alone.
+  if (estimate === null || estimate <= 0) return false;
+  if (
+    concern.caseAssessment?.approvalRequired &&
+    concern.caseAssessment.status === "DRAFT"
+  ) {
+    return false;
+  }
+
+  const gate = await fundingGateForConcern(tx, concern.id);
+  if (gate.total + 0.005 < estimate) return false;
+
+  const now = new Date();
+  await tx.concern.update({
+    where: { id: concern.id },
+    data: { status: "AWAITING_BUDGET", stageEnteredAt: now, awaitingBudgetAt: now },
+  });
+  await tx.caseStatusHistory.create({
+    data: {
+      concernId: concern.id,
+      entryType: "BUDGET",
+      fromStatus: "UNDER_ASSESSMENT",
+      toStatus: "AWAITING_BUDGET",
+      remarks: `The treasury set aside ₱${gate.total.toFixed(2)}, covering the ₱${estimate.toFixed(2)} estimate, so the case moved to Awaiting budget.`,
+      occurredOn: now,
+      actorId: input.actor.id,
+      actorRole: input.actor.roleKey,
+    },
+  });
+  await notifyStatusChanged(tx, {
+    userId: concern.userId,
+    concernId: concern.id,
+    caseNumber: concern.caseNumber,
+    status: "AWAITING_BUDGET",
+  });
+  return true;
+}
+
+/**
  * Approval reserves the amount on the ledger. The check runs against the live
  * balance, which is what makes an overspend impossible rather than unlikely.
  */
@@ -593,11 +672,20 @@ export async function approveEarmark(
     officeId: earmark.concern?.assignedOfficeId ?? null,
   });
 
+  const caseMovedToAwaitingBudget = earmark.concern
+    ? await advanceFundedCaseToAwaitingBudget(tx, {
+        concernId: earmark.concern.id,
+        actor: input.actor,
+      })
+    : false;
+
   return {
     earmarkId: earmark.id,
     code: earmark.code,
     status: "APPROVED" as const,
     available: entry.available,
+    concernId: earmark.concern?.id ?? null,
+    caseMovedToAwaitingBudget,
   };
 }
 

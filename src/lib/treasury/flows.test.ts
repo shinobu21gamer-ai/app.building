@@ -37,6 +37,8 @@ function makeTx(seed: {
   budgetDecisions?: Row[];
   /** Users the earmark notifications can find, as `{ id, roleKey, officeId, isActive }`. */
   users?: Row[];
+  /** The case an earmark is attached to, with its assessment, when the flow needs it. */
+  concern?: Row;
 } = {}) {
   const state = {
     allocation: {
@@ -57,6 +59,8 @@ function makeTx(seed: {
     approvals: [] as Row[],
     users: [...(seed.users ?? [])] as Row[],
     notifications: [] as Row[],
+    concernRow: seed.concern ? { ...seed.concern } : (null as Row | null),
+    history: [] as Row[],
     nextId: 500,
     locks: 0,
   };
@@ -124,6 +128,12 @@ function makeTx(seed: {
         Object.assign(earmark, data);
         return earmark;
       },
+      findMany: async ({ where }: { where?: Row } = {}) =>
+        state.earmarks
+          .filter(
+            (row) => where?.concernId === undefined || row.concernId === where.concernId
+          )
+          .map((row) => ({ ...row, allocation: state.allocation })),
     },
     disbursement: {
       findUnique: async ({ where }: { where: { id: number } }) => {
@@ -175,10 +185,24 @@ function makeTx(seed: {
       update: async () => state.allocation.fiscalYear,
     },
     concern: {
-      findUnique: async ({ where }: { where: { id: number } }) => ({
-        id: where.id,
-        caseNumber: `BR-2026-${String(where.id).padStart(4, "0")}`,
-      }),
+      findUnique: async ({ where }: { where: { id: number } }) =>
+        state.concernRow ?? {
+          id: where.id,
+          caseNumber: `BR-2026-${String(where.id).padStart(4, "0")}`,
+        },
+      update: async ({ data }: { data: Row }) => {
+        if (state.concernRow) Object.assign(state.concernRow, data);
+        return state.concernRow;
+      },
+    },
+    // An approval that completes a case's funding moves the case into
+    // AWAITING_BUDGET itself: this records the history entry that leaves.
+    caseStatusHistory: {
+      create: async ({ data }: { data: Row }) => {
+        const entry: Row = { id: state.nextId++, ...data };
+        state.history.push(entry);
+        return entry;
+      },
     },
     // Proposing money for a case supersedes its "do not fund" decision.
     budgetDecision: {
@@ -362,7 +386,7 @@ describe("voucher preparation against a live balance", () => {
         particulars: "Materials",
         modeOfPayment: null,
       })
-    ).rejects.toThrow(/already committed/);
+    ).rejects.toThrow(/leaving at most ₱100\.00/);
   });
 });
 
@@ -387,6 +411,108 @@ describe("earmark approval reserves money", () => {
     });
 
     await expect(approveEarmark(tx, { actor: treasurer, earmarkId: 7 })).rejects.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The treasury can fund a case before the official sent it to Awaiting
+// budget. When an approval completes the funding, the case must move itself:
+// otherwise its status never "waited" and the official is stranded on step 4
+// with a send form for a stage the money already finished.
+// ---------------------------------------------------------------------------
+
+const fundedCaseRow = (overrides: Row = {}): Row => ({
+  id: 5,
+  status: "UNDER_ASSESSMENT",
+  userId: 77,
+  caseNumber: "BR-2026-0005",
+  title: "Broken drainage",
+  locationAddress: "Mabuhay",
+  locationLat: null,
+  locationLng: null,
+  locationPurok: "Purok 1",
+  submittedAt: new Date("2026-10-01T00:00:00Z"),
+  resolvedAt: null,
+  closedAt: null,
+  user: { firstName: "Ana", lastName: "Reyes" },
+  category: { name: "Drainage" },
+  type: { key: "DRAINAGE" },
+  resolutions: [],
+  publicRecord: null,
+  caseAssessment: { totalCost: 400, approvalRequired: false, status: "SUBMITTED" },
+  ...overrides,
+});
+
+const proposedForCase = (amount: number): Row => ({
+  id: 7,
+  code: "EM-2026-0001",
+  status: "PROPOSED",
+  amount,
+  allocationId: 1,
+  concernId: 5,
+  purpose: "Repair materials",
+  preparedById: 10,
+  concern: { id: 5, caseNumber: "BR-2026-0005", assignedOfficeId: 3 },
+});
+
+describe("approval moves a funded-early case into Awaiting budget", () => {
+  it("advances the case and leaves a BUDGET history entry", async () => {
+    const { tx, state } = makeTx({
+      appropriation: 1000,
+      users: HALL_USERS,
+      concern: fundedCaseRow(),
+      earmarks: [proposedForCase(400)],
+    });
+
+    await approveEarmark(tx, { actor: captain, earmarkId: 7 });
+
+    expect(state.concernRow?.status).toBe("AWAITING_BUDGET");
+    expect(state.history).toHaveLength(1);
+    expect(state.history[0]).toMatchObject({
+      entryType: "BUDGET",
+      fromStatus: "UNDER_ASSESSMENT",
+      toStatus: "AWAITING_BUDGET",
+    });
+    // The resident hears the case moved, like any status change.
+    expect(
+      state.notifications.some((row) => row.userId === 77)
+    ).toBe(true);
+  });
+
+  it("leaves the case alone while the money is still short of the estimate", async () => {
+    const { tx, state } = makeTx({
+      appropriation: 1000,
+      users: HALL_USERS,
+      concern: fundedCaseRow(),
+      earmarks: [proposedForCase(300)],
+    });
+
+    await approveEarmark(tx, { actor: captain, earmarkId: 7 });
+
+    expect(state.concernRow?.status).toBe("UNDER_ASSESSMENT");
+    expect(state.history).toHaveLength(0);
+  });
+
+  it("does not move a case that is already waiting, or one still being assessed without an estimate", async () => {
+    const waiting = makeTx({
+      appropriation: 1000,
+      users: HALL_USERS,
+      concern: fundedCaseRow({ status: "AWAITING_BUDGET" }),
+      earmarks: [proposedForCase(400)],
+    });
+    await approveEarmark(waiting.tx, { actor: captain, earmarkId: 7 });
+    expect(waiting.state.history).toHaveLength(0);
+    expect(waiting.state.concernRow?.status).toBe("AWAITING_BUDGET");
+
+    const noEstimate = makeTx({
+      appropriation: 1000,
+      users: HALL_USERS,
+      concern: fundedCaseRow({ caseAssessment: null }),
+      earmarks: [proposedForCase(400)],
+    });
+    await approveEarmark(noEstimate.tx, { actor: captain, earmarkId: 7 });
+    expect(noEstimate.state.concernRow?.status).toBe("UNDER_ASSESSMENT");
+    expect(noEstimate.state.history).toHaveLength(0);
   });
 });
 
