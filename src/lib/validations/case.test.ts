@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   caseNoteSchema,
+  concernValidationSchema,
   feedbackSchema,
   resolutionSchema,
   statusChangeSchema,
@@ -11,6 +12,25 @@ const VALID_RESOLUTION = {
   actionsTaken: "Coordinated with the utility department and road gauge.",
   resolutionType: "FIXED",
 };
+
+describe("concernValidationSchema", () => {
+  const validValidation = {
+    typeId: 3,
+    categoryId: 8,
+    notes: "Confirmed the issue and selected the matching category.",
+    confirmPriority: false,
+  };
+
+  it("requires an explicit category decision", () => {
+    expect(
+      concernValidationSchema.safeParse({
+        ...validValidation,
+        categoryId: undefined,
+      }).success
+    ).toBe(false);
+    expect(concernValidationSchema.safeParse(validValidation).success).toBe(true);
+  });
+});
 
 describe("resolutionSchema.resolvedOn", () => {
   it("accepts a real calendar date", () => {

@@ -12,7 +12,11 @@ const selectStyles =
 
 const PRIORITY_LEVELS = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 
-export type ValidationOption = { id: number; label: string };
+export type ValidationOption = {
+  id: number;
+  label: string;
+  typeId?: number | null;
+};
 
 /**
  * Admin validation: confirm the concern is real, set the service type and the
@@ -24,21 +28,27 @@ export function ValidationForm({
   locale = "en",
   types,
   categories,
-  currentTypeId,
-  currentCategoryId,
+  currentTypeLabel,
+  currentCategoryLabel,
   currentPriority,
 }: {
   concernId: number;
   locale?: Locale;
   types: ValidationOption[];
   categories: ValidationOption[];
-  currentTypeId: number | null;
-  currentCategoryId: number | null;
+  currentTypeLabel: string | null;
+  currentCategoryLabel: string;
   currentPriority: string | null;
 }) {
   const t = copy[locale].revamp.workflow;
   const router = useRouter();
+  const [selectedTypeId, setSelectedTypeId] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const visibleCategories = categories.filter(
+    (category) =>
+      category.typeId == null || String(category.typeId) === selectedTypeId
+  );
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -84,15 +94,25 @@ export function ValidationForm({
         <Label htmlFor="validation-type" required>
           {t.validationType}
         </Label>
+        {currentTypeLabel ? (
+          <p className="mb-1 text-xs text-ink-subtle">
+            {t.validationCurrentValue.replace("{value}", currentTypeLabel)}
+          </p>
+        ) : null}
+        <p className="mb-1 text-xs text-ink-subtle">{t.validationTypeHint}</p>
         <select
           id="validation-type"
           name="typeId"
           required
-          defaultValue={currentTypeId ? String(currentTypeId) : ""}
+          value={selectedTypeId}
+          onChange={(event) => {
+            setSelectedTypeId(event.target.value);
+            setSelectedCategoryId("");
+          }}
           className={selectStyles}
         >
           <option value="" disabled>
-            {t.validationAwaitingType}
+            {t.validationTypePlaceholder}
           </option>
           {types.map((type) => (
             <option key={type.id} value={type.id}>
@@ -103,22 +123,36 @@ export function ValidationForm({
       </div>
 
       <div>
-        <Label htmlFor="validation-category" optional>
+        <Label htmlFor="validation-category" required>
           {t.validationCategory}
         </Label>
+        <p className="mb-1 text-xs text-ink-subtle">
+          {t.validationCurrentValue.replace("{value}", currentCategoryLabel)}
+        </p>
+        <p className="mb-1 text-xs text-ink-subtle">{t.validationCategoryHint}</p>
         <select
           id="validation-category"
           name="categoryId"
-          defaultValue={currentCategoryId ? String(currentCategoryId) : ""}
+          required
+          value={selectedCategoryId}
+          onChange={(event) => setSelectedCategoryId(event.target.value)}
+          disabled={selectedTypeId === "" || visibleCategories.length === 0}
           className={selectStyles}
         >
-          <option value="">—</option>
-          {categories.map((category) => (
+          <option value="" disabled>
+            {t.validationCategoryPlaceholder}
+          </option>
+          {visibleCategories.map((category) => (
             <option key={category.id} value={category.id}>
               {category.label}
             </option>
           ))}
         </select>
+        {selectedTypeId !== "" && visibleCategories.length === 0 ? (
+          <p role="alert" className="mt-1 text-sm text-red-700">
+            {t.validationNoCategories}
+          </p>
+        ) : null}
       </div>
 
       <div>

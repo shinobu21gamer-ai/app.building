@@ -86,6 +86,30 @@ export function applyIdentityExpiry(
   return isIdentityStatus(row.status) ? row.status : "UNVERIFIED";
 }
 
+/**
+ * A VERIFIED row only counts when it has an attributable, timestamped admin
+ * decision. Incomplete legacy rows fail closed into the review queue.
+ */
+export function effectiveIdentityStatus(
+  row: {
+    status: string;
+    expiresAt?: Date | null;
+    submittedAt?: Date | null;
+    reviewedById?: number | null;
+    reviewedAt?: Date | null;
+    verifiedAt?: Date | null;
+  },
+  now: Date = new Date()
+): IdentityStatus {
+  if (
+    row.status === "VERIFIED" &&
+    (row.reviewedById == null || row.reviewedAt == null || row.verifiedAt == null)
+  ) {
+    return row.submittedAt ? "PENDING" : "UNVERIFIED";
+  }
+  return applyIdentityExpiry(row, now);
+}
+
 /** Whether the concern type releases a benefit and therefore needs a verified ID. */
 export function needsVerifiedIdentity(
   concernTypeKey: string | null | undefined

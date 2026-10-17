@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -13,7 +15,11 @@ describe("uploaded photo presentation", () => {
   });
   it("provides a full-size dialog and bounded scroll regions without cropping", () => {
     const html = renderToStaticMarkup(createElement(UploadedPhoto, { src, alt: "Case proof" }));
-    expect(html).toContain("overflow-auto");
+    const component = readFileSync(join(process.cwd(), "src/components/ui/uploaded-photo.tsx"), "utf8");
+    // The scroll region and image are intentionally rendered only after the
+    // authenticated image has loaded and the dialog opens, so SSR only contains
+    // the closed dialog shell.
+    expect(component).toContain("max-h-[70dvh] overflow-auto");
     expect(html).toContain("max-h-80");
     expect(html).toContain("<dialog");
     expect(html).toContain('aria-label="Close photo"');

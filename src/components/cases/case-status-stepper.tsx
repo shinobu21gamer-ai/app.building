@@ -1,10 +1,10 @@
 import {
   CASE_STATUSES,
   STATUS_ORDER,
-  statusLabel as humanizeStatus,
   type CaseStatus,
 } from "@/lib/cases/workflow";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { copy, statusLabelFor, type Locale } from "@/lib/i18n";
 
 const STATUS_INDEX: Record<CaseStatus, number> = STATUS_ORDER;
 
@@ -31,11 +31,14 @@ function isReached(
 export function CaseStatusStepper({
   currentStatus,
   reached,
+  locale = "en",
 }: {
   currentStatus: string;
   reached?: ReachedDates;
+  locale?: Locale;
 }) {
   const currentIndex = STATUS_INDEX[currentStatus as CaseStatus] ?? 0;
+  const pendingLabel = copy[locale].revamp.common.pending;
 
   return (
     <ol className="space-y-0">
@@ -86,7 +89,7 @@ export function CaseStatusStepper({
                   done ? "text-ink" : "text-ink-faint"
                 }`}
               >
-                {humanizeStatus(status)}
+                {statusLabelFor(locale, status)}
               </span>
               {reachedDate ? (
                 <span className="text-xs tabular-nums text-ink-subtle">
@@ -96,7 +99,7 @@ export function CaseStatusStepper({
                 </span>
               ) : (
                 <span className="text-xs text-ink-faint">
-                  {index > currentIndex ? "Pending" : "\u00a0"}
+                  {index > currentIndex ? pendingLabel : "\u00a0"}
                 </span>
               )}
             </div>

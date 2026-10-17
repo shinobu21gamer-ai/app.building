@@ -61,6 +61,17 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [openImageFor, setOpenImageFor] = useState<number | null>(null);
 
+  useEffect(() => {
+    if (rejectingId === null) return;
+    const frame = window.requestAnimationFrame(() => {
+      const field = document.getElementById(`reason-${rejectingId}`);
+      if (!(field instanceof HTMLTextAreaElement)) return;
+      field.focus({ preventScroll: true });
+      field.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [rejectingId, reasonError]);
+
   const load = useCallback(async () => {
     const query = status === "" ? "" : `?status=${encodeURIComponent(status)}`;
     const result = await apiRequest<QueueResponse>(`/api/v1/admin/identity${query}`);
@@ -77,6 +88,15 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
   }, [load]);
 
   async function decide(userId: number, decision: "VERIFIED" | "REJECTED", decisionReason?: string) {
+    if (decision === "REJECTED" && (decisionReason ?? "").trim().length < 3) {
+      setReasonError(t.rejectReasonRequired);
+      const field = document.getElementById(`reason-${userId}`);
+      if (field instanceof HTMLTextAreaElement) {
+        field.focus({ preventScroll: true });
+        field.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
     setBusyId(userId);
     const result = await apiRequest(`/api/v1/admin/identity/${userId}`, {
       method: "PATCH",
@@ -226,12 +246,15 @@ export function VerificationReview({ locale = "en" }: { locale?: Locale }) {
 
                 {rejectingId === submission.userId && (
                   <div className="mt-3 space-y-2 border-t border-line pt-3">
-                    <Label htmlFor={`reason-${submission.userId}`}>
-                      {t.decisionReason} <span aria-hidden="true">*</span>
+                    <Label htmlFor={`reason-${submission.userId}`} required>
+                      {t.decisionReason}
                     </Label>
                     <Textarea
                       id={`reason-${submission.userId}`}
                       value={reason}
+                      required
+                      aria-required="true"
+                      invalid={Boolean(reasonError)}
                       rows={3}
                       maxLength={500}
                       onChange={(event) => setReason(event.target.value)}

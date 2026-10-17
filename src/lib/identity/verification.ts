@@ -17,7 +17,7 @@ import {
 import { grantConsent } from "@/lib/privacy/consent";
 import {
   IDENTITY_GATE_SETTING_KEY,
-  applyIdentityExpiry,
+  effectiveIdentityStatus,
   identityGateDecision,
   type IdentityGateDecision,
   type IdentityStatus,
@@ -66,18 +66,25 @@ type VerificationRow = {
   idImageUrl: string | null;
   selfieUrl: string | null;
   submittedAt: Date | null;
+  reviewedById: number | null;
   reviewedAt: Date | null;
   decisionReason: string | null;
   verifiedAt: Date | null;
   expiresAt: Date | null;
 };
 
+function hasVerifiedDecision(row: VerificationRow): boolean {
+  return (
+    row.status === "VERIFIED" &&
+    row.reviewedById !== null &&
+    row.reviewedAt !== null &&
+    row.verifiedAt !== null
+  );
+}
+
 function toState(row: VerificationRow | null): IdentityState {
   if (!row) return { ...EMPTY_STATE };
-  const status = applyIdentityExpiry({
-    status: row.status,
-    expiresAt: row.expiresAt,
-  });
+  const status = effectiveIdentityStatus(row);
   return {
     status,
     method: row.method,
@@ -238,7 +245,9 @@ export async function listIdentityQueue(
   filter: { status?: string | null; q?: string | null } = {}
 ) {
   const where: Record<string, unknown> = {};
-  if (filter.status) where.status = filter.status;
+  if (filter.status && filter.status !== "PENDING" && filter.status !== "VERIFIED") {
+    where.status = filter.status;
+  }
   if (filter.q) {
     where.user = {
       OR: [
@@ -249,7 +258,26 @@ export async function listIdentityQueue(
     };
   }
 
-  return db.identityVerification.findMany({
+  if (filter.status === "PENDING") {
+    where.OR = [
+      { status: "PENDING" },
+      {
+        status: "VERIFIED",
+        OR: [
+          { reviewedById: null },
+          { reviewedAt: null },
+          { verifiedAt: null },
+        ],
+      },
+    ];
+  } else if (filter.status === "VERIFIED") {
+    where.status = "VERIFIED";
+    where.reviewedById = { not: null };
+    where.reviewedAt = { not: null };
+    where.verifiedAt = { not: null };
+  }
+
+  const rows = await db.identityVerification.findMany({
     where,
     include: {
       user: {
@@ -269,13 +297,40 @@ export async function listIdentityQueue(
     orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
     take: 200,
   });
+
+  return rows.map((row: (typeof rows)[number]) =>
+    row.status === "VERIFIED" && !hasVerifiedDecision(row)
+      ? { ...row, status: row.submittedAt ? "PENDING" : "UNVERIFIED" }
+      : row
+  );
 }
 
 /** Counts for the admin dashboard badge. */
 export async function identityQueueCounts() {
   const [pending, verified, rejected] = await Promise.all([
-    db.identityVerification.count({ where: { status: "PENDING" } }),
-    db.identityVerification.count({ where: { status: "VERIFIED" } }),
+    db.identityVerification.count({
+      where: {
+        OR: [
+          { status: "PENDING" },
+          {
+            status: "VERIFIED",
+            OR: [
+              { reviewedById: null },
+              { reviewedAt: null },
+              { verifiedAt: null },
+            ],
+          },
+        ],
+      },
+    }),
+    db.identityVerification.count({
+      where: {
+        status: "VERIFIED",
+        reviewedById: { not: null },
+        reviewedAt: { not: null },
+        verifiedAt: { not: null },
+      },
+    }),
     db.identityVerification.count({ where: { status: "REJECTED" } }),
   ]);
   return { pending, verified, rejected };

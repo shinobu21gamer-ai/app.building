@@ -31,7 +31,10 @@ import { holdForValidation } from "@/lib/routing/service";
 import { notifyConcernSubmitted } from "@/lib/notifications/service";
 import { assertConsent } from "@/lib/privacy/consent";
 import { listConcerns, parseConcernFilters } from "@/lib/cases/query";
-import { findLikelyDuplicate } from "@/lib/cases/duplicates";
+import {
+  decideDuplicateSubmission,
+  findLikelyDuplicate,
+} from "@/lib/cases/duplicates";
 import { resolveStageWindow } from "@/lib/sla/escalation";
 import { slaDueAt } from "@/lib/sla/policy";
 import { encodeGeohash } from "@/lib/cases/geo";
@@ -402,17 +405,36 @@ export const POST = withErrorBoundary(async (req: Request) => {
     throw createApiError.badRequest("A proof image is required.");
   }
   const filename = await saveConcernImage(imageEntry, user.id);
-  const duplicateOfId = await findLikelyDuplicate({
+  const duplicate = await findLikelyDuplicate({
+    userId: user.id,
     categoryId: input.categoryId,
     title: input.title,
     locationAddress: input.locationAddress,
   });
   const allowPossibleDuplicate = form.get("allowPossibleDuplicate") === "true";
-  if (duplicateOfId !== null && !allowPossibleDuplicate) {
+  const duplicateDecision = decideDuplicateSubmission(
+    duplicate,
+    allowPossibleDuplicate
+  );
+  if (duplicateDecision.kind === "REVIEW") {
     await deleteConcernImage(filename);
-    throw createApiError.possibleDuplicate();
+    const match = duplicateDecision.match;
+    throw createApiError.possibleDuplicate(
+      match.sameResident
+        ? {
+            sameResident: true,
+            concernId: match.id,
+            caseNumber: match.caseNumber,
+            title: match.title,
+            status: match.status,
+          }
+        : { sameResident: false }
+    );
   }
 
+  // A resident who confirms this is a separate issue must not have it marked
+  // as a duplicate: duplicate cases are excluded from SLA monitoring.
+  const duplicateOfId = duplicateDecision.duplicateOfId;
   let created;
   try {
     created = await createConcern(

@@ -11,9 +11,18 @@ import { useToast } from "@/components/ui/toast";
 import { apiRequest } from "@/lib/api-client";
 import { extractApiError } from "@/lib/utils";
 import { copy, type Locale } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/format";
+
+export type FieldCheckDeskReply = {
+  id: number;
+  message: string;
+  authorName: string;
+  createdAt: string;
+};
 
 export type FieldCheckDeskItem = {
   id: number;
+  residentReplies: FieldCheckDeskReply[];
   status: string;
   instructions: string;
   finding: string | null;
@@ -252,6 +261,26 @@ export function FieldCheckDesk({
         <p className="text-sm text-ink">
           <span className="font-medium">{t.instructions}:</span> {item.instructions}
         </p>
+
+        {item.residentReplies.length > 0 && (
+          <section className="space-y-2 rounded-control border border-brand-200 bg-brand-50/60 p-3 text-sm">
+            <Badge tone="neutral">{t.residentReply}</Badge>
+            <ol className="space-y-2">
+              {item.residentReplies.map((reply) => (
+                <li key={reply.id} className="rounded-control bg-surface px-3 py-2">
+                  <p className="mb-1 text-xs font-medium text-ink-subtle">
+                    {t.residentReplyBy
+                      .replace("{name}", reply.authorName)
+                      .replace("{date}", formatDateTime(reply.createdAt))}
+                  </p>
+                  <p className="whitespace-pre-wrap break-words text-ink">
+                    {reply.message}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
 
         {item.finding && (
           <div className="space-y-1 text-sm">

@@ -452,6 +452,12 @@ export function VoucherForm({
             </p>
           </div>
         )}
+        {payeeType !== "CREW" && caseOptions.length === 0 && !caseRequired && (
+          <div className="sm:col-span-2">
+            <p className="text-sm font-medium text-ink">{t.linkedCase}</p>
+            <p className="mt-1 text-sm text-ink-subtle">{t.linkedCaseEmpty}</p>
+          </div>
+        )}
       </div>
 
       {payeeType === "CREW" && (

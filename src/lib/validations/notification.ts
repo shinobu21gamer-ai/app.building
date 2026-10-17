@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-export const loginAlertDecisionSchema = z.object({
-  wasMe: z.boolean(),
+export const loginAlertReportSchema = z.object({
+  report: z.literal(true),
 });
 
 export const notificationUpdateSchema = z.object({

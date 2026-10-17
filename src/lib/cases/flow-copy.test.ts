@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { copy } from "@/lib/i18n";
-import { flowStepTodo, flowStepWho, stepNamesOfficial } from "./flow-copy";
+import {
+  assignedOfficialIsOther,
+  flowStepTodo,
+  flowStepWho,
+  stepNamesOfficial,
+} from "./flow-copy";
 
 const steps = copy.en.flow.steps;
 
@@ -33,5 +38,37 @@ describe("stepNamesOfficial", () => {
   it("names the person on the official's work steps", () => {
     expect(stepNamesOfficial("ASSESS")).toBe(true);
     expect(stepNamesOfficial("VALIDATE")).toBe(false);
+  });
+});
+
+describe("assignedOfficialIsOther", () => {
+  it("marks an official's named casework as assigned to the other person", () => {
+    expect(assignedOfficialIsOther({
+      role: "OFFICIAL",
+      key: "ASSESS",
+      userId: 12,
+      assignedOfficialId: 19,
+    })).toBe(true);
+  });
+
+  it("does not claim another assignee on pooled steps or for other roles", () => {
+    expect(assignedOfficialIsOther({
+      role: "OFFICIAL",
+      key: "FUND",
+      userId: 12,
+      assignedOfficialId: 19,
+    })).toBe(false);
+    expect(assignedOfficialIsOther({
+      role: "ADMIN",
+      key: "ASSESS",
+      userId: 12,
+      assignedOfficialId: 19,
+    })).toBe(false);
+    expect(assignedOfficialIsOther({
+      role: "OFFICIAL",
+      key: "ASSESS",
+      userId: 12,
+      assignedOfficialId: null,
+    })).toBe(false);
   });
 });

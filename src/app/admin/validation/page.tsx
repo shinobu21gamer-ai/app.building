@@ -256,7 +256,7 @@ export default async function ValidationQueuePage({
                       {t.validationPrint}
                     </Link>
                     <Link
-                      href={`/official/concerns/${concern.id}`}
+                      href={`/official/concerns/${concern.id}?returnTo=${encodeURIComponent(`/admin/validation?show=${view}`)}`}
                       className="inline-flex items-center rounded-control bg-brand-700 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-800"
                     >
                       {t.validationOpenCase}

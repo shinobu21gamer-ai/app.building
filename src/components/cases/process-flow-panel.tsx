@@ -26,6 +26,8 @@ export type FlowStepView = {
   ownsStep?: boolean;
   /** The signed-in person should act on the current step right now. */
   yourTurn?: boolean;
+  /** This role may help, but the current case assignment names another official. */
+  assignedToOther?: boolean;
   /** Person waiting on, when the case is assigned to someone by name. */
   waitingName?: string | null;
   /** Hall email of that person, so the reader can contact them. */
@@ -123,8 +125,12 @@ export function ProcessFlowPanel({
 
   const owns = Boolean(active?.ownsStep);
   const yoursNow = Boolean(active && active.state === "current" && active.yourTurn);
-  const yoursLater = Boolean(active && active.state === "pending" && owns);
-  const yoursDone = Boolean(active && active.state === "done" && owns);
+  const yoursLater = Boolean(
+    active && active.state === "pending" && owns && !active.assignedToOther
+  );
+  const yoursDone = Boolean(
+    active && active.state === "done" && owns && !active.assignedToOther
+  );
   const notYours = Boolean(active && !owns && active.state !== "notNeeded");
   const notYoursNow = Boolean(notYours && active?.state === "current");
 
@@ -186,7 +192,9 @@ export function ProcessFlowPanel({
                   aria-label={`${step.number}. ${step.title} — ${
                     step.state === "current" && step.yourTurn
                       ? t.yourTurn
-                      : stateLabel[step.state]
+                      : step.assignedToOther && step.state !== "done" && step.state !== "notNeeded"
+                        ? t.waitingBadge
+                        : stateLabel[step.state]
                   }`}
                   className={cn(
                     "flex h-9 w-9 items-center justify-center rounded-full border text-xs font-semibold",
@@ -210,13 +218,17 @@ export function ProcessFlowPanel({
           {steps.map((step) => {
             const isOpen = step.key === openKey;
             const chipStatus =
-              step.state === "current" && step.yourTurn
-                ? t.yourTurn
-                : step.state === "current" && !step.ownsStep
-                  ? t.waitingBadge
-                  : step.state === "pending" && step.ownsStep
-                    ? t.yoursLater
-                    : stateLabel[step.state];
+              step.assignedToOther &&
+              step.state !== "done" &&
+              step.state !== "notNeeded"
+                ? t.waitingBadge
+                : step.state === "current" && step.yourTurn
+                  ? t.yourTurn
+                  : step.state === "current" && !step.ownsStep
+                    ? t.waitingBadge
+                    : step.state === "pending" && step.ownsStep
+                      ? t.yoursLater
+                      : stateLabel[step.state];
             return (
               <li key={step.key} className="min-w-0 sm:max-w-[14rem] sm:flex-1">
                 <button

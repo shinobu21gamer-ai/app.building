@@ -93,9 +93,11 @@ describe("middleware role gates", () => {
     expect(
       redirectPath(await visit("RESIDENT", "/official/concerns/42"))
     ).toBe("/resident");
-    expect(
-      redirectPath(await visit("TREASURER", "/official/concerns/42"))
-    ).toBe("/treasury");
+    // Treasurers may read the case sheet to compare it against funding; this
+    // is a shared route, not access to the rest of the official portal.
+    expect(passedThrough(await visit("TREASURER", "/official/concerns/42"))).toBe(
+      true
+    );
     expect(redirectPath(await visit("CREW", "/official/concerns/42"))).toBe(
       "/crew"
     );

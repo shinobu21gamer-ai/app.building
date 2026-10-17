@@ -76,6 +76,7 @@ export function adminNavItems(t: PortalCopy): NavItem[] {
     { href: "/admin/settings", label: admin.navSettings, section: hall },
     { href: "/admin/reports", label: admin.navReports, section: records },
     { href: "/admin/privacy", label: revamp.privacyNav, section: records },
+    { href: "/admin/security-reports", label: admin.securityReportsNav, section: records },
     { href: "/admin/audit", label: revamp.auditNav, section: records },
     { href: "/admin/deleted", label: revamp.deletedNav, section: records },
     { href: "/notifications", label: admin.navNotifications, section: records },

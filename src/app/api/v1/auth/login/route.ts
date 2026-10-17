@@ -147,7 +147,7 @@ export const POST = withErrorBoundary(async (req: Request) => {
           concernId: null,
           type: "LOGIN_SECURITY_ALERT",
           title: "Was this sign-in you?",
-          message: `A sign-in from a different browser, device, or network was detected on ${detectedAt}. If this was not you, choose “Not me” to sign out all sessions.`,
+          message: `A sign-in from a different browser, device, or network was detected on ${detectedAt}. If you do not recognize it, report it to barangay administrators for follow-up. This alert alone does not verify who signed in or change your sessions.`,
         },
       });
     } catch (error) {

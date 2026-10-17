@@ -4,6 +4,7 @@ import {
   IDENTITY_STATUSES,
   ID_METHODS,
   applyIdentityExpiry,
+  effectiveIdentityStatus,
   identityGateDecision,
   identityMethodLabel,
   identityStatusLabel,
@@ -59,6 +60,37 @@ describe("applyIdentityExpiry", () => {
     expect(applyIdentityExpiry({ status: "PENDING" }, now)).toBe("PENDING");
     expect(applyIdentityExpiry({ status: "REJECTED" }, now)).toBe("REJECTED");
     expect(applyIdentityExpiry({ status: "NONSENSE" }, now)).toBe("UNVERIFIED");
+  });
+});
+
+describe("effectiveIdentityStatus", () => {
+  const now = new Date("2026-10-12T00:00:00Z");
+
+  it("does not treat a VERIFIED flag without a recorded admin review as verified", () => {
+    expect(
+      effectiveIdentityStatus(
+        { status: "VERIFIED", submittedAt: new Date("2026-10-10T00:00:00Z") },
+        now
+      )
+    ).toBe("PENDING");
+    expect(
+      effectiveIdentityStatus({ status: "VERIFIED", submittedAt: null }, now)
+    ).toBe("UNVERIFIED");
+  });
+
+  it("requires reviewer, review time, and verified time for approval", () => {
+    expect(
+      effectiveIdentityStatus(
+        {
+          status: "VERIFIED",
+          submittedAt: new Date("2026-10-10T00:00:00Z"),
+          reviewedById: 7,
+          reviewedAt: new Date("2026-10-11T00:00:00Z"),
+          verifiedAt: new Date("2026-10-11T00:00:00Z"),
+        },
+        now
+      )
+    ).toBe("VERIFIED");
   });
 });
 

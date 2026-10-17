@@ -8,6 +8,7 @@ import {
 import { db } from "@/lib/db";
 import { requireApiPermission } from "@/lib/auth/session";
 import { recordAudit, requestMeta } from "@/lib/audit";
+import { notifyCrewProgressRecorded } from "@/lib/notifications/service";
 import { crewJobUpdateSchema } from "@/lib/validations/crew";
 
 export const runtime = "nodejs";
@@ -44,7 +45,15 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
       },
       select: {
         id: true,
-        concern: { select: { id: true, caseNumber: true, status: true } },
+        concern: {
+          select: {
+            id: true,
+            caseNumber: true,
+            status: true,
+            assignedOfficeId: true,
+            assignedOfficialId: true,
+          },
+        },
       },
     });
     if (!assignment) {
@@ -71,6 +80,14 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
           actorId: user.id,
           actorRole: user.role.key,
         },
+      });
+      await notifyCrewProgressRecorded(tx, {
+        concernId: assignment.concern.id,
+        caseNumber: assignment.concern.caseNumber,
+        officeId: assignment.concern.assignedOfficeId,
+        officialId: assignment.concern.assignedOfficialId,
+        crewName: `${user.firstName} ${user.lastName}`.trim(),
+        kind: body.kind,
       });
       return history;
     });

@@ -17,9 +17,18 @@ import { PhotoPicker } from "@/components/ui/photo-picker";
 import { apiRequest } from "@/lib/api-client";
 import { canRequestFieldCheck } from "@/lib/cases/field-check-rules";
 import { copy, type Locale } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/format";
+
+export type FieldCheckResidentReply = {
+  id: number;
+  message: string;
+  authorName: string;
+  createdAt: string;
+};
 
 export type FieldCheckView = {
   id: number;
+  residentReplies?: FieldCheckResidentReply[];
   status: string;
   instructions: string;
   finding: string | null;
@@ -322,6 +331,7 @@ export function FieldCheckPanel({
           {checks.map((check) => {
             const reviewing = canReview && check.status === "SUBMITTED";
             const isAssignee = check.assigneeId === currentUserId;
+            const residentReplies = check.residentReplies ?? [];
             return (
               <li key={check.id} className="space-y-2 rounded-xl border border-line p-4">
                 <div className="flex flex-wrap items-center gap-2">
@@ -344,6 +354,28 @@ export function FieldCheckPanel({
                     </span>
                   </p>
                 ) : null}
+                {residentReplies.length > 0 && (
+                  <div className="space-y-2 rounded-control border border-brand-200 bg-brand-50/60 p-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Badge tone="neutral">{t.residentReply}</Badge>
+                      <span className="font-medium text-ink">
+                        {t.residentReplyBy
+                          .replace("{name}", residentReplies[0].authorName)
+                          .replace(
+                            "{date}",
+                            formatDateTime(new Date(residentReplies[0].createdAt))
+                          )}
+                      </span>
+                    </div>
+                    <ol className="space-y-2">
+                      {residentReplies.map((reply) => (
+                        <li key={reply.id} className="whitespace-pre-wrap break-words text-ink-muted">
+                          {reply.message}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
                 <LocationLine
                   location={location}
                   labels={{

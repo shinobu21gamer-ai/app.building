@@ -6,12 +6,14 @@ import {
   FieldCheckDesk,
   type FieldCheckCaseOption,
   type FieldCheckDeskItem,
+  type FieldCheckDeskReply,
   type FieldCheckStaffOption,
 } from "@/components/admin/field-check-desk";
 import { PageHeader } from "@/components/ui/page-header";
 import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import { fieldCheckIdFromMetadata } from "@/lib/cases/field-check-reply-meta";
 
 export const metadata: Metadata = {
   title: "Field checks",
@@ -65,8 +67,45 @@ export default async function AdminFieldChecksPage() {
     },
   });
 
+  const residentReplyEntries = checks.length
+    ? await db.caseStatusHistory.findMany({
+        where: {
+          concernId: { in: [...new Set(checks.map((check) => check.concernId))] },
+          entryType: "RESIDENT_REPLY",
+          actorRole: "RESIDENT",
+          visibility: "RESIDENT_VISIBLE",
+        },
+        include: { actor: { select: { firstName: true, lastName: true } } },
+        orderBy: { createdAt: "asc" },
+      })
+    : [];
+  const concernIdByFieldCheck = new Map(
+    checks.map((check) => [check.id, check.concern.id])
+  );
+  const repliesByCheck = new Map<number, FieldCheckDeskReply[]>();
+  for (const entry of residentReplyEntries) {
+    const fieldCheckId = fieldCheckIdFromMetadata(entry.metadataJson);
+    if (
+      fieldCheckId === null ||
+      concernIdByFieldCheck.get(fieldCheckId) !== entry.concernId
+    ) {
+      continue;
+    }
+    const replies = repliesByCheck.get(fieldCheckId) ?? [];
+    replies.push({
+      id: entry.id,
+      message: entry.remarks ?? "",
+      authorName: entry.actor
+        ? `${entry.actor.firstName} ${entry.actor.lastName}`
+        : copy[locale].desk.residentActor,
+      createdAt: entry.createdAt.toISOString(),
+    });
+    repliesByCheck.set(fieldCheckId, replies);
+  }
+
   const view = (check: (typeof checks)[number]): FieldCheckDeskItem => ({
     id: check.id,
+    residentReplies: repliesByCheck.get(check.id) ?? [],
     status: check.status,
     instructions: check.instructions,
     finding: check.finding,

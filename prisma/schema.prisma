@@ -267,6 +267,8 @@ model User {
   disbursementsReleased       Disbursement[]       @relation("DisbursementReleaser")
   disbursementsPaidTo         Disbursement[]       @relation("DisbursementPayeeUser")
   disbursementApprovals       DisbursementApproval[]
+  crewPaymentRequestsDecided CrewPaymentRequestLine[] @relation("CrewPaymentDecisionActor")
+  crewPaymentRequestLines    CrewPaymentRequestLine[] @relation("CrewPaymentCrewMember")
   budgetDecisions             BudgetDecision[]     @relation("BudgetDecisionDecider")
   ledgerEntries               BudgetLedgerEntry[]  @relation("LedgerActor")
   cronRunsTriggered           CronRun[]            @relation("CronActor")
@@ -567,6 +569,7 @@ model Concern {
   earmarks          BudgetEarmark[]
   disbursements     Disbursement[]
   budgetDecision    BudgetDecision?
+  crewPaymentRequest CrewPaymentRequest?
 
   @@index([status])
   @@index([categoryId])
@@ -1213,6 +1216,7 @@ model Disbursement {
   updatedAt      DateTime          @updatedAt
 
   approvals     DisbursementApproval[]
+  crewPaymentRequestLine CrewPaymentRequestLine?
 
   @@index([allocationId, status])
   @@index([concernId])
@@ -1236,6 +1240,45 @@ model BudgetDecision {
   decidedAt   DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// A zero-amount handoff created only after a case is fully closed. The
+// treasurer decides per crew member; PAY creates an ordinary draft voucher,
+// while HOLD leaves the line open with a reason. This request itself moves no money.
+model CrewPaymentRequest {
+  id        Int      @id @default(autoincrement())
+  concernId Int      @unique
+  concern   Concern  @relation(fields: [concernId], references: [id], onDelete: Cascade)
+  // OPEN while any line is pending/held; VOUCHERS_PREPARED when every crew
+  // member has a draft voucher in the existing approval lifecycle.
+  status    String   @default("OPEN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lines     CrewPaymentRequestLine[]
+
+  @@index([status, createdAt])
+}
+
+model CrewPaymentRequestLine {
+  id            Int                 @id @default(autoincrement())
+  requestId     Int
+  request       CrewPaymentRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  crewId        Int
+  crew          User                @relation("CrewPaymentCrewMember", fields: [crewId], references: [id])
+  // PENDING | HELD | VOUCHER_PREPARED
+  status        String              @default("PENDING")
+  holdReason    String?
+  decidedById   Int?
+  decidedBy     User?               @relation("CrewPaymentDecisionActor", fields: [decidedById], references: [id])
+  decidedAt     DateTime?
+  disbursementId Int?               @unique
+  disbursement  Disbursement?       @relation(fields: [disbursementId], references: [id])
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@unique([requestId, crewId])
+  @@index([requestId, status])
+  @@index([crewId, status])
 }
 
 model DisbursementApproval {
@@ -1290,12 +1333,30 @@ model BudgetLedgerEntry {
 // Notifications, Feedback, Audit
 // ----------------------------------------------------------------
 
+model LoginSecurityReport {
+  id                     Int            @id @default(autoincrement())
+  reportedUserId         Int
+  reportedEmail          String
+  sourceNotificationId   Int            @unique
+  reportedAt             DateTime       @default(now())
+  responseDueAt          DateTime
+  reminderSentAt         DateTime?
+  reviewedAt             DateTime?
+  reviewedById           Int?
+  notifications          Notification[]
+
+  @@index([reviewedAt, responseDueAt])
+  @@index([reportedUserId, reportedAt])
+}
+
 model Notification {
   id        Int       @id @default(autoincrement())
   userId    Int
   user      User      @relation(fields: [userId], references: [id])
   concernId Int?
   concern   Concern?  @relation(fields: [concernId], references: [id])
+  loginSecurityReportId Int?
+  loginSecurityReport LoginSecurityReport? @relation(fields: [loginSecurityReportId], references: [id], onDelete: SetNull)
   // CONCERN_SUBMITTED | CONCERN_ASSIGNED | CONCERN_REASSIGNED | CONCERN_UNROUTED | STATUS_CHANGED | CONCERN_RESOLVED | FEEDBACK_REQUESTED | CASE_CLOSED | PRIORITY_CHANGED | SLA_BREACHED
   type      String
   title     String
@@ -1307,6 +1368,7 @@ model Notification {
   @@index([userId, isRead])
   @@index([userId, createdAt])
   @@index([concernId])
+  @@index([loginSecurityReportId])
 }
 
 model SystemAlert {

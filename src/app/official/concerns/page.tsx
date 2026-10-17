@@ -13,6 +13,7 @@ import {
   parseConcernFilters,
 } from "@/lib/cases/query";
 import { concernProcessFlow, roleActsOnProcessStep } from "@/lib/cases/process-flow";
+import { assignedOfficialIsOther } from "@/lib/cases/flow-copy";
 import { fundedAmountsByConcern } from "@/lib/treasury/query";
 import { formatDate } from "@/lib/format";
 import { firstParam } from "@/lib/utils";
@@ -74,6 +75,15 @@ export default async function OfficialConcernsPage({
   ]);
 
   const { concerns, total, truncated, page, pageCount } = result;
+  // Preserve the active list filters when opening a case, but omit pagination:
+  // returning to a stale page could otherwise show an empty queue after updates.
+  const returnQuery = new URLSearchParams();
+  for (const key of ["q", "status", "priority", "categoryId", "officeId", "from", "to"]) {
+    const value = firstParam(params, key);
+    if (value) returnQuery.set(key, value);
+  }
+  const returnTo = `/official/concerns${returnQuery.size ? `?${returnQuery.toString()}` : ""}`;
+  const caseReturnParam = `?returnTo=${encodeURIComponent(returnTo)}`;
   const now = Date.now();
   // Preserves every current filter while only changing the page number.
   const pageHrefFor = (targetPage: number) => {
@@ -101,11 +111,21 @@ export default async function OfficialConcernsPage({
         concern.id,
         current
           ? `${
-              roleActsOnProcessStep(user.role.key, current.key, {
-                block: current.block,
-              })
-                ? flowCopy.youDoThis
-                : flowCopy.notYouTitle
+              assignedOfficialIsOther({
+                role: user.role.key,
+                key: current.key,
+                userId: user.id,
+                assignedOfficialId: concern.assignedOfficialId,
+              }) && concern.assignedOfficial
+                ? flowCopy.assignedOfficial.replace(
+                    "{name}",
+                    `${concern.assignedOfficial.firstName} ${concern.assignedOfficial.lastName}`.trim()
+                  )
+                : roleActsOnProcessStep(user.role.key, current.key, {
+                    block: current.block,
+                  })
+                  ? flowCopy.youDoThis
+                  : flowCopy.notYouTitle
             } · ${flowCopy.steps[current.key].title}`
           : flow.closedUnfounded
             ? flowCopy.unfoundedNote
@@ -180,7 +200,7 @@ export default async function OfficialConcernsPage({
               {concerns.map((concern) => (
                 <li key={concern.id}>
                   <Link
-                    href={`/official/concerns/${concern.id}`}
+                    href={`/official/concerns/${concern.id}${caseReturnParam}`}
                     className="block py-3 hover:bg-surface-muted"
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -327,7 +347,7 @@ export default async function OfficialConcernsPage({
                     </td>
                     <td className="py-3 text-right">
                       <Link
-                        href={`/official/concerns/${concern.id}`}
+                        href={`/official/concerns/${concern.id}${caseReturnParam}`}
                         className="text-sm font-semibold text-brand-700 hover:text-brand-800"
                       >
                         {t.manage}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import {
   Send,
   ArrowLeft,
@@ -63,6 +64,11 @@ type FieldKey =
   | "safetyScore";
 
 type FieldErrors = Partial<Record<FieldKey, string>>;
+
+type DuplicateWarning =
+  | { sameResident: true; concernId: number; caseNumber: string; title: string }
+  | { sameResident: false }
+  | null;
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -129,6 +135,7 @@ export function SubmitConcernForm({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [possibleDuplicate, setPossibleDuplicate] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarning>(null);
   const [allowPossibleDuplicate, setAllowPossibleDuplicate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -354,6 +361,28 @@ export function SubmitConcernForm({
 
     if (!result.success) {
       if (result.error.code === "POSSIBLE_DUPLICATE") {
+        const details = result.error.details;
+        if (
+          details &&
+          typeof details === "object" &&
+          "sameResident" in details &&
+          details.sameResident === true &&
+          "concernId" in details &&
+          typeof details.concernId === "number" &&
+          "caseNumber" in details &&
+          typeof details.caseNumber === "string" &&
+          "title" in details &&
+          typeof details.title === "string"
+        ) {
+          setDuplicateWarning({
+            sameResident: true,
+            concernId: details.concernId,
+            caseNumber: details.caseNumber,
+            title: details.title,
+          });
+        } else {
+          setDuplicateWarning({ sameResident: false });
+        }
         setPossibleDuplicate(true);
         setAllowPossibleDuplicate(false);
         setFormError(null);
@@ -401,6 +430,7 @@ export function SubmitConcernForm({
         }
         if (possibleDuplicate) {
           setPossibleDuplicate(false);
+          setDuplicateWarning(null);
           setAllowPossibleDuplicate(false);
         }
       }}
@@ -418,11 +448,30 @@ export function SubmitConcernForm({
             <AlertTriangle size={17} aria-hidden="true" />
             {t.duplicateTitle}
           </p>
+          <p className="mt-2">
+            {duplicateWarning?.sameResident
+              ? t.duplicateOwnMatch
+                  .replace("{title}", duplicateWarning.title)
+                  .replace("{caseNumber}", duplicateWarning.caseNumber)
+              : t.duplicateOtherMatch}
+          </p>
+          {duplicateWarning?.sameResident ? (
+            <p className="mt-2">
+              <Link
+                href={`/resident/concerns/${duplicateWarning.concernId}`}
+                className="font-semibold underline underline-offset-2"
+              >
+                {t.duplicateOpenCase}
+              </Link>
+            </p>
+          ) : null}
           <p className="mt-2">{t.duplicateMessage}</p>
           <label className="mt-3 flex cursor-pointer items-start gap-2 font-medium">
             <input
               id="possible-duplicate-confirm"
               type="checkbox"
+              required
+              aria-required="true"
               checked={allowPossibleDuplicate}
               onChange={(event) => setAllowPossibleDuplicate(event.target.checked)}
               className="mt-0.5 h-4 w-4 accent-brand-700"
