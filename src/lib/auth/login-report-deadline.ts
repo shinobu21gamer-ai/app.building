@@ -43,7 +43,9 @@ function holidayDates(year: number) {
           (holiday) =>
             holiday.type === "public" ||
             (holiday.type === "optional" &&
-              holiday.note?.toLowerCase().includes("non-working day")),
+              "note" in holiday &&
+              typeof holiday.note === "string" &&
+              holiday.note.toLowerCase().includes("non-working day")),
         )
         .map((holiday) => holiday.date.slice(0, 10)),
     );
