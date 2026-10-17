@@ -259,7 +259,9 @@ function requestedStatusDay(input: StatusChangeInput): {
  *
  * Gates enforced here (not only in the route):
  *   * IN_PROGRESS - the planned crew must be assigned, or an override given
- *   * every case - AWAITING_BUDGET cannot be skipped; estimate and funds required (budgetStageBlock)
+ *   * budget - a saved estimate and full funding are required; a case the
+ *     treasury funded early records an Awaiting Budget pass-through instead
+ *     of demanding a redundant send step (budgetStageBlock)
  *   * CLOSED - the resolution must be verified as fully fixed (no override)
  */
 export async function changeConcernStatus(
@@ -319,9 +321,12 @@ export async function changeConcernStatus(
     if (fieldBlock) throw createApiError.badRequest(fieldBlock);
   }
 
-  // ---- gate: every case waits in AWAITING_BUDGET, sized and funded; and a
-  // case cannot be marked resolved if crew changes while it was IN_PROGRESS
-  // quietly raised its cost past what the treasury funded (see budgetStageBlock) ----
+  // ---- gate: the budget stage needs a saved estimate and full funding;
+  // and a case cannot be marked resolved if crew changes while it was
+  // IN_PROGRESS quietly raised its cost past what the treasury funded
+  // (see budgetStageBlock) ----
+  let awaitingBudgetPassThrough: { estimate: number; funded: number } | null =
+    null;
   if (
     input.status === "AWAITING_BUDGET" ||
     input.status === "IN_PROGRESS" ||
@@ -332,13 +337,14 @@ export async function changeConcernStatus(
       select: { totalCost: true, status: true, approvalRequired: true },
     });
     const funding = await fundingGateForConcern(tx, concern.id);
+    const estimatedCost =
+      assessment?.totalCost === null || assessment?.totalCost === undefined
+        ? null
+        : Number(assessment.totalCost);
     const block = budgetStageBlock({
       fromStatus: concern.status,
       toStatus: input.status,
-      estimatedCost:
-        assessment?.totalCost === null || assessment?.totalCost === undefined
-          ? null
-          : Number(assessment.totalCost),
+      estimatedCost,
       fundedAmount: funding.total,
       // DRAFT means the assessment declared it needs a sign-off that has not
       // been recorded yet (see saveAssessment); SUBMITTED cases never hit this.
@@ -346,6 +352,21 @@ export async function changeConcernStatus(
         assessment?.approvalRequired === true && assessment.status === "DRAFT",
     });
     if (block) throw createApiError.badRequest(block);
+    // The treasury covered the estimate before this case was ever sent to
+    // Awaiting Budget. The money requirement is finished, so do not make
+    // the official submit a second, redundant status change: when the work
+    // starts below, a BUDGET history entry records the pass-through first.
+    if (
+      concern.status === "UNDER_ASSESSMENT" &&
+      input.status === "IN_PROGRESS" &&
+      estimatedCost !== null &&
+      estimatedCost > 0
+    ) {
+      awaitingBudgetPassThrough = {
+        estimate: estimatedCost,
+        funded: funding.total,
+      };
+    }
   }
 
   // ---- gate: starting work needs the planned crew on site -------------
@@ -423,6 +444,10 @@ export async function changeConcernStatus(
   };
   if (input.status === "AWAITING_BUDGET") data.awaitingBudgetAt = now;
   if (concern.status === "AWAITING_BUDGET") data.awaitingBudgetResolvedAt = now;
+  if (awaitingBudgetPassThrough) {
+    data.awaitingBudgetAt = now;
+    data.awaitingBudgetResolvedAt = now;
+  }
   if (input.status === "UNDER_ASSESSMENT") data.assessmentCompletedAt = null;
   if (input.status === "IN_PROGRESS") data.assessmentCompletedAt = now;
   if (input.status === "RESOLVED") data.resolvedAt = now;
@@ -440,6 +465,25 @@ export async function changeConcernStatus(
     await resolveEscalationsForCase(tx, concern.id, now);
   }
 
+  // A case the treasury funded early enters and leaves Awaiting Budget in
+  // this same change: record that pass-through first, so the history still
+  // shows the budget stage happening (with the figures that satisfied it)
+  // instead of a mysterious jump from assessment straight to work.
+  if (awaitingBudgetPassThrough) {
+    await tx.caseStatusHistory.create({
+      data: {
+        concernId: concern.id,
+        entryType: "BUDGET",
+        fromStatus: "UNDER_ASSESSMENT",
+        toStatus: "AWAITING_BUDGET",
+        remarks: `The treasury had already set aside ₱${awaitingBudgetPassThrough.funded.toFixed(2)}, covering the ₱${awaitingBudgetPassThrough.estimate.toFixed(2)} estimate, so this case passed through Awaiting budget when the work started.`,
+        occurredOn: actionDate,
+        actorId: input.actor.id,
+        actorRole: input.actor.roleKey,
+      },
+    });
+  }
+
   const entryType =
     input.status === "RESOLVED"
       ? "RESOLUTION"
@@ -453,7 +497,9 @@ export async function changeConcernStatus(
     data: {
       concernId: concern.id,
       entryType,
-      fromStatus: concern.status,
+      fromStatus: awaitingBudgetPassThrough
+        ? "AWAITING_BUDGET"
+        : concern.status,
       toStatus: input.status,
       remarks: input.remarks,
       occurredOn: actionDate,
