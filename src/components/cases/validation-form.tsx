@@ -45,9 +45,13 @@ export function ValidationForm({
   const [selectedTypeId, setSelectedTypeId] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Only the categories connected to the chosen service type are offered:
+  // picking "Repair / Public Works" must never list a health category. A
+  // category with no service type yet stays hidden here until an admin
+  // connects it to one under Categories — it is not a wildcard.
   const visibleCategories = categories.filter(
     (category) =>
-      category.typeId == null || String(category.typeId) === selectedTypeId
+      category.typeId != null && String(category.typeId) === selectedTypeId
   );
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);

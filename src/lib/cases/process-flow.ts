@@ -520,3 +520,24 @@ export function roleActsOnProcessStep(
   }
   return roleOwnsProcessStep(role, key);
 }
+
+/**
+ * Whether the case sheet must offer the "send to Awaiting budget" form on
+ * the FUND step. This is the official's half of the step and needs no
+ * treasury visibility: gating the form on the money panel left officials
+ * with a "Your turn" step and nothing to act on, so a case whose estimate
+ * was done could never be sent to Awaiting budget from the officials' desk.
+ */
+export function fundStepNeedsSending(input: {
+  block: ProcessBlock | null | undefined;
+  canProgress: boolean;
+  canManage: boolean;
+  stageIndex: number;
+}): boolean {
+  return (
+    input.block === "WAITING_BUDGET_STAGE" &&
+    input.canProgress &&
+    input.canManage &&
+    input.stageIndex < STATUS_ORDER.AWAITING_BUDGET
+  );
+}

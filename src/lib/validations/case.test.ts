@@ -1,11 +1,58 @@
 import { describe, expect, it } from "vitest";
 import {
+  assessmentSchema,
   caseNoteSchema,
   concernValidationSchema,
   feedbackSchema,
   resolutionSchema,
   statusChangeSchema,
 } from "./case";
+
+describe("assessmentSchema equipment lines", () => {
+  const validAssessment = {
+    eligibilityChecked: true,
+    inspectionRequired: false,
+    resourcesVerified: true,
+    approvalRequired: false,
+    workersNeeded: 3,
+    estimatedDurationMinutes: 480,
+  };
+
+  it("accepts named, priced equipment lines", () => {
+    const result = assessmentSchema.safeParse({
+      ...validAssessment,
+      equipment: [
+        {
+          name: "Dump truck",
+          quantity: 2,
+          unit: "days",
+          unitPrice: 6000,
+          amount: 12000,
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.equipment?.[0].name).toBe("Dump truck");
+  });
+
+  it("rejects an equipment line with no real name", () => {
+    expect(
+      assessmentSchema.safeParse({
+        ...validAssessment,
+        equipment: [{ name: "x", amount: 100 }],
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects negative equipment amounts", () => {
+    expect(
+      assessmentSchema.safeParse({
+        ...validAssessment,
+        equipment: [{ name: "Dump truck", amount: -5 }],
+      }).success
+    ).toBe(false);
+  });
+});
 
 const VALID_RESOLUTION = {
   summary: "Repaired the streetlight and patched the pothole.",

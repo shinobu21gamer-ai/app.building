@@ -22,6 +22,7 @@ import {
 } from "@/components/cases/process-flow-panel";
 import {
   caseProcessFlow,
+  fundStepNeedsSending,
   roleActsOnProcessStep,
   type ProcessStepKey,
 } from "@/lib/cases/process-flow";
@@ -54,6 +55,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { CaseOwner } from "@/components/cases/case-owner";
 import { loadPriorityConfig } from "@/lib/priority/config";
 import { caseFundingView } from "@/lib/treasury/query";
+import { fundingGateForConcern } from "@/lib/treasury/budget";
 import { formatPeso } from "@/lib/cases/manpower";
 import { formatDate, formatDateTime } from "@/lib/format";
 import {
@@ -229,7 +231,10 @@ export default async function OfficialConcernDetailPage({
         },
       },
       caseAssessment: {
-        include: { materials: { orderBy: { sortOrder: "asc" } } },
+        include: {
+          materials: { orderBy: { sortOrder: "asc" } },
+          equipment: { orderBy: { sortOrder: "asc" } },
+        },
       },
     },
   });
@@ -360,9 +365,17 @@ export default async function OfficialConcernDetailPage({
     )
   );
 
+  // The full funding view (earmarks, vouchers, balances) is treasury-only.
+  // The flow engine, though, only needs the funded total to know whether
+  // step 4 is done — a single figure, not treasury detail — so read the
+  // gate for every reader. Feeding officials 0 here stranded funded cases
+  // on "Wait for the budget" forever and kept Start work locked.
   const funding = canViewTreasury
     ? await caseFundingView(db, numericId)
     : null;
+  const fundedTotal = funding
+    ? funding.gate.total
+    : (await fundingGateForConcern(db, numericId)).total;
 
   const [concernTypes, allCategories, crewSummary] = await Promise.all([
     canValidate
@@ -444,7 +457,7 @@ export default async function OfficialConcernDetailPage({
     estimatedCost: concern.caseAssessment
       ? Number(concern.caseAssessment.totalCost ?? 0)
       : null,
-    fundedAmount: funding?.gate.total ?? 0,
+    fundedAmount: fundedTotal,
     activeCrew: crewSummary,
     hasResolution: Boolean(resolution),
     verificationStatus: resolution?.verificationStatus ?? null,
@@ -498,7 +511,12 @@ export default async function OfficialConcernDetailPage({
   // The treasury's figure is read here, never written: this desk sends the case
   // to Awaiting budget, and the treasury office sets the money aside.
   const fundStep = stepState("FUND");
-  const fundNeedsSending = fundStep?.block === "WAITING_BUDGET_STAGE";
+  const fundNeedsSending = fundStepNeedsSending({
+    block: fundStep?.block,
+    canProgress,
+    canManage,
+    stageIndex,
+  });
 
   const holderName = currentAssignment?.official
     ? `${currentAssignment.official.firstName} ${currentAssignment.official.lastName}`
@@ -719,6 +737,44 @@ export default async function OfficialConcernDetailPage({
                 </ul>
               </div>
             )}
+            {concern.caseAssessment.equipment.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                  {copy[locale].revamp.workflow.equipmentListTitle}
+                </p>
+                <ul className="divide-y divide-line text-sm">
+                  {concern.caseAssessment.equipment.map(
+                    (
+                      line: {
+                        name: string;
+                        quantity: unknown;
+                        unit: string | null;
+                        amount: unknown;
+                      },
+                      index: number
+                    ) => (
+                    <li
+                      key={index}
+                      className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-1.5"
+                    >
+                      <span className="text-ink">
+                        {line.name}
+                        {line.quantity !== null && line.unit && (
+                          <span className="text-ink-subtle">
+                            {" "}
+                            · {String(line.quantity)} {line.unit}
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-medium tabular-nums text-ink">
+                        ₱{Number(line.amount).toFixed(2)}
+                      </span>
+                    </li>
+                  ))
+                  }
+                </ul>
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-sm text-ink-muted">
@@ -748,10 +804,15 @@ export default async function OfficialConcernDetailPage({
     );
   }
 
-  if (canViewTreasury && funding) {
+  // The send form is the official's half of this step and must render even
+  // when the reader may not see treasury figures (a plain OFFICIAL has no
+  // treasury.balance.view): hiding it behind the funding view left the step
+  // saying "Your turn" with nothing to act on. The money panel itself stays
+  // treasury-gated.
+  if (fundNeedsSending || (canViewTreasury && funding)) {
     panels.FUND = (
       <div className="space-y-4">
-        {fundNeedsSending && canProgress && canManage && stageIndex < 3 ? (
+        {fundNeedsSending ? (
           <CaseWorkflowForm
             concernId={concern.id}
             currentStatus={concern.status}
@@ -761,19 +822,21 @@ export default async function OfficialConcernDetailPage({
             earliestDay={statusEarliestDay}
           />
         ) : null}
-        <FundingPanel
-          funding={funding}
-          concernId={concern.id}
-          // Same expression the flow engine is fed above, so the panel and the
-          // step card never disagree about what the case needs.
-          estimate={
-            concern.caseAssessment
-              ? Number(concern.caseAssessment.totalCost ?? 0)
-              : null
-          }
-          canPrepareEarmark={canPrepareEarmark}
-          locale={locale}
-        />
+        {canViewTreasury && funding ? (
+          <FundingPanel
+            funding={funding}
+            concernId={concern.id}
+            // Same expression the flow engine is fed above, so the panel and
+            // the step card never disagree about what the case needs.
+            estimate={
+              concern.caseAssessment
+                ? Number(concern.caseAssessment.totalCost ?? 0)
+                : null
+            }
+            canPrepareEarmark={canPrepareEarmark}
+            locale={locale}
+          />
+        ) : null}
       </div>
     );
   }

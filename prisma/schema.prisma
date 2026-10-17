@@ -766,6 +766,8 @@ model CaseAssessment {
   // What will be bought, line by line: the treasurer sets money aside against
   // this, not against a bare total.
   materials      AssessmentMaterial[]
+  // What will be brought or rented, line by line, for the same reason.
+  equipment      AssessmentEquipment[]
 
   @@index([status])
   @@index([scheduledStartAt, scheduledEndAt])
@@ -781,6 +783,27 @@ model AssessmentMaterial {
   name         String
   quantity     Decimal?       @db.Decimal(14, 2)
   unit         String? // "bags", "pcs", "m" ...
+  unitPrice    Decimal?       @db.Decimal(14, 2)
+  amount       Decimal        @db.Decimal(14, 2)
+  note         String?
+  sortOrder    Int            @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([assessmentId])
+}
+
+// One row per piece of equipment in a cost estimate: WHAT goes to the site
+// (or is rented, and for how long), so the equipment total is a priced list —
+// dump truck × 2 days at the day rate — not a bare number nobody can explain.
+// The assessment's equipmentCost is the sum of these lines.
+model AssessmentEquipment {
+  id           Int            @id @default(autoincrement())
+  assessmentId Int
+  assessment   CaseAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  name         String
+  quantity     Decimal?       @db.Decimal(14, 2)
+  unit         String? // "days", "pcs", "trips" ...
   unitPrice    Decimal?       @db.Decimal(14, 2)
   amount       Decimal        @db.Decimal(14, 2)
   note         String?

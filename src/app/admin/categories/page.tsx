@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth/session";
 import { Card } from "@/components/ui/card";
 import { AdminFilterBar } from "@/components/admin/admin-filter-bar";
@@ -30,6 +31,13 @@ export default async function AdminCategoriesPage({
   const params = await searchParams;
   const filters = parseNameFilters(params);
   const categories = await listAdminCategories(filters);
+  // Service types a category can be connected to; only connected categories
+  // are offered for that type when a case is validated.
+  const types = await db.concernType.findMany({
+    where: { isActive: true },
+    orderBy: { displayOrder: "asc" },
+    select: { id: true, name: true },
+  });
 
   return (
     <div className="space-y-6">
@@ -56,6 +64,10 @@ export default async function AdminCategoriesPage({
       <Card>
         <CategoryManager
           categories={categories.map(adminCategoryView)}
+          types={types.map((type: { id: number; name: string }) => ({
+            id: type.id,
+            label: type.name,
+          }))}
           locale={locale}
         />
       </Card>

@@ -663,7 +663,12 @@ export async function validateConcern(
   if (!category || !category.isActive) {
     throw createApiError.badRequest("Select an active category.");
   }
-  if (category.typeId !== null && category.typeId !== type.id) {
+  if (category.typeId === null) {
+    throw createApiError.badRequest(
+      "The selected category is not connected to a service type yet. Ask an administrator to assign it one under Categories, then validate again."
+    );
+  }
+  if (category.typeId !== type.id) {
     throw createApiError.badRequest(
       "The selected category belongs to a different service type. Choose the category that matches this concern before validating."
     );

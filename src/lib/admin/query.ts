@@ -226,7 +226,10 @@ export async function listAdminCategories(filters: AdminNameFilters) {
 
   return db.concernCategory.findMany({
     where,
-    include: { _count: { select: CATEGORY_COUNT_SELECT } },
+    include: {
+      _count: { select: CATEGORY_COUNT_SELECT },
+      type: { select: { id: true, name: true } },
+    },
     orderBy: { name: "asc" },
     take: ADMIN_LIST_LIMIT,
   });
@@ -282,6 +285,8 @@ export function adminCategoryView(category: AdminCategoryRow) {
     code: category.code,
     description: category.description,
     isActive: category.isActive,
+    typeId: category.typeId,
+    typeName: category.type?.name ?? null,
     references: {
       concerns: c.concerns,
       routingRules: c.routingRules,
