@@ -10,6 +10,8 @@ import { requireApiPermission } from "@/lib/auth/session";
 import { recordAudit, requestMeta } from "@/lib/audit";
 import { earmarkActionSchema } from "@/lib/validations/treasury";
 import { approveEarmark, cancelEarmark } from "@/lib/treasury/budget";
+import { armCaseStageClock } from "@/lib/sla/escalation";
+import { syncPublicRecord } from "@/lib/cases/public-record";
 
 export const runtime = "nodejs";
 
@@ -49,9 +51,26 @@ export const PATCH = withErrorBoundary<[Request, RouteContext]>(
     const meta = requestMeta(req);
 
     if (body.action === "APPROVE") {
-      const outcome = await db.$transaction((tx) =>
-        approveEarmark(tx, { actor, earmarkId, notes: body.notes ?? null })
-      );
+      const outcome = await db.$transaction(async (tx) => {
+        const result = await approveEarmark(tx, {
+          actor,
+          earmarkId,
+          notes: body.notes ?? null,
+        });
+        // An approval that completes a case's funding moves the case into
+        // AWAITING_BUDGET itself (see advanceFundedCaseToAwaitingBudget);
+        // give the new stage its SLA clock and refresh the public record,
+        // the same footprint a manual status change leaves.
+        if (result.caseMovedToAwaitingBudget && result.concernId !== null) {
+          await armCaseStageClock(tx, {
+            concernId: result.concernId,
+            status: "AWAITING_BUDGET",
+            from: new Date(),
+          });
+          await syncPublicRecord(tx, result.concernId);
+        }
+        return result;
+      });
       await recordAudit({
         action: "TREASURY_EARMARK_APPROVED",
         resourceType: "budget_earmark",
