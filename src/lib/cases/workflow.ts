@@ -13,10 +13,12 @@ import type { PermissionKey } from "@/lib/auth/rbac";
  * assignment service (automatic rule, type default office, or manual
  * reassignment). Everything after that is driven by the workflow endpoint.
  *
- * AWAITING_BUDGET has no way around it: every case stops there (see
- * `budgetStageBlock`). The stage is how the cost estimate reaches the treasury
- * and how the money is set aside before any work starts, so no type, role or
- * override removes it.
+ * AWAITING_BUDGET is the normal waiting stage: the estimate reaches the
+ * treasury and the money is set aside before any work starts. If the treasury
+ * has already set aside the full estimate before the case is sent there,
+ * starting the work records an automatic Awaiting Budget pass-through in the
+ * history (see `budgetStageBlock` and `changeConcernStatus`). What cannot be
+ * bypassed is the funding requirement itself.
  */
 export const CASE_STATUSES = [
   "SUBMITTED",
@@ -30,8 +32,9 @@ export const CASE_STATUSES = [
 
 export type CaseStatus = (typeof CASE_STATUSES)[number];
 
-// Allowed forward transitions. Every case waits in AWAITING_BUDGET until the
-// treasury has set the money aside; see budgetStageBlock().
+// Allowed forward transitions. A case normally waits in AWAITING_BUDGET;
+// UNDER_ASSESSMENT -> IN_PROGRESS is the funded-early path and is gated by
+// budgetStageBlock() plus a recorded Awaiting Budget pass-through.
 export const STATUS_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
   SUBMITTED: ["ASSIGNED"],
   ASSIGNED: ["UNDER_ASSESSMENT"],
@@ -274,16 +277,22 @@ function peso(value: number): string {
  * Why a status change is blocked by the money rules, or null when it may go ahead.
  *
  * Every case walks the same money path:
- *   1. it may never skip AWAITING_BUDGET (there is no override for this);
- *   2. it must state how much it needs (a saved cost estimate) before it starts
- *      waiting — a saved ₱0 says "this costs nothing", which is an answer;
- *   3. the approved funds must cover that estimate before work starts;
+ *   1. it must state how much it needs (a saved cost estimate) before it can
+ *      wait for or pass through the budget stage — a saved ₱0 says "this
+ *      costs nothing", which is an answer;
+ *   2. normally it then waits in AWAITING_BUDGET until the approved funds
+ *      cover that estimate;
+ *   3. if the treasury already covered the estimate before the case was sent
+ *      to AWAITING_BUDGET, the funding requirement is already met. Starting
+ *      work is allowed and the status service records the Awaiting Budget
+ *      pass-through, so no one has to perform a redundant send step merely
+ *      to make the status dwell in a stage whose work is finished;
  *   4. and because labour is recounted live off whoever is actually on the
  *      crew (see `refreshCaseLabour`), a crew swap or addition during
  *      IN_PROGRESS can raise the cost after the treasury already set money
  *      aside for the smaller, original figure — so the cover is checked again
- *      before the case is marked resolved. Like step 1, this has no override:
- *      the fix is an additional earmark, not a reason typed into a box.
+ *      before the case is marked resolved. This has no override: the fix is
+ *      an additional earmark, not a reason typed into a box.
  */
 export function budgetStageBlock(input: BudgetStageInput): string | null {
   const estimate = input.estimatedCost;
@@ -299,15 +308,20 @@ export function budgetStageBlock(input: BudgetStageInput): string | null {
     return "This case's assessment requires approval before it can move forward. Record the approval on the assessment first.";
   }
 
-  // A concern that needs no money (a saved estimate of ₱0) never enters the
-  // budget stage: there is nothing for the treasury to set aside, so it can go
-  // straight from assessment to work.
+  // Starting work straight from assessment is allowed only when the budget
+  // requirement is already fulfilled: either the case costs nothing (₱0
+  // estimate), or the treasury has already set aside the full estimate.
+  // Otherwise the case must first move to AWAITING_BUDGET and wait there.
   if (
     input.fromStatus === "UNDER_ASSESSMENT" &&
-    input.toStatus === "IN_PROGRESS" &&
-    input.estimatedCost !== 0
+    input.toStatus === "IN_PROGRESS"
   ) {
-    return "Every case waits in AWAITING_BUDGET until the treasury has set money aside. It cannot skip that stage.";
+    if (!hasEstimate) {
+      return "Save the cost estimate before work starts. The estimate is how the treasury knows how much to set aside.";
+    }
+    if (estimate > 0 && input.fundedAmount + 0.005 < estimate) {
+      return `Only ${peso(input.fundedAmount)} is set aside for this case, but the estimate is ${peso(estimate)}. Move the case to Awaiting budget and have the treasury approve an earmark for the rest before work starts.`;
+    }
   }
   if (input.toStatus === "AWAITING_BUDGET" && !hasEstimate) {
     return "Save the cost estimate before the case waits for budget. The estimate is how the treasury knows how much to set aside.";

@@ -181,14 +181,13 @@ export function caseProcessFlow(input: ProcessFlowInput): ProcessFlow {
   const crewOk = !needsCrew || crewSatisfied(input.workersNeeded, input.activeCrew);
   const moneySetAside =
     !needsBudget || fundingSatisfied(input.estimatedCost, input.fundedAmount);
-  // Step 4 is only done once the case has actually waited in AWAITING_BUDGET.
-  // The treasury can set money aside while the case is still UNDER_ASSESSMENT,
-  // and money alone used to mark this step done and offer "Start working" from
-  // UNDER_ASSESSMENT — a jump the workflow refuses ("It cannot skip that
-  // stage"), which stranded the official on step 6 with a form that only
-  // failed. A funded case that has not been sent yet still waits here.
-  const funded =
-    moneySetAside && (!needsBudget || stage >= STATUS_ORDER.AWAITING_BUDGET);
+  // Money set aside is what completes Step 4. The treasury may approve the
+  // earmark before the official sends the case to Awaiting Budget; when that
+  // happens, the budget requirement is already fulfilled and the case should
+  // move on to crew/start instead of being sent backwards for a redundant
+  // status form. The status service records the Awaiting Budget pass-through
+  // in the case history when work starts, so the audit trail stays complete.
+  const funded = moneySetAside;
   // The VERIFY step only completes once the fix is confirmed fixed: a
   // partial verification still blocks closing, so it reads "pending" here.
   const verified = isCloseableVerification(input.verificationStatus);

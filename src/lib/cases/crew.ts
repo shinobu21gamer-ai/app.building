@@ -20,22 +20,12 @@ type Tx = Prisma.TransactionClient;
 // domain (the rules module stays dependency-free for the unit tests).
 
 export {
-  conflictMessage,
-  findCrewConflicts,
   remainingCrewSlots,
   windowsOverlap,
-  type CrewBooking,
-  type CrewConflict,
   type CrewWindow,
 } from "@/lib/cases/crew-rules";
 
-import {
-  conflictMessage,
-  findCrewConflicts,
-  remainingCrewSlots,
-  type CrewBooking,
-  type CrewWindow,
-} from "@/lib/cases/crew-rules";
+import { remainingCrewSlots } from "@/lib/cases/crew-rules";
 
 // ------------------------------------------------------------ tx services
 
@@ -48,7 +38,7 @@ export const OPEN_CASE_STATUSES = [
   "RESOLVED",
 ] as const;
 
-/** Cases where a crew booking is still "live" for double-booking purposes. */
+/** Cases where a crew booking still counts as a live/open assignment. */
 const BOOKING_STATUSES = ["ASSIGNED", "UNDER_ASSESSMENT", "AWAITING_BUDGET", "IN_PROGRESS"];
 
 export type CrewMemberView = {
@@ -208,7 +198,10 @@ export type AssignCrewOutcome = {
  * Enforced here, inside the caller's transaction:
  *   * only active CREW accounts with an active profile
  *   * never more people than the plan needs
- *   * nobody already booked on overlapping work on another open case
+ *
+ * A person may be booked on several open cases at once: the roster still
+ * shows how many open cases they hold, but that count is information for
+ * the official, not a reason to refuse the assignment.
  */
 export async function assignCrew(
   tx: Tx,
@@ -287,85 +280,9 @@ export async function assignCrew(
       );
     }
 
-    const window: CrewWindow = {
-      startAt: input.scheduledStartAt ?? null,
-      endAt: input.scheduledEndAt ?? null,
-    };
-
-    // Serialise assignments per person: lock the crew members' user rows (in id
-    // order, so concurrent calls cannot deadlock) before reading their bookings.
-    // Without the lock, two officials booking the same person at the same moment
-    // could both pass the overlap check.
-    await tx.$queryRaw`
-      SELECT "id" FROM "User"
-      WHERE "id" = ANY(${incoming}::int[])
-      ORDER BY "id"
-      FOR UPDATE`;
-
-    const bookings = await tx.crewAssignment.findMany({
-      where: {
-        crewId: { in: incoming },
-        isActive: true,
-        concernId: { not: concern.id },
-        concern: { status: { in: BOOKING_STATUSES } },
-      },
-      select: {
-        crewId: true,
-        concernId: true,
-        scheduledStartAt: true,
-        scheduledEndAt: true,
-        concern: {
-          select: {
-            caseNumber: true,
-            caseAssessment: {
-              select: { scheduledStartAt: true, scheduledEndAt: true },
-            },
-          },
-        },
-      },
-    });
-
-    const normalized: CrewBooking[] = bookings.map((booking) => ({
-      crewId: booking.crewId,
-      concernId: booking.concernId,
-      caseNumber: booking.concern.caseNumber,
-      startAt:
-        booking.scheduledStartAt ??
-        booking.concern.caseAssessment?.scheduledStartAt ??
-        null,
-      endAt:
-        booking.scheduledEndAt ??
-        booking.concern.caseAssessment?.scheduledEndAt ??
-        null,
-    }));
-
-    // The candidate window is the assignment window; with none given it falls
-    // back to the case's planned window. A booking must have both ends: an
-    // open-ended booking would block the person from every other case
-    // indefinitely, so it is refused rather than guessed at.
-    const assessmentWindow = await tx.caseAssessment.findUnique({
-      where: { concernId: concern.id },
-      select: { scheduledStartAt: true, scheduledEndAt: true },
-    });
-    const candidate: CrewWindow = {
-      startAt: window.startAt ?? assessmentWindow?.scheduledStartAt ?? null,
-      endAt: window.endAt ?? assessmentWindow?.scheduledEndAt ?? null,
-    };
-    if (!candidate.startAt || !candidate.endAt) {
-      throw createApiError.badRequest(
-        "Set the planned start and finish for this crew booking, or on the case's assessment, before assigning crew."
-      );
-    }
-
-    const conflicts = findCrewConflicts({
-      bookings: normalized,
-      candidate,
-      crewIds: incoming,
-      concernId: concern.id,
-    });
-    if (conflicts.length > 0) {
-      throw createApiError.conflict(conflictMessage(conflicts));
-    }
+    // No cross-case booking check: being assigned to another open report —
+    // even with overlapping planned dates — must not stop this assignment.
+    // The roster's "N open case(s)" label keeps that load visible.
 
     for (const crewId of incoming) {
       const existing = await tx.crewAssignment.findUnique({

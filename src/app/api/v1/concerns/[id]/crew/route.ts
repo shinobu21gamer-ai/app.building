@@ -97,8 +97,9 @@ export const GET = withErrorBoundary<[Request, RouteContext]>(
 
 /**
  * POST /api/v1/concerns/[id]/crew
- * Assigns named crew (never more than the plan needs) and refuses anyone who is
- * already booked on overlapping work on another open case.
+ * Assigns named crew (never more than the plan needs). A crew member may be
+ * assigned to multiple open cases at once; the roster shows their open-case
+ * count but does not use it to refuse an assignment.
  */
 export const POST = withErrorBoundary<[Request, RouteContext]>(
   async (req, ctx) => {

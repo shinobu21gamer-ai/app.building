@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  conflictMessage,
-  findCrewConflicts,
-  remainingCrewSlots,
-  windowsOverlap,
-} from "./crew-rules";
+import { remainingCrewSlots, windowsOverlap } from "./crew-rules";
 
 const day = (value: string) => new Date(`${value}T08:00:00+08:00`);
 
@@ -46,56 +41,6 @@ describe("windowsOverlap", () => {
         { startAt: day("2026-10-14"), endAt: day("2026-10-15") }
       )
     ).toBe(false);
-  });
-});
-
-describe("findCrewConflicts", () => {
-  const candidate = {
-    startAt: day("2026-10-12"),
-    endAt: day("2026-10-14"),
-  };
-
-  it("flags the same person booked elsewhere at the same time", () => {
-    const conflicts = findCrewConflicts({
-      bookings: [
-        {
-          crewId: 7,
-          concernId: 99,
-          caseNumber: "BR-20261001-0002",
-          startAt: day("2026-10-13"),
-          endAt: day("2026-10-15"),
-        },
-      ],
-      candidate,
-      crewIds: [7, 8],
-      concernId: 42,
-    });
-    expect(conflicts).toEqual([
-      { crewId: 7, concernId: 99, caseNumber: "BR-20261001-0002" },
-    ]);
-  });
-
-  it("ignores other crew, other cases outside the window and the same case", () => {
-    const conflicts = findCrewConflicts({
-      bookings: [
-        { crewId: 9, concernId: 99, startAt: candidate.startAt, endAt: candidate.endAt },
-        { crewId: 7, concernId: 98, startAt: day("2026-11-01"), endAt: day("2026-11-02") },
-        { crewId: 7, concernId: 42, startAt: candidate.startAt, endAt: candidate.endAt },
-      ],
-      candidate,
-      crewIds: [7],
-      concernId: 42,
-    });
-    expect(conflicts).toEqual([]);
-  });
-
-  it("explains the clash in the message", () => {
-    expect(
-      conflictMessage([
-        { crewId: 7, concernId: 99, caseNumber: "BR-20261001-0002" },
-        { crewId: 7, concernId: 99, caseNumber: "BR-20261001-0002" },
-      ])
-    ).toContain("BR-20261001-0002");
   });
 });
 

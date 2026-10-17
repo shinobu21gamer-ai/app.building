@@ -21,7 +21,8 @@ describe("case workflow transitions", () => {
   it("returns the seven-stage lifecycle", () => {
     expect(allowedTransitions("SUBMITTED")).toEqual(["ASSIGNED"]);
     expect(allowedTransitions("ASSIGNED")).toEqual(["UNDER_ASSESSMENT"]);
-    // The transition exists, but the money gate refuses it for every case.
+    // The direct transition exists for a ₱0 case, or one the treasury has
+    // already funded in full; the money gate refuses every other case.
     expect(allowedTransitions("UNDER_ASSESSMENT")).toEqual([
       "AWAITING_BUDGET",
       "IN_PROGRESS",
@@ -50,13 +51,24 @@ describe("case workflow transitions", () => {
     expect(statusPermissionFor("SUBMITTED")).toBeNull();
   });
 
-  describe("budgetStageBlock (no case skips AWAITING_BUDGET)", () => {
+  describe("budgetStageBlock (funding, not a redundant send, gates the start)", () => {
     const base = { estimatedCost: 5000, fundedAmount: 5000 };
 
-    it("blocks money cases from skipping straight to IN_PROGRESS, with no override", () => {
+    it("lets a fully funded case start, but never an unfunded or unestimated one", () => {
+      // The treasury funded this case before it was sent to Awaiting budget:
+      // the money requirement is met, so no redundant send is demanded.
       expect(
         budgetStageBlock({ ...base, fromStatus: "UNDER_ASSESSMENT", toStatus: "IN_PROGRESS" })
-      ).toMatch(/cannot skip/);
+      ).toBeNull();
+      // Short of the estimate, the case must still wait in AWAITING_BUDGET.
+      expect(
+        budgetStageBlock({
+          ...base,
+          fundedAmount: 3000,
+          fromStatus: "UNDER_ASSESSMENT",
+          toStatus: "IN_PROGRESS",
+        })
+      ).toMatch(/Move the case to Awaiting budget/);
       expect(
         budgetStageBlock({
           fromStatus: "UNDER_ASSESSMENT",
@@ -64,7 +76,7 @@ describe("case workflow transitions", () => {
           estimatedCost: null,
           fundedAmount: 0,
         })
-      ).toMatch(/cannot skip/);
+      ).toMatch(/cost estimate/);
       // A case that costs nothing never enters the budget stage.
       expect(
         budgetStageBlock({

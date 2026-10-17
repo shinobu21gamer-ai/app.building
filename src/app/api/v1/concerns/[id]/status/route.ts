@@ -42,14 +42,16 @@ function attachedFile(value: FormDataEntryValue | null): File | null {
  * POST /api/v1/concerns/[id]/status
  *
  * Moves a case through the seven-stage lifecycle: UNDER_ASSESSMENT,
- * AWAITING_BUDGET (money cases cannot skip it), IN_PROGRESS, RESOLVED or CLOSED. Every status
- * change must carry a proof photo, so it is accepted only as multipart form
- * data with the image attached. JSON cannot carry a file and is refused.
+ * AWAITING_BUDGET, IN_PROGRESS, RESOLVED or CLOSED. Every status change must
+ * carry a proof photo, so it is accepted only as multipart form data with
+ * the image attached. JSON cannot carry a file and is refused.
  *
  * The permission depends on the target: driving a case forward needs
  * `case.status.progress`; closing it needs `case.status.close` (the approving
- * official). Starting work also needs the planned crew assigned. A money case
- * must pass through AWAITING_BUDGET with approved funds covering its estimate.
+ * official). Starting work also needs the planned crew assigned. A money
+ * case needs approved funds covering its estimate; if the treasury funded
+ * it before it was sent to AWAITING_BUDGET, starting work records that
+ * stage's pass-through in the history instead of refusing the change.
  *
  * Optional `occurredOn` (YYYY-MM-DD) records the day the change happened; it
  * defaults to today (Asia/Manila). RESOLVED takes its date from `resolution`.

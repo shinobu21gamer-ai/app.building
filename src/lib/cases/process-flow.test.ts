@@ -270,12 +270,13 @@ describe("caseProcessFlow", () => {
     ).toBe(false);
   });
 
-  // Regression: the treasurer set the money aside while the case was still
-  // UNDER_ASSESSMENT. Money alone marked step 4 done, so the official was
-  // shown step 6 ("Start working") and the server refused the jump with
-  // "It cannot skip that stage" — the case must still be sent to
-  // AWAITING_BUDGET first, and only then does step 4 count as done.
-  it("still sends a case the treasury funded early through Awaiting budget", () => {
+  // Regression: the treasurer set the full amount aside while the case was
+  // still UNDER_ASSESSMENT. The old flow either called step 4 done while the
+  // status service refused Start, or dragged the official back to step 4 for
+  // a redundant "send to Awaiting budget" form after the money was already
+  // there. Completed funding now completes the step; starting work records
+  // the Awaiting Budget pass-through in the case history.
+  it("completes the budget step when the treasury funded the case early", () => {
     const fundedEarly = {
       ...base,
       status: "UNDER_ASSESSMENT",
@@ -288,12 +289,12 @@ describe("caseProcessFlow", () => {
 
     const flow = caseProcessFlow(fundedEarly);
     expect(stepOf(fundedEarly, "FUND")).toMatchObject({
-      state: "current",
-      block: "WAITING_BUDGET_STAGE",
+      state: "done",
+      block: null,
     });
-    expect(flow.currentKey).toBe("FUND");
-    expect(flow.currentNumber).toBe(4);
-    expect(stepOf(fundedEarly, "START").block).toBe("WAITING_BUDGET_STAGE");
+    expect(stepOf(fundedEarly, "START").block).toBe("NOT_STARTED");
+    expect(flow.currentKey).toBe("START");
+    expect(flow.currentNumber).toBe(6);
     expect(
       fundStepNeedsSending({
         block: stepOf(fundedEarly, "FUND").block,
@@ -301,14 +302,23 @@ describe("caseProcessFlow", () => {
         canManage: true,
         stageIndex: 2,
       })
-    ).toBe(true);
+    ).toBe(false);
 
-    // Once the official sends it, the money already set aside completes
-    // step 4 at once and the case may start work.
-    const sent = { ...fundedEarly, status: "AWAITING_BUDGET" };
-    expect(stepOf(sent, "FUND").state).toBe("done");
-    expect(stepOf(sent, "START").block).toBe("NOT_STARTED");
-    expect(caseProcessFlow(sent).currentKey).toBe("START");
+    // A short earmark does not complete the step: the official still sends
+    // the case to Awaiting budget so the treasury can cover the rest.
+    const fundedShort = { ...fundedEarly, fundedAmount: 10_000 };
+    expect(stepOf(fundedShort, "FUND")).toMatchObject({
+      state: "current",
+      block: "WAITING_BUDGET_STAGE",
+    });
+    expect(
+      fundStepNeedsSending({
+        block: stepOf(fundedShort, "FUND").block,
+        canProgress: true,
+        canManage: true,
+        stageIndex: 2,
+      })
+    ).toBe(true);
   });
 
   it("will not start work without the planned crew", () => {
