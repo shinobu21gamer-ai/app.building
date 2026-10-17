@@ -664,11 +664,16 @@ export async function validateConcern(
     throw createApiError.badRequest("Select an active category.");
   }
   if (category.typeId === null) {
-    throw createApiError.badRequest(
-      "The selected category is not connected to a service type yet. Ask an administrator to assign it one under Categories, then validate again."
-    );
-  }
-  if (category.typeId !== type.id) {
+    // A category nobody connected yet is not a mismatch: the person
+    // validating holds the category settings too, and the form offers these
+    // in their own group precisely so the choice connects the category to
+    // this service type. Bouncing the validation to a settings page here
+    // left every pre-connection category (e.g. Road Damage) unusable.
+    await tx.concernCategory.update({
+      where: { id: category.id },
+      data: { typeId: type.id },
+    });
+  } else if (category.typeId !== type.id) {
     throw createApiError.badRequest(
       "The selected category belongs to a different service type. Choose the category that matches this concern before validating."
     );

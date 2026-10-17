@@ -1216,7 +1216,7 @@ const en = {
         "Categories group concerns for residents and for the reports; a disabled category stops being offered without touching past cases.",
       categoryType: "Service type",
       categoryTypeHint:
-        "A category is only offered under its service type when a case is validated. Leave it unassigned to keep the category hidden from validation until it is connected.",
+        "A category is offered under its service type when a case is validated. Leave it unassigned and it appears in a separate “not connected yet” group at validation — choosing it there connects it to that type.",
       categoryTypeUnassigned: "Not assigned yet",
       name: "Name",
       code: "Code",
@@ -3371,7 +3371,10 @@ const en = {
       validationCategoryHint:
         "Choose the category that best describes the problem. Do not keep an unrelated category just because it is currently recorded.",
       validationCategoryPlaceholder: "Choose the best matching category",
-      validationNoCategories: "No active category is configured for this service type. Ask an administrator to update the category settings.",
+      validationNoCategories: "No category can be used for this service type yet. Add one, or connect one to this type, under Categories — then validate again.",
+      validationUnconnectedGroup: "Not connected to a service type yet",
+      validationUnconnectedHint:
+        "The grouped categories are not connected to any service type yet. Picking one connects it to the service type above, so it is offered there from now on (changeable under Categories).",
       validationPriority: "Priority",
       validationConfirmPriority: "Confirm the priority shown to the public",
       validationNotes: "Validation notes",
@@ -4835,7 +4838,7 @@ const fil: typeof en = {
         "Ang kategorya ang nagpapangkat ng concern para sa residente at sa mga report; kapag disabled, hindi na ito inaalok pero hindi naaapektuhan ang lumang kaso.",
       categoryType: "Uri ng serbisyo",
       categoryTypeHint:
-        "Inaalok lamang ang kategorya sa ilalim ng uri ng serbisyo nito kapag na-validate ang kaso. Iwanang hindi nakatalaga para hindi muna ito lumabas sa validation hanggang sa maikonekta ito.",
+        "Inaalok ang kategorya sa ilalim ng uri ng serbisyo nito kapag na-validate ang kaso. Iwanang hindi nakatalaga at lalabas ito sa hiwalay na grupong “hindi pa nakakonekta” sa validation — ang pagpili nito roon ang magkokonekta nito sa uring iyon.",
       categoryTypeUnassigned: "Hindi pa nakatalaga",
       name: "Pangalan",
       code: "Code",
@@ -6976,7 +6979,10 @@ const fil: typeof en = {
       validationCategoryHint:
         "Piliin ang kategoryang pinakatumpak sa problema. Huwag panatilihin ang maling kategorya dahil lang ito ang kasalukuyang nakatala.",
       validationCategoryPlaceholder: "Piliin ang pinakatugmang kategorya",
-      validationNoCategories: "Walang aktibong kategoryang nakatalaga sa uri ng serbisyong ito. Ipa-update sa administrator ang mga setting ng kategorya.",
+      validationNoCategories: "Wala pang kategoryang magagamit para sa uri ng serbisyong ito. Magdagdag ng isa, o ikonekta ang isa sa uring ito, sa ilalim ng Categories — pagkatapos ay beripikahin ulit.",
+      validationUnconnectedGroup: "Hindi pa nakakonekta sa uri ng serbisyo",
+      validationUnconnectedHint:
+        "Ang mga kategorya sa grupo ay hindi pa nakakonekta sa anumang uri ng serbisyo. Ang pagpili ng isa ay ikokonekta ito sa uri ng serbisyo sa itaas, kaya doon na ito iaalok mula ngayon (mababago sa ilalim ng Categories).",
       validationPriority: "Prayoridad",
       validationConfirmPriority: "Kumpirmahin ang prayoridad na ipapakita sa publiko",
       validationNotes: "Tala sa beripikasyon",
