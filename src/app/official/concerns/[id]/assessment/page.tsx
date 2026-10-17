@@ -9,6 +9,7 @@ import { AssessmentForm } from "@/components/cases/assessment-form";
 import { CrewPanel } from "@/components/cases/crew-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { suggestedMaterials } from "@/lib/cases/materials-templates";
+import { suggestedEquipment } from "@/lib/cases/equipment-templates";
 import { planNeeds } from "@/lib/cases/plan-needs";
 import { formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
@@ -53,7 +54,10 @@ export default async function AssessmentPage({ params }: PageProps) {
       type: true,
       assignedOffice: { select: { id: true, name: true } },
       caseAssessment: {
-        include: { materials: { orderBy: { sortOrder: "asc" } } },
+        include: {
+          materials: { orderBy: { sortOrder: "asc" } },
+          equipment: { orderBy: { sortOrder: "asc" } },
+        },
       },
     },
   });
@@ -68,6 +72,10 @@ export default async function AssessmentPage({ params }: PageProps) {
   });
   const planSaved = concern.caseAssessment != null;
   const suggestions = suggestedMaterials({
+    categoryCode: concern.category?.code ?? null,
+    typeKey: concern.type?.key ?? null,
+  });
+  const equipmentSuggestions = suggestedEquipment({
     categoryCode: concern.category?.code ?? null,
     typeKey: concern.type?.key ?? null,
   });
@@ -116,6 +124,7 @@ export default async function AssessmentPage({ params }: PageProps) {
             concernId={concern.id}
             locale={locale}
             suggestions={needs.materials ? suggestions : []}
+            equipmentSuggestions={needs.equipment ? equipmentSuggestions : []}
             needs={needs}
             defaults={
               concern.caseAssessment
@@ -147,6 +156,16 @@ export default async function AssessmentPage({ params }: PageProps) {
                       concern.caseAssessment.equipmentCost?.toString() ?? null,
                     otherCost: concern.caseAssessment.otherCost?.toString() ?? null,
                     materials: (concern.caseAssessment.materials ?? []).map(
+                      (line: MaterialRow) => ({
+                        name: line.name,
+                        quantity: line.quantity ? String(line.quantity) : "",
+                        unit: line.unit ?? "",
+                        unitPrice: line.unitPrice ? String(line.unitPrice) : "",
+                        amount: String(line.amount),
+                        note: line.note ?? "",
+                      })
+                    ),
+                    equipment: (concern.caseAssessment.equipment ?? []).map(
                       (line: MaterialRow) => ({
                         name: line.name,
                         quantity: line.quantity ? String(line.quantity) : "",

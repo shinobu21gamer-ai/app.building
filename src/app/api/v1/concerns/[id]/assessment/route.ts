@@ -50,6 +50,7 @@ export const GET = withErrorBoundary<[Request, RouteContext]>(
         caseAssessment: {
           include: {
             materials: { orderBy: { sortOrder: "asc" } },
+            equipment: { orderBy: { sortOrder: "asc" } },
           },
         },
       },
@@ -156,6 +157,16 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
           otherCost: body.otherCost ?? null,
           materials: body.materials
             ? body.materials.map((line) => ({
+                name: line.name,
+                quantity: line.quantity,
+                unit: line.unit,
+                unitPrice: line.unitPrice,
+                amount: line.amount,
+                note: line.note ?? null,
+              }))
+            : null,
+          equipment: body.equipment
+            ? body.equipment.map((line) => ({
                 name: line.name,
                 quantity: line.quantity,
                 unit: line.unit,

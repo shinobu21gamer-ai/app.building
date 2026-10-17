@@ -229,7 +229,10 @@ export default async function OfficialConcernDetailPage({
         },
       },
       caseAssessment: {
-        include: { materials: { orderBy: { sortOrder: "asc" } } },
+        include: {
+          materials: { orderBy: { sortOrder: "asc" } },
+          equipment: { orderBy: { sortOrder: "asc" } },
+        },
       },
     },
   });
@@ -688,6 +691,44 @@ export default async function OfficialConcernDetailPage({
                 </p>
                 <ul className="divide-y divide-line text-sm">
                   {concern.caseAssessment.materials.map(
+                    (
+                      line: {
+                        name: string;
+                        quantity: unknown;
+                        unit: string | null;
+                        amount: unknown;
+                      },
+                      index: number
+                    ) => (
+                    <li
+                      key={index}
+                      className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-1.5"
+                    >
+                      <span className="text-ink">
+                        {line.name}
+                        {line.quantity !== null && line.unit && (
+                          <span className="text-ink-subtle">
+                            {" "}
+                            · {String(line.quantity)} {line.unit}
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-medium tabular-nums text-ink">
+                        ₱{Number(line.amount).toFixed(2)}
+                      </span>
+                    </li>
+                  ))
+                  }
+                </ul>
+              </div>
+            )}
+            {concern.caseAssessment.equipment.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                  {copy[locale].revamp.workflow.equipmentListTitle}
+                </p>
+                <ul className="divide-y divide-line text-sm">
+                  {concern.caseAssessment.equipment.map(
                     (
                       line: {
                         name: string;

@@ -57,6 +57,7 @@ export type AssessmentDefaults = {
   equipmentCost: string | null;
   otherCost: string | null;
   materials: MaterialLineDefault[] | null;
+  equipment: MaterialLineDefault[] | null;
 };
 
 export type MaterialLineDefault = {
@@ -84,6 +85,7 @@ export function AssessmentForm({
   locale = "en",
   defaults,
   suggestions = [],
+  equipmentSuggestions = [],
   needs,
 }: {
   concernId: number;
@@ -95,6 +97,11 @@ export function AssessmentForm({
    * figures instead of typing the list; saved lines always win.
    */
   suggestions?: MaterialSuggestion[];
+  /**
+   * Suggested equipment for this kind of concern (from its category/type).
+   * Pre-fills the equipment editor the same way; saved lines always win.
+   */
+  equipmentSuggestions?: MaterialSuggestion[];
   /** What this kind of case actually needs. Noise has none of crew/budget. */
   needs: PlanNeeds;
 }) {
@@ -175,6 +182,82 @@ export function AssessmentForm({
       ...rows,
       {
         id: nextMaterialId.current++,
+        name: "",
+        quantity: "",
+        unit: "",
+        unitPrice: "",
+        amount: "",
+        note: "",
+      },
+    ]);
+  };
+  // The equipment list: WHAT goes to the site or is rented, line by line —
+  // a named piece, how many / how long, at what rate. The equipment total
+  // is their sum, replacing the old bare equipment figure that said nothing
+  // about what the money was for.
+  const nextEquipmentId = useRef(1);
+  const emptyEquipmentLine = (): MaterialLine => ({
+    id: nextEquipmentId.current++,
+    name: "",
+    quantity: "",
+    unit: "",
+    unitPrice: "",
+    amount: "",
+    note: "",
+  });
+  const [equipmentFromTemplate, setEquipmentFromTemplate] = useState(
+    !(defaults?.equipment && defaults.equipment.length > 0) &&
+      equipmentSuggestions.length > 0
+  );
+  const [equipment, setEquipment] = useState<MaterialLine[]>(() => {
+    const saved = defaults?.equipment ?? [];
+    if (saved.length > 0) {
+      return saved.map((line) => ({ ...line, id: nextEquipmentId.current++ }));
+    }
+    if (equipmentSuggestions.length > 0) {
+      return equipmentSuggestions.map((line) => ({
+        ...line,
+        note: "",
+        id: nextEquipmentId.current++,
+      }));
+    }
+    return [emptyEquipmentLine()];
+  });
+  const equipmentTotal = equipment.reduce((sum: number, line: MaterialLine) => {
+    const value = Number(lineAmount(line));
+    return sum + (Number.isFinite(value) && value > 0 ? value : 0);
+  }, 0);
+  const updateEquipment = (id: number, field: keyof MaterialLineDefault, value: string) => {
+    setEquipment((rows) =>
+      rows.map((row) => {
+        if (row.id !== id) return row;
+        const next = { ...row, [field]: value };
+        if (field === "quantity" || field === "unitPrice") {
+          const qty = Number(field === "quantity" ? value : next.quantity);
+          const price = Number(field === "unitPrice" ? value : next.unitPrice);
+          if (
+            Number.isFinite(qty) &&
+            Number.isFinite(price) &&
+            (field === "quantity" ? value : next.quantity) !== "" &&
+            (field === "unitPrice" ? value : next.unitPrice) !== ""
+          ) {
+            next.amount = (qty * price).toFixed(2);
+          }
+        }
+        return next;
+      })
+    );
+  };
+  const removeEquipment = (id: number) => {
+    setEquipment((rows) => rows.filter((row) => row.id !== id));
+    setEquipmentFromTemplate(false);
+  };
+  const addEquipment = () => {
+    setEquipmentFromTemplate(false);
+    setEquipment((rows) => [
+      ...rows,
+      {
+        id: nextEquipmentId.current++,
         name: "",
         quantity: "",
         unit: "",
@@ -294,11 +377,29 @@ export function AssessmentForm({
       scheduledEndAt: String(data.get("scheduledEndAt") ?? ""),
       laborCost: String(data.get("laborCost") ?? ""),
       materialsCost: "",
-      equipmentCost: String(data.get("equipmentCost") ?? ""),
+      equipmentCost: "",
       otherCost: String(data.get("otherCost") ?? ""),
       // Materials lines (empty rows are dropped); the server sums them into
       // the materials total.
       materials: materials
+        .filter(
+          (line) =>
+            line.name.trim() !== "" ||
+            line.amount.trim() !== "" ||
+            line.note.trim() !== ""
+        )
+        .map((line) => ({
+          name: line.name.trim(),
+          quantity: line.quantity.trim() === "" ? null : Number(line.quantity),
+          unit: line.unit.trim(),
+          unitPrice:
+            line.unitPrice.trim() === "" ? null : Number(line.unitPrice),
+          amount: Number(lineAmount(line)) || 0,
+          note: line.note.trim(),
+        })),
+      // Equipment lines, same contract: the server sums them into the
+      // equipment total.
+      equipment: equipment
         .filter(
           (line) =>
             line.name.trim() !== "" ||
@@ -351,6 +452,12 @@ export function AssessmentForm({
     for (const line of payload.materials) {
       if (line.name.length < 2 || !(Number(line.amount) >= 0)) {
         setFormError(t.materialsInvalid);
+        return;
+      }
+    }
+    for (const line of payload.equipment) {
+      if (line.name.length < 2 || !(Number(line.amount) >= 0)) {
+        setFormError(t.equipmentInvalid);
         return;
       }
     }
@@ -702,6 +809,142 @@ export function AssessmentForm({
               </span>
             </p>
           </div>
+
+          <div>
+            <p className="text-sm font-medium text-ink-muted">
+              {t.equipmentListTitle}
+            </p>
+            <p className="mb-2 text-xs text-ink-subtle">
+              {t.equipmentListDesc}
+            </p>
+            {equipmentFromTemplate && equipment.length > 0 && (
+              <p className="mb-2 rounded-control border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+                {t.equipmentSuggested}
+              </p>
+            )}
+            {equipment.length === 0 ? (
+              <p className="rounded-control border border-dashed border-line-strong bg-surface px-3 py-4 text-center text-sm text-ink-subtle">
+                {t.equipmentSkipHint}
+              </p>
+            ) : (
+            <div className="space-y-3">
+              {equipment.map((line, index) => (
+                <div
+                  key={line.id}
+                  className="space-y-3 rounded-control border border-line bg-surface p-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                      {t.equipmentName} {index + 1}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => removeEquipment(line.id)}
+                      className="text-xs font-medium text-ink-subtle hover:text-red-700"
+                      aria-label={t.equipmentRemove}
+                    >
+                      {t.equipmentRemove}
+                    </button>
+                  </div>
+                  <div>
+                    <Label htmlFor={`equipment-name-${line.id}`} required>
+                      {t.equipmentName}
+                    </Label>
+                    <Input
+                      id={`equipment-name-${line.id}`}
+                      value={line.name}
+                      maxLength={160}
+                      placeholder={t.equipmentName}
+                      onChange={(event) =>
+                        updateEquipment(line.id, "name", event.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div>
+                      <Label htmlFor={`equipment-qty-${line.id}`} optional>
+                        {t.materialQuantity}
+                      </Label>
+                      <Input
+                        id={`equipment-qty-${line.id}`}
+                        value={line.quantity}
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          updateEquipment(line.id, "quantity", event.target.value)
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`equipment-unit-${line.id}`} optional>
+                        {t.materialUnit}
+                      </Label>
+                      <Input
+                        id={`equipment-unit-${line.id}`}
+                        value={line.unit}
+                        maxLength={24}
+                        placeholder="days, pcs, trips"
+                        onChange={(event) =>
+                          updateEquipment(line.id, "unit", event.target.value)
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`equipment-price-${line.id}`} optional>
+                        {t.equipmentRate}
+                      </Label>
+                      <Input
+                        id={`equipment-price-${line.id}`}
+                        value={line.unitPrice}
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          updateEquipment(line.id, "unitPrice", event.target.value)
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`equipment-amount-${line.id}`} optional>
+                        {t.materialAmount}
+                      </Label>
+                      <Input
+                        id={`equipment-amount-${line.id}`}
+                        value={lineAmount(line)}
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        inputMode="decimal"
+                        readOnly={
+                          line.quantity.trim() !== "" && line.unitPrice.trim() !== ""
+                        }
+                        onChange={(event) =>
+                          updateEquipment(line.id, "amount", event.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            )}
+            <button
+              type="button"
+              onClick={addEquipment}
+              className="mt-2 text-sm font-medium text-brand-700 hover:text-brand-800"
+            >
+              + {t.addEquipment}
+            </button>
+            <p className="mt-2 text-right text-sm">
+              <span className="text-ink-subtle">{t.equipmentTotal}:</span>{" "}
+              <span className="font-semibold tabular-nums text-ink">
+                ₱{equipmentTotal.toFixed(2)}
+              </span>
+            </p>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -719,19 +962,6 @@ export function AssessmentForm({
               defaultValue={defaults?.laborCost ?? ""}
             />
             <p className="mt-1 text-xs text-ink-subtle">{t.laborHint}</p>
-          </div>
-          <div>
-            <Label htmlFor="equipmentCost" optional>
-              {t.equipmentCost}
-            </Label>
-            <Input
-              id="equipmentCost"
-              name="equipmentCost"
-              type="number"
-              min={0}
-              step="0.01"
-              defaultValue={defaults?.equipmentCost ?? ""}
-            />
           </div>
           <div>
             <Label htmlFor="otherCost" optional>

@@ -174,6 +174,29 @@ export const materialLineSchema = z.object({
     .max(10_000_000, "A material amount is too large."),
   note: optionalText(200, "Material notes are too long."),
 });
+
+// One line of the equipment list: WHAT goes to the site (or is rented),
+// how much of it / for how long, at what rate, and what the line costs.
+export const equipmentLineSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Each piece of equipment needs a name.")
+    .max(160, "Equipment names are too long."),
+  quantity: optionalFigure("An equipment quantity"),
+  unit: z
+    .string()
+    .trim()
+    .max(24, "Equipment units are too long.")
+    .optional()
+    .transform((value) => (value === undefined || value === "" ? null : value)),
+  unitPrice: optionalFigure("An equipment rate"),
+  amount: z.coerce
+    .number()
+    .min(0, "Equipment amounts cannot be negative.")
+    .max(10_000_000, "An equipment amount is too large."),
+  note: optionalText(200, "Equipment notes are too long."),
+});
 const optionalInstant = (label: string) =>
   z.preprocess(
     (value) =>
@@ -233,6 +256,13 @@ export const assessmentSchema = z
     materials: z
       .array(materialLineSchema)
       .max(100, "Too many material lines.")
+      .optional(),
+    // The equipment list, same contract: when present (even empty), the
+    // equipment total is recomputed from these lines instead of taking
+    // `equipmentCost`.
+    equipment: z
+      .array(equipmentLineSchema)
+      .max(100, "Too many equipment lines.")
       .optional(),
   })
   .refine(

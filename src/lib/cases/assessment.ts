@@ -49,6 +49,11 @@ export type AssessmentInput = {
   // The materials list. When present (even empty), the materials total is
   // recomputed from these lines and the stored lines are replaced.
   materials?: MaterialLineInput[] | null;
+  // The equipment list, same contract: when present (even empty), the
+  // equipment total is recomputed from these lines and the stored lines
+  // are replaced — so "equipment" is always a named, priced list, never a
+  // bare figure.
+  equipment?: EquipmentLineInput[] | null;
 };
 
 export type MaterialLineInput = {
@@ -59,6 +64,9 @@ export type MaterialLineInput = {
   amount: number;
   note: string | null;
 };
+
+/** One equipment line: a name, how much / how long, at what rate. */
+export type EquipmentLineInput = MaterialLineInput;
 
 export type AssessmentView = {
   id: number;
@@ -88,6 +96,7 @@ export type AssessmentView = {
   submittedAt: string | null;
   updatedAt: string;
   materials: AssessmentMaterialView[];
+  equipment: AssessmentMaterialView[];
 };
 
 /** One stored materials line, as the API serves it. */
@@ -208,6 +217,7 @@ export async function saveAssessment(
     values.equipmentCost = 0;
     values.otherCost = 0;
     values.materials = [];
+    values.equipment = [];
   }
   // The plan is a statement about work still to be done: neither end may be
   // pushed further into the past. A window that is already stored keeps its
@@ -239,6 +249,16 @@ export async function saveAssessment(
       ) / 100
     : null;
 
+  // Same for equipment: a sent list owns the equipment total.
+  const equipmentTotal = values.equipment
+    ? Math.round(
+        values.equipment.reduce(
+          (sum: number, line: EquipmentLineInput) => sum + money(line.amount),
+          0
+        ) * 100
+      ) / 100
+    : null;
+
   const data = {
     status: values.approvalRequired && !values.approved ? "DRAFT" : "SUBMITTED",
     eligibilityChecked: values.eligibilityChecked,
@@ -264,7 +284,7 @@ export async function saveAssessment(
     scheduledEndAt: values.scheduledEndAt ?? null,
     equipmentNotes: values.equipmentNotes.trim(),
     materialsCost: materialsTotal ?? money(values.materialsCost),
-    equipmentCost: money(values.equipmentCost),
+    equipmentCost: equipmentTotal ?? money(values.equipmentCost),
     otherCost: money(values.otherCost),
     submittedAt: existing?.id ? undefined : now,
     updatedById: input.actor.id,
@@ -285,6 +305,29 @@ export async function saveAssessment(
       await tx.assessmentMaterial.createMany({
         data: values.materials.map(
           (line: MaterialLineInput, index: number) => ({
+            assessmentId: assessment.id,
+            name: line.name,
+            quantity: line.quantity,
+            unit: line.unit,
+            unitPrice: line.unitPrice,
+            amount: money(line.amount),
+            note: line.note,
+            sortOrder: index,
+          })
+        ),
+      });
+    }
+  }
+
+  // Replace the equipment list the same way.
+  if (values.equipment) {
+    await tx.assessmentEquipment.deleteMany({
+      where: { assessmentId: assessment.id },
+    });
+    if (values.equipment.length > 0) {
+      await tx.assessmentEquipment.createMany({
+        data: values.equipment.map(
+          (line: EquipmentLineInput, index: number) => ({
             assessmentId: assessment.id,
             name: line.name,
             quantity: line.quantity,
@@ -421,6 +464,14 @@ export function assessmentView(row: {
     amount: unknown;
     note: string | null;
   }[];
+  equipment?: {
+    name: string;
+    quantity: unknown;
+    unit: string | null;
+    unitPrice: unknown;
+    amount: unknown;
+    note: string | null;
+  }[];
 }): AssessmentView {
   const decimal = (value: unknown): string | null =>
     value === null || value === undefined ? null : String(value);
@@ -453,6 +504,14 @@ export function assessmentView(row: {
     submittedAt: row.submittedAt?.toISOString() ?? null,
     updatedAt: row.updatedAt.toISOString(),
     materials: (row.materials ?? []).map((line) => ({
+      name: line.name,
+      quantity: decimal(line.quantity),
+      unit: line.unit,
+      unitPrice: decimal(line.unitPrice),
+      amount: String(line.amount),
+      note: line.note,
+    })),
+    equipment: (row.equipment ?? []).map((line) => ({
       name: line.name,
       quantity: decimal(line.quantity),
       unit: line.unit,

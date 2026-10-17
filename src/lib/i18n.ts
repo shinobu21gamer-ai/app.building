@@ -3226,7 +3226,7 @@ const en = {
       durationHours: "Hours",
       durationMinutes: "Minutes",
       equipment: "Equipment notes",
-      equipmentPlaceholder: "e.g. one dump truck, two shovels; write none if nothing is needed",
+      equipmentPlaceholder: "Anything else about the equipment, e.g. borrowed from the engineering depot; write none if nothing is needed. Each item is named and priced in the equipment list in step 3.",
       scheduledStart: "Planned start",
       scheduledEnd: "Planned finish",
       scheduledHint:
@@ -3255,6 +3255,20 @@ const en = {
       materialsInvalid: "Each material needs a name and an amount of at least 0.",
       materialsNone: "No materials listed",
       equipmentCost: "Equipment",
+      equipmentListTitle: "Equipment list",
+      equipmentListDesc:
+        "What goes to the site or is rented, line by line: name it, say how many or for how long, and the rate. The equipment total is the sum of these lines.",
+      equipmentSuggested:
+        "These lines are pre-chosen for this kind of concern — adjust the figures to what this work really needs, or remove lines that do not apply.",
+      equipmentSkipHint:
+        "No equipment is needed for this work — that is fine. Add a line if something must be brought or rented.",
+      equipmentName: "Equipment",
+      equipmentRate: "Rate",
+      equipmentRemove: "Remove equipment",
+      addEquipment: "Add equipment",
+      equipmentTotal: "Equipment total",
+      equipmentInvalid: "Each piece of equipment needs a name and an amount of at least 0.",
+      equipmentNone: "No equipment listed",
       other: "Other",
       estimate: "Estimated total",
       saveAssessment: "Save assessment",
@@ -6817,7 +6831,7 @@ const fil: typeof en = {
       durationHours: "Oras",
       durationMinutes: "Minuto",
       equipment: "Tala sa kagamitan",
-      equipmentPlaceholder: "hal. isang dump truck, dalawang pala; isulat none kung wala",
+      equipmentPlaceholder: "Iba pang tala tungkol sa kagamitan, hal. hiniram sa depot ng engineering; isulat none kung wala. Bawat item ay pinapangalanan at pinepresyohan sa listahan ng kagamitan sa hakbang 3.",
       scheduledStart: "Planned start",
       scheduledEnd: "Planned finish",
       scheduledHint:
@@ -6846,6 +6860,20 @@ const fil: typeof en = {
       materialsInvalid: "Kailangan pangalan at halaga (hindi bababa sa 0) ang bawat materyales.",
       materialsNone: "Walang nakalagay na materyales",
       equipmentCost: "Kagamitan",
+      equipmentListTitle: "Listahan ng kagamitan",
+      equipmentListDesc:
+        "Ang dadalhin sa lugar o aarkilahin, isa-isa: pangalanan ito, sabihin kung ilan o gaano katagal, at ang presyo. Ang kabuuang kagamitan ay ang buo ng mga linyang ito.",
+      equipmentSuggested:
+        "Awtomatikong napili ang mga linyang ito para sa ganitong uri ng kaso — ayusin ang mga numero ayon sa tunay na kailangan ng gawaan, o burahin ang mga linyang hindi kailangan.",
+      equipmentSkipHint:
+        "Walang kagamitan ang kailangan ng gawaang ito. Magdagdag ng linya kung may dadalhin o aarkilahin talaga.",
+      equipmentName: "Kagamitan",
+      equipmentRate: "Presyo",
+      equipmentRemove: "Buraan ang kagamitan",
+      addEquipment: "Magdagdag ng kagamitan",
+      equipmentTotal: "Kabuuang kagamitan",
+      equipmentInvalid: "Kailangan pangalan at halaga (hindi bababa sa 0) ang bawat kagamitan.",
+      equipmentNone: "Walang nakalagay na kagamitan",
       other: "Iba pa",
       estimate: "Kabuuang tantya",
       saveAssessment: "I-save ang pagtatasa",
