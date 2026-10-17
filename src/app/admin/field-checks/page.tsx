@@ -12,6 +12,7 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import { copy } from "@/lib/i18n";
+import { uploadedPhotoSrc } from "@/lib/uploads";
 import { getLocale } from "@/lib/locale";
 import { fieldCheckIdFromMetadata } from "@/lib/cases/field-check-reply-meta";
 
@@ -103,27 +104,39 @@ export default async function AdminFieldChecksPage() {
     repliesByCheck.set(fieldCheckId, replies);
   }
 
-  const view = (check: (typeof checks)[number]): FieldCheckDeskItem => ({
-    id: check.id,
-    residentReplies: repliesByCheck.get(check.id) ?? [],
-    status: check.status,
-    instructions: check.instructions,
-    finding: check.finding,
-    findingNotes: check.findingNotes,
-    findingPhotoUrl: check.findingPhotoUrl,
-    reviewNote: check.reviewNote,
-    createdAt: check.createdAt.toISOString(),
-    caseId: check.concern.id,
-    caseNumber: check.concern.caseNumber,
-    caseTitle: check.concern.title,
-    caseStatus: check.concern.status,
-    officeName: check.concern.assignedOffice?.name ?? null,
-    locationAddress: check.concern.locationAddress,
-    locationPurok: check.concern.locationPurok,
-    mapUrl: mapUrl(check.concern.locationLat, check.concern.locationLng),
-    assigneeName: `${check.assignee.firstName} ${check.assignee.lastName}`,
-    requestedByName: `${check.requestedBy.firstName} ${check.requestedBy.lastName}`,
-  });
+  // Inline each finding photo the way the case sheet does (uploadedPhotoSrc):
+  // small photos travel with the page as data URLs instead of depending on a
+  // second cookie-authenticated fetch to /api/v1/uploads, which is the path
+  // that showed reviewers "This photo could not be loaded". When the bytes are
+  // not on the server at all, the desk says so plainly (findingPhotoMissing)
+  // instead of offering a retry that can never succeed.
+  const view = async (
+    check: (typeof checks)[number]
+  ): Promise<FieldCheckDeskItem> => {
+    const photo = await uploadedPhotoSrc(check.findingPhotoUrl);
+    return {
+      id: check.id,
+      residentReplies: repliesByCheck.get(check.id) ?? [],
+      status: check.status,
+      instructions: check.instructions,
+      finding: check.finding,
+      findingNotes: check.findingNotes,
+      findingPhotoUrl: photo.src,
+      findingPhotoMissing: photo.missing,
+      reviewNote: check.reviewNote,
+      createdAt: check.createdAt.toISOString(),
+      caseId: check.concern.id,
+      caseNumber: check.concern.caseNumber,
+      caseTitle: check.concern.title,
+      caseStatus: check.concern.status,
+      officeName: check.concern.assignedOffice?.name ?? null,
+      locationAddress: check.concern.locationAddress,
+      locationPurok: check.concern.locationPurok,
+      mapUrl: mapUrl(check.concern.locationLat, check.concern.locationLng),
+      assigneeName: `${check.assignee.firstName} ${check.assignee.lastName}`,
+      requestedByName: `${check.requestedBy.firstName} ${check.requestedBy.lastName}`,
+    };
+  };
 
   const [cases, staff] = await Promise.all([
     db.concern.findMany({
@@ -183,7 +196,7 @@ export default async function AdminFieldChecksPage() {
     officeName: person.office?.name ?? null,
   }));
 
-  const items = checks.map(view);
+  const items = await Promise.all(checks.map(view));
 
   return (
     <div className="space-y-6">
