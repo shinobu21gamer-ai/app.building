@@ -45,14 +45,23 @@ export function ValidationForm({
   const [selectedTypeId, setSelectedTypeId] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  // Only the categories connected to the chosen service type are offered:
-  // picking "Repair / Public Works" must never list a health category. A
-  // category with no service type yet stays hidden here until an admin
-  // connects it to one under Categories — it is not a wildcard.
+  // The categories connected to the chosen service type come first: picking
+  // "Repair / Public Works" must never list a health category. A category
+  // nobody has connected yet is not a wildcard either — it is offered in
+  // its own labelled group, and picking it connects it to the chosen type
+  // (the server saves the connection), instead of hard-blocking the
+  // validation with "ask an administrator" when the validator IS the
+  // administrator and the category simply predates the connection.
   const visibleCategories = categories.filter(
     (category) =>
       category.typeId != null && String(category.typeId) === selectedTypeId
   );
+  const unconnectedCategories =
+    selectedTypeId === ""
+      ? []
+      : categories.filter((category) => category.typeId == null);
+  const hasCategoryChoices =
+    visibleCategories.length + unconnectedCategories.length > 0;
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -140,7 +149,7 @@ export function ValidationForm({
           required
           value={selectedCategoryId}
           onChange={(event) => setSelectedCategoryId(event.target.value)}
-          disabled={selectedTypeId === "" || visibleCategories.length === 0}
+          disabled={selectedTypeId === "" || !hasCategoryChoices}
           className={selectStyles}
         >
           <option value="" disabled>
@@ -151,10 +160,24 @@ export function ValidationForm({
               {category.label}
             </option>
           ))}
+          {unconnectedCategories.length > 0 ? (
+            <optgroup label={t.validationUnconnectedGroup}>
+              {unconnectedCategories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.label}
+                </option>
+              ))}
+            </optgroup>
+          ) : null}
         </select>
-        {selectedTypeId !== "" && visibleCategories.length === 0 ? (
+        {selectedTypeId !== "" && !hasCategoryChoices ? (
           <p role="alert" className="mt-1 text-sm text-red-700">
             {t.validationNoCategories}
+          </p>
+        ) : null}
+        {selectedTypeId !== "" && unconnectedCategories.length > 0 ? (
+          <p className="mt-1 text-xs text-ink-subtle">
+            {t.validationUnconnectedHint}
           </p>
         ) : null}
       </div>

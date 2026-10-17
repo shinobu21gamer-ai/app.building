@@ -89,17 +89,63 @@ describe("validation category choices", () => {
       t.validationCategoryPlaceholder,
       "Drainage / Flooding",
       "Road Damage",
+      "Other Concern",
     ]);
-    // A health category belongs to Assistance, and an unconnected category
-    // is not a wildcard: neither may appear under Repair / Public Works.
+    // A health category belongs to Assistance and may never appear under
+    // Repair / Public Works. An unconnected category is not a wildcard
+    // either: it sits in its own labelled group, and choosing it connects
+    // it to the picked type.
     expect(optionLabels(categorySelect)).not.toContain("Health Concern");
-    expect(optionLabels(categorySelect)).not.toContain("Other Concern");
+    const group = categorySelect.querySelector("optgroup");
+    expect(group?.label).toBe(t.validationUnconnectedGroup);
+    expect(
+      [...(group?.querySelectorAll("option") ?? [])].map(
+        (option) => option.textContent
+      )
+    ).toEqual(["Other Concern"]);
+    expect(container.textContent).toContain(t.validationUnconnectedHint);
 
     await choose(typeSelect, "1");
     expect(optionLabels(categorySelect)).toEqual([
       t.validationCategoryPlaceholder,
       "Health Concern",
+      "Other Concern",
     ]);
+  });
+
+  it("stays usable when the chosen type has only unconnected categories", async () => {
+    // Regression: a type whose categories were never connected (the
+    // pre-connection data) disabled the picker with "No active category is
+    // configured", so the case in the screenshot could not be validated.
+    await act(async () =>
+      root.render(
+        createElement(ValidationForm, {
+          concernId: 42,
+          locale: "en",
+          types: [{ id: 3, label: "Budget / Fund Release" }],
+          categories: [
+            { id: 11, label: "Road Damage", typeId: null },
+            { id: 12, label: "Health Concern", typeId: 1 },
+          ],
+          currentTypeLabel: "Budget / Fund Release",
+          currentCategoryLabel: "Road Damage",
+          currentPriority: null,
+        })
+      )
+    );
+    const typeSelect = selectById("validation-type");
+    const categorySelect = selectById("validation-category");
+
+    await choose(typeSelect, "3");
+    expect(categorySelect.disabled).toBe(false);
+    expect(container.textContent).not.toContain(t.validationNoCategories);
+    expect(optionLabels(categorySelect)).toEqual([
+      t.validationCategoryPlaceholder,
+      "Road Damage",
+    ]);
+
+    await choose(categorySelect, "11");
+    expect(categorySelect.value).toBe("11");
   });
 
   it("clears the picked category when the service type changes", async () => {
