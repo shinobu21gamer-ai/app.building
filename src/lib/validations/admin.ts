@@ -215,11 +215,19 @@ export const officeUpdateSchema = z
 // Concern categories
 // ---------------------------------------------------------------
 
+// The service type a category belongs to. Absent leaves it untouched (or
+// unassigned on create); an explicit null disconnects it. Only categories
+// connected to a type are offered for that type at validation.
+const categoryTypeId = z
+  .union([z.coerce.number().int().positive(), z.null()])
+  .optional();
+
 export const categoryCreateSchema = z.object({
   name: readableTextSchema("Category name", 120),
   code: codeSchema,
   description: optionalText(500),
   isActive: booleanFlag.optional(),
+  typeId: categoryTypeId,
 });
 
 export const categoryUpdateSchema = z
@@ -228,6 +236,7 @@ export const categoryUpdateSchema = z
     code: codeSchema.optional(),
     description: optionalText(500),
     isActive: booleanFlag.optional(),
+    typeId: categoryTypeId,
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "Provide at least one field to update.",

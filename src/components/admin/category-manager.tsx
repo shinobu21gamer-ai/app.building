@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FormMessage, Input, Label, RequiredLegend, Textarea } from "@/components/ui/field";
+import { FormMessage, Input, Label, RequiredLegend, Select, Textarea } from "@/components/ui/field";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
 import { Modal } from "@/components/ui/modal";
 import { FieldError } from "@/components/ui/field";
@@ -19,14 +19,24 @@ export type AdminCategoryItem = {
   code: string;
   description: string | null;
   isActive: boolean;
+  typeId: number | null;
+  typeName: string | null;
   references: { concerns: number; routingRules: number; total: number };
+};
+
+export type AdminCategoryTypeOption = {
+  id: number;
+  label: string;
 };
 
 export function CategoryManager({
   categories,
+  types = [],
   locale = "en",
 }: {
   categories: AdminCategoryItem[];
+  /** Active service types a category can be connected to. */
+  types?: AdminCategoryTypeOption[];
   locale?: Locale;
 }) {
   const t = copy[locale].admin.mgr;
@@ -35,6 +45,7 @@ export function CategoryManager({
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
+  const [typeId, setTypeId] = useState("");
   const [isActive, setIsActive] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +60,7 @@ export function CategoryManager({
     setName("");
     setCode("");
     setDescription("");
+    setTypeId("");
     setIsActive(true);
   }
 
@@ -75,6 +87,14 @@ export function CategoryManager({
     setName(category.name);
     setCode(category.code);
     setDescription(category.description ?? "");
+    // Only offer active types; a link to one that is no longer offered shows
+    // as unassigned rather than as a value the admin cannot see or change.
+    setTypeId(
+      category.typeId !== null &&
+        types.some((type) => type.id === category.typeId)
+        ? String(category.typeId)
+        : ""
+    );
     setIsActive(category.isActive);
     setError(null);
     setSuccess(null);
@@ -95,7 +115,13 @@ export function CategoryManager({
     setFieldErrors(problems);
     if (Object.keys(problems).length > 0) return;
 
-    const payload = { name: name.trim(), code: trimmedCode, description, isActive };
+    const payload = {
+      name: name.trim(),
+      code: trimmedCode,
+      description,
+      isActive,
+      typeId: typeId === "" ? null : Number(typeId),
+    };
 
     setBusy(true);
     const result = editingId
@@ -209,6 +235,22 @@ export function CategoryManager({
               placeholder={t.optional}
             />
           </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="category-type">{t.categoryType}</Label>
+            <Select
+              id="category-type"
+              value={typeId}
+              onChange={(event) => setTypeId(event.target.value)}
+            >
+              <option value="">{t.categoryTypeUnassigned}</option>
+              {types.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.label}
+                </option>
+              ))}
+            </Select>
+            <p className="mt-1 text-xs text-ink-subtle">{t.categoryTypeHint}</p>
+          </div>
         </div>
 
         <label className="flex items-center gap-2 text-sm text-ink-muted">
@@ -253,6 +295,9 @@ export function CategoryManager({
                   {t.code}
                 </th>
                 <th scope="col" className="py-2 pr-4 font-semibold">
+                  {t.categoryType}
+                </th>
+                <th scope="col" className="py-2 pr-4 font-semibold">
                   {t.colRecords}
                 </th>
                 <th scope="col" className="py-2 pr-4 font-semibold">
@@ -270,6 +315,9 @@ export function CategoryManager({
                     {category.name}
                   </td>
                   <td className="py-3 pr-4 text-ink-muted">{category.code}</td>
+                  <td className="py-3 pr-4 text-ink-muted">
+                    {category.typeName ?? t.categoryTypeUnassigned}
+                  </td>
                   <td className="py-3 pr-4 text-ink-muted">
                     {category.references.total}
                   </td>

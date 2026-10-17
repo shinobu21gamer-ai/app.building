@@ -47,6 +47,16 @@ export const PATCH = withErrorBoundary<[Request, RouteContext]>(
     });
     if (!existing) throw createApiError.notFound("Category not found.");
 
+    if (body.typeId != null) {
+      const type = await db.concernType.findUnique({
+        where: { id: body.typeId },
+        select: { id: true, isActive: true },
+      });
+      if (!type || !type.isActive) {
+        throw createApiError.badRequest("Select an active service type.");
+      }
+    }
+
     let category;
     try {
       category = await db.concernCategory.update({
@@ -58,8 +68,12 @@ export const PATCH = withErrorBoundary<[Request, RouteContext]>(
             ? { description: body.description }
             : {}),
           ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
+          ...(body.typeId !== undefined ? { typeId: body.typeId } : {}),
         },
-        include: { _count: { select: CATEGORY_COUNT_SELECT } },
+        include: {
+          _count: { select: CATEGORY_COUNT_SELECT },
+          type: { select: { id: true, name: true } },
+        },
       });
     } catch (error) {
       if (isUniqueConflict(error)) {

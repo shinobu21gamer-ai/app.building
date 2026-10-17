@@ -1214,6 +1214,10 @@ const en = {
       addCategory: "Add category",
       categoryLead:
         "Categories group concerns for residents and for the reports; a disabled category stops being offered without touching past cases.",
+      categoryType: "Service type",
+      categoryTypeHint:
+        "A category is only offered under its service type when a case is validated. Leave it unassigned to keep the category hidden from validation until it is connected.",
+      categoryTypeUnassigned: "Not assigned yet",
       name: "Name",
       code: "Code",
       description: "Description",
@@ -4815,6 +4819,10 @@ const fil: typeof en = {
       addCategory: "Magdagdag ng kategorya",
       categoryLead:
         "Ang kategorya ang nagpapangkat ng concern para sa residente at sa mga report; kapag disabled, hindi na ito inaalok pero hindi naaapektuhan ang lumang kaso.",
+      categoryType: "Uri ng serbisyo",
+      categoryTypeHint:
+        "Inaalok lamang ang kategorya sa ilalim ng uri ng serbisyo nito kapag na-validate ang kaso. Iwanang hindi nakatalaga para hindi muna ito lumabas sa validation hanggang sa maikonekta ito.",
+      categoryTypeUnassigned: "Hindi pa nakatalaga",
       name: "Pangalan",
       code: "Code",
       description: "Deskripsyon",

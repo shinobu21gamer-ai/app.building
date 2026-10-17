@@ -38,6 +38,16 @@ export const POST = withErrorBoundary(async (req: Request) => {
   const actor = await requireApiRole(["ADMIN"]);
   const body = await parseBody(req, categoryCreateSchema);
 
+  if (body.typeId != null) {
+    const type = await db.concernType.findUnique({
+      where: { id: body.typeId },
+      select: { id: true, isActive: true },
+    });
+    if (!type || !type.isActive) {
+      throw createApiError.badRequest("Select an active service type.");
+    }
+  }
+
   let category;
   try {
     category = await db.concernCategory.create({
@@ -46,8 +56,12 @@ export const POST = withErrorBoundary(async (req: Request) => {
         code: body.code,
         description: body.description ?? null,
         isActive: body.isActive ?? true,
+        typeId: body.typeId ?? null,
       },
-      include: { _count: { select: CATEGORY_COUNT_SELECT } },
+      include: {
+        _count: { select: CATEGORY_COUNT_SELECT },
+        type: { select: { id: true, name: true } },
+      },
     });
   } catch (error) {
     if (isUniqueConflict(error)) {
