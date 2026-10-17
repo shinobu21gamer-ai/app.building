@@ -34,6 +34,8 @@ export type FieldCheckView = {
   finding: string | null;
   findingNotes: string | null;
   findingPhotoUrl: string | null;
+  /** The record names a site photo but its bytes are not on the server. */
+  findingPhotoMissing?: boolean;
   reviewNote: string | null;
   assigneeId: number;
   assigneeName: string;
@@ -413,7 +415,11 @@ export function FieldCheckPanel({
                         <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
                           {t.sitePhoto}
                         </p>
-                        {check.findingPhotoUrl ? (
+                        {check.findingPhotoMissing ? (
+                          <p role="status" className="text-sm text-ink-muted">
+                            {copy[locale].photoViewer.gone}
+                          </p>
+                        ) : check.findingPhotoUrl ? (
                           <UploadedPhoto src={check.findingPhotoUrl} alt={t.sitePhoto} locale={locale} />
                         ) : (
                           <p className="text-sm text-amber-800">{t.approveNeedsPhoto}</p>

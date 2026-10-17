@@ -341,6 +341,25 @@ export default async function OfficialConcernDetailPage({
       ? await loadFieldCheckRoster(concern.assignedOfficeId)
       : [];
 
+  // Resolve the photos the sheet displays (the resident's report photo and
+  // each checker's site photo) on the server, like the case timeline does:
+  // small photos are inlined as data URLs instead of depending on a second
+  // cookie-authenticated fetch to /api/v1/uploads, which is the path that
+  // showed reviewers "This photo could not be loaded". A photo whose bytes
+  // are not on the server comes back missing so the panel can say so plainly.
+  const supportingPhoto = await uploadedPhotoSrc(concern.imageUrl);
+  const fieldCheckPhotos = new Map<
+    number,
+    { src: string | null; missing: boolean }
+  >(
+    await Promise.all(
+      fieldChecks.map(
+        async (check) =>
+          [check.id, await uploadedPhotoSrc(check.findingPhotoUrl)] as const
+      )
+    )
+  );
+
   const funding = canViewTreasury
     ? await caseFundingView(db, numericId)
     : null;
@@ -556,13 +575,16 @@ export default async function OfficialConcernDetailPage({
           instructions: check.instructions,
           finding: check.finding,
           findingNotes: check.findingNotes,
-          findingPhotoUrl: check.findingPhotoUrl,
+          findingPhotoUrl:
+            fieldCheckPhotos.get(check.id)?.src ?? check.findingPhotoUrl,
+          findingPhotoMissing:
+            fieldCheckPhotos.get(check.id)?.missing ?? false,
           reviewNote: check.reviewNote,
           assigneeId: check.assigneeId,
           assigneeName: `${check.assignee.firstName} ${check.assignee.lastName}`,
           requestedByName: `${check.requestedBy.firstName} ${check.requestedBy.lastName}`,
         }))}
-        concernPhotoUrl={concern.imageUrl}
+        concernPhotoUrl={supportingPhoto.src}
         location={{
           address: concern.locationAddress,
           purok: concern.locationPurok,
@@ -1007,8 +1029,6 @@ export default async function OfficialConcernDetailPage({
       )
     );
   }
-
-  const supportingPhoto = await uploadedPhotoSrc(concern.imageUrl);
 
   if (canClose && canManage && concern.status === "RESOLVED") {
     // The close form is only offered once the fix is verified as fixed: the

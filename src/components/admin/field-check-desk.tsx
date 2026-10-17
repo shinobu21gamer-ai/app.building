@@ -28,6 +28,8 @@ export type FieldCheckDeskItem = {
   finding: string | null;
   findingNotes: string | null;
   findingPhotoUrl: string | null;
+  /** The record names a site photo but its bytes are not on the server. */
+  findingPhotoMissing?: boolean;
   reviewNote: string | null;
   createdAt: string;
   caseId: number;
@@ -293,7 +295,16 @@ export function FieldCheckDesk({
                 <span className="font-medium">{t.notes}:</span> {item.findingNotes}
               </p>
             )}
-            {item.findingPhotoUrl && (
+            {item.findingPhotoMissing ? (
+              <div className="pt-1">
+                <p className="mb-1 text-xs font-medium text-ink-subtle">
+                  {t.photo}
+                </p>
+                <p role="status" className="text-sm text-ink-muted">
+                  {copy[locale].photoViewer.gone}
+                </p>
+              </div>
+            ) : item.findingPhotoUrl ? (
               <div className="pt-1">
                 <p className="mb-1 text-xs font-medium text-ink-subtle">
                   {t.photo}
@@ -304,7 +315,7 @@ export function FieldCheckDesk({
                   locale={locale}
                 />
               </div>
-            )}
+            ) : null}
           </div>
         )}
 
@@ -336,7 +347,7 @@ export function FieldCheckDesk({
               <Button
                 type="button"
                 loading={busy === item.id}
-                disabled={busy !== null}
+                disabled={busy !== null || item.findingPhotoMissing}
                 onClick={() => review(item.id, "APPROVE")}
               >
                 {t.approve}
