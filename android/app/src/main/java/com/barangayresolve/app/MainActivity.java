@@ -49,6 +49,22 @@ public class MainActivity extends BridgeActivity {
   private static WeakReference<MainActivity> sCurrent = new WeakReference<>(null);
   private static volatile boolean sResumed = false;
 
+  /**
+   * Alert id whose "OK, I understand" was tapped on a native popup but has not
+   * yet been handed to the web layer. The popup event is one-shot JS: tapped
+   * while the WebView is still loading (e.g. the app cold-started from the
+   * lock-screen popup), the event fires before any listener exists and is
+   * lost — and because the alarm only stops after the server confirms, it
+   * would ring on with nothing left to stop it. Recording the tap here lets
+   * the web layer pick it up via {@code AlertBridge.consumePendingAck()} as
+   * soon as its listener registers.
+   */
+  private static volatile int sPendingAckAlertId = -1;
+
+  public static void recordPendingAck(int alertId) {
+    if (alertId > 0) sPendingAckAlertId = alertId;
+  }
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     try {
@@ -292,6 +308,15 @@ public class MainActivity extends BridgeActivity {
       } catch (Exception ignored) {
         // The web alert remains visible if Android blocks starting the service.
       }
+    }
+
+    @JavascriptInterface
+    public int consumePendingAck() {
+      // Read-and-clear: the web listener asks once when it registers, and
+      // again when a live popup event arrives (which makes this a no-op).
+      int alertId = sPendingAckAlertId;
+      sPendingAckAlertId = -1;
+      return alertId;
     }
 
     @JavascriptInterface

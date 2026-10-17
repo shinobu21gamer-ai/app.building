@@ -128,6 +128,13 @@ export interface AlertBridge {
    */
   setSessionActive(active: boolean): void;
   /**
+   * Returns (and clears) the alert id whose "OK, I understand" was tapped on
+   * a native popup before the WebView could receive the event, or -1 when no
+   * tap is pending. Optional: APKs built before this method existed do not
+   * have it, so every caller must check.
+   */
+  consumePendingAck?(): number;
+  /**
    * Push-alert state of this build as JSON. Optional: APKs built before this
    * method existed do not have it, so every caller must check.
    */

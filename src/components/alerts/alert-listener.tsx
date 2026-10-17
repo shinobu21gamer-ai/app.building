@@ -33,13 +33,33 @@ function silenceNativeAlarm(alertId: number) {
   if (typeof bridge.stopAlertSoundFor === "function") {
     try {
       bridge.stopAlertSoundFor(alertId);
-      return;
     } catch {
-      /* fall through to the legacy no-arg method */
+      /* fall through to the unconditional stop below */
     }
   }
+  stopRingingAlarm(bridge);
+}
+
+/**
+ * Stops whatever alarm is actually sounding on the device right now.
+ *
+ * The alert at the head of the web queue is not necessarily the one the
+ * native foreground service is ringing: a background push can start ringing
+ * a newer alert while an older unacknowledged alert still heads the queue
+ * (the service keeps the first alert ringing, by design). Every native stop
+ * is scoped to an alert id, so acknowledging the queued alert alone can
+ * leave the other alert's sound playing. The user has confirmed/silenced
+ * the dialog, so no alert sound may keep playing — stop the ringing alarm
+ * too. No unacknowledged alert is lost: when the next queued alert becomes
+ * the dialog head, its presentation effect raises its alarm again.
+ */
+function stopRingingAlarm(bridge?: { stopAlertSound?: () => void }) {
+  const target =
+    bridge ??
+    (window as Window & { AlertBridge?: { stopAlertSound?: () => void } }).AlertBridge;
+  if (!target || typeof target.stopAlertSound !== "function") return;
   try {
-    bridge.stopAlertSound?.();
+    target.stopAlertSound();
   } catch {
     /* not native */
   }
@@ -59,17 +79,28 @@ function stopNativeAlarm(alertId: number) {
   if (typeof bridge.stopAlertFor === "function") {
     try {
       bridge.stopAlertFor(alertId);
-      return;
     } catch {
-      /* fall through to the legacy no-arg method */
+      /* fall through to the unconditional stop below */
     }
   }
-  if (typeof bridge.stopAlertSound === "function") {
-    try {
-      bridge.stopAlertSound();
-    } catch {
-      /* not native */
-    }
+  stopRingingAlarm(bridge);
+}
+
+/**
+ * Reads (and clears) an acknowledgement the native popup recorded before
+ * dispatching `native-ack-requested`. Returns the alert id, or null when no
+ * tap is pending or the APK predates the bridge method.
+ */
+function takePendingNativeAck(): number | null {
+  const bridge = (
+    window as Window & { AlertBridge?: { consumePendingAck?: () => number } }
+  ).AlertBridge;
+  if (!bridge || typeof bridge.consumePendingAck !== "function") return null;
+  try {
+    const id = bridge.consumePendingAck();
+    return typeof id === "number" && id > 0 ? id : null;
+  } catch {
+    return null;
   }
 }
 
@@ -127,32 +158,43 @@ export function AlertListener({ enabled = true }: { enabled?: boolean }) {
 
   // Native lock-screen popup ack ("OK, I understand" pressed while the app was not open).
   useEffect(() => {
+    const acknowledgeFromNative = async (id: number) => {
+      const result = await apiRequest(`/api/v1/alerts/${id}/acknowledge`, { method: "POST" });
+      if (result.success || result.error.code === "NOT_FOUND") {
+        stopNativeAlarm(id);
+        setPending((currentPending) => removeAlert(currentPending, id));
+        const isNative = getPushMode() === "capacitor";
+        if (isNative) {
+          const bridge = (window as Window & { AlertBridge?: { openAlertsPage?: () => void } }).AlertBridge;
+          if (typeof bridge?.openAlertsPage === "function") {
+            try {
+              bridge.openAlertsPage();
+            } catch {
+              // ignore
+            }
+          }
+        }
+      } else {
+        setAckError(result.error.message);
+      }
+    };
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<{ id?: number }>).detail;
       const id = detail?.id;
       if (!id) return;
-      void (async () => {
-        const result = await apiRequest(`/api/v1/alerts/${id}/acknowledge`, { method: "POST" });
-        if (result.success || result.error.code === "NOT_FOUND") {
-          stopNativeAlarm(id);
-          setPending((currentPending) => removeAlert(currentPending, id));
-          const isNative = getPushMode() === "capacitor";
-          if (isNative) {
-            const bridge = (window as Window & { AlertBridge?: { openAlertsPage?: () => void } }).AlertBridge;
-            if (typeof bridge?.openAlertsPage === "function") {
-              try {
-                bridge.openAlertsPage();
-              } catch {
-                // ignore
-              }
-            }
-          }
-        } else {
-          setAckError(result.error.message);
-        }
-      })();
+      // The popup records the tap natively as well (see below); this event
+      // already carries it, so drop the record to avoid a duplicate ack.
+      takePendingNativeAck();
+      void acknowledgeFromNative(id);
     };
     window.addEventListener("native-ack-requested", handler as EventListener);
+    // The popup's tap is a one-shot JS event: pressed before this page had
+    // loaded (e.g. the app cold-started from the lock-screen popup), it is
+    // gone by the time the listener registers. The bridge keeps the tap
+    // pending until the web layer asks for it, so pick it up now. The ack
+    // itself is an idempotent upsert, so a rare double delivery is harmless.
+    const pendingId = takePendingNativeAck();
+    if (pendingId !== null) void acknowledgeFromNative(pendingId);
     return () => window.removeEventListener("native-ack-requested", handler as EventListener);
   }, []);
 
@@ -179,6 +221,15 @@ export function AlertListener({ enabled = true }: { enabled?: boolean }) {
     if (!current || busy || batchBusy) return;
     setBusy(true);
     setAckError(null);
+    // The user has confirmed the alert: stop the alarm sounding on the
+    // device immediately instead of letting it blare for the whole server
+    // round-trip (which can take seconds on a mobile connection, and read
+    // as "OK didn't stop the sound"). Only the sound stops here — the
+    // dialog stays until the server confirms, and the alert's notification
+    // is cleared by stopNativeAlarm once it has. If the request fails, the
+    // dialog remains with its error and the still-unacknowledged alert is
+    // raised again the next time it is presented.
+    silenceNativeAlarm(current.id);
     const result = await apiRequest(`/api/v1/alerts/${current.id}/acknowledge`, { method: "POST" });
     setBusy(false);
     if (!result.success && result.error.code !== "NOT_FOUND") {
@@ -208,6 +259,9 @@ export function AlertListener({ enabled = true }: { enabled?: boolean }) {
 
     setBatchBusy(true);
     setAckError(null);
+    // Same contract as the single-alert confirm: the tap stops the alarm
+    // sounding right away; the notifications clear once the server confirms.
+    silenceNativeAlarm(alertIds[0]);
     const result = await apiRequest<{ acknowledged: boolean; count: number }>(
       "/api/v1/alerts/acknowledge-all",
       {
