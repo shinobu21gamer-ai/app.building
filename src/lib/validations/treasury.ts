@@ -327,6 +327,38 @@ export const disbursementCrewBatchSchema = z
     });
   });
 
+export const crewPaymentRequestActionSchema = z
+  .object({
+    earmarkId: nullableId("Earmark"),
+    decisions: z.array(
+      z.discriminatedUnion("action", [
+        z.object({
+          lineId: z.coerce.number().int().positive(),
+          action: z.literal("PAY"),
+          amount: amountSchema("The crew payment amount"),
+        }),
+        z.object({
+          lineId: z.coerce.number().int().positive(),
+          action: z.literal("HOLD"),
+          reason: z.string().trim().min(5, "A hold reason is required (at least 5 characters).").max(500),
+        }),
+      ])
+    ).min(1, "Choose Pay or Hold for at least one crew member.").max(100),
+  })
+  .superRefine((value, ctx) => {
+    const seen = new Set<number>();
+    value.decisions.forEach((decision, index) => {
+      if (seen.has(decision.lineId)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["decisions", index, "lineId"],
+          message: "Choose each crew member only once.",
+        });
+      }
+      seen.add(decision.lineId);
+    });
+  });
+
 export const disbursementCreateSchema = z.object({
   allocationId: z.coerce.number().int().positive("Pick an allocation."),
   earmarkId: nullableId("Earmark"),

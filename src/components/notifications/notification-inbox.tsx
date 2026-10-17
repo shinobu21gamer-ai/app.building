@@ -20,6 +20,7 @@ export type NotificationItem = {
   readAt: string | null;
   createdAt: string;
   concern: { id: number; caseNumber: string; title: string } | null;
+  loginSecurityReportId?: number | null;
 };
 
 type Filter = "all" | "unread";
@@ -48,7 +49,6 @@ export function NotificationInbox({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [securityNotice, setSecurityNotice] = useState<string | null>(null);
-  const [passwordResetNeeded, setPasswordResetNeeded] = useState(false);
   const [securityBusy, setSecurityBusy] = useState(false);
 
   useEffect(() => {
@@ -96,20 +96,18 @@ export function NotificationInbox({
     if (refresh) router.refresh();
   }
 
-  async function respondToLoginAlert(item: NotificationItem, wasMe: boolean) {
-    if (!wasMe && !window.confirm(t.loginAlertConfirm)) return;
+  async function reportLoginAlert(item: NotificationItem) {
     setError(null);
     setSuccess(null);
     setSecurityNotice(null);
     setSecurityBusy(true);
-    const result = await apiRequest<{
-      wasMe: boolean;
-      sessionsRevoked?: boolean;
-      passwordResetRequired?: boolean;
-    }>(`/api/v1/auth/login-alerts/${item.id}`, {
-      method: "POST",
-      body: JSON.stringify({ wasMe }),
-    });
+    const result = await apiRequest<{ reported: boolean }>(
+      `/api/v1/auth/login-alerts/${item.id}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ report: true }),
+      }
+    );
     setSecurityBusy(false);
     if (!result.success) {
       setError(result.error.message);
@@ -121,10 +119,8 @@ export function NotificationInbox({
         entry.id === item.id
           ? {
               ...entry,
-              title: wasMe ? "Sign-in confirmed" : "Unrecognized sign-in reported",
-              message: wasMe
-                ? t.loginAlertConfirmed
-                : t.loginAlertSecured,
+              title: t.loginAlertReportedTitle,
+              message: t.loginAlertReported,
               isRead: true,
               readAt: new Date().toISOString(),
             }
@@ -140,12 +136,7 @@ export function NotificationInbox({
         })
       );
     }
-    if (wasMe) {
-      setSecurityNotice(t.loginAlertConfirmed);
-    } else {
-      setSecurityNotice(t.loginAlertSecured);
-      setPasswordResetNeeded(true);
-    }
+    setSecurityNotice(t.loginAlertReported);
   }
 
   async function markAllRead() {
@@ -192,11 +183,6 @@ export function NotificationInbox({
       {securityNotice && (
         <div role="status" className="space-y-2 rounded-control border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
           <p>{securityNotice}</p>
-          {passwordResetNeeded && (
-            <Link href="/reset-password" className="font-semibold underline">
-              {t.loginAlertResetPassword}
-            </Link>
-          )}
         </div>
       )}
 
@@ -245,6 +231,7 @@ export function NotificationInbox({
               type: item.type,
               role,
               concernId: item.concern?.id ?? null,
+              loginSecurityReportId: item.loginSecurityReportId ?? null,
             });
             const rowClass = unread
               ? "block bg-brand-50/40 px-4 py-4"
@@ -299,22 +286,14 @@ export function NotificationInbox({
                     </div>
                   )}
                   {pendingLoginAlert && (
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-3">
                       <button
                         type="button"
-                        onClick={() => void respondToLoginAlert(item, true)}
-                        disabled={securityBusy}
-                        className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
-                      >
-                        {t.loginAlertWasMe}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void respondToLoginAlert(item, false)}
+                        onClick={() => void reportLoginAlert(item)}
                         disabled={securityBusy}
                         className="rounded-md border border-danger-100 bg-white px-3 py-2 text-xs font-semibold text-danger-700 hover:bg-danger-50 disabled:opacity-50"
                       >
-                        {t.loginAlertNotMe}
+                        {t.loginAlertReport}
                       </button>
                     </div>
                   )}

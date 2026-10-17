@@ -47,13 +47,19 @@ describe("notificationHref", () => {
     ).toBe("/captain/approvals");
   });
 
-  it("opens the prefilled crew-payment voucher for the treasurer when a case is resolved", () => {
+  it("opens an internal crew progress alert on the case sheet", () => {
+    expect(
+      notificationHref({ type: "CREW_PROGRESS_RECEIVED", role: "OFFICIAL", concernId: 8 }),
+    ).toBe("/official/concerns/8");
+  });
+
+  it("opens the crew payment request for the treasurer when a case is closed", () => {
     expect(
       notificationHref({ type: "CREW_PAYMENT_READY", role: "TREASURER", concernId: 18 }),
-    ).toBe("/treasury/disbursements?concernId=18&pay=CREW");
+    ).toBe("/treasury/disbursements#crew-request-case-18");
     expect(
       notificationHref({ type: "CREW_PAYMENT_READY", role: "TREASURER", concernId: null }),
-    ).toBe("/treasury/disbursements");
+    ).toBe("/treasury/disbursements#crew-payment-requests");
   });
 
   it("opens the fund desk for the treasurer on earmark notes", () => {
@@ -72,6 +78,23 @@ describe("notificationHref", () => {
     expect(
       notificationHref({ type: "SLA_BREACHED", role: "CAPTAIN", concernId: null }),
     ).toBe("/captain");
+  });
+
+  it("routes unfamiliar sign-in reports to admin user management only", () => {
+    expect(
+      notificationHref({
+        type: "LOGIN_SECURITY_REPORT",
+        role: "ADMIN",
+        concernId: null,
+        loginSecurityReportId: 28,
+      }),
+    ).toBe("/admin/security-reports#report-28");
+    expect(
+      notificationHref({ type: "LOGIN_SECURITY_REPORT_REMINDER", role: "ADMIN", concernId: null }),
+    ).toBe("/admin/security-reports");
+    expect(
+      notificationHref({ type: "LOGIN_SECURITY_REPORT", role: "RESIDENT", concernId: null }),
+    ).toBeNull();
   });
 
   it("returns null when there is nowhere to go", () => {

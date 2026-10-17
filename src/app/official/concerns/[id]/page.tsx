@@ -26,6 +26,7 @@ import {
   type ProcessStepKey,
 } from "@/lib/cases/process-flow";
 import {
+  assignedOfficialIsOther,
   flowStepTodo,
   flowStepWho,
   stepNamesOfficial,
@@ -41,6 +42,7 @@ import { ConcernMap } from "@/components/concern/concern-map";
 import { CrewPanel } from "@/components/cases/crew-panel";
 import { FieldCheckPanel } from "@/components/cases/field-check-panel";
 import { listFieldChecks } from "@/lib/cases/field-check";
+import { fieldCheckIdFromMetadata } from "@/lib/cases/field-check-reply-meta";
 import { FundingPanel } from "@/components/treasury/funding-panel";
 import { ValidationForm } from "@/components/cases/validation-form";
 import {
@@ -70,12 +72,16 @@ import {
 } from "@/lib/cases/workflow";
 import { copy, type Locale } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import { caseReturnHref } from "@/lib/cases/return-to";
 
 export const metadata: Metadata = {
   title: "Review Concern",
 };
 
-type PageProps = { params: Promise<{ id: string }> };
+type PageProps = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string | string[] }>;
+};
 
 function userName(
   user: { firstName: string; lastName: string } | null | undefined
@@ -154,6 +160,7 @@ async function loadVerificationAskNames(
 
 export default async function OfficialConcernDetailPage({
   params,
+  searchParams,
 }: PageProps) {
   // The Captain (the approving official) closes cases and verifies resolutions
   // from this same case sheet, so they are let in here with their own
@@ -164,7 +171,8 @@ export default async function OfficialConcernDetailPage({
   const locale = await getLocale();
   const t = copy[locale].official;
   const desk = copy[locale].desk;
-  const { id } = await params;
+  const [{ id }, query] = await Promise.all([params, searchParams]);
+  const returnHref = caseReturnHref(user.role.key, query.returnTo);
   const numericId = Number(id);
   if (!Number.isInteger(numericId) || numericId <= 0) notFound();
 
@@ -349,7 +357,7 @@ export default async function OfficialConcernDetailPage({
       ? db.concernCategory.findMany({
           where: { isActive: true },
           orderBy: { name: "asc" },
-          select: { id: true, name: true },
+          select: { id: true, name: true, typeId: true },
         })
       : Promise.resolve([]),
     db.crewAssignment.count({ where: { concernId: numericId, isActive: true } }),
@@ -486,6 +494,12 @@ export default async function OfficialConcernDetailPage({
     });
     const yours = step.state === "current" && owns;
     const namesOfficial = stepNamesOfficial(step.key);
+    const assignedToOther = assignedOfficialIsOther({
+      role: user.role.key,
+      key: step.key,
+      userId: user.id,
+      assignedOfficialId: currentAssignment?.official?.id ?? null,
+    });
     return {
       key: step.key,
       number: step.number,
@@ -497,7 +511,8 @@ export default async function OfficialConcernDetailPage({
       who: flowStepWho(flowCopy.steps, step.key, user.role.key),
       desk: stepDesk[step.key],
       ownsStep: owns,
-      yourTurn: yours,
+      yourTurn: yours && !assignedToOther,
+      assignedToOther,
       namesOfficial,
       waitingName: namesOfficial ? holderName : null,
       waitingEmail: namesOfficial ? holderEmail : null,
@@ -523,6 +538,20 @@ export default async function OfficialConcernDetailPage({
         currentUserId={user.id}
         checks={fieldChecks.map((check) => ({
           id: check.id,
+          residentReplies: concern.history
+            .filter(
+              (entry) =>
+                entry.entryType === "RESIDENT_REPLY" &&
+                entry.actorRole === "RESIDENT" &&
+                entry.visibility === "RESIDENT_VISIBLE" &&
+                fieldCheckIdFromMetadata(entry.metadataJson) === check.id
+            )
+            .map((entry) => ({
+              id: entry.id,
+              message: entry.remarks ?? "",
+              authorName: userName(entry.actor) ?? desk.residentActor,
+              createdAt: entry.createdAt.toISOString(),
+            })),
           status: check.status,
           instructions: check.instructions,
           finding: check.finding,
@@ -563,13 +592,21 @@ export default async function OfficialConcernDetailPage({
       <ValidationForm
         concernId={concern.id}
         locale={locale}
-        types={concernTypes.map((type) => ({ id: type.id, label: type.name }))}
-        categories={allCategories.map((category) => ({
+        types={concernTypes.map((type: { id: number; name: string }) => ({
+          id: type.id,
+          label: type.name,
+        }))}
+        categories={allCategories.map((category: {
+          id: number;
+          name: string;
+          typeId: number | null;
+        }) => ({
           id: category.id,
           label: category.name,
+          typeId: category.typeId,
         }))}
-        currentTypeId={concern.typeId}
-        currentCategoryId={concern.categoryId}
+        currentTypeLabel={concern.type?.name ?? null}
+        currentCategoryLabel={concern.category.name}
         currentPriority={concern.priorityLevel}
       />
     );
@@ -1001,22 +1038,8 @@ export default async function OfficialConcernDetailPage({
 
   return (
     <div className="space-y-6">
-      {/* The Captain reaches this sheet from their own desk, which is the one
-          place that lists cases for them — send them back there. */}
-      <Button
-        href={
-          user.role.key === "CAPTAIN"
-            ? "/captain"
-            : user.role.key === "ADMIN"
-              ? "/admin/validation"
-              : user.role.key === "TREASURER"
-                ? "/treasury"
-                : "/official/concerns"
-        }
-        variant="ghost"
-        size="sm"
-      >
-        {desk.backConcerns}
+      <Button href={returnHref} variant="ghost" size="sm">
+        {user.role.key === "OFFICIAL" ? desk.backConcerns : desk.backToDesk}
       </Button>
 
       <PageHeader

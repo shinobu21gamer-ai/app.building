@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   NOTIFICATION_TYPES,
   notifyCrewAssigned,
+  notifyCrewProgressRecorded,
+  notifyResidentReplyReceived,
   notifySlaBreached,
   notifyTreasurerCrewPaymentReady,
 } from "@/lib/notifications/service";
@@ -38,8 +40,59 @@ describe("notifyCrewAssigned", () => {
   });
 });
 
+describe("notifyCrewProgressRecorded", () => {
+  it("notifies the case office and named official without duplicate recipients", async () => {
+    const create = vi.fn().mockResolvedValue({});
+    const findMany = vi.fn().mockResolvedValue([{ id: 31 }, { id: 32 }]);
+    const db = {
+      user: { findMany },
+      notification: { create },
+    } as never;
+
+    await expect(notifyCrewProgressRecorded(db, {
+      concernId: 9,
+      caseNumber: "BR-2026-0009",
+      officeId: 4,
+      officialId: 32,
+      crewName: "Ava Reyes",
+      kind: "COMPLETION",
+    })).resolves.toBe(2);
+
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls.map(([arg]) => arg.data.userId)).toEqual([31, 32]);
+    expect(create.mock.calls[0][0].data).toMatchObject({
+      concernId: 9,
+      type: NOTIFICATION_TYPES.CREW_PROGRESS_RECEIVED,
+      title: "Crew update needs review",
+      message: "Ava Reyes reported work completed on case BR-2026-0009. Review the internal update on the case.",
+    });
+  });
+
+  it("falls back to active admins when no official holds the office assignment", async () => {
+    const create = vi.fn().mockResolvedValue({});
+    const findMany = vi.fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 1 }]);
+    const db = {
+      user: { findMany },
+      notification: { create },
+    } as never;
+
+    await expect(notifyCrewProgressRecorded(db, {
+      concernId: 9,
+      caseNumber: "BR-2026-0009",
+      officeId: 4,
+      officialId: null,
+      crewName: "Ava Reyes",
+      kind: "PROBLEM",
+    })).resolves.toBe(1);
+    expect(create.mock.calls[0][0].data.userId).toBe(1);
+    expect(create.mock.calls[0][0].data.message).toContain("reported a problem");
+  });
+});
+
 describe("notifyTreasurerCrewPaymentReady", () => {
-  it("notifies each active treasurer once with the resolved case details", async () => {
+  it("notifies each active treasurer once with the closed case details", async () => {
     const create = vi.fn().mockResolvedValue({});
     const db = {
       user: { findMany: vi.fn().mockResolvedValue([{ id: 21 }, { id: 22 }]) },
@@ -63,7 +116,7 @@ describe("notifyTreasurerCrewPaymentReady", () => {
         concernId: 9,
         type: NOTIFICATION_TYPES.CREW_PAYMENT_READY,
         title: "Crew payment ready for review",
-        message: "Case BR-2026-0009 is resolved and has 2 assigned crew members. Review the crew payment request in Treasury.",
+        message: "Case BR-2026-0009 is closed and has 2 assigned crew members. Review the crew payment request in Treasury.",
       },
     });
   });
@@ -77,6 +130,37 @@ describe("notifyTreasurerCrewPaymentReady", () => {
       crewCount: 0,
     })).resolves.toBe(0);
     expect(findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("notifyResidentReplyReceived", () => {
+  it("alerts admins and assigned office staff without duplicating the named official", async () => {
+    const create = vi.fn().mockResolvedValue({});
+    const findMany = vi
+      .fn()
+      .mockResolvedValueOnce([{ id: 1 }])
+      .mockResolvedValueOnce([{ id: 2 }]);
+    const db = {
+      user: { findMany },
+      notification: { create },
+    } as never;
+
+    await expect(
+      notifyResidentReplyReceived(db, {
+        concernId: 9,
+        caseNumber: "BR-2026-0009",
+        officeId: 4,
+        officialId: 2,
+      })
+    ).resolves.toBe(2);
+
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls.map(([arg]) => arg.data.userId)).toEqual([1, 2]);
+    expect(create.mock.calls[0][0].data).toMatchObject({
+      concernId: 9,
+      type: NOTIFICATION_TYPES.RESIDENT_REPLY_RECEIVED,
+      title: "Resident replied to an open field check",
+    });
   });
 });
 

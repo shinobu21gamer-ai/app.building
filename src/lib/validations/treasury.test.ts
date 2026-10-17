@@ -1,5 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { disbursementCrewBatchSchema, fiscalYearCreateSchema } from "./treasury";
+import {
+  crewPaymentRequestActionSchema,
+  disbursementCrewBatchSchema,
+  fiscalYearCreateSchema,
+} from "./treasury";
+
+describe("crewPaymentRequestActionSchema", () => {
+  it("accepts per-person Pay amounts and Hold reasons in one request", () => {
+    expect(crewPaymentRequestActionSchema.safeParse({
+      earmarkId: 9,
+      decisions: [
+        { lineId: 31, action: "PAY", amount: 125.5 },
+        { lineId: 32, action: "HOLD", reason: "Confirm hours." },
+      ],
+    }).success).toBe(true);
+  });
+
+  it("rejects repeated crew lines and a Hold without a meaningful reason", () => {
+    expect(crewPaymentRequestActionSchema.safeParse({
+      earmarkId: null,
+      decisions: [
+        { lineId: 31, action: "HOLD", reason: "Wait" },
+        { lineId: 31, action: "PAY", amount: 125 },
+      ],
+    }).success).toBe(false);
+  });
+});
 
 describe("disbursementCrewBatchSchema", () => {
   const batch = {

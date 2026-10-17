@@ -394,6 +394,7 @@ export type DisbursementRow = {
   amount: number;
   payee: string;
   payeeType: string;
+  payeeUserId: number | null;
   particulars: string;
   modeOfPayment: string | null;
   allocationId: number;
@@ -477,6 +478,7 @@ export async function listDisbursements(
     amount: toMoney(row.amount),
     payee: row.payee,
     payeeType: row.payeeType,
+    payeeUserId: row.payeeUserId,
     particulars: row.particulars,
     modeOfPayment: row.modeOfPayment,
     allocationId: row.allocationId,

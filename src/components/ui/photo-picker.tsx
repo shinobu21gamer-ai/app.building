@@ -80,6 +80,7 @@ export function PhotoPicker({
           {t.takePhoto}
         </button>
         <button
+          id={`${id}-browse`}
           type="button"
           onClick={() => libraryRef.current?.click()}
           className="inline-flex items-center gap-2 rounded-control border border-line-strong bg-surface px-3 py-2 text-sm font-medium text-ink hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-brand-600"
@@ -126,8 +127,8 @@ export function PhotoPicker({
           event.target.value = "";
         }}
       />
-      {/* The named input: invisible, but present so native FormData reads
-          and native required-validation still see the file. */}
+      {/* The named input is invisible but keeps native FormData submissions
+          carrying the selected file; focus is routed to the visible picker button. */}
       <input
         ref={canonicalRef}
         id={id}
@@ -137,6 +138,8 @@ export function PhotoPicker({
         className="hidden"
         tabIndex={-1}
         aria-hidden="true"
+        aria-required={required || undefined}
+        data-focus-target={`${id}-browse`}
       />
       {file ? (
         <p className="text-xs text-ink-subtle">

@@ -11,7 +11,8 @@ describe("optional profile phone", () => {
     expect(html).not.toContain('value="••••1234"');
     expect(html).toContain("Leave blank to keep it");
     expect(html).toContain("Remove saved number");
-    expect(html).toContain("Phone (optional)");
+    expect(html).toContain("<span>Phone</span>");
+    expect(html).toContain(">Optional</span>");
   });
   it("does not require a phone or address when none is saved", () => {
     const html = renderToStaticMarkup(createElement(ProfileForm, { user: { ...user, phone: null } }));

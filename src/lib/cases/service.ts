@@ -45,6 +45,7 @@ import {
 } from "@/lib/sla/escalation";
 import { isSlaOpenStage } from "@/lib/sla/policy";
 import { syncPublicRecord } from "@/lib/cases/public-record";
+import { createCrewPaymentRequestOnClose } from "@/lib/treasury/crew-payment-request";
 
 type Tx = Prisma.TransactionClient;
 
@@ -478,16 +479,6 @@ export async function changeConcernStatus(
   }
 
   if (input.status === "RESOLVED") {
-    const crewAssignments = await tx.crewAssignment.findMany({
-      where: { concernId: concern.id },
-      select: { crewId: true },
-    });
-    await notifyTreasurerCrewPaymentReady(tx, {
-      concernId: concern.id,
-      caseNumber: concern.caseNumber,
-      crewCount: new Set(crewAssignments.map((assignment) => assignment.crewId)).size,
-    });
-
     await notifyResolutionRecorded(tx, {
       userId: concern.userId,
       concernId: concern.id,
@@ -499,6 +490,14 @@ export async function changeConcernStatus(
       caseNumber: concern.caseNumber,
     });
   } else if (input.status === "CLOSED") {
+    const paymentRequest = await createCrewPaymentRequestOnClose(tx, concern.id);
+    if (paymentRequest) {
+      await notifyTreasurerCrewPaymentReady(tx, {
+        concernId: concern.id,
+        caseNumber: concern.caseNumber,
+        crewCount: paymentRequest.crewCount,
+      });
+    }
     await notifyCaseClosed(tx, {
       userId: concern.userId,
       concernId: concern.id,
@@ -600,7 +599,7 @@ export type ValidationInput = {
   concernId: number;
   actor: WorkflowActor;
   typeId: number;
-  categoryId?: number | null;
+  categoryId: number;
   priorityLevel?: string | null;
   notes: string;
   confirmPriority: boolean;
@@ -657,19 +656,17 @@ export async function validateConcern(
     throw createApiError.badRequest("Select an active concern type.");
   }
 
-  if (input.categoryId) {
-    const category = await tx.concernCategory.findUnique({
-      where: { id: input.categoryId },
-      select: { id: true, isActive: true, typeId: true },
-    });
-    if (!category || !category.isActive) {
-      throw createApiError.badRequest("Select an active category.");
-    }
-    if (category.typeId !== null && category.typeId !== type.id) {
-      throw createApiError.badRequest(
-        "The selected category belongs to a different service type. Choose the category that matches this concern before validating."
-      );
-    }
+  const category = await tx.concernCategory.findUnique({
+    where: { id: input.categoryId },
+    select: { id: true, name: true, isActive: true, typeId: true },
+  });
+  if (!category || !category.isActive) {
+    throw createApiError.badRequest("Select an active category.");
+  }
+  if (category.typeId !== null && category.typeId !== type.id) {
+    throw createApiError.badRequest(
+      "The selected category belongs to a different service type. Choose the category that matches this concern before validating."
+    );
   }
 
   const now = new Date();
@@ -682,7 +679,7 @@ export async function validateConcern(
     where: { id: concern.id },
     data: {
       typeId: type.id,
-      ...(input.categoryId ? { categoryId: input.categoryId } : {}),
+      categoryId: category.id,
       ...(input.priorityLevel ? { priorityLevel: input.priorityLevel } : {}),
       validatedById: input.actor.id,
       validatedAt: now,
@@ -761,13 +758,14 @@ export async function validateConcern(
       fromStatus: concern.status,
       toStatus: routedOfficeName ? "ASSIGNED" : concern.status,
       remarks:
-        `Admin validation: confirmed as ${type.name}.` +
+        `Admin validation: confirmed as ${type.name} and categorized as ${category.name}.` +
         (routedOfficeName ? ` Routed to ${routedOfficeName}.` : "") +
         (input.notes ? ` Notes: ${input.notes}` : ""),
       visibility: "RESIDENT_VISIBLE",
       metadataJson: JSON.stringify({
         typeId: type.id,
         typeKey: type.key,
+        categoryId: category.id,
         confirmedPriority: input.confirmPriority,
         routedOfficeName,
       }),

@@ -41,3 +41,18 @@ export function flowStepWho(
 export function stepNamesOfficial(key: ProcessStepKey): boolean {
   return key === "ASSESS" || key === "CREW" || key === "START" || key === "WORK";
 }
+
+/** True when this role's case work is assigned to another named official. */
+export function assignedOfficialIsOther(input: {
+  role: string;
+  key: ProcessStepKey;
+  userId: number;
+  assignedOfficialId: number | null;
+}): boolean {
+  return (
+    input.role === "OFFICIAL" &&
+    stepNamesOfficial(input.key) &&
+    input.assignedOfficialId !== null &&
+    input.assignedOfficialId !== input.userId
+  );
+}

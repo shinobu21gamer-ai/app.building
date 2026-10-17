@@ -28,6 +28,14 @@ export const submitFieldCheckSchema = z.object({
     .nullable(),
 });
 
+export const residentFieldCheckReplySchema = z.object({
+  message: z
+    .string()
+    .trim()
+    .min(1, "Write a reply before sending.")
+    .max(1000, "The reply is too long (maximum 1,000 characters)."),
+});
+
 export const reviewFieldCheckSchema = z
   .object({
     decision: z.enum(FIELD_CHECK_REVIEW_DECISIONS, {

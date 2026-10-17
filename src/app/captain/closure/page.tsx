@@ -92,7 +92,7 @@ export default async function CaptainClosurePage() {
                       {verified ? t.closeQueueVerified : t.closeQueueUnverified}
                     </Badge>
                     <Button
-                      href={`/official/concerns/${item.id}`}
+                      href={`/official/concerns/${item.id}?returnTo=${encodeURIComponent("/captain/closure")}`}
                       variant="ghost"
                       size="sm"
                     >

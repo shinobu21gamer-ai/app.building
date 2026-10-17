@@ -116,6 +116,7 @@ export function notificationView(notification: NotificationRow) {
     isRead: notification.isRead,
     readAt: notification.readAt ? notification.readAt.toISOString() : null,
     createdAt: notification.createdAt.toISOString(),
+    loginSecurityReportId: notification.loginSecurityReportId,
     concern: notification.concern
       ? {
           id: notification.concern.id,

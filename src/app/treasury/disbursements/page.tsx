@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { VoucherForm } from "@/components/treasury/voucher-form";
+import { CrewPaymentRequestDesk } from "@/components/treasury/crew-payment-request-desk";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatPeso } from "@/lib/cases/manpower";
 import { formatDateTime } from "@/lib/format";
@@ -11,6 +12,9 @@ import { requirePermission, userCan } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { listCrewAssignments } from "@/lib/cases/crew";
+import { seesWholeBudget } from "@/lib/treasury/budget";
+import { groupVouchersByPayee } from "@/lib/treasury/payee-groups";
+import type { DisbursementRow } from "@/lib/treasury/query";
 import {
   listAllocations,
   listDisbursements,
@@ -130,6 +134,61 @@ export default async function TreasuryDisbursementsPage({
       })
     : [];
 
+  const paymentRequestRows = canPrepare
+    ? await db.crewPaymentRequest.findMany({
+        where: {
+          ...(seesWholeBudget(actor)
+            ? {}
+            : { concern: { assignedOfficeId: actor.officeId ?? -1 } }),
+          OR: [
+            { status: "OPEN" },
+            {
+              lines: {
+                some: {
+                  disbursement: {
+                    is: { status: { in: ["REJECTED", "CANCELLED"] } },
+                  },
+                },
+              },
+            },
+          ],
+        },
+        orderBy: { createdAt: "asc" },
+        include: {
+          concern: {
+            select: { id: true, caseNumber: true, title: true, assignedOfficeId: true },
+          },
+          lines: {
+            orderBy: { id: "asc" },
+            include: {
+              crew: { select: { id: true, firstName: true, lastName: true } },
+              disbursement: { select: { voucherNumber: true, status: true } },
+            },
+          },
+        },
+      })
+    : [];
+
+  const crewPaymentRequests = paymentRequestRows.map((request) => ({
+    id: request.id,
+    concernId: request.concern.id,
+    caseNumber: request.concern.caseNumber,
+    caseTitle: request.concern.title,
+    createdAt: request.createdAt.toISOString(),
+    status: request.status,
+    lines: request.lines.map((line) => ({
+      id: line.id,
+      crewId: line.crew.id,
+      crewName: `${line.crew.firstName} ${line.crew.lastName}`.trim(),
+      status: line.status,
+      holdReason: line.holdReason,
+      voucherNumber: line.disbursement?.voucherNumber ?? null,
+      voucherStatus: line.disbursement?.status ?? null,
+    })),
+  }));
+
+  const voucherGroups = groupVouchersByPayee<DisbursementRow>(vouchers);
+
   const requestedEarmarkId =
     Number.isInteger(Number(presetEarmarkParam)) &&
     Number(presetEarmarkParam) > 0
@@ -179,6 +238,22 @@ export default async function TreasuryDisbursementsPage({
   return (
     <div className="space-y-6">
       <PageHeader title={t.disbursementsTitle} description={t.disbursementsLead} />
+
+      {canPrepare && (
+        <CrewPaymentRequestDesk
+          requests={crewPaymentRequests}
+          earmarks={approvedEarmarks.map((earmark) => ({
+            id: earmark.id,
+            code: earmark.code,
+            purpose: earmark.purpose,
+            amount: earmark.amount,
+            committed: earmark.committed,
+            concernId: earmark.concernId,
+            allocationId: earmark.allocationId,
+          }))}
+          locale={locale}
+        />
+      )}
 
       {canPrepare && allocations.length > 0 && (
         <Card title={t.newVoucher}>
@@ -243,43 +318,52 @@ export default async function TreasuryDisbursementsPage({
         </Card>
       ) : (
         <ul className="space-y-3">
-          {vouchers.map((voucher) => (
-            <li key={voucher.id}>
-              <Card className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs text-ink-subtle">
-                    {voucher.voucherNumber ?? `#${voucher.id}`}
-                  </span>
-                  <Badge tone={TONES[voucher.status] ?? "neutral"}>
-                    {voucher.statusLabel}
-                  </Badge>
-                  <span className="text-sm font-semibold text-ink">
-                    {formatPeso(voucher.amount)}
-                  </span>
-                  {voucher.liquidationState !== "NOT_DUE" &&
-                    voucher.status === "RELEASED" && (
-                      <Badge tone="amber">{voucher.liquidationState}</Badge>
-                    )}
-                </div>
-                <p className="text-sm text-ink-muted">{voucher.payee}</p>
-                <p className="text-xs text-ink-subtle">
-                  {voucher.particulars}
-                </p>
-                <p className="text-xs text-ink-subtle">
-                  {voucher.coaCode} · {voucher.fundSourceCode}
-                  {voucher.earmarkCode ? ` · ${voucher.earmarkCode}` : ""}
-                  {voucher.caseNumber ? ` · ${voucher.caseNumber}` : ""} ·{" "}
-                  {formatDateTime(voucher.preparedAt)}
-                </p>
+          {voucherGroups.map((group) => (
+            <li key={group.key}>
+              <Card className="space-y-3">
                 <div>
-                  <Button
-                    href={`/treasury/disbursements/${voucher.id}`}
-                    size="sm"
-                    variant="outline"
-                  >
-                    {t.open}
-                  </Button>
+                  <p className="font-semibold text-ink">{group.payee}</p>
+                  {group.payeeType === "CREW" && group.vouchers.length > 1 && (
+                    <p className="text-xs text-ink-subtle">
+                      {t.crewPayeeGrouped
+                        .replace("{count}", String(group.vouchers.length))
+                        .replace("{total}", formatPeso(group.total))}
+                    </p>
+                  )}
                 </div>
+                {group.vouchers.map((voucher) => (
+                  <div key={voucher.id} className="space-y-1 border-t border-line pt-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs text-ink-subtle">
+                        {voucher.voucherNumber ?? `#${voucher.id}`}
+                      </span>
+                      <Badge tone={TONES[voucher.status] ?? "neutral"}>
+                        {voucher.statusLabel}
+                      </Badge>
+                      <span className="text-sm font-semibold text-ink">
+                        {formatPeso(voucher.amount)}
+                      </span>
+                      {voucher.liquidationState !== "NOT_DUE" &&
+                        voucher.status === "RELEASED" && (
+                          <Badge tone="amber">{voucher.liquidationState}</Badge>
+                        )}
+                    </div>
+                    <p className="text-xs text-ink-subtle">{voucher.particulars}</p>
+                    <p className="text-xs text-ink-subtle">
+                      {voucher.coaCode} · {voucher.fundSourceCode}
+                      {voucher.earmarkCode ? ` · ${voucher.earmarkCode}` : ""}
+                      {voucher.caseNumber ? ` · ${voucher.caseNumber}` : ""} ·{" "}
+                      {formatDateTime(voucher.preparedAt)}
+                    </p>
+                    <Button
+                      href={`/treasury/disbursements/${voucher.id}`}
+                      size="sm"
+                      variant="outline"
+                    >
+                      {t.open}
+                    </Button>
+                  </div>
+                ))}
               </Card>
             </li>
           ))}

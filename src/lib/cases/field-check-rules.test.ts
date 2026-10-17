@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canRequestFieldCheck,
+  canReplyToFieldCheck,
   fieldCheckGateBlock,
   findingProblem,
   realityCheckState,
@@ -95,6 +96,17 @@ describe("findingProblem", () => {
     expect(
       findingProblem({ finding: "CANNOT_VERIFY", notes: "Gate was locked, no view of the site", hasPhoto: false })
     ).toMatch(/photo/);
+  });
+});
+
+describe("canReplyToFieldCheck", () => {
+  it("allows a resident reply while the check is open or waiting for review", () => {
+    expect(canReplyToFieldCheck("PENDING")).toBe(true);
+    expect(canReplyToFieldCheck("SUBMITTED")).toBe(true);
+  });
+
+  it("does not allow new replies after the check is approved", () => {
+    expect(canReplyToFieldCheck("APPROVED")).toBe(false);
   });
 });
 

@@ -5,7 +5,7 @@ import { EARMARK_APPROVE_PERMISSION } from "@/lib/treasury/approval";
 // Single source of truth for every notification the system can emit.
 // Notifications are always produced here from real domain events (submission,
 // routing, reassignment, status changes, resolution, closure, feedback request,
-// priority override) — never inserted as free-form frontend messages.
+// priority override, and crew updates) — never inserted as free-form frontend messages.
 export const NOTIFICATION_TYPES = {
   CONCERN_SUBMITTED: "CONCERN_SUBMITTED",
   CONCERN_ASSIGNED: "CONCERN_ASSIGNED",
@@ -21,10 +21,12 @@ export const NOTIFICATION_TYPES = {
   FIELD_CHECK_ASSIGNED: "FIELD_CHECK_ASSIGNED",
   FIELD_CHECK_SUBMITTED: "FIELD_CHECK_SUBMITTED",
   FIELD_CHECK_REVIEWED: "FIELD_CHECK_REVIEWED",
+  RESIDENT_REPLY_RECEIVED: "RESIDENT_REPLY_RECEIVED",
   EARMARK_PROPOSED: "EARMARK_PROPOSED",
   EARMARK_APPROVED: "EARMARK_APPROVED",
   EARMARK_CANCELLED: "EARMARK_CANCELLED",
   CREW_PAYMENT_READY: "CREW_PAYMENT_READY",
+  CREW_PROGRESS_RECEIVED: "CREW_PROGRESS_RECEIVED",
 } as const;
 
 export type NotificationType =
@@ -407,12 +409,96 @@ export async function notifyFieldCheckReviewed(
   });
 }
 
+/** Sends crew updates to the assigned office and the named case official. */
+export async function notifyCrewProgressRecorded(
+  db: Db,
+  input: {
+    concernId: number;
+    caseNumber: string;
+    officeId: number | null;
+    officialId: number | null;
+    crewName: string;
+    kind: "PROGRESS" | "PROBLEM" | "COMPLETION";
+  }
+): Promise<number> {
+  const recipients = input.officeId === null
+    ? []
+    : await db.user.findMany({
+        where: { isActive: true, officeId: input.officeId, role: { key: "OFFICIAL" } },
+        select: { id: true },
+      });
+  const recipientIds = [...recipients.map((recipient) => recipient.id), input.officialId];
+  if (recipientIds.every((id) => id === null)) {
+    const admins = await db.user.findMany({
+      where: { isActive: true, role: { key: "ADMIN" } },
+      select: { id: true },
+    });
+    recipientIds.push(...admins.map((admin) => admin.id));
+  }
+  const kindLabel =
+    input.kind === "PROBLEM"
+      ? "reported a problem"
+      : input.kind === "COMPLETION"
+        ? "reported work completed"
+        : "submitted a progress update";
+
+  return notifyUsers(
+    db,
+    recipientIds,
+    {
+      concernId: input.concernId,
+      type: NOTIFICATION_TYPES.CREW_PROGRESS_RECEIVED,
+      title: "Crew update needs review",
+      message: `${input.crewName} ${kindLabel} on case ${input.caseNumber}. Review the internal update on the case.`
+    }
+  );
+}
+
+/** Alerts the admin desk and the case's assigned office when its resident replies. */
+export async function notifyResidentReplyReceived(
+  db: Db,
+  input: {
+    concernId: number;
+    caseNumber: string;
+    officeId: number | null;
+    officialId: number | null;
+  }
+): Promise<number> {
+  const [admins, officials] = await Promise.all([
+    db.user.findMany({
+      where: { isActive: true, role: { key: "ADMIN" } },
+      select: { id: true },
+    }),
+    input.officeId === null
+      ? Promise.resolve([])
+      : db.user.findMany({
+          where: {
+            isActive: true,
+            officeId: input.officeId,
+            role: { key: "OFFICIAL" },
+          },
+          select: { id: true },
+        }),
+  ]);
+
+  return notifyUsers(
+    db,
+    [...admins.map((user) => user.id), ...officials.map((user) => user.id), input.officialId],
+    {
+      concernId: input.concernId,
+      type: NOTIFICATION_TYPES.RESIDENT_REPLY_RECEIVED,
+      title: "Resident replied to an open field check",
+      message: `The resident added information to the open field check for case ${input.caseNumber}. Open the case to review it.`,
+    }
+  );
+}
+
 
 // ---- Treasury events ----------------------------------------------
 
 /**
- * Alerts every active treasurer once a crew-assigned case is resolved, so the
- * payment handoff does not depend on someone remembering to check the case.
+ * Alerts every active treasurer once a crew-assigned case is closed and its
+ * amount-free payment request is created.
  */
 export async function notifyTreasurerCrewPaymentReady(
   db: Db,
@@ -440,7 +526,7 @@ export async function notifyTreasurerCrewPaymentReady(
       concernId: input.concernId,
       type: NOTIFICATION_TYPES.CREW_PAYMENT_READY,
       title: "Crew payment ready for review",
-      message: `Case ${input.caseNumber} is resolved and has ${input.crewCount} assigned crew member${input.crewCount === 1 ? "" : "s"}. Review the crew payment request in Treasury.`,
+      message: `Case ${input.caseNumber} is closed and has ${input.crewCount} assigned crew member${input.crewCount === 1 ? "" : "s"}. Review the crew payment request in Treasury.`,
     });
     sent += 1;
   }

@@ -98,6 +98,7 @@ export function CrewJobForm({
       <Button type="submit" size="sm" disabled={submitting} loading={submitting}>
         {t.jobSubmit}
       </Button>
+      <p className="text-xs leading-relaxed text-ink-subtle">{t.jobHandoffHint}</p>
     </form>
   );
 }

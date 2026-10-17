@@ -10,6 +10,7 @@ export type NotificationHrefInput = {
   type: string;
   role: string;
   concernId: number | null;
+  loginSecurityReportId?: number | null;
 };
 
 /** Desk sheet for a numbered case, or the crew board when they have no sheet. */
@@ -24,14 +25,23 @@ function caseHref(role: string, concernId: number): string {
  * (for example a system ping with no case attached).
  */
 export function notificationHref(input: NotificationHrefInput): string | null {
-  const { type, role, concernId } = input;
+  const { type, role, concernId, loginSecurityReportId } = input;
 
   if (type === "CONSENT_REQUIRED") return "/privacy/requests";
 
+  if (
+    (type === "LOGIN_SECURITY_REPORT" || type === "LOGIN_SECURITY_REPORT_REMINDER") &&
+    role === "ADMIN"
+  ) {
+    return loginSecurityReportId
+      ? `/admin/security-reports#report-${loginSecurityReportId}`
+      : "/admin/security-reports";
+  }
+
   if (type === "CREW_PAYMENT_READY" && role === "TREASURER") {
     return concernId
-      ? `/treasury/disbursements?concernId=${concernId}&pay=CREW`
-      : "/treasury/disbursements";
+      ? `/treasury/disbursements#crew-request-case-${concernId}`
+      : "/treasury/disbursements#crew-payment-requests";
   }
 
   if (type === "FIELD_CHECK_ASSIGNED" && role === "CREW") return "/crew";

@@ -45,6 +45,7 @@
     "@capacitor/status-bar": "^8.0.3",
     "@prisma/client": "6.19.3",
     "bcryptjs": "^3.0.3",
+    "date-holidays": "^3.37.0",
     "jose": "^6.2.12",
     "leaflet": "1.9.4",
     "lucide-react": "^1.48.0",

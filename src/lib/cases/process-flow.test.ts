@@ -125,7 +125,11 @@ describe("caseProcessFlow", () => {
   });
 
   it("moves on to validation once the finding is approved as confirmed", () => {
-    const confirmed = { ...unchecked, realityCheck: "PASSED" as const };
+    const confirmed = {
+      ...unchecked,
+      validated: false,
+      realityCheck: "PASSED" as const,
+    };
     const flow = caseProcessFlow(confirmed);
     expect(flow.currentKey).toBe("VALIDATE");
     expect(flow.currentNumber).toBe(2);

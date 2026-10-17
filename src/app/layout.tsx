@@ -16,6 +16,7 @@ import { SweetAlertProvider } from "@/components/ui/sweet-alert";
 import { NavigationProgress } from "@/components/loading/navigation-progress";
 import { RouteEnter } from "@/components/loading/route-enter";
 import { AutoRefresh } from "@/components/loading/auto-refresh";
+import { FormFocusAssist } from "@/components/ui/form-focus-assist";
 
 function appBaseUrl(): URL {
   const candidate = process.env.NEXT_PUBLIC_APP_URL;
@@ -73,6 +74,7 @@ export default async function RootLayout({
               confirmation or a "saved" popup without inventing its own modal. */}
           <SweetAlertProvider>
           <AlertListener enabled={Boolean(user)} />
+          <FormFocusAssist />
           <NativePushListener />
           <PushSessionSync signedIn={Boolean(user)} />
           <NativeCrashNotice />

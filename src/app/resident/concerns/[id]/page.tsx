@@ -23,12 +23,16 @@ import {
   type CaseStatus,
 } from "@/lib/cases/workflow";
 import { isStatusTransition } from "@/lib/cases/action-date";
+import { concernProcessFlow } from "@/lib/cases/process-flow";
+import { fundedAmountsByConcern } from "@/lib/treasury/query";
 import { journalReachedAt, sortJournal } from "@/lib/cases/journal";
+import { residentVisibleJournal } from "@/lib/cases/journal-visibility";
 import {
   PriorityBreakdown,
   parseEvaluation,
 } from "@/components/priority/priority-breakdown";
 import { FeedbackCard, type FeedbackView } from "@/components/cases/feedback-card";
+import { ResidentFieldCheckReply } from "@/components/cases/resident-field-check-reply";
 import { isFeedbackResubmissionAllowed } from "@/lib/cases/settings";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { copy } from "@/lib/i18n";
@@ -45,6 +49,19 @@ export const metadata: Metadata = {
 type PageProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ created?: string }>;
+};
+
+type ResidentHistoryEntry = {
+  id: number;
+  entryType: string;
+  fromStatus: string | null;
+  toStatus: string | null;
+  remarks: string | null;
+  actorRole: string | null;
+  createdAt: Date;
+  occurredOn: Date | null;
+  attachmentUrl: string | null;
+  visibility: string;
 };
 
 export default async function ConcernDetailPage({
@@ -75,6 +92,7 @@ export default async function ConcernDetailPage({
         orderBy: { createdAt: "asc" },
       },
       resolutions: {
+        orderBy: { id: "desc" },
         include: {
           official: { select: { firstName: true, lastName: true } },
         },
@@ -91,9 +109,21 @@ export default async function ConcernDetailPage({
         orderBy: { assignedAt: "desc" },
         take: 1,
       },
-      type: { select: { id: true, name: true } },
-      caseAssessment: { select: { workersNeeded: true, equipmentNotes: true } },
+      type: {
+        select: {
+          id: true,
+          name: true,
+          key: true,
+          requiresCrew: true,
+          requiresBudget: true,
+        },
+      },
+      caseAssessment: { select: { workersNeeded: true, equipmentNotes: true, totalCost: true } },
       crewAssignments: { where: { isActive: true }, select: { id: true } },
+      fieldChecks: {
+        orderBy: { createdAt: "desc" },
+        select: { id: true, status: true, finding: true },
+      },
       feedback: {
         take: 1,
         orderBy: { updatedAt: "desc" },
@@ -119,8 +149,24 @@ export default async function ConcernDetailPage({
         updatedAt: concern.feedback[0].updatedAt.toISOString(),
       }
     : null;
-  const feedbackResubmissionAllowed =
-    await isFeedbackResubmissionAllowed(db);
+  const [feedbackResubmissionAllowed, fundedAmounts] = await Promise.all([
+    isFeedbackResubmissionAllowed(db),
+    fundedAmountsByConcern(db, [concern.id]),
+  ]);
+  const processFlow = concernProcessFlow(
+    concern,
+    fundedAmounts.get(concern.id) ?? 0
+  );
+  const nextStep = processFlow.currentKey
+    ? processFlow.steps.find((step) => step.key === processFlow.currentKey) ?? null
+    : null;
+  const nextActionCopy = copy[locale].resident.nextAction;
+  const openFieldCheck = concern.fieldChecks.find((check) =>
+    check.status === "PENDING" || check.status === "SUBMITTED"
+  );
+  const nextStepCopy = nextStep
+    ? nextActionCopy.steps[nextStep.key]
+    : null;
 
   // A step is dated by the first journal entry that moved the case into it,
   // using the action date when the official recorded one (shown as a day).
@@ -128,7 +174,7 @@ export default async function ConcernDetailPage({
   const reachedAt: Partial<Record<CaseStatus, ReachedAt | null>> = {
     SUBMITTED: { at: concern.submittedAt, dateOnly: false },
   };
-  for (const entry of sortJournal(concern.history)) {
+  for (const entry of sortJournal<ResidentHistoryEntry>(concern.history)) {
     const target: string | null = entry.toStatus ?? null;
     if (!isStatusTransition(entry) || !target) continue;
     if (!isCaseStatus(target) || reachedAt[target]) continue;
@@ -193,7 +239,7 @@ export default async function ConcernDetailPage({
             >
               {t.print}
             </Button>
-            <StatusBadge status={concern.status} />
+            <StatusBadge status={concern.status} locale={locale} />
             {concern.priorityLevel ? (
               <PriorityBadge level={concern.priorityLevel} />
             ) : (
@@ -217,7 +263,11 @@ export default async function ConcernDetailPage({
       )}
 
       <Card title={t.progress} description={t.progressDesc}>
-        <CaseStatusStepper currentStatus={concern.status} reached={reachedAt} />
+        <CaseStatusStepper
+          currentStatus={concern.status}
+          reached={reachedAt}
+          locale={locale}
+        />
         {crewFlags.crewProgressLabel ? (
           <p className="mt-4 border-t border-line pt-3 text-xs text-ink-subtle">
             {copy[locale].revamp.workflow.crewProgress}:{" "}
@@ -225,6 +275,49 @@ export default async function ConcernDetailPage({
           </p>
         ) : null}
       </Card>
+
+      <Card title={nextActionCopy.title} description={nextActionCopy.lead}>
+        {nextStepCopy ? (
+          <div className="space-y-2">
+            <p className="font-semibold text-ink">{nextStepCopy.title}</p>
+            <p className="text-sm leading-relaxed text-ink-muted">
+              {nextStepCopy.description}
+            </p>
+            <p className="text-sm text-ink-subtle">{nextActionCopy.checkBack}</p>
+            {concern.slaDueAt ? (
+              <p className="border-t border-line pt-2 text-sm text-ink-subtle">
+                {concern.slaDueAt.getTime() < Date.now()
+                  ? nextActionCopy.targetDatePassed.replace(
+                      "{date}",
+                      formatDate(concern.slaDueAt)
+                    )
+                  : nextActionCopy.targetDate.replace(
+                      "{date}",
+                      formatDate(concern.slaDueAt)
+                    )}
+              </p>
+            ) : (
+              <p className="border-t border-line pt-2 text-sm text-ink-subtle">
+                {nextActionCopy.noTargetDate}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm leading-relaxed text-ink-muted">
+            {processFlow.closedUnfounded
+              ? nextActionCopy.unfounded
+              : nextActionCopy.complete}
+          </p>
+        )}
+      </Card>
+
+      {openFieldCheck ? (
+        <ResidentFieldCheckReply
+          concernId={concern.id}
+          fieldCheckId={openFieldCheck.id}
+          locale={locale}
+        />
+      ) : null}
 
       <Card
         title={t.location}
@@ -409,7 +502,7 @@ export default async function ConcernDetailPage({
         <Card title={copy[locale].desk.timelineTitle}>
           <CaseTimeline
             locale={locale}
-            entries={concern.history.map((entry) => ({
+            entries={residentVisibleJournal(concern.history).map((entry: ResidentHistoryEntry) => ({
               id: entry.id,
               entryType: entry.entryType,
               fromStatus: entry.fromStatus,

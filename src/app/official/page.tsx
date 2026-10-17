@@ -15,6 +15,7 @@ import {
 } from "@/components/cases/field-check-panel";
 import { parseConcernFilters } from "@/lib/cases/query";
 import { concernProcessFlow, roleActsOnProcessStep } from "@/lib/cases/process-flow";
+import { assignedOfficialIsOther } from "@/lib/cases/flow-copy";
 import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import { getOfficialDashboard } from "@/lib/dashboards/official";
 import { fundedAmountsByConcern } from "@/lib/treasury/query";
@@ -98,11 +99,21 @@ export default async function OfficialPage({
         concern.id,
         current
           ? `${
-              roleActsOnProcessStep(user.role.key, current.key, {
-                block: current.block,
-              })
-                ? flowCopy.youDoThis
-                : flowCopy.notYouTitle
+              assignedOfficialIsOther({
+                role: user.role.key,
+                key: current.key,
+                userId: user.id,
+                assignedOfficialId: concern.assignedOfficialId,
+              }) && concern.assignedOfficial
+                ? flowCopy.assignedOfficial.replace(
+                    "{name}",
+                    `${concern.assignedOfficial.firstName} ${concern.assignedOfficial.lastName}`.trim()
+                  )
+                : roleActsOnProcessStep(user.role.key, current.key, {
+                    block: current.block,
+                  })
+                  ? flowCopy.youDoThis
+                  : flowCopy.notYouTitle
             } · ${flowCopy.steps[current.key].title}`
           : flow.closedUnfounded
             ? flowCopy.unfoundedNote
@@ -215,7 +226,7 @@ export default async function OfficialPage({
             {recentlyResolved.map((concern) => (
               <li key={concern.id}>
                 <Link
-                  href={`/official/concerns/${concern.id}`}
+                  href={`/official/concerns/${concern.id}?returnTo=${encodeURIComponent("/official")}`}
                   className="flex flex-wrap items-center justify-between gap-2 py-3 hover:bg-surface-muted"
                 >
                   <div>
@@ -344,7 +355,7 @@ export default async function OfficialPage({
                     </td>
                     <td className="py-3 text-right">
                       <Link
-                        href={`/official/concerns/${concern.id}`}
+                        href={`/official/concerns/${concern.id}?returnTo=${encodeURIComponent("/official")}`}
                         className="text-sm font-semibold text-brand-700 hover:text-brand-800"
                       >
                         {t.manage}

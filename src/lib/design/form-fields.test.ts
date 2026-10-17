@@ -45,12 +45,15 @@ type Pair = {
   clientRequired?: string[];
   /** Required schema values generated from other selections, not typed directly. */
   generatedFields?: string[];
+  /** Optional schema properties enforced only for a selected workflow branch. */
+  conditionalRequired?: string[];
 };
 
 const PAIRS: Pair[] = [
   {
     file: "src/components/cases/assessment-form.tsx",
     schema: assessmentSchema,
+    conditionalRequired: ["equipmentNotes"],
     idMap: {
       durationHours: "estimatedDurationMinutes",
       scheduledStart: "scheduledStartAt",
@@ -162,6 +165,7 @@ const PAIRS: Pair[] = [
   {
     file: "src/components/treasury/voucher-form.tsx",
     schema: disbursementCreateSchema,
+    conditionalRequired: ["earmarkId", "concernId"],
     idMap: {
       "voucher-payee": "payee",
       "voucher-payee-type": "payeeType",
@@ -254,7 +258,12 @@ describe("every required field is marked with *", () => {
           continue;
         }
 
-        if (required.has(fieldName)) {
+        if (pair.conditionalRequired?.includes(fieldName)) {
+          expect(
+            marker.required,
+            `${pair.file}: "${marker.name}" is conditionally required by the form and must be marked with *`
+          ).toBe(true);
+        } else if (required.has(fieldName)) {
           expect(
             marker.required,
             `${pair.file}: "${marker.name}" is required by the schema and must be marked with *`

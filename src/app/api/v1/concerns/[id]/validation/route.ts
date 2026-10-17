@@ -44,7 +44,7 @@ export const POST = withErrorBoundary<[Request, RouteContext]>(
           officeId: user.officeId ?? null,
         },
         typeId: body.typeId,
-        categoryId: body.categoryId ?? null,
+        categoryId: body.categoryId,
         priorityLevel: body.priorityLevel ?? null,
         notes: body.notes,
         confirmPriority: body.confirmPriority,

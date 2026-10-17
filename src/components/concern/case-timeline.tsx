@@ -56,6 +56,7 @@ export function describeJournalEntry(
     RESOLUTION: t.entryResolution,
     CLOSE: t.entryClose,
     REMARK: t.entryRemark,
+    RESIDENT_REPLY: t.entryResidentReply,
     ACTION: t.entryAction,
     PRIORITY_OVERRIDE: t.entryOverride,
     SLA_BREACH: t.entrySla,
@@ -112,7 +113,9 @@ export async function CaseTimeline({
               {describeJournalEntry(entry, t)}
             </span>
             {entry.actorRole && (
-              <Badge tone="neutral">{entry.actorRole}</Badge>
+              <Badge tone="neutral">
+                {entry.actorRole === "RESIDENT" ? t.residentActor : entry.actorRole}
+              </Badge>
             )}
           </div>
           {entry.remarks && (

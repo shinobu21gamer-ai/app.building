@@ -46,6 +46,7 @@ function voucher(overrides: Partial<DisbursementRow> = {}): DisbursementRow {
     amount: 5_000,
     payee: "Ana Cruz",
     payeeType: "CREW",
+    payeeUserId: 12,
     particulars: "Labor for drainage repair",
     modeOfPayment: "CASH",
     allocationId: 1,

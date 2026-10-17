@@ -22,6 +22,11 @@ export const FIELD_CHECK_ASSIGNEE_ROLES = ["OFFICIAL", "CREW"] as const;
 /** Checks still waiting on someone: these block the case. */
 export const OPEN_FIELD_CHECK_STATUSES: readonly string[] = ["PENDING", "SUBMITTED"];
 
+/** Residents may add context only while a check is waiting for site work/review. */
+export function canReplyToFieldCheck(status: string): boolean {
+  return OPEN_FIELD_CHECK_STATUSES.includes(status);
+}
+
 export type FieldCheckSummary = { status: string; finding: string | null };
 
 /**

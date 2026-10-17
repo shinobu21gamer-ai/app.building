@@ -172,7 +172,7 @@ export default async function CaptainApprovalsPage() {
                   <div className="flex flex-wrap gap-2">
                     {earmark.concernId && (
                       <Button
-                        href={`/official/concerns/${earmark.concernId}`}
+                        href={`/official/concerns/${earmark.concernId}?returnTo=${encodeURIComponent("/captain/approvals")}`}
                         size="sm"
                         variant="ghost"
                       >

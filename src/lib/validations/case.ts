@@ -260,11 +260,9 @@ export const concernValidationSchema = z.object({
     .int("Select a valid concern type.")
     .positive("Select a valid concern type."),
   categoryId: z.coerce
-    .number()
-    .int()
-    .positive()
-    .optional()
-    .or(z.literal(0).transform(() => undefined)),
+    .number({ message: "Choose the category that best matches this concern." })
+    .int("Choose a valid category.")
+    .positive("Choose the category that best matches this concern."),
   priorityLevel: z
     .enum(PRIORITY_LEVELS)
     .optional()
