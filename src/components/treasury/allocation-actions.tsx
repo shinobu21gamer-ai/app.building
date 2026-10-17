@@ -19,12 +19,16 @@ type Action = "APPROVE" | "ADJUST" | "CLOSE";
 
 /**
  * The three things that can happen to an already-prepared appropriation:
- * approve it (which opens it on the ledger), adjust it (administrator only,
- * always with a memo), or close it (only when nothing is reserved).
+ * approve it (which opens it on the ledger), adjust it (treasurer or
+ * administrator, always with a memo), or close it (only when nothing is
+ * reserved). Adjusting asks for the corrected appropriation total and
+ * records the difference on the ledger — history is never rewritten.
  */
 export function AllocationActions({
   allocationId,
   status,
+  appropriated = 0,
+  committed = 0,
   available,
   canApprove,
   canAdjust,
@@ -33,6 +37,10 @@ export function AllocationActions({
 }: {
   allocationId: number;
   status: string;
+  /** Current appropriated total; only needed when adjusting is offered. */
+  appropriated?: number;
+  /** Reserved + disbursed: the floor an adjustment may not go below. */
+  committed?: number;
   available: number;
   canApprove: boolean;
   canAdjust: boolean;
@@ -46,17 +54,37 @@ export function AllocationActions({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [newAppropriation, setNewAppropriation] = useState("");
+
+  const parsedNew = Number(newAppropriation);
+  const delta =
+    newAppropriation.trim() !== "" && Number.isFinite(parsedNew)
+      ? Math.round((parsedNew - appropriated) * 100) / 100
+      : null;
 
   async function run(action: Action, formData: FormData) {
-    setBusy(true);
     setError(null);
     setDone(null);
 
     const notes = String(formData.get("notes") ?? "");
     const memo = String(formData.get("memo") ?? "");
+    if (action === "ADJUST") {
+      if (delta === null || delta === 0) {
+        setError(t.adjustNoChange);
+        return;
+      }
+      if (parsedNew < committed) {
+        setError(
+          t.adjustBelowCommitted.replace("{amount}", formatPeso(committed))
+        );
+        return;
+      }
+    }
+    setBusy(true);
+
     const payload =
       action === "ADJUST"
-        ? { action, amount: Number(formData.get("amount")), memo }
+        ? { action, amount: delta, memo }
         : { action, notes: notes === "" ? null : notes };
 
     const result = await apiRequest<{ available: number }>(
@@ -99,7 +127,10 @@ export function AllocationActions({
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => setMode("ADJUST")}
+              onClick={() => {
+                setNewAppropriation(String(appropriated));
+                setMode("ADJUST");
+              }}
             >
               {t.adjustAllocation}
             </Button>
@@ -132,16 +163,25 @@ export function AllocationActions({
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="adjust-amount" required>
-                  {t.amountLabel}
+                  {t.adjustNewAppropriation}
                 </Label>
                 <Input
                   id="adjust-amount"
                   name="amount"
                   type="number"
                   step="0.01"
+                  min="0"
                   required
-                  placeholder="-500.00"
+                  value={newAppropriation}
+                  onChange={(event) => setNewAppropriation(event.target.value)}
                 />
+                <p className="mt-1 text-xs text-ink-subtle" role="status">
+                  {delta === null || delta === 0
+                    ? t.adjustNoChange
+                    : (delta > 0 ? t.adjustIncrease : t.adjustDecrease)
+                        .replace("{amount}", formatPeso(Math.abs(delta)))
+                        .replace("{available}", formatPeso(available + delta))}
+                </p>
               </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="adjust-memo" required>

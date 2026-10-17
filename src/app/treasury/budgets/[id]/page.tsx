@@ -64,6 +64,7 @@ export default async function TreasuryAllocationPage({ params }: PageProps) {
     vouchers,
     ledger,
     canApprove,
+    canAdjust,
     canApproveEarmark,
     canPrepareEarmark,
     canPrepareVoucher,
@@ -76,6 +77,7 @@ export default async function TreasuryAllocationPage({ params }: PageProps) {
     listDisbursements(db, { actor, allocationId }),
     ledgerRegister(db, { actor, allocationId, take: 50 }),
     userCan(user.role.key, "treasury.allocation.approve"),
+    userCan(user.role.key, "treasury.allocation.adjust"),
     // Earmarks are decided on their own permissions. This page used to offer the
     // earmark Approve and Cancel buttons behind the *allocation* permissions,
     // which is a different right — a role holding one but not the other was
@@ -158,9 +160,11 @@ export default async function TreasuryAllocationPage({ params }: PageProps) {
         <AllocationActions
           allocationId={allocation.id}
           status={allocation.status}
+          appropriated={balance.appropriated}
+          committed={balance.reserved + balance.disbursed}
           available={balance.available}
           canApprove={canApprove}
-          canAdjust={user.role.key === "ADMIN"}
+          canAdjust={canAdjust}
           canClose={canApprove}
           locale={locale}
         />

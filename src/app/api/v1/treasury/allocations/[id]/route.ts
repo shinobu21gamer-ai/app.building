@@ -85,8 +85,9 @@ export const GET = withErrorBoundary<[Request, RouteContext]>(
 /**
  * PATCH /api/v1/treasury/allocations/[id]
  * APPROVE opens the appropriation on the ledger (`treasury.allocation.approve`,
- * the Captain/AAO), ADJUST adds a memo-backed correction and is administrator
- * only, CLOSE retires an allocation that has nothing reserved.
+ * the Captain/AAO), ADJUST adds a memo-backed correction
+ * (`treasury.allocation.adjust`, the treasurer or an administrator), CLOSE
+ * retires an allocation that has nothing reserved.
  */
 export const PATCH = withErrorBoundary<[Request, RouteContext]>(
   async (req, ctx) => {
@@ -96,17 +97,10 @@ export const PATCH = withErrorBoundary<[Request, RouteContext]>(
     const body = await parseBody(req, allocationActionSchema);
 
     const permission =
-      body.action === "APPROVE" || body.action === "CLOSE"
-        ? "treasury.allocation.approve"
-        : null;
-    const user = await requireApiPermission(
-      permission ?? "treasury.balance.view"
-    );
-    if (body.action === "ADJUST" && user.role.key !== "ADMIN") {
-      throw createApiError.forbidden(
-        "Only an administrator can adjust an appropriation. Ask the administrator to record the correction."
-      );
-    }
+      body.action === "ADJUST"
+        ? "treasury.allocation.adjust"
+        : "treasury.allocation.approve";
+    const user = await requireApiPermission(permission);
 
     const actor = actorFrom(user);
     const meta = requestMeta(req);

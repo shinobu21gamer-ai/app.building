@@ -357,8 +357,9 @@ export async function approveAllocation(
 }
 
 /**
- * Adjustments are administrator-only and always carry a memo: the ledger is
- * append-only, so a correction is a new row, never an edit of history.
+ * Adjustments need the `treasury.allocation.adjust` permission (enforced by
+ * the caller) and always carry a memo: the ledger is append-only, so a
+ * correction is a new row, never an edit of history.
  */
 export async function adjustAllocation(
   tx: Tx,
