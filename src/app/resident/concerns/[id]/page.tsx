@@ -39,6 +39,7 @@ import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { hasCoordinates, openStreetMapUrl } from "@/lib/maps";
 import { ConcernMap } from "@/components/concern/concern-map";
+import { uploadedPhotoSrc } from "@/lib/uploads";
 import { PageHeader } from "@/components/ui/page-header";
 import { CaseContactCard, CaseOwner } from "@/components/cases/case-owner";
 
@@ -135,6 +136,15 @@ export default async function ConcernDetailPage({
 
   const coordinates = { lat: concern.locationLat, lng: concern.locationLng };
   const resolution = concern.resolutions[0] ?? null;
+
+  // Resolve the photos this sheet displays (the report photo and the
+  // resolution proof photo) on the server, like the case timeline does:
+  // small photos are inlined as data URLs instead of depending on a second
+  // cookie-authenticated fetch to /api/v1/uploads, which is the path that
+  // showed "This photo could not be loaded". A photo whose bytes are not
+  // on the server comes back missing so the card can say so plainly.
+  const supportingPhoto = await uploadedPhotoSrc(concern.imageUrl);
+  const resolutionPhoto = await uploadedPhotoSrc(resolution?.attachmentUrl);
   const currentAssignment = concern.assignments[0] ?? null;
   const latestAssessment =
     concern.assessments.length > 0
@@ -402,16 +412,23 @@ export default async function ConcernDetailPage({
               </div>
             </dl>
 
-            {concern.imageUrl && (
+            {supportingPhoto.src ? (
               <div className="mt-5 border-t border-line pt-5">
                 <p className="mb-2 text-ink-subtle">{t.photo}</p>
                 <UploadedPhoto
-                  src={concern.imageUrl}
+                  src={supportingPhoto.src}
                   alt={`Supporting image for ${concern.caseNumber}`}
                   locale={locale}
                 />
               </div>
-            )}
+            ) : supportingPhoto.missing ? (
+              <div className="mt-5 border-t border-line pt-5">
+                <p className="mb-2 text-ink-subtle">{t.photo}</p>
+                <p role="status" className="text-sm text-ink-muted">
+                  {copy[locale].photoViewer.gone}
+                </p>
+              </div>
+            ) : null}
           </Card>
 
           <Card
@@ -468,18 +485,25 @@ export default async function ConcernDetailPage({
                   <span>Resolved {formatDate(resolution.resolvedOn)}</span>
                   <span>Recorded {formatDateTime(resolution.resolvedAt)}</span>
                 </div>
-                {resolution.attachmentUrl && (
+                {resolutionPhoto.src ? (
                   <div>
                     <dt className="text-ink-subtle">Proof photo</dt>
                     <dd className="mt-2">
                       <UploadedPhoto
-                        src={resolution.attachmentUrl}
+                        src={resolutionPhoto.src}
                         alt={`Proof photo of the resolution for ${concern.caseNumber}`}
                         locale={locale}
                       />
                     </dd>
                   </div>
-                )}
+                ) : resolutionPhoto.missing ? (
+                  <div>
+                    <dt className="text-ink-subtle">Proof photo</dt>
+                    <dd className="mt-2 text-sm text-ink-subtle" role="status">
+                      {copy[locale].photoViewer.gone}
+                    </dd>
+                  </div>
+                ) : null}
               </dl>
             </Card>
           )}

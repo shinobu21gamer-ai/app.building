@@ -353,6 +353,11 @@ export default async function OfficialConcernDetailPage({
   // showed reviewers "This photo could not be loaded". A photo whose bytes
   // are not on the server comes back missing so the panel can say so plainly.
   const supportingPhoto = await uploadedPhotoSrc(concern.imageUrl);
+  // The resolution proof photo gets the same server-side resolution (it
+  // was still fetched client-side, which is why the Resolution card could
+  // show "This photo could not be loaded" while the same photo rendered
+  // fine in the timeline below).
+  const resolutionPhoto = await uploadedPhotoSrc(resolution?.attachmentUrl);
   const fieldCheckPhotos = new Map<
     number,
     { src: string | null; missing: boolean }
@@ -1363,18 +1368,25 @@ export default async function OfficialConcernDetailPage({
                     )}
                   </span>
                 </div>
-                {resolution.attachmentUrl && (
+                {resolutionPhoto.src ? (
                   <div>
                     <dt className="text-ink-subtle">{desk.attachment}</dt>
                     <dd className="mt-2">
                       <UploadedPhoto
-                        src={resolution.attachmentUrl}
+                        src={resolutionPhoto.src}
                         alt={`Proof photo of the resolution for ${concern.caseNumber}`}
                         locale={locale}
                       />
                     </dd>
                   </div>
-                )}
+                ) : resolutionPhoto.missing ? (
+                  <div>
+                    <dt className="text-ink-subtle">{desk.attachment}</dt>
+                    <dd className="mt-2 text-sm text-ink-subtle" role="status">
+                      {desk.photoMissing}
+                    </dd>
+                  </div>
+                ) : null}
               </dl>
             </Card>
           )}
