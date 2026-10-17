@@ -13,6 +13,7 @@ import { getEffectivePermissions, requirePermission } from "@/lib/auth/session";
 import { copy } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { allocationBalance } from "@/lib/treasury/budget";
+import { uploadedPhotoSrc } from "@/lib/uploads";
 import {
   loadVoucherForActor,
   voucherActionAvailability,
@@ -49,6 +50,12 @@ export default async function TreasuryDisbursementPage({ params }: PageProps) {
     () => null
   );
   if (!voucher) notFound();
+
+  // Resolve the receipt photo's bytes on the server (small photos inline
+  // as data URLs), like the case sheets do: the second cookie-authenticated
+  // fetch to /api/v1/uploads is the path that showed "This photo could not
+  // be loaded". Bytes that are not on the server come back missing.
+  const proofPhoto = await uploadedPhotoSrc(voucher.proofUrl);
 
   const [balance, permissions] = await Promise.all([
     allocationBalance(db, voucher.allocationId),
@@ -141,15 +148,21 @@ export default async function TreasuryDisbursementPage({ params }: PageProps) {
         </dl>
       </Card>
 
-      {voucher.proofUrl && (
+      {proofPhoto.src ? (
         <Card title={t.voucherProofTitle} description={t.voucherProofDesc}>
           <UploadedPhoto
-            src={voucher.proofUrl}
+            src={proofPhoto.src}
             alt={t.voucherProofTitle}
             locale={locale}
           />
         </Card>
-      )}
+      ) : proofPhoto.missing ? (
+        <Card title={t.voucherProofTitle} description={t.voucherProofDesc}>
+          <p role="status" className="text-sm text-ink-muted">
+            {copy[locale].photoViewer.gone}
+          </p>
+        </Card>
+      ) : null}
 
       <Card title={t.approvalsTitle} description={t.approvalSelfBlocked}>
         {voucher.approvals.length === 0 ? (

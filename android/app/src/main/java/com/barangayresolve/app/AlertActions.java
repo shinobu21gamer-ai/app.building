@@ -16,6 +16,12 @@ public final class AlertActions {
   private AlertActions() {}
 
   public static void acknowledge(Context context, int alertId) {
+    // Record the tap before dispatching it. The JS event is one-shot: if the
+    // WebView page has not loaded the alert listener yet, the event is lost
+    // and — since the alarm stops only after the server confirms — it would
+    // ring indefinitely. The web layer drains this record on registration
+    // via AlertBridge.consumePendingAck().
+    MainActivity.recordPendingAck(alertId);
     String js =
         "try{window.dispatchEvent(new CustomEvent('native-ack-requested',{detail:{id:"
             + alertId

@@ -75,6 +75,20 @@ describe("role matrix", () => {
     expect(roleHasCodePermission("ADMIN", "admin.rbac.manage")).toBe(true);
   });
 
+  it("lets the treasurer correct an appropriation, but not the captain who approves it", () => {
+    expect(roleHasCodePermission("TREASURER", "treasury.allocation.adjust")).toBe(
+      true
+    );
+    expect(roleHasCodePermission("ADMIN", "treasury.allocation.adjust")).toBe(true);
+    // Approving and adjusting the same money stays with different roles.
+    expect(roleHasCodePermission("CAPTAIN", "treasury.allocation.adjust")).toBe(
+      false
+    );
+    expect(roleHasCodePermission("OFFICIAL", "treasury.allocation.adjust")).toBe(
+      false
+    );
+  });
+
   it("separates segregation-of-duty pairs", () => {
     // Certifying funds and approving the release must never be the same role.
     expect(

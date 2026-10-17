@@ -168,6 +168,12 @@ export const PERMISSIONS = [
     description: "Approve a budget allocation.",
   },
   {
+    key: "treasury.allocation.adjust",
+    category: "TREASURY",
+    description:
+      "Correct an approved appropriation's amount, with a memo, on the ledger.",
+  },
+  {
     key: "treasury.earmark.prepare",
     category: "TREASURY",
     description: "Earmark part of an allocation for a case or a purchase.",
@@ -371,6 +377,7 @@ const TREASURER_PERMISSIONS = [
   "case.view.office",
   "treasury.coa.verify",
   "treasury.allocation.prepare",
+  "treasury.allocation.adjust",
   "treasury.earmark.prepare",
   "treasury.disbursement.prepare",
   "treasury.disbursement.certify",
