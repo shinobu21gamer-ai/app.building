@@ -427,8 +427,11 @@ export async function notifyCrewProgressRecorded(
         where: { isActive: true, officeId: input.officeId, role: { key: "OFFICIAL" } },
         select: { id: true },
       });
-  const recipientIds = [...recipients.map((recipient) => recipient.id), input.officialId];
-  if (recipientIds.every((id) => id === null)) {
+  const recipientIds: number[] = [
+    ...recipients.map((recipient) => recipient.id),
+    input.officialId,
+  ].filter((id): id is number => id !== null);
+  if (recipientIds.length === 0) {
     const admins = await db.user.findMany({
       where: { isActive: true, role: { key: "ADMIN" } },
       select: { id: true },
