@@ -2094,6 +2094,7 @@ const en = {
     requiredLegend: "Fields marked Required must be filled in. Fields marked Optional can be skipped.",
     common: {
       save: "Save",
+      pending: "Pending",
       saving: "Saving...",
       saved: "Saved.",
       cancel: "Cancel",
@@ -5698,6 +5699,7 @@ const fil: typeof en = {
     requiredLegend: "Dapat lagyan ang mga field na may markang Kinakailangan. Puwedeng laktawan ang may markang Opsyonal.",
     common: {
       save: "I-save",
+      pending: "Nakabinbin",
       saving: "Sine-save...",
       saved: "Nai-save.",
       cancel: "Kanselahin",

@@ -13,6 +13,11 @@ describe("parseLocale", () => {
 });
 
 describe("copy", () => {
+  it("includes the pending status label in both locales", () => {
+    expect(copy.en.revamp.common.pending).toBe("Pending");
+    expect(copy.fil.revamp.common.pending).toBe("Nakabinbin");
+  });
+
   it("keeps English and Filipino keys aligned", () => {
     expect(copy.fil.faqs).toHaveLength(copy.en.faqs.length);
     expect(copy.fil.home.workflow).toHaveLength(copy.en.home.workflow.length);
