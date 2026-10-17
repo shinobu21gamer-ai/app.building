@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   caseProcessFlow,
   crewSatisfied,
+  fundStepNeedsSending,
   fundingSatisfied,
   roleActsOnProcessStep,
   roleOwnsProcessStep,
@@ -208,6 +209,65 @@ describe("caseProcessFlow", () => {
     const funded = { ...waiting, fundedAmount: 12_000 };
     expect(stepOf(funded, "FUND").state).toBe("done");
     expect(caseProcessFlow(funded).currentKey).toBe("START");
+  });
+
+  // Regression: the officials' desk hid step 4's send form behind the
+  // treasury-only funding view, so an official whose estimate was done saw
+  // "Your turn" with no way to send the case to Awaiting budget.
+  it("offers the send-to-budget form to the official who owns the step", () => {
+    const money = {
+      ...base,
+      status: "UNDER_ASSESSMENT",
+      hasAssessment: true,
+      workersNeeded: 2,
+      estimatedCost: 12_000,
+      activeCrew: 2,
+    };
+    const block = stepOf(money, "FUND").block;
+
+    expect(
+      fundStepNeedsSending({
+        block,
+        canProgress: true,
+        canManage: true,
+        stageIndex: 2,
+      })
+    ).toBe(true);
+    // No status-progress right, or a view-only reader: no form.
+    expect(
+      fundStepNeedsSending({
+        block,
+        canProgress: false,
+        canManage: true,
+        stageIndex: 2,
+      })
+    ).toBe(false);
+    expect(
+      fundStepNeedsSending({
+        block,
+        canProgress: true,
+        canManage: false,
+        stageIndex: 2,
+      })
+    ).toBe(false);
+    // Already sent: the step now waits on the treasury, not the official.
+    expect(
+      fundStepNeedsSending({
+        block: "NEEDS_FUNDS",
+        canProgress: true,
+        canManage: true,
+        stageIndex: 3,
+      })
+    ).toBe(false);
+    // No estimate yet: nothing to send.
+    expect(
+      fundStepNeedsSending({
+        block: "NEEDS_ESTIMATE",
+        canProgress: true,
+        canManage: true,
+        stageIndex: 2,
+      })
+    ).toBe(false);
   });
 
   it("will not start work without the planned crew", () => {
