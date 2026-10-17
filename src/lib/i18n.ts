@@ -3230,7 +3230,7 @@ const en = {
       scheduledStart: "Planned start",
       scheduledEnd: "Planned finish",
       scheduledHint:
-        "Today or later — a plan cannot be set in the past. The planned window is what the double-booking check uses for the crew.",
+        "Today or later — a plan cannot be set in the past. Crew may be assigned to more than one case; the roster shows how many open cases each person already holds.",
       costTitle: "Cost",
       costDesc: "Materials, labour, equipment. Labour is part of the total.",
       labor: "Labour",
@@ -6838,7 +6838,7 @@ const fil: typeof en = {
       scheduledStart: "Planned start",
       scheduledEnd: "Planned finish",
       scheduledHint:
-        "Ngayon o mas huli — hindi puwedeng ilagay sa nakaraan ang plano. Ang planned window ang basehan ng double-booking check ng crew.",
+        "Ngayon o mas huli — hindi puwedeng ilagay sa nakaraan ang plano. Maaaring italaga ang crew sa higit sa isang kaso; ipinapakita sa roster kung ilang bukas na kaso ang hawak ng bawat isa.",
       costTitle: "Gastos",
       costDesc: "Materyales, labor, kagamitan. Kasama ang labor sa kabuuan.",
       labor: "Labor",
